@@ -1,0 +1,57 @@
+$base = "http://127.0.0.1:3000"
+$phone = "03001234567"
+
+# 1) Health
+Invoke-RestMethod "$base/api/v1/health" | ConvertTo-Json -Depth 5
+
+# 2) Categories addd hooo g admin s (pehli category id)
+$catId = (Invoke-RestMethod "$base/api/v1/categories").data[0].id
+Write-Host "categoryId:" $catId
+
+# 3) OTP request (dev mein OTP response mein aata hai)
+$otpRes = Invoke-RestMethod -Method Post -Uri "$base/api/v1/auth/otp/request" `
+  -ContentType "application/json" -Body (@{ phone = $phone } | ConvertTo-Json)
+$otpRes.data | ConvertTo-Json
+$otp = $otpRes.data.otp
+
+# 4) OTP verify → provider token + id
+$verify = Invoke-RestMethod -Method Post -Uri "$base/api/v1/auth/otp/verify" `
+  -ContentType "application/json" -Body (@{ phone = $phone; otp = $otp } | ConvertTo-Json)
+$providerToken = $verify.data.token
+$providerId = $verify.data.provider.id
+Write-Host "status:" $verify.data.provider.status
+Write-Host "providerId:" $verify.data.provider.providerId
+Write-Host "uuid:" $providerId
+
+# 5) Demo image (1x1 PNG)
+$png = Join-Path $env:TEMP "qareeb-demo.png"
+[IO.File]::WriteAllBytes($png, [Convert]::FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="))
+
+# 6) Profile + photo (curl.exe — Windows par yeh working hai)
+curl.exe -s -X PUT "$base/api/v1/providers/me/profile" `
+  -H "Authorization: Bearer $providerToken" `
+  -F "name=Ali Plumber" -F "categoryId=$catId" -F "city=Lahore" -F "photo=@$png"
+
+# 7) CNIC/document upload hoo g
+curl.exe -s -X POST "$base/api/v1/providers/me/verification" `
+  -H "Authorization: Bearer $providerToken" `
+  -F "documentType=cnic" -F "document=@$png"
+
+# 8) Admin login
+$admin = Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/auth/login" `
+  -ContentType "application/json" `
+  -Body (@{ email = "admin@qareeb.app"; password = "QareebAdmin@123" } | ConvertTo-Json)
+$adminToken = $admin.data.token
+
+# 9) Pending list
+Invoke-RestMethod -Uri "$base/api/v1/admin/providers?status=pending_verification" `
+  -Headers @{ Authorization = "Bearer $adminToken" } | ConvertTo-Json -Depth 6
+
+# 10) Approve
+Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/providers/$providerId/approve" `
+  -Headers @{ Authorization = "Bearer $adminToken" } `
+  -ContentType "application/json" -Body '{"reason":"Client demo approved"}' | ConvertTo-Json -Depth 5
+
+# 11) Provider final status
+Invoke-RestMethod -Uri "$base/api/v1/providers/me" `
+  -Headers @{ Authorization = "Bearer $providerToken" } | ConvertTo-Json -Depth 6
