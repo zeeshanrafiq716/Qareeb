@@ -1,0 +1,137 @@
+# Qareeb Phase 1 — manual API tests (VS Code REST Client extension)
+# Copy values from responses into variables below.
+
+@base = http://localhost:3000
+@phone = 03001234567
+@otp =
+@providerToken =
+@providerId =
+@categoryId =
+@adminToken =
+
+@adminEmail = admin@qareeb.app
+@adminPassword = QareebAdmin@123
+
+############################################
+# 1. Health
+############################################
+
+GET {{base}}/health
+
+GET {{base}}/api/v1/health
+
+############################################
+# 2. Provider registration
+############################################
+
+### 2.1 List categories (copy id → @categoryId)
+GET {{base}}/api/v1/categories
+
+### 2.2 Request OTP (copy data.otp → @otp)
+POST {{base}}/api/v1/auth/otp/request
+Content-Type: application/json
+
+{
+  "phone": "{{phone}}"
+}
+
+### 2.3 Verify OTP (copy token + provider.id)
+POST {{base}}/api/v1/auth/otp/verify
+Content-Type: application/json
+
+{
+  "phone": "{{phone}}",
+  "otp": "{{otp}}"
+}
+
+### 2.4 My profile
+GET {{base}}/api/v1/providers/me
+Authorization: Bearer {{providerToken}}
+
+### 2.5 Update profile (multipart — REST Client: use Postman for files)
+# Postman: PUT {{base}}/api/v1/providers/me/profile
+# form-data: name, categoryId, city, photo (file)
+
+### 2.6 Upload verification document
+# Postman: POST {{base}}/api/v1/providers/me/verification
+# form-data: documentType=cnic, document (file)
+
+############################################
+# 3. Admin
+############################################
+
+### 3.1 Admin login (copy data.token → @adminToken)
+POST {{base}}/api/v1/admin/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### 3.2 List pending providers
+GET {{base}}/api/v1/admin/providers?status=pending_verification
+Authorization: Bearer {{adminToken}}
+
+### 3.3 Provider details
+GET {{base}}/api/v1/admin/providers/{{providerId}}
+Authorization: Bearer {{adminToken}}
+
+### 3.4 Approve
+POST {{base}}/api/v1/admin/providers/{{providerId}}/approve
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "reason": "Manual test approve"
+}
+
+### 3.5 Reject (needs reason)
+POST {{base}}/api/v1/admin/providers/{{providerId}}/reject
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "reason": "Document not clear"
+}
+
+### 3.6 Suspend
+POST {{base}}/api/v1/admin/providers/{{providerId}}/suspend
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "reason": "Test suspend"
+}
+
+### 3.7 Reinstate
+POST {{base}}/api/v1/admin/providers/{{providerId}}/reinstate
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "reason": "Test reinstate"
+}
+
+############################################
+# 4. Admin categories
+############################################
+
+GET {{base}}/api/v1/admin/categories
+Authorization: Bearer {{adminToken}}
+
+POST {{base}}/api/v1/admin/categories
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Welder"
+}
+
+PATCH {{base}}/api/v1/admin/categories/{{categoryId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "isEnabled": false
+}

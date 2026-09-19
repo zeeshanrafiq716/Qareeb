@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: qareeb_staging
+    volumes:
+      - qareeb_staging_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d qareeb_staging"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: staging
+      PORT: 3000
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/qareeb_staging
+      JWT_SECRET: staging-change-this-secret-32chars-min
+      ADMIN_EMAIL: admin@qareeb.app
+      ADMIN_PASSWORD: QareebAdmin@123
+      ADMIN_NAME: Qareeb Admin
+      OTP_RETURN_IN_RESPONSE: "true"
+      AUTO_MIGRATE: "true"
+      AUTO_SEED: "true"
+      LOG_LEVEL: info
+      CORS_ORIGIN: "*"
+    ports:
+      - "3000:3000"
+
+volumes:
+  qareeb_staging_pg:

@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.staging
+uploads/**
+!uploads/.gitkeep
+.DS_Store
+npm-debug.log*
+dist/
+.idea/
+.vscode/
+coverage/
+.tmp/
+.data/
