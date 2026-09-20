@@ -1,57 +1,189 @@
+# =============================================================================
+# Qareeb — Manual API test commands (PowerShell)
+# Phase 1: registration + admin approval
+# Phase 2: presence (REST + WebSocket)
+# =============================================================================
+#
+# BEFORE START:
+#   Terminal 1:  cd "D:\projects\Qareeb App"
+#                npm run dev
+#   Terminal 2:  copy-paste sections below (project folder optional except socket)
+#
+# Admin: admin@qareeb.app / QareebAdmin@123
+# Dev OTP: response mein data.otp aata hai (OTP_RETURN_IN_RESPONSE=true)
+#
+# IMPORTANT:
+#   - Files (photo/document) ke liye hamesha curl.exe use karein (curl alias mat)
+#   - $providerId use karein — $pid mat (PowerShell reserved)
+#   - Agar approve error: "approved to approved" → provider pehle se approved hai
+#   - Naya full flow: neeche "FRESH PHONE" section use karein
+# =============================================================================
+
 $base = "http://127.0.0.1:3000"
-$phone = "03001234567"
+$phone = "03001234567"   # FRESH flow ke liye badal dein e.g. 03005556677
 
-# 1) Health
-Invoke-RestMethod "$base/api/v1/health" | ConvertTo-Json -Depth 5
+# -----------------------------------------------------------------------------
+# PHASE 1 — HEALTH & PUBLIC
+# -----------------------------------------------------------------------------
 
-# 2) Categories addd hooo g admin s (pehli category id)
+Write-Host "`n=== 1 HEALTH ===" -ForegroundColor Cyan
+Invoke-RestMethod "$base/api/v1/health" | ConvertTo-Json
+
+Write-Host "`n=== 2 CATEGORIES (public) ===" -ForegroundColor Cyan
 $catId = (Invoke-RestMethod "$base/api/v1/categories").data[0].id
 Write-Host "categoryId:" $catId
 
-# 3) OTP request (dev mein OTP response mein aata hai)
+# -----------------------------------------------------------------------------
+# PHASE 1 — PROVIDER OTP
+# -----------------------------------------------------------------------------
+
+Write-Host "`n=== 3 OTP REQUEST ===" -ForegroundColor Cyan
 $otpRes = Invoke-RestMethod -Method Post -Uri "$base/api/v1/auth/otp/request" `
   -ContentType "application/json" -Body (@{ phone = $phone } | ConvertTo-Json)
 $otpRes.data | ConvertTo-Json
 $otp = $otpRes.data.otp
 
-# 4) OTP verify → provider token + id
+Write-Host "`n=== 4 OTP VERIFY ===" -ForegroundColor Cyan
 $verify = Invoke-RestMethod -Method Post -Uri "$base/api/v1/auth/otp/verify" `
   -ContentType "application/json" -Body (@{ phone = $phone; otp = $otp } | ConvertTo-Json)
 $providerToken = $verify.data.token
 $providerId = $verify.data.provider.id
 Write-Host "status:" $verify.data.provider.status
-Write-Host "providerId:" $verify.data.provider.providerId
+Write-Host "providerId (QRB):" $verify.data.provider.providerId
 Write-Host "uuid:" $providerId
 
-# 5) Demo image (1x1 PNG)
+# -----------------------------------------------------------------------------
+# PHASE 1 — PROFILE + DOCUMENT (multipart)
+# -----------------------------------------------------------------------------
+
+Write-Host "`n=== 5 DEMO PNG FILE ===" -ForegroundColor Cyan
 $png = Join-Path $env:TEMP "qareeb-demo.png"
 [IO.File]::WriteAllBytes($png, [Convert]::FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="))
+Write-Host $png
 
-# 6) Profile + photo (curl.exe — Windows par yeh working hai)
+Write-Host "`n=== 6 PROFILE + PHOTO ===" -ForegroundColor Cyan
 curl.exe -s -X PUT "$base/api/v1/providers/me/profile" `
   -H "Authorization: Bearer $providerToken" `
-  -F "name=Ali Plumber" -F "categoryId=$catId" -F "city=Lahore" -F "photo=@$png"
+  -F "name=Ali Plumber" `
+  -F "categoryId=$catId" `
+  -F "city=Lahore" `
+  -F "address=Main Bazaar" `
+  -F "latitude=31.5204" `
+  -F "longitude=74.3587" `
+  -F "photo=@$png"
 
-# 7) CNIC/document upload hoo g
+Write-Host "`n=== 7 VERIFICATION DOCUMENT ===" -ForegroundColor Cyan
 curl.exe -s -X POST "$base/api/v1/providers/me/verification" `
   -H "Authorization: Bearer $providerToken" `
-  -F "documentType=cnic" -F "document=@$png"
+  -F "documentType=cnic" `
+  -F "document=@$png"
 
-# 8) Admin login
+Write-Host "`n=== 8 PROVIDER ME (after document) ===" -ForegroundColor Cyan
+Invoke-RestMethod -Uri "$base/api/v1/providers/me" `
+  -Headers @{ Authorization = "Bearer $providerToken" } | ConvertTo-Json -Depth 6
+
+# -----------------------------------------------------------------------------
+# PHASE 1 — ADMIN
+# -----------------------------------------------------------------------------
+
+Write-Host "`n=== 9 ADMIN LOGIN ===" -ForegroundColor Cyan
 $admin = Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/auth/login" `
   -ContentType "application/json" `
   -Body (@{ email = "admin@qareeb.app"; password = "QareebAdmin@123" } | ConvertTo-Json)
 $adminToken = $admin.data.token
 
-# 9) Pending list
-Invoke-RestMethod -Uri "$base/api/v1/admin/providers?status=pending_verification" `
-  -Headers @{ Authorization = "Bearer $adminToken" } | ConvertTo-Json -Depth 6
-
-# 10) Approve
-Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/providers/$providerId/approve" `
+Write-Host "`n=== 10 ADMIN — provider detail (status check before approve) ===" -ForegroundColor Cyan
+Invoke-RestMethod -Uri "$base/api/v1/admin/providers/$providerId" `
   -Headers @{ Authorization = "Bearer $adminToken" } `
-  -ContentType "application/json" -Body '{"reason":"Client demo approved"}' | ConvertTo-Json -Depth 5
+  | Select-Object -ExpandProperty data `
+  | Select-Object status, providerId, name
 
-# 11) Provider final status
+Write-Host "`n=== 11 PENDING LIST ===" -ForegroundColor Cyan
+Invoke-RestMethod -Uri "$base/api/v1/admin/providers?status=pending_verification" `
+  -Headers @{ Authorization = "Bearer $adminToken" } | ConvertTo-Json -Depth 4
+
+Write-Host "`n=== 12 APPROVE (sirf jab status = pending_verification) ===" -ForegroundColor Cyan
+try {
+  Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/providers/$providerId/approve" `
+    -Headers @{ Authorization = "Bearer $adminToken" } `
+    -ContentType "application/json" -Body '{"reason":"Manual test approved"}' `
+    | ConvertTo-Json -Depth 5
+} catch {
+  Write-Host "Approve skip/error (shayad already approved):" $_.ErrorDetails.Message -ForegroundColor Yellow
+}
+
+Write-Host "`n=== 13 PROVIDER ME (final — expect approved) ===" -ForegroundColor Cyan
 Invoke-RestMethod -Uri "$base/api/v1/providers/me" `
   -Headers @{ Authorization = "Bearer $providerToken" } | ConvertTo-Json -Depth 6
+
+# -----------------------------------------------------------------------------
+# PHASE 2 — PRESENCE (REST)
+# -----------------------------------------------------------------------------
+
+Write-Host "`n=== 14 PROVIDER PRESENCE (REST) ===" -ForegroundColor Cyan
+Invoke-RestMethod -Uri "$base/api/v1/providers/me/presence" `
+  -Headers @{ Authorization = "Bearer $providerToken" } | ConvertTo-Json -Depth 6
+
+Write-Host "`n=== 15 ADMIN — ONLINE PROVIDERS ===" -ForegroundColor Cyan
+Invoke-RestMethod -Uri "$base/api/v1/admin/providers/online" `
+  -Headers @{ Authorization = "Bearer $adminToken" } | ConvertTo-Json -Depth 4
+
+# -----------------------------------------------------------------------------
+# PHASE 2 — WEBSOCKET (approved provider token required)
+# Run from project folder:
+# -----------------------------------------------------------------------------
+
+Write-Host "`n=== 16 WEBSOCKET DEMO ===" -ForegroundColor Cyan
+Write-Host 'Run:  cd "D:\projects\Qareeb App"'
+Write-Host "Run:  node scripts/socket-presence-demo.mjs `$providerToken"
+Write-Host "Expected: connected, presence:state isOnline true, presence:ack, disconnect"
+
+# -----------------------------------------------------------------------------
+# OPTIONAL — ADMIN: REJECT / SUSPEND / REINSTATE
+# -----------------------------------------------------------------------------
+
+# Reject (pending_verification only):
+# Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/providers/$providerId/reject" `
+#   -Headers @{ Authorization = "Bearer $adminToken" } `
+#   -ContentType "application/json" -Body '{"reason":"CNIC unclear"}'
+
+# Suspend (approved only):
+Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/providers/$providerId/suspend" `
+  -Headers @{ Authorization = "Bearer $adminToken" } `
+  -ContentType "application/json" -Body '{"reason":"Policy violation"}'
+
+# Reinstate (suspended only):
+# Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/providers/$providerId/reinstate" `
+#   -Headers @{ Authorization = "Bearer $adminToken" } `
+#   -ContentType "application/json" -Body '{"reason":"Issue resolved"}'
+
+# -----------------------------------------------------------------------------
+# OPTIONAL — ADMIN CATEGORIES
+# -----------------------------------------------------------------------------
+
+# Invoke-RestMethod -Uri "$base/api/v1/admin/categories" -Headers @{ Authorization = "Bearer $adminToken" }
+#
+# Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/categories" `
+#   -Headers @{ Authorization = "Bearer $adminToken" } `
+#   -ContentType "application/json" -Body '{"name":"Welder"}'
+#
+# Invoke-RestMethod -Method Patch -Uri "$base/api/v1/admin/categories/CATEGORY_UUID" `
+#   -Headers @{ Authorization = "Bearer $adminToken" } `
+#   -ContentType "application/json" -Body '{"isEnabled":false}'
+
+# -----------------------------------------------------------------------------
+# FRESH PHONE — poora flow dubara (approve tak)
+# Pehle $phone change karein, phir steps 3–16 dubara chalayein
+# -----------------------------------------------------------------------------
+
+# $phone = "03009998866"
+# ... repeat from step 3 ...
+
+# -----------------------------------------------------------------------------
+# AUTOMATED TESTS (optional)
+# -----------------------------------------------------------------------------
+
+# cd "D:\projects\Qareeb App"
+# npm test
+
+Write-Host "`n=== DONE — variables set: providerToken, adminToken, providerId, catId ===" -ForegroundColor Green

@@ -18,6 +18,7 @@ export function serializeProvider(row, extras = {}) {
       : null,
     location: extras.location ?? null,
     verification: extras.verification ?? extras.latestVerification ?? null,
+    presence: extras.presence ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

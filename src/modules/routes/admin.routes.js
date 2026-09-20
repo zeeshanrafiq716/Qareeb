@@ -13,6 +13,7 @@ import {
   reasonSchema,
 } from "../schemas.js";
 import * as adminService from "../admin.service.js";
+import { listOnlineProviders } from "../presence.service.js";
 
 export const adminRoutes = Router();
 
@@ -30,6 +31,16 @@ adminRoutes.get(
   validate(providerListSchema),
   asyncHandler(async (req, res) => {
     const result = await adminService.listProviders(validatedQuery(req));
+    ok(res, result.items, 200, result.meta);
+  }),
+);
+
+adminRoutes.get(
+  "/providers/online",
+  requireAdmin,
+  validate(providerListSchema),
+  asyncHandler(async (req, res) => {
+    const result = await listOnlineProviders(validatedQuery(req));
     ok(res, result.items, 200, result.meta);
   }),
 );

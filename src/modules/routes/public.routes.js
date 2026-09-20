@@ -10,7 +10,7 @@ import { serializeCategory } from "../serializers.js";
 export const publicRoutes = Router();
 
 publicRoutes.get("/health", (_req, res) => {
-  ok(res, { status: "healthy", phase: 1 });
+  ok(res, { status: "healthy", phase: 2 });
 });
 
 publicRoutes.get(

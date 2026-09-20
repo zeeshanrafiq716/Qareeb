@@ -38,8 +38,8 @@ export function createApp() {
       success: true,
       data: {
         name: "Qareeb App",
-        phase: 1,
-        message: "Provider registration and admin verification API",
+        phase: 2,
+        message: "Provider registration, admin verification, real-time presence",
       },
     });
   });

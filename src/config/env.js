@@ -63,6 +63,8 @@ export const env = {
   CORS_ORIGIN: process.env.CORS_ORIGIN || "*",
   AUTO_MIGRATE: bool("AUTO_MIGRATE", true),
   AUTO_SEED: bool("AUTO_SEED", true),
+  PRESENCE_STALE_SECONDS: integer("PRESENCE_STALE_SECONDS", 90),
+  PRESENCE_SWEEP_INTERVAL_MS: integer("PRESENCE_SWEEP_INTERVAL_MS", 60_000),
   isTest: (process.env.NODE_ENV || "development") === "test",
   isProd: process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging",
 };

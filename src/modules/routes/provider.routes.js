@@ -7,6 +7,7 @@ import { publicFileUrl, upload } from "../../middleware/upload.js";
 import { profileSchema, verificationSchema } from "../schemas.js";
 import * as authService from "../auth.service.js";
 import * as providerService from "../providers.service.js";
+import { getProviderPresence } from "../presence.service.js";
 
 export const providerRoutes = Router();
 
@@ -15,6 +16,14 @@ providerRoutes.get(
   requireProvider,
   asyncHandler(async (req, res) => {
     ok(res, await authService.getMe(req.provider.id));
+  }),
+);
+
+providerRoutes.get(
+  "/me/presence",
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    ok(res, await getProviderPresence(req.provider.id));
   }),
 );
 
