@@ -17,6 +17,10 @@ import {
   serializeProvider,
   serializeVerification,
 } from "./serializers.js";
+import { buildProviderSearchFilter, resolveLookupKeys } from "./admin.search.js";
+import { presenceStore } from "../redis/presenceStore.js";
+import { isLocationFresh } from "./location.service.js";
+import { buildPresence } from "./presence.service.js";
 
 export async function adminLogin(email, password) {
   const { rows } = await query(
@@ -45,10 +49,8 @@ export async function listProviders({ status, search, page, limit }) {
     where.push(`s.code = $${values.length}`);
   }
   if (search) {
-    values.push(`%${search}%`);
-    where.push(
-      `(p.phone ILIKE $${values.length} OR p.name ILIKE $${values.length} OR p.public_id ILIKE $${values.length})`,
-    );
+    const fragment = buildProviderSearchFilter(search, values);
+    if (fragment) where.push(fragment);
   }
 
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -284,4 +286,145 @@ export async function createCallLog(providerId, { callerPhone, notes }) {
     [providerId, callerPhone || null, initiated.id, notes || null],
   );
   return rows[0];
+}
+
+export async function lookupProvider(identifier) {
+  const keys = resolveLookupKeys(identifier);
+  if (keys.invalid) {
+    throw new AppError(400, "Enter a valid QRB id or phone number", "INVALID_LOOKUP");
+  }
+
+  let rows;
+  if (keys.publicId) {
+    ({ rows } = await query(`${PROVIDER_SELECT} WHERE p.public_id = $1`, [keys.publicId]));
+  } else {
+    ({ rows } = await query(`${PROVIDER_SELECT} WHERE p.phone = $1`, [keys.phone]));
+  }
+  if (!rows[0]) throw new NotFoundError("Provider not found");
+  return serializeProvider(rows[0]);
+}
+
+function resolveAdminMapStatus(row, redisOnline) {
+  if (row.status_code === PROVIDER_STATUS.SUSPENDED) return "suspended";
+  if (row.status_code !== PROVIDER_STATUS.APPROVED) return "inactive";
+  const online = Boolean(redisOnline || row.is_online);
+  if (!online) return "offline";
+  if (!isLocationFresh(row.location_updated_at)) return "offline";
+  return "online";
+}
+
+/** Exact GPS for admin map only — not exposed to customers. */
+export async function listProvidersForAdminMap({ status, categoryId } = {}) {
+  const values = [];
+  const where = [];
+  if (status) {
+    values.push(status);
+    where.push(`s.code = $${values.length}`);
+  }
+  if (categoryId) {
+    values.push(categoryId);
+    where.push(`p.category_id = $${values.length}`);
+  }
+  const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+  const { rows } = await query(
+    `SELECT p.*,
+            s.code AS status_code,
+            s.label AS status_label,
+            c.name AS category_name,
+            c.is_enabled AS category_enabled,
+            l.latitude, l.longitude, l.city, l.location_updated_at
+     FROM providers p
+     JOIN statuses s ON s.id = p.status_id
+     LEFT JOIN categories c ON c.id = p.category_id
+     LEFT JOIN locations l ON l.provider_id = p.id
+     ${clause}
+     ORDER BY p.public_id ASC`,
+    values,
+  );
+
+  const markers = [];
+  for (const row of rows) {
+    const redisOnline = await presenceStore.isOnline(row.id);
+    const mapStatus = resolveAdminMapStatus(row, redisOnline);
+    const lat = row.latitude === null ? null : Number(row.latitude);
+    const lng = row.longitude === null ? null : Number(row.longitude);
+    markers.push({
+      id: row.id,
+      providerId: row.public_id,
+      name: row.name,
+      phone: row.phone,
+      accountStatus: row.status_code,
+      mapStatus,
+      category: row.category_id
+        ? { id: row.category_id, name: row.category_name, enabled: row.category_enabled ?? true }
+        : null,
+      presence: buildPresence(row, { locationUpdatedAt: row.location_updated_at }),
+      location:
+        lat != null && lng != null
+          ? {
+              latitude: lat,
+              longitude: lng,
+              city: row.city ?? null,
+              updatedAt: row.location_updated_at,
+            }
+          : null,
+    });
+  }
+
+  const summary = markers.reduce(
+    (acc, m) => {
+      acc[m.mapStatus] = (acc[m.mapStatus] || 0) + 1;
+      return acc;
+    },
+    { online: 0, offline: 0, suspended: 0, inactive: 0 },
+  );
+
+  return {
+    markers,
+    summary,
+    meta: {
+      total: markers.length,
+      note: "Admin map uses exact provider coordinates. Customers only see approximate locations.",
+    },
+  };
+}
+
+export async function listAllCallLogs({ page, limit, providerId } = {}) {
+  const pageInfo = pagination({ page, limit });
+  const values = [];
+  const where = [];
+  if (providerId) {
+    values.push(providerId);
+    where.push(`cl.provider_id = $${values.length}`);
+  }
+  const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+  const count = await query(
+    `SELECT COUNT(*)::int AS total FROM call_logs cl ${clause}`,
+    values,
+  );
+
+  values.push(pageInfo.limit, pageInfo.offset);
+  const { rows } = await query(
+    `SELECT cl.*, s.code AS status_code, s.label AS status_label,
+            p.public_id AS provider_public_id, p.name AS provider_name, p.phone AS provider_phone
+     FROM call_logs cl
+     JOIN statuses s ON s.id = cl.status_id
+     JOIN providers p ON p.id = cl.provider_id
+     ${clause}
+     ORDER BY cl.started_at DESC
+     LIMIT $${values.length - 1} OFFSET $${values.length}`,
+    values,
+  );
+
+  return {
+    items: rows,
+    meta: {
+      page: pageInfo.page,
+      limit: pageInfo.limit,
+      total: count.rows[0].total,
+      totalPages: Math.max(1, Math.ceil(count.rows[0].total / pageInfo.limit)),
+    },
+  };
 }

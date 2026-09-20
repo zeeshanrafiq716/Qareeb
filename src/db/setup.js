@@ -5,6 +5,7 @@ import { getPool, setPool, closePool } from "./pool.js";
 import { migrate } from "./migrate.js";
 import { seed } from "./seed.js";
 import { ensureEmbeddedPostgres } from "./embedded.js";
+import { tryEnablePostgis } from "./postgis.js";
 
 function parseUrl(connectionString) {
   const url = new URL(connectionString);
@@ -44,6 +45,7 @@ export async function setupDatabase(connectionString = env.DATABASE_URL) {
     }),
   );
   await migrate(getPool());
+  await tryEnablePostgis(getPool());
   if (env.AUTO_SEED || env.isTest) {
     await seed(getPool());
   }

@@ -6,10 +6,8 @@ import { logger } from "../logger.js";
 import { verifyToken } from "../utils/tokens.js";
 import { fetchProviderById } from "../modules/serializers.js";
 import * as presence from "../modules/presence.service.js";
-import {
-  addProviderSocket,
-  removeProviderSocket,
-} from "./connections.js";
+import { processLocationUpdate } from "../modules/location.service.js";
+import { addProviderSocket, removeProviderSocket } from "./connections.js";
 
 function corsOrigin() {
   if (env.CORS_ORIGIN === "*") return true;
@@ -58,7 +56,7 @@ export function attachRealtime(httpServer) {
     const providerId = provider.id;
 
     addProviderSocket(providerId, socket.id);
-    await presence.setOnline(providerId);
+    await presence.setOnline(providerId, socket.id);
 
     const state = await presence.getProviderPresence(providerId);
     socket.emit("presence:state", state);
@@ -75,10 +73,38 @@ export function attachRealtime(httpServer) {
       socket.emit("presence:ack", { at: new Date().toISOString() });
     });
 
+    socket.on("presence:location_update", async (payload, ack) => {
+      try {
+        const result = await processLocationUpdate(
+          providerId,
+          payload?.latitude,
+          payload?.longitude,
+        );
+        const response = { ...result, providerId };
+        socket.emit("presence:location_ack", response);
+        if (typeof ack === "function") ack(response);
+        if (result.accepted) {
+          io.emit("presence:provider_location", {
+            providerId,
+            publicId: provider.public_id,
+            updatedAt: result.updatedAt,
+          });
+        }
+      } catch (error) {
+        const errPayload = {
+          accepted: false,
+          error: error.message,
+          code: error.code || "LOCATION_ERROR",
+        };
+        socket.emit("presence:location_ack", errPayload);
+        if (typeof ack === "function") ack(errPayload);
+      }
+    });
+
     socket.on("disconnect", async (reason) => {
-      const remaining = removeProviderSocket(providerId, socket.id);
+      removeProviderSocket(providerId, socket.id);
+      const remaining = await presence.onSocketDisconnect(providerId, socket.id);
       if (remaining === 0) {
-        await presence.setOffline(providerId);
         io.emit("presence:provider_offline", {
           providerId,
           publicId: provider.public_id,

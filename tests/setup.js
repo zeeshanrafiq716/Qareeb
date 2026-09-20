@@ -3,11 +3,17 @@ import { setupTestDatabase } from "../src/db/setup.js";
 import { closePool, query } from "../src/db/pool.js";
 import { seed } from "../src/db/seed.js";
 import { clearStatusCache } from "../src/db/status.js";
+import { forceMemoryPresenceForTests } from "../src/redis/presenceStore.js";
+
+forceMemoryPresenceForTests();
 
 export async function resetDb() {
   await query(`
     TRUNCATE TABLE
+      otp_request_audit,
+      provider_device_tokens,
       otp_codes,
+      customer_funnel_events,
       call_logs,
       provider_status_history,
       verifications,

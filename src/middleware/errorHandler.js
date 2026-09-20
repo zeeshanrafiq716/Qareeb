@@ -2,6 +2,7 @@ import { ZodError } from "zod";
 import { env } from "../config/env.js";
 import { logger } from "../logger.js";
 import { AppError } from "../utils/AppError.js";
+import { reportErrorToMonitoring } from "../monitoring/reportError.js";
 
 export function notFoundHandler(req, res, _next) {
   res.status(404).json({
@@ -63,7 +64,13 @@ export function errorHandler(err, req, res, _next) {
     });
   }
 
-  logger.error({ err, url: req.originalUrl }, "Unhandled error");
+  logger.error({ err, url: req.originalUrl, reqId: req.id }, "Unhandled error");
+  reportErrorToMonitoring({
+    level: "error",
+    message: err.message,
+    url: req.originalUrl,
+    requestId: req.id,
+  }).catch(() => {});
 
   return res.status(500).json({
     success: false,

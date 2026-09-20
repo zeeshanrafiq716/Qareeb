@@ -8,6 +8,12 @@ import { profileSchema, verificationSchema } from "../schemas.js";
 import * as authService from "../auth.service.js";
 import * as providerService from "../providers.service.js";
 import { getProviderPresence } from "../presence.service.js";
+import { processLocationUpdate } from "../location.service.js";
+import { deviceTokenSchema, locationUpdateSchema } from "../schemas.js";
+import {
+  registerProviderDeviceToken,
+  removeProviderDeviceToken,
+} from "../notifications.service.js";
 
 export const providerRoutes = Router();
 
@@ -24,6 +30,33 @@ providerRoutes.get(
   requireProvider,
   asyncHandler(async (req, res) => {
     ok(res, await getProviderPresence(req.provider.id));
+  }),
+);
+
+providerRoutes.put(
+  "/me/location",
+  requireProvider,
+  validate(locationUpdateSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await processLocationUpdate(req.provider.id, req.body.latitude, req.body.longitude));
+  }),
+);
+
+providerRoutes.put(
+  "/me/push-token",
+  requireProvider,
+  validate(deviceTokenSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await registerProviderDeviceToken(req.provider.id, req.body));
+  }),
+);
+
+providerRoutes.delete(
+  "/me/push-token",
+  requireProvider,
+  validate(deviceTokenSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await removeProviderDeviceToken(req.provider.id, req.body.token));
   }),
 );
 

@@ -4,7 +4,11 @@ import { created, ok } from "../../utils/http.js";
 import { validate, validatedQuery } from "../../middleware/validate.js";
 import { requireAdmin } from "../../middleware/auth.js";
 import {
+  adminAnalyticsSchema,
+  adminCallLogsSchema,
   adminLoginSchema,
+  adminLookupSchema,
+  adminMapSchema,
   categoryCreateSchema,
   categoryPatchSchema,
   idParamSchema,
@@ -14,14 +18,28 @@ import {
 } from "../schemas.js";
 import * as adminService from "../admin.service.js";
 import { listOnlineProviders } from "../presence.service.js";
+import { getPlatformFunnelAnalytics, getProviderFunnelSummary } from "../funnel.service.js";
+import { adminLoginRateLimit } from "../../middleware/rateLimit.js";
+import { adminPushSchema } from "../schemas.js";
+import { sendAdminPush } from "../notifications.service.js";
 
 export const adminRoutes = Router();
 
 adminRoutes.post(
   "/auth/login",
+  adminLoginRateLimit(),
   validate(adminLoginSchema),
   asyncHandler(async (req, res) => {
     ok(res, await adminService.adminLogin(req.body.email, req.body.password));
+  }),
+);
+
+adminRoutes.post(
+  "/notifications/send",
+  requireAdmin,
+  validate(adminPushSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await sendAdminPush(req.body));
   }),
 );
 
@@ -42,6 +60,24 @@ adminRoutes.get(
   asyncHandler(async (req, res) => {
     const result = await listOnlineProviders(validatedQuery(req));
     ok(res, result.items, 200, result.meta);
+  }),
+);
+
+adminRoutes.get(
+  "/providers/lookup",
+  requireAdmin,
+  validate(adminLookupSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.lookupProvider(validatedQuery(req).q));
+  }),
+);
+
+adminRoutes.get(
+  "/providers/map",
+  requireAdmin,
+  validate(adminMapSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.listProvidersForAdminMap(validatedQuery(req)));
   }),
 );
 
@@ -91,6 +127,16 @@ adminRoutes.post(
 );
 
 adminRoutes.get(
+  "/providers/:id/funnel",
+  requireAdmin,
+  validate(idParamSchema),
+  asyncHandler(async (req, res) => {
+    const days = Number(req.query.days) || 30;
+    ok(res, await getProviderFunnelSummary(req.params.id, { days }));
+  }),
+);
+
+adminRoutes.get(
   "/providers/:id/call-logs",
   requireAdmin,
   validate(idParamSchema),
@@ -105,6 +151,26 @@ adminRoutes.post(
   validate(idParamSchema),
   asyncHandler(async (req, res) => {
     created(res, await adminService.createCallLog(req.params.id, req.body || {}));
+  }),
+);
+
+adminRoutes.get(
+  "/analytics/funnel",
+  requireAdmin,
+  validate(adminAnalyticsSchema),
+  asyncHandler(async (req, res) => {
+    const q = validatedQuery(req);
+    ok(res, await getPlatformFunnelAnalytics({ days: q.days ?? 30 }));
+  }),
+);
+
+adminRoutes.get(
+  "/call-logs",
+  requireAdmin,
+  validate(adminCallLogsSchema),
+  asyncHandler(async (req, res) => {
+    const result = await adminService.listAllCallLogs(validatedQuery(req));
+    ok(res, result.items, 200, result.meta);
   }),
 );
 

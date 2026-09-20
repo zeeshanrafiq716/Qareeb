@@ -17,14 +17,14 @@ describe("health and root", () => {
   it("GET / returns app metadata", async () => {
     const res = await api().get("/");
     expect(res.status).toBe(200);
-    expect(res.body.data.phase).toBe(2);
+    expect(res.body.data.phase).toBe(5);
     expect(res.body.data.name).toBe("Qareeb App");
   });
 
-  it("GET /api/v1/health returns phase 2", async () => {
+  it("GET /api/v1/health returns phase 5", async () => {
     const res = await api().get("/api/v1/health");
     expect(res.status).toBe(200);
-    expect(res.body.data.phase).toBe(2);
+    expect(res.body.data.phase).toBe(5);
   });
 
   it("unknown route returns 404", async () => {

@@ -6,12 +6,18 @@ import pinoHttp from "pino-http";
 import { env } from "./config/env.js";
 import { logger } from "./logger.js";
 import { apiRouter } from "./modules/routes/index.js";
+import { asyncHandler } from "./utils/asyncHandler.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
+import { requestIdMiddleware } from "./middleware/requestId.js";
+import { apiGlobalRateLimit } from "./middleware/rateLimit.js";
+import { getReadinessCheck } from "./monitoring/health.service.js";
 
 export function createApp() {
   const app = express();
 
   app.disable("x-powered-by");
+  app.set("trust proxy", 1);
+  app.use(requestIdMiddleware);
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -38,17 +44,25 @@ export function createApp() {
       success: true,
       data: {
         name: "Qareeb App",
-        phase: 2,
-        message: "Provider registration, admin verification, real-time presence",
+        phase: 5,
+        message: "Discovery, admin, infrastructure (FCM, rate limits, monitoring)",
       },
     });
   });
 
   app.get("/health", (_req, res) => {
-    res.json({ success: true, data: { status: "healthy" } });
+    res.json({ success: true, data: { status: "healthy", phase: 5 } });
   });
 
-  app.use("/api/v1", apiRouter);
+  app.get(
+    "/health/ready",
+    asyncHandler(async (_req, res) => {
+      const readiness = await getReadinessCheck();
+      res.status(readiness.healthy ? 200 : 503).json({ success: readiness.healthy, data: readiness });
+    }),
+  );
+
+  app.use("/api/v1", apiGlobalRateLimit(), apiRouter);
   app.use(notFoundHandler);
   app.use(errorHandler);
   return app;

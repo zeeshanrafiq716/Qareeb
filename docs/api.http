@@ -135,3 +135,27 @@ Content-Type: application/json
 {
   "isEnabled": false
 }
+
+############################################
+# 5. Phase 4 — Admin map, lookup, analytics
+############################################
+
+### Lookup by QRB id or phone
+GET {{base}}/api/v1/admin/providers/lookup?q=QRB-100001
+Authorization: Bearer {{adminToken}}
+
+### Live map (exact GPS, admin only)
+GET {{base}}/api/v1/admin/providers/map
+Authorization: Bearer {{adminToken}}
+
+### Platform funnel
+GET {{base}}/api/v1/admin/analytics/funnel?days=30
+Authorization: Bearer {{adminToken}}
+
+### All call logs
+GET {{base}}/api/v1/admin/call-logs?limit=20
+Authorization: Bearer {{adminToken}}
+
+### Per-provider funnel
+GET {{base}}/api/v1/admin/providers/{{providerId}}/funnel?days=30
+Authorization: Bearer {{adminToken}}

@@ -17,7 +17,7 @@ export async function migrate(pool = getPool()) {
   `);
 
   const files = (await fs.readdir(migrationsDir))
-    .filter((file) => file.endsWith(".sql"))
+    .filter((file) => file.endsWith(".sql") && !file.startsWith("optional_"))
     .sort();
 
   const applied = await pool.query("SELECT filename FROM schema_migrations");

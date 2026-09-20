@@ -2,9 +2,11 @@ import { env } from "../config/env.js";
 import { PROVIDER_STATUS } from "../config/constants.js";
 import { query } from "../db/pool.js";
 import { hasLiveConnection } from "../realtime/connections.js";
+import { presenceStore } from "../redis/presenceStore.js";
 import { PROVIDER_SELECT, serializeProvider } from "./serializers.js";
+import { getProviderExactLocation, isLocationFresh } from "./location.service.js";
 
-export function buildPresence(row) {
+export function buildPresence(row, extras = {}) {
   const lastSeenAt = row.last_seen_at ?? null;
   const isOnline = Boolean(row.is_online);
   let isStale = false;
@@ -12,15 +14,27 @@ export function buildPresence(row) {
     const ageMs = Date.now() - new Date(lastSeenAt).getTime();
     isStale = ageMs > env.PRESENCE_STALE_SECONDS * 1000;
   }
+
+  const locationUpdatedAt = extras.locationUpdatedAt ?? row.location_updated_at ?? null;
+
   return {
     isOnline,
     lastSeenAt,
     isStale,
     hasLiveSocket: hasLiveConnection(row.id),
+    locationUpdatedAt,
+    locationFresh: isLocationFresh(locationUpdatedAt),
+    locationPolicy: {
+      minIntervalSeconds: env.LOCATION_MIN_INTERVAL_SECONDS,
+      maxIntervalSeconds: env.LOCATION_MAX_INTERVAL_SECONDS,
+      significantMovementMeters: env.LOCATION_SIGNIFICANT_MOVEMENT_METERS,
+    },
   };
 }
 
-export async function setOnline(providerId) {
+export async function setOnline(providerId, socketId) {
+  if (socketId) await presenceStore.addSession(providerId, socketId);
+  await presenceStore.setOnline(providerId);
   await query(
     `UPDATE providers SET is_online = true, last_seen_at = now() WHERE id = $1`,
     [providerId],
@@ -28,6 +42,7 @@ export async function setOnline(providerId) {
 }
 
 export async function setOffline(providerId) {
+  await presenceStore.setOffline(providerId);
   await query(
     `UPDATE providers SET is_online = false, last_seen_at = now() WHERE id = $1`,
     [providerId],
@@ -35,10 +50,19 @@ export async function setOffline(providerId) {
 }
 
 export async function touchLastSeen(providerId) {
+  await presenceStore.touch(providerId);
   await query(
     `UPDATE providers SET is_online = true, last_seen_at = now() WHERE id = $1`,
     [providerId],
   );
+}
+
+export async function onSocketDisconnect(providerId, socketId) {
+  const remaining = await presenceStore.removeSession(providerId, socketId);
+  if (remaining === 0) {
+    await setOffline(providerId);
+  }
+  return remaining;
 }
 
 /** Mark DB-online providers offline when heartbeat is too old (and no live socket). */
@@ -66,9 +90,15 @@ export async function sweepStaleProviders() {
 export async function getProviderPresence(providerId) {
   const { rows } = await query(`${PROVIDER_SELECT} WHERE p.id = $1`, [providerId]);
   if (!rows[0]) return null;
+
+  const exactLocation = await getProviderExactLocation(providerId);
+
   return {
     ...serializeProvider(rows[0]),
-    presence: buildPresence(rows[0]),
+    presence: buildPresence(rows[0], {
+      locationUpdatedAt: exactLocation?.updatedAt ?? rows[0].location_updated_at,
+    }),
+    location: exactLocation,
   };
 }
 

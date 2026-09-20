@@ -1,7 +1,8 @@
 FROM node:22-alpine
 
 WORKDIR /app
-ENV NODE_ENV=staging
+ARG NODE_ENV=staging
+ENV NODE_ENV=${NODE_ENV}
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev

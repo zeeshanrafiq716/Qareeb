@@ -6,10 +6,22 @@ import { closePool } from "./db/pool.js";
 import { setupDatabase } from "./db/setup.js";
 import { attachRealtime } from "./realtime/socket.js";
 import { sweepStaleProviders } from "./modules/presence.service.js";
+import { connectRedis, closeRedis, onRedisFallback } from "./redis/client.js";
+import { enableMemoryFallback, forceMemoryPresenceForTests } from "./redis/presenceStore.js";
+import { validateProductionConfig } from "./config/validateProduction.js";
+
+onRedisFallback(() => enableMemoryFallback());
 
 export async function startServer() {
+  validateProductionConfig();
   if (env.AUTO_MIGRATE) {
     await setupDatabase(env.DATABASE_URL);
+  }
+  if (env.isTest) {
+    forceMemoryPresenceForTests();
+  } else {
+    const ok = await connectRedis();
+    if (!ok) enableMemoryFallback();
   }
 
   const app = createApp();
@@ -32,7 +44,7 @@ export async function startServer() {
 
   httpServer.listen(env.PORT, "0.0.0.0", () => {
     logger.info(
-      `Qareeb API (Phase 1 + presence) on http://localhost:${env.PORT} | WebSocket /socket.io`,
+      `Qareeb API (Phase 5) on http://localhost:${env.PORT} | WebSocket /socket.io`,
     );
   });
 
@@ -45,6 +57,7 @@ export async function startServer() {
     logger.info({ signal }, "Shutting down");
     if (staleTimer) clearInterval(staleTimer);
     httpServer.close(async () => {
+      await closeRedis();
       await closePool();
       process.exit(0);
     });

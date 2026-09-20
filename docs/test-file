@@ -1,189 +1,341 @@
 # =============================================================================
-# Qareeb — Manual API test commands (PowerShell)
-# Phase 1: registration + admin approval
-# Phase 2: presence (REST + WebSocket)
+# Qareeb — Manual testing (PowerShell)
 # =============================================================================
 #
-# BEFORE START:
-#   Terminal 1:  cd "D:\projects\Qareeb App"
-#                npm run dev
-#   Terminal 2:  copy-paste sections below (project folder optional except socket)
+# Terminal 1:
+#   cd "D:\projects\Qareeb App"
+#   npm run dev
+#
+# Terminal 2:
+#   Phase 1 block ALONE chalao, phir Phase 2 block (approved token chahiye)
 #
 # Admin: admin@qareeb.app / QareebAdmin@123
-# Dev OTP: response mein data.otp aata hai (OTP_RETURN_IN_RESPONSE=true)
+# OTP dev mode: response.data.otp
 #
-# IMPORTANT:
-#   - Files (photo/document) ke liye hamesha curl.exe use karein (curl alias mat)
-#   - $providerId use karein — $pid mat (PowerShell reserved)
-#   - Agar approve error: "approved to approved" → provider pehle se approved hai
-#   - Naya full flow: neeche "FRESH PHONE" section use karein
+# Notes:
+#   - curl.exe use karein (curl alias mat)
+#   - $providerId use karein — $pid mat
+#   - "PostGIS not available" WARN = OK (haversine use hota hai)
+#   - Redis: REDIS_ENABLED=false → in-memory presence (no Redis needed)
+# =============================================================================
+
+
+# =============================================================================
+# PHASE 1 ONLY — Registration + Admin approval
+# Expected end: provider status = approved
 # =============================================================================
 
 $base = "http://127.0.0.1:3000"
-$phone = "03001234567"   # FRESH flow ke liye badal dein e.g. 03005556677
+$phone = "03001234567"    # dubara test: naya number e.g. 03005556677
 
-# -----------------------------------------------------------------------------
-# PHASE 1 — HEALTH & PUBLIC
-# -----------------------------------------------------------------------------
+Write-Host "`n========== PHASE 1 START ==========" -ForegroundColor Green
 
-Write-Host "`n=== 1 HEALTH ===" -ForegroundColor Cyan
+Write-Host "`n[P1-1] Health" -ForegroundColor Cyan
 Invoke-RestMethod "$base/api/v1/health" | ConvertTo-Json
 
-Write-Host "`n=== 2 CATEGORIES (public) ===" -ForegroundColor Cyan
+Write-Host "`n[P1-2] Public categories" -ForegroundColor Cyan
 $catId = (Invoke-RestMethod "$base/api/v1/categories").data[0].id
 Write-Host "categoryId:" $catId
 
-# -----------------------------------------------------------------------------
-# PHASE 1 — PROVIDER OTP
-# -----------------------------------------------------------------------------
-
-Write-Host "`n=== 3 OTP REQUEST ===" -ForegroundColor Cyan
+Write-Host "`n[P1-3] OTP request" -ForegroundColor Cyan
 $otpRes = Invoke-RestMethod -Method Post -Uri "$base/api/v1/auth/otp/request" `
   -ContentType "application/json" -Body (@{ phone = $phone } | ConvertTo-Json)
 $otpRes.data | ConvertTo-Json
 $otp = $otpRes.data.otp
 
-Write-Host "`n=== 4 OTP VERIFY ===" -ForegroundColor Cyan
+Write-Host "`n[P1-4] OTP verify" -ForegroundColor Cyan
 $verify = Invoke-RestMethod -Method Post -Uri "$base/api/v1/auth/otp/verify" `
   -ContentType "application/json" -Body (@{ phone = $phone; otp = $otp } | ConvertTo-Json)
 $providerToken = $verify.data.token
 $providerId = $verify.data.provider.id
 Write-Host "status:" $verify.data.provider.status
-Write-Host "providerId (QRB):" $verify.data.provider.providerId
+Write-Host "QRB id:" $verify.data.provider.providerId
 Write-Host "uuid:" $providerId
 
-# -----------------------------------------------------------------------------
-# PHASE 1 — PROFILE + DOCUMENT (multipart)
-# -----------------------------------------------------------------------------
-
-Write-Host "`n=== 5 DEMO PNG FILE ===" -ForegroundColor Cyan
+Write-Host "`n[P1-5] Demo PNG" -ForegroundColor Cyan
 $png = Join-Path $env:TEMP "qareeb-demo.png"
 [IO.File]::WriteAllBytes($png, [Convert]::FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="))
-Write-Host $png
 
-Write-Host "`n=== 6 PROFILE + PHOTO ===" -ForegroundColor Cyan
+Write-Host "`n[P1-6] Profile + photo" -ForegroundColor Cyan
 curl.exe -s -X PUT "$base/api/v1/providers/me/profile" `
   -H "Authorization: Bearer $providerToken" `
-  -F "name=Ali Plumber" `
-  -F "categoryId=$catId" `
-  -F "city=Lahore" `
-  -F "address=Main Bazaar" `
-  -F "latitude=31.5204" `
-  -F "longitude=74.3587" `
+  -F "name=Ali Plumber" -F "categoryId=$catId" -F "city=Lahore" `
+  -F "address=Main Bazaar" -F "latitude=31.5204" -F "longitude=74.3587" `
   -F "photo=@$png"
 
-Write-Host "`n=== 7 VERIFICATION DOCUMENT ===" -ForegroundColor Cyan
+Write-Host "`n[P1-7] Verification document" -ForegroundColor Cyan
 curl.exe -s -X POST "$base/api/v1/providers/me/verification" `
   -H "Authorization: Bearer $providerToken" `
-  -F "documentType=cnic" `
-  -F "document=@$png"
+  -F "documentType=cnic" -F "document=@$png"
 
-Write-Host "`n=== 8 PROVIDER ME (after document) ===" -ForegroundColor Cyan
+Write-Host "`n[P1-8] Provider me (expect pending_verification)" -ForegroundColor Cyan
 Invoke-RestMethod -Uri "$base/api/v1/providers/me" `
-  -Headers @{ Authorization = "Bearer $providerToken" } | ConvertTo-Json -Depth 6
+  -Headers @{ Authorization = "Bearer $providerToken" } | ConvertTo-Json -Depth 5
 
-# -----------------------------------------------------------------------------
-# PHASE 1 — ADMIN
-# -----------------------------------------------------------------------------
-
-Write-Host "`n=== 9 ADMIN LOGIN ===" -ForegroundColor Cyan
+Write-Host "`n[P1-9] Admin login" -ForegroundColor Cyan
 $admin = Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/auth/login" `
   -ContentType "application/json" `
   -Body (@{ email = "admin@qareeb.app"; password = "QareebAdmin@123" } | ConvertTo-Json)
 $adminToken = $admin.data.token
 
-Write-Host "`n=== 10 ADMIN — provider detail (status check before approve) ===" -ForegroundColor Cyan
+Write-Host "`n[P1-10] Admin provider detail" -ForegroundColor Cyan
 Invoke-RestMethod -Uri "$base/api/v1/admin/providers/$providerId" `
   -Headers @{ Authorization = "Bearer $adminToken" } `
-  | Select-Object -ExpandProperty data `
-  | Select-Object status, providerId, name
+  | Select-Object -ExpandProperty data | Select-Object status, providerId, name
 
-Write-Host "`n=== 11 PENDING LIST ===" -ForegroundColor Cyan
+Write-Host "`n[P1-11] Pending list" -ForegroundColor Cyan
 Invoke-RestMethod -Uri "$base/api/v1/admin/providers?status=pending_verification" `
-  -Headers @{ Authorization = "Bearer $adminToken" } | ConvertTo-Json -Depth 4
+  -Headers @{ Authorization = "Bearer $adminToken" } | ConvertTo-Json -Depth 3
 
-Write-Host "`n=== 12 APPROVE (sirf jab status = pending_verification) ===" -ForegroundColor Cyan
+Write-Host "`n[P1-12] Approve (skip if already approved)" -ForegroundColor Cyan
 try {
   Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/providers/$providerId/approve" `
     -Headers @{ Authorization = "Bearer $adminToken" } `
-    -ContentType "application/json" -Body '{"reason":"Manual test approved"}' `
-    | ConvertTo-Json -Depth 5
+    -ContentType "application/json" -Body '{"reason":"Phase 1 manual test"}' `
+    | ConvertTo-Json -Depth 4
 } catch {
-  Write-Host "Approve skip/error (shayad already approved):" $_.ErrorDetails.Message -ForegroundColor Yellow
+  Write-Host $_.ErrorDetails.Message -ForegroundColor Yellow
 }
 
-Write-Host "`n=== 13 PROVIDER ME (final — expect approved) ===" -ForegroundColor Cyan
+Write-Host "`n[P1-13] Final status (expect approved)" -ForegroundColor Cyan
 Invoke-RestMethod -Uri "$base/api/v1/providers/me" `
-  -Headers @{ Authorization = "Bearer $providerToken" } | ConvertTo-Json -Depth 6
+  -Headers @{ Authorization = "Bearer $providerToken" } | ConvertTo-Json -Depth 5
 
-# -----------------------------------------------------------------------------
-# PHASE 2 — PRESENCE (REST)
-# -----------------------------------------------------------------------------
+Write-Host "`n========== PHASE 1 DONE ==========" -ForegroundColor Green
+Write-Host "Saved: providerToken, adminToken, providerId, catId, phone"
+Write-Host "Ab Phase 2 block alag se chalao (neeche)"
 
-Write-Host "`n=== 14 PROVIDER PRESENCE (REST) ===" -ForegroundColor Cyan
+
+# =============================================================================
+# PHASE 2 ONLY — Presence + location + discovery
+# PEHLE: Phase 1 complete + status approved
+# Agar variables khali hon to [P2-0] chalao
+# =============================================================================
+
+# --- Uncomment sirf agar naya session ho / variables missing hon ---
+# $base = "http://127.0.0.1:3000"
+# $phone = "03001234567"
+# $otp = (Invoke-RestMethod -Method Post -Uri "$base/api/v1/auth/otp/request" -ContentType "application/json" -Body (@{phone=$phone}|ConvertTo-Json)).data.otp
+# $verify = Invoke-RestMethod -Method Post -Uri "$base/api/v1/auth/otp/verify" -ContentType "application/json" -Body (@{phone=$phone;otp=$otp}|ConvertTo-Json)
+# $providerToken = $verify.data.token
+# $providerId = $verify.data.provider.id
+# $adminToken = (Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/auth/login" -ContentType "application/json" -Body '{"email":"admin@qareeb.app","password":"QareebAdmin@123"}').data.token
+# Write-Host "Provider status:" $verify.data.provider.status
+
+Write-Host "`n========== PHASE 2 START ==========" -ForegroundColor Green
+
+Write-Host "`n[P2-1] Presence REST (provider)" -ForegroundColor Cyan
 Invoke-RestMethod -Uri "$base/api/v1/providers/me/presence" `
   -Headers @{ Authorization = "Bearer $providerToken" } | ConvertTo-Json -Depth 6
 
-Write-Host "`n=== 15 ADMIN — ONLINE PROVIDERS ===" -ForegroundColor Cyan
+Write-Host "`n[P2-2] Location update (1st = accepted)" -ForegroundColor Cyan
+Invoke-RestMethod -Method Put -Uri "$base/api/v1/providers/me/location" `
+  -Headers @{ Authorization = "Bearer $providerToken" } `
+  -ContentType "application/json" `
+  -Body '{"latitude":31.5204,"longitude":74.3587}' | ConvertTo-Json
+
+Write-Host "`n[P2-3] Location throttle (2nd <30s = rejected OR accepted=false)" -ForegroundColor Cyan
+Invoke-RestMethod -Method Put -Uri "$base/api/v1/providers/me/location" `
+  -Headers @{ Authorization = "Bearer $providerToken" } `
+  -ContentType "application/json" `
+  -Body '{"latitude":31.5205,"longitude":74.3588}' | ConvertTo-Json
+
+Write-Host "`n[P2-4] WebSocket online + location (project folder)" -ForegroundColor Cyan
+Write-Host '  cd "D:\projects\Qareeb App"'
+Write-Host "  node scripts/socket-presence-demo.mjs `$providerToken"
+Write-Host "  Expect: connected, presence:state, location_ack accepted=true"
+
+Write-Host "`n[P2-5] Admin online providers" -ForegroundColor Cyan
 Invoke-RestMethod -Uri "$base/api/v1/admin/providers/online" `
   -Headers @{ Authorization = "Bearer $adminToken" } | ConvertTo-Json -Depth 4
 
-# -----------------------------------------------------------------------------
-# PHASE 2 — WEBSOCKET (approved provider token required)
-# Run from project folder:
-# -----------------------------------------------------------------------------
+Write-Host "`n[P2-6] Customer discovery (privacy — approximate ~300m, NOT exact GPS)" -ForegroundColor Cyan
+Invoke-RestMethod -Uri "$base/api/v1/discovery/nearby?latitude=31.5204&longitude=74.3587&radiusKm=10" `
+  | ConvertTo-Json -Depth 6
 
-Write-Host "`n=== 16 WEBSOCKET DEMO ===" -ForegroundColor Cyan
-Write-Host 'Run:  cd "D:\projects\Qareeb App"'
-Write-Host "Run:  node scripts/socket-presence-demo.mjs `$providerToken"
-Write-Host "Expected: connected, presence:state isOnline true, presence:ack, disconnect"
+Write-Host "`n[P2-7] Presence after socket (optional)" -ForegroundColor Cyan
+Invoke-RestMethod -Uri "$base/api/v1/providers/me/presence" `
+  -Headers @{ Authorization = "Bearer $providerToken" } | ConvertTo-Json -Depth 6
 
-# -----------------------------------------------------------------------------
-# OPTIONAL — ADMIN: REJECT / SUSPEND / REINSTATE
-# -----------------------------------------------------------------------------
+Write-Host "`n========== PHASE 2 DONE ==========" -ForegroundColor Green
 
-# Reject (pending_verification only):
+
+# =============================================================================
+# PHASE 3 ONLY — Customer discovery + provider profile
+# PEHLE: Phase 1 + 2 (approved, online, location set) OR variables set
+# =============================================================================
+
+Write-Host "`n========== PHASE 3 START ==========" -ForegroundColor Green
+
+# --- Phase 3 defaults (safe if you paste P3-4 alone in a new PowerShell window) ---
+if (-not $base) { $base = "http://127.0.0.1:3000" }
+if (-not $customerLat) { $customerLat = 31.5204; $customerLng = 74.3587 }
+if (-not $customerSession) { $customerSession = [guid]::NewGuid().ToString() }
+# Invoke-RestMethod throws NullReferenceException if X-Customer-Session header value is $null
+
+Write-Host "`n[P3-1] Discovery categories (customer selection)" -ForegroundColor Cyan
+$discCats = Invoke-RestMethod "$base/api/v1/discovery/categories"
+$discCats.data | ConvertTo-Json
+$discCategorySlug = $discCats.data[0].slug
+Write-Host "categorySlug:" $discCategorySlug
+
+Write-Host "`n[P3-2] Customer location + search (list + map)" -ForegroundColor Cyan
+$customerLat = 31.5204
+$customerLng = 74.3587
+$search = Invoke-RestMethod -Uri "$base/api/v1/discovery/search?latitude=$customerLat&longitude=$customerLng&radiusKm=10&categorySlug=$discCategorySlug"
+$search.data.list | ConvertTo-Json -Depth 6
+Write-Host "map markers:" $search.data.map.markers.Count
+Write-Host "geoEngine:" $search.meta.geoEngine
+
+Write-Host "`n[P3-3] Legacy nearby list" -ForegroundColor Cyan
+Invoke-RestMethod -Uri "$base/api/v1/discovery/nearby?latitude=$customerLat&longitude=$customerLng&radiusKm=10" `
+  | ConvertTo-Json -Depth 5
+
+Write-Host "`n[P3-4] Search with funnel session (list impressions)" -ForegroundColor Cyan
+Write-Host "customerSession:" $customerSession
+# Agar error aaye: npm run dev chal raha ho + migration 006 (node src/db/migrate.js)
+try {
+  $search = Invoke-RestMethod -Uri "$base/api/v1/discovery/search?latitude=$customerLat&longitude=$customerLng&radiusKm=10&categorySlug=$discCategorySlug&sessionId=$customerSession" `
+    -Headers @{ "X-Customer-Session" = $customerSession }
+} catch {
+  Write-Host "Request failed — use curl for full body:" -ForegroundColor Red
+  curl.exe -sS "$base/api/v1/discovery/search?latitude=$customerLat&longitude=$customerLng&radiusKm=10&categorySlug=$discCategorySlug&sessionId=$customerSession" `
+    -H "X-Customer-Session: $customerSession"
+  throw
+}
+$search.data.list | ConvertTo-Json -Depth 5
+
+Write-Host "`n[P3-5] Public provider profile + direct contact (tel / WhatsApp / share location)" -ForegroundColor Cyan
+$qrbId = ($search.data.list | Select-Object -First 1).providerId
+if ($qrbId) {
+  $profile = Invoke-RestMethod -Uri "$base/api/v1/discovery/providers/$qrbId?latitude=$customerLat&longitude=$customerLng&sessionId=$customerSession"
+  $profile.data.contact | ConvertTo-Json -Depth 6
+  Write-Host "Call URL:" $profile.data.contact.actions.call.url
+  Write-Host "WhatsApp:" $profile.data.contact.actions.whatsapp.url
+} else {
+  Write-Host "No providers in search — run Phase 2 location/socket first" -ForegroundColor Yellow
+}
+
+Write-Host "`n[P3-6] Log contact tap (call / WhatsApp — opens on device, not on Qareeb)" -ForegroundColor Cyan
+if ($qrbId) {
+  Invoke-RestMethod -Method Post -Uri "$base/api/v1/discovery/events" `
+    -ContentType "application/json" `
+    -Body (@{
+      sessionId = $customerSession
+      event     = "call_click"
+      providerPublicId = $qrbId
+      latitude  = $customerLat
+      longitude = $customerLng
+    } | ConvertTo-Json) | ConvertTo-Json
+}
+
+Write-Host "`n[P3-7] Admin provider funnel (views, clicks, calls)" -ForegroundColor Cyan
+if ($providerId) {
+  Invoke-RestMethod -Uri "$base/api/v1/admin/providers/$providerId/funnel?days=30" `
+    -Headers @{ Authorization = "Bearer $adminToken" } | ConvertTo-Json -Depth 5
+}
+
+Write-Host "`n========== PHASE 3 DONE (category -> search -> profile -> call/WhatsApp in 4 taps) ==========" -ForegroundColor Green
+
+
+# =============================================================================
+# PHASE 4 ONLY — Admin panel APIs + analytics
+# PEHLE: $adminToken set (Phase 1) ya neeche login
+# =============================================================================
+
+Write-Host "`n========== PHASE 4 START ==========" -ForegroundColor Green
+if (-not $base) { $base = "http://127.0.0.1:3000" }
+if (-not $adminToken) {
+  $adminLogin = Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/auth/login" `
+    -ContentType "application/json" `
+    -Body '{"email":"admin@qareeb.app","password":"QareebAdmin@123"}'
+  $adminToken = $adminLogin.data.token
+}
+
+Write-Host "`n[P4-1] Lookup provider by QRB id or phone" -ForegroundColor Cyan
+if ($qrbId) {
+  Invoke-RestMethod -Uri "$base/api/v1/admin/providers/lookup?q=$qrbId" `
+    -Headers @{ Authorization = "Bearer $adminToken" } | ConvertTo-Json -Depth 4
+} elseif ($providerId) {
+  Invoke-RestMethod -Uri "$base/api/v1/admin/providers/lookup?q=03001234567" `
+    -Headers @{ Authorization = "Bearer $adminToken" } | ConvertTo-Json -Depth 4
+}
+
+Write-Host "`n[P4-2] Live admin map (online / offline / suspended — exact GPS)" -ForegroundColor Cyan
+$adminMap = Invoke-RestMethod -Uri "$base/api/v1/admin/providers/map" `
+  -Headers @{ Authorization = "Bearer $adminToken" }
+Write-Host "summary:" ($adminMap.data.summary | ConvertTo-Json -Compress)
+$adminMap.data.markers | Select-Object -First 3 | ConvertTo-Json -Depth 5
+
+Write-Host "`n[P4-3] Platform funnel analytics" -ForegroundColor Cyan
+Invoke-RestMethod -Uri "$base/api/v1/admin/analytics/funnel?days=30" `
+  -Headers @{ Authorization = "Bearer $adminToken" } | ConvertTo-Json -Depth 5
+
+Write-Host "`n[P4-4] Global call logs" -ForegroundColor Cyan
+Invoke-RestMethod -Uri "$base/api/v1/admin/call-logs?limit=10" `
+  -Headers @{ Authorization = "Bearer $adminToken" } | ConvertTo-Json -Depth 5
+
+Write-Host "`n[P4-5] Admin categories (manage)" -ForegroundColor Cyan
+Invoke-RestMethod -Uri "$base/api/v1/admin/categories" `
+  -Headers @{ Authorization = "Bearer $adminToken" } | ConvertTo-Json -Depth 4
+
+Write-Host "`n========== PHASE 4 DONE ==========" -ForegroundColor Green
+Write-Host "Production: docs/PHASE4_ADMIN.md + docker compose up -d --build api" -ForegroundColor DarkGray
+
+
+# =============================================================================
+# OPTIONAL — Phase 1 admin extras (commented)
+# =============================================================================
+
+# Reject:
 # Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/providers/$providerId/reject" `
 #   -Headers @{ Authorization = "Bearer $adminToken" } `
 #   -ContentType "application/json" -Body '{"reason":"CNIC unclear"}'
 
-# Suspend (approved only):
-Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/providers/$providerId/suspend" `
-  -Headers @{ Authorization = "Bearer $adminToken" } `
-  -ContentType "application/json" -Body '{"reason":"Policy violation"}'
+# Suspend (approved):
+# Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/providers/$providerId/suspend" `
+#   -Headers @{ Authorization = "Bearer $adminToken" } `
+#   -ContentType "application/json" -Body '{"reason":"Policy violation"}'
 
-# Reinstate (suspended only):
+# Reinstate (suspended):
 # Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/providers/$providerId/reinstate" `
 #   -Headers @{ Authorization = "Bearer $adminToken" } `
 #   -ContentType "application/json" -Body '{"reason":"Issue resolved"}'
 
-# -----------------------------------------------------------------------------
-# OPTIONAL — ADMIN CATEGORIES
-# -----------------------------------------------------------------------------
-
+# Categories:
 # Invoke-RestMethod -Uri "$base/api/v1/admin/categories" -Headers @{ Authorization = "Bearer $adminToken" }
-#
-# Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/categories" `
-#   -Headers @{ Authorization = "Bearer $adminToken" } `
-#   -ContentType "application/json" -Body '{"name":"Welder"}'
-#
-# Invoke-RestMethod -Method Patch -Uri "$base/api/v1/admin/categories/CATEGORY_UUID" `
-#   -Headers @{ Authorization = "Bearer $adminToken" } `
-#   -ContentType "application/json" -Body '{"isEnabled":false}'
 
-# -----------------------------------------------------------------------------
-# FRESH PHONE — poora flow dubara (approve tak)
-# Pehle $phone change karein, phir steps 3–16 dubara chalayein
-# -----------------------------------------------------------------------------
 
-# $phone = "03009998866"
-# ... repeat from step 3 ...
+# =============================================================================
+# PHASE 5 — Infrastructure (rate limits, FCM token, readiness, empty map)
+# =============================================================================
 
-# -----------------------------------------------------------------------------
-# AUTOMATED TESTS (optional)
-# -----------------------------------------------------------------------------
+Write-Host "`n========== PHASE 5 START ==========" -ForegroundColor Green
+if (-not $base) { $base = "http://127.0.0.1:3000" }
+
+Write-Host "`n[P5-1] Readiness (DB + Redis)" -ForegroundColor Cyan
+Invoke-RestMethod "$base/health/ready" | ConvertTo-Json -Depth 6
+
+Write-Host "`n[P5-2] Empty customer map (no online providers)" -ForegroundColor Cyan
+$empty = Invoke-RestMethod "$base/api/v1/discovery/search?latitude=31.52&longitude=74.35&radiusKm=2"
+$empty.meta.emptyState | ConvertTo-Json -Depth 5
+
+Write-Host "`n[P5-3] Provider push token (FCM register)" -ForegroundColor Cyan
+if ($providerToken) {
+  Invoke-RestMethod -Method Put -Uri "$base/api/v1/providers/me/push-token" `
+    -Headers @{ Authorization = "Bearer $providerToken" } `
+    -ContentType "application/json" `
+    -Body '{"token":"dev-fcm-token-sample-1234567890","platform":"android"}' | ConvertTo-Json
+}
+
+Write-Host "`nField tests (battery, road, RTL): docs/FIELD_TEST_CHECKLIST.md" -ForegroundColor DarkGray
+Write-Host "`n========== PHASE 5 DONE ==========" -ForegroundColor Green
+
+
+# =============================================================================
+# AUTOMATED (all phases)
+# =============================================================================
 
 # cd "D:\projects\Qareeb App"
+# node src/db/migrate.js
 # npm test
-
-Write-Host "`n=== DONE — variables set: providerToken, adminToken, providerId, catId ===" -ForegroundColor Green

@@ -1,67 +1,69 @@
-# Phase 2 — Real-time presence
+# Phase 2 — Complete (presence + location + geo + privacy)
 
-## WebSocket (Socket.io)
+## Features
 
-- **URL:** same host as API, path `/socket.io`
-- **Auth:** provider JWT (approved providers only)
+| Area | Implementation |
+|------|----------------|
+| WebSocket | Socket.io `/socket.io` — online/offline, reconnect, multi-tab sessions |
+| Redis | Online state, sessions, recent location (fallback: in-memory if Redis down) |
+| Location | Min **30s** interval OR **75m** significant movement; max freshness **60s** for discovery |
+| PostGIS | Optional (`optional_004_postgis.sql`); fallback haversine in PostgreSQL |
+| Privacy | Customer API returns **~300m approximate** point + distance only |
+| Discovery | `GET /api/v1/discovery/nearby` — approved, online, fresh location only |
 
-**Quick test (project folder):**
+## Environment
+
+```env
+REDIS_URL=redis://127.0.0.1:6379
+REDIS_ENABLED=true   # set false if Redis is not running (in-memory fallback)
+LOCATION_MIN_INTERVAL_SECONDS=30
+LOCATION_MAX_INTERVAL_SECONDS=60
+LOCATION_SIGNIFICANT_MOVEMENT_METERS=75
+PRIVACY_MASK_RADIUS_METERS=300
+PRESENCE_STALE_SECONDS=90
+```
+
+Start Redis (optional Docker):
+
+```bash
+docker compose up -d redis
+```
+
+## WebSocket events (provider — approved only)
+
+| Client → Server | Server → Client |
+|-----------------|-----------------|
+| `presence:heartbeat` | `presence:ack` |
+| `presence:location_update` `{ latitude, longitude }` | `presence:location_ack` |
+| connect | `presence:state` |
+
+Broadcast: `presence:provider_online`, `presence:provider_offline`, `presence:provider_location`
+
+## REST
+
+```http
+GET  /api/v1/providers/me/presence
+PUT  /api/v1/providers/me/location
+GET  /api/v1/admin/providers/online
+GET  /api/v1/discovery/nearby?latitude=&longitude=&radiusKm=5
+```
+
+## Manual socket test
 
 ```powershell
 cd "D:\projects\Qareeb App"
 node scripts/socket-presence-demo.mjs $providerToken
 ```
 
-```javascript
-import { io } from "socket.io-client";
+## Phase 2 deliverable checklist
 
-const socket = io("http://localhost:3000", {
-  auth: { token: providerJwt },
-});
+- [x] Live online/offline via Socket.io
+- [x] Redis presence layer (+ memory fallback)
+- [x] Battery-friendly location throttling
+- [x] Geospatial nearby query (PostGIS or haversine)
+- [x] Privacy: no exact coords to customers
+- [x] Automated tests (`npm test` — 44 tests)
 
-socket.on("connect", () => console.log("connected"));
-socket.on("presence:state", (data) => console.log("state", data));
+## Phase 3 preview
 
-setInterval(() => socket.emit("presence:heartbeat"), 30000);
-
-socket.on("presence:ack", (p) => console.log("heartbeat ack", p));
-socket.on("disconnect", (reason) => console.log("disconnect", reason));
-```
-
-### Server events (broadcast)
-
-| Event | Meaning |
-|--------|---------|
-| `presence:provider_online` | Provider came online |
-| `presence:provider_offline` | Last socket disconnected |
-
-### Client → server
-
-| Event | Meaning |
-|--------|---------|
-| `presence:heartbeat` | Refresh `last_seen_at` (every ~30s) |
-
-## REST
-
-```http
-GET /api/v1/providers/me/presence
-Authorization: Bearer {{providerToken}}
-
-GET /api/v1/admin/providers/online
-Authorization: Bearer {{adminToken}}
-```
-
-## Stale providers
-
-- `PRESENCE_STALE_SECONDS` (default 90): no heartbeat → marked offline
-- Background sweep every `PRESENCE_SWEEP_INTERVAL_MS` (default 60s)
-
-## Phase 1 checklist vs deliverable
-
-| Phase 1 item | Status |
-|--------------|--------|
-| Backend foundation + DB | Done |
-| Provider registration + admin flow | Done |
-| Staging | Local/staging script; cloud deploy when you choose host |
-
-Phase 2 presence is **in progress on this branch** — WebSocket + DB fields + admin online list.
+Customer discovery UI, direct contact, ratings — builds on `/discovery/nearby`.

@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { env } from "../config/env.js";
 import { ENTITY, PROVIDER_STATUS } from "../config/constants.js";
-import { getPool, withTransaction } from "../db/pool.js";
+import { getPool, query, withTransaction } from "../db/pool.js";
 import { getStatus } from "../db/status.js";
 import { logger } from "../logger.js";
 import { AppError } from "../utils/AppError.js";
@@ -32,8 +32,37 @@ async function nextPublicId(client) {
   return `QRB-${rows[0].n}`;
 }
 
-export async function requestOtp(phoneInput) {
+export async function requestOtp(phoneInput, context = {}) {
   const phone = normalizePhone(phoneInput);
+
+  const { rows: recent } = await query(
+    `SELECT created_at FROM otp_codes
+     WHERE phone = $1
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [phone],
+  );
+  if (recent[0]) {
+    const elapsed = (Date.now() - new Date(recent[0].created_at).getTime()) / 1000;
+    if (elapsed < env.OTP_REQUEST_COOLDOWN_SECONDS) {
+      throw new AppError(
+        429,
+        `Wait ${Math.ceil(env.OTP_REQUEST_COOLDOWN_SECONDS - elapsed)}s before requesting another OTP`,
+        "OTP_COOLDOWN",
+      );
+    }
+  }
+
+  const windowStart = new Date(Date.now() - env.OTP_RATE_LIMIT_WINDOW_SECONDS * 1000);
+  const phoneCount = await query(
+    `SELECT COUNT(*)::int AS count FROM otp_request_audit
+     WHERE phone = $1 AND created_at >= $2`,
+    [phone, windowStart.toISOString()],
+  );
+  if (phoneCount.rows[0].count >= env.OTP_RATE_LIMIT_PER_PHONE) {
+    throw new AppError(429, "Too many OTP requests for this phone number", "OTP_PHONE_RATE_LIMIT");
+  }
+
   const otp = generateOtp();
   const expiresAt = new Date(Date.now() + env.OTP_EXPIRES_MINUTES * 60_000);
 
@@ -69,6 +98,12 @@ export async function requestOtp(phoneInput) {
       });
     }
   });
+
+  await query(
+    `INSERT INTO otp_request_audit (phone, ip_address, user_agent)
+     VALUES ($1, $2, $3)`,
+    [phone, context.ipAddress || null, context.userAgent || null],
+  );
 
   logger.info({ phone }, "OTP generated");
 
