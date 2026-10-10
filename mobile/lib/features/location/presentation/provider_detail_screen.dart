@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'send_location_screen.dart';
+import 'send_request_screen.dart';
 
 /// Screen displayed when user clicks on a provider card.
 /// We proceed step by step following Figma manual branding specifications.
@@ -1321,10 +1322,13 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                           key: const Key('provider_detail_send_request_button'),
                                           onTap: () {
                                             HapticFeedback.mediumImpact();
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(
-                                                content: Text('Request sent to provider!'),
-                                                duration: Duration(seconds: 2),
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) => SendRequestScreen(
+                                                  serviceCategory: widget.serviceCategory,
+                                                  providerName: widget.providerName,
+                                                  distance: '1.8 km',
+                                                ),
                                               ),
                                             );
                                           },

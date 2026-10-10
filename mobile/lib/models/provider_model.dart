@@ -12,7 +12,8 @@ class ProviderMarkerModel {
   final double latitude;
   final double longitude;
 
-  // Screen layout coordinates inside the 320x320 map circle  final double screenTop;
+  // Screen layout coordinates inside the 320x320 map circle
+  final double screenTop;
   final double screenLeft;
   final double carAngle; // degrees
 
