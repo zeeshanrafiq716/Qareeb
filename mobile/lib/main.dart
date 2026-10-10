@@ -1,0 +1,69 @@
+import 'dart:ui';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/theme/app_theme.dart';
+import 'features/emergency/presentation/emergency_services_screen.dart';
+import 'features/home/presentation/home_screen.dart';
+import 'features/splash/presentation/splash_screen.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Gracefully handle font loading network errors so offline/CORS issues never crash the app
+  PlatformDispatcher.instance.onError = (error, stack) {
+    final errorStr = error.toString();
+    if (errorStr.contains('Failed to load font') ||
+        errorStr.contains('ClientException') ||
+        errorStr.contains('fonts.gstatic.com') ||
+        errorStr.contains('Noto fonts')) {
+      debugPrint('Font network loading failed, falling back to system font: $error');
+      return true; // handled, do not crash app
+    }
+    return false;
+  };
+
+  FlutterError.onError = (FlutterErrorDetails details) {
+    final errorStr = details.exception.toString();
+    if (errorStr.contains('Failed to load font') ||
+        errorStr.contains('ClientException') ||
+        errorStr.contains('fonts.gstatic.com') ||
+        errorStr.contains('Noto fonts')) {
+      debugPrint('Suppressed Flutter font loading error: ${details.exception}');
+      return;
+    }
+    FlutterError.presentError(details);
+  };
+
+  // Fix orientation to portrait for native mobile experience
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  runApp(
+    const ProviderScope(
+      child: QareebApp(),
+    ),
+  );
+}
+
+class QareebApp extends StatelessWidget {
+  const QareebApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'QAREEB',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.darkTheme,
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/home': (context) => const HomeScreen(),
+        '/emergency': (context) => const EmergencyServicesScreen(),
+      },
+    );
+  }
+}
