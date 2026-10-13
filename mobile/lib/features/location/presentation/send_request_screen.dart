@@ -257,35 +257,24 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                     left: 111.0 + ((containerWidth - 390.0) / 2.0),
                     width: 36.0,
                     height: 36.0,
-                    child: Container(
-                      width: 36.0,
-                      height: 36.0,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFFF0FFF7),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Color(0x669FFFCB),
-                            blurRadius: 4.0,
-                            spreadRadius: 0.0,
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(4.0),
-                      child: Center(
-                        child: Container(
-                          width: 28.0,
-                          height: 28.0,
+                    child: Center(
+                      child: Image.asset(
+                        'assets/images/Group 5.png',
+                        width: 36.0,
+                        height: 36.0,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 36.0,
+                          height: 36.0,
                           decoration: const BoxDecoration(
-                            color: Color(0xFF1D8070),
                             shape: BoxShape.circle,
+                            color: Color(0xFFF0FFF7),
                           ),
                           child: const Center(
-                            child: CustomPaint(
-                              size: Size(13.0, 16.0),
-                              painter: _LocationPinPainter(
-                                color: Colors.white,
-                              ),
+                            child: Icon(
+                              Icons.location_on_rounded,
+                              size: 20.0,
+                              color: Color(0xFF1D8070),
                             ),
                           ),
                         ),
