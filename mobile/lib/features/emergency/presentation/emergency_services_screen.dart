@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../home/presentation/widgets/bottom_nav_bar_widget.dart';
+import '../../home/presentation/home_screen.dart';
 import '../../location/presentation/location_permission_screen.dart';
 
 /// Screen displayed when clicking on "Need urgent assistance?" card.
@@ -651,6 +652,13 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                     onTabSelected: (index) {
                       if (index == 0) {
                         Navigator.of(context).maybePop();
+                      } else {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (_) => HomeScreen(initialTabIndex: index),
+                          ),
+                          (route) => route.isFirst,
+                        );
                       }
                     },
                   ),

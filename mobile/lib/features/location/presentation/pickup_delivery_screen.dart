@@ -54,8 +54,8 @@ class FakeCar {
   Offset calculatePosition(
     double t,
     double screenWidth, {
-    double beaconTop = 96.0,
-    double beaconHeight = 548.6,
+    double beaconTop = 112.0,
+    double beaconHeight = 570.0,
   }) {
     // Adapt horizontally for larger web widths
     final double cx = routeCenterX + (screenWidth - 390.0) / 2.0;
@@ -75,7 +75,7 @@ class FakeCar {
     final double minX = 46.0;
     final double maxX = screenWidth - 46.0;
     final double minY = beaconTop + 45.0;
-    final double maxY = math.min(550.0, beaconTop + beaconHeight - 65.0);
+    final double maxY = beaconTop + beaconHeight - 65.0;
 
     final double liveX = rawX.clamp(minX, maxX);
     final double liveY = rawY.clamp(minY, maxY);
@@ -558,14 +558,16 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                 : constraints.maxHeight;
             final double contentHeight = math.max(containerHeight, 844.0);
 
-            const double mapHorizontalPadding = 14.0;
-            const double mapTopPadding = 14.0;
-            final double beaconLeft = mapHorizontalPadding;
-            final double beaconTop = 92.0 + mapTopPadding; // 106.0 (minor top padding below header)
-            final double beaconWidth = containerWidth - (mapHorizontalPadding * 2.0);
-            final double bottomCardTop = (contentHeight - 232.0).clamp(520.0, 612.0);
-            const double paddingBetweenCardAndMap = 14.0;
-            final double beaconHeight = bottomCardTop - beaconTop - paddingBetweenCardAndMap;
+            final double beaconLeft = containerWidth >= 390
+                ? 20.0
+                : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0);
+            final double beaconTop = 112.0;
+            final double beaconWidth = containerWidth >= 390
+                ? 350.0
+                : (containerWidth - (beaconLeft * 2.0));
+            final double beaconHeight = 570.0;
+            final double bottomCardTop = beaconTop + beaconHeight + 14.0;
+            final double bottomCardHeight = math.max(148.0, contentHeight - bottomCardTop);
 
             // Customer location anchor at center of square beacon area on screen
             final Offset customerCenter = Offset(containerWidth / 2.0, beaconTop + beaconHeight / 2.0);
@@ -607,10 +609,10 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                             height: beaconHeight,
                             decoration: BoxDecoration(
                               shape: BoxShape.rectangle,
-                              borderRadius: BorderRadius.circular(24.0),
+                              borderRadius: BorderRadius.circular(16.0),
                               border: Border.all(
-                                color: const Color(0xFF9FFFCB),
-                                width: 1.5,
+                                color: const Color(0xFFCCFFE3), // 1px solid #CCFFE3
+                                width: 1.0,
                               ),
                               boxShadow: const [
                                 BoxShadow(
@@ -645,13 +647,14 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                   ),
                                 ),
 
-                                // Radial Gradient Overlay on Map
+                                // Radial Gradient Overlay on Map:
+                                // radial-gradient(53.9% 41.56% at 50% 50%, rgba(159, 255, 203, 0.4) 0%, rgba(159, 255, 203, 0.12) 100%)
                                 Positioned.fill(
                                   child: DecoratedBox(
                                     decoration: const BoxDecoration(
                                       gradient: RadialGradient(
                                         center: Alignment.center,
-                                        radius: 0.85,
+                                        radius: 0.539,
                                         colors: [
                                           Color(0x669FFFCB), // rgba(159, 255, 203, 0.4) 0%
                                           Color(0x1F9FFFCB), // rgba(159, 255, 203, 0.12) 100%
@@ -834,7 +837,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                             return Stack(
                               clipBehavior: Clip.none,
                               children: [
-                                for (final car in fakeCars.take(_selectedProviderCount))
+                                for (final car in fakeCars)
                                   () {
                                     final Offset livePos = car.calculatePosition(
                                       progress,
@@ -1007,15 +1010,16 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                         ),
 
                         // 6. Bottom Widget Layout
+                        // 6. Bottom Widget Layout
                         Positioned(
                           top: bottomCardTop,
                           left: 0.0,
                           width: containerWidth,
-                          height: 232.0,
+                          height: bottomCardHeight,
                           child: Container(
                             key: const Key('bottom_widget_layout'),
                             width: containerWidth,
-                            height: 232.0,
+                            height: bottomCardHeight,
                             decoration: const BoxDecoration(
                               color: Color(0xFFFFFFFF),
                               borderRadius: BorderRadius.only(
@@ -1035,7 +1039,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                               children: [
                                 // Inner card content placed at start of card
                                 Positioned(
-                                  top: 24.0,
+                                  top: 20.0,
                                   left: containerWidth >= 390 ? 20.0 : 16.0,
                                   right: containerWidth >= 390 ? 20.0 : 16.0,
                                   child: _selectedCarId != null
@@ -1048,11 +1052,11 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                       : _buildProvidersInnerCard(containerWidth),
                                 ),
 
-                                // Bottom Bar Layout: width: 390; height: 24; top: 208px; left: 4px;
+                                // Bottom Bar Layout: positioned near bottom of card
                                 Positioned(
-                                  top: 208.0,
+                                  bottom: 8.0,
                                   left: 0.0,
-                                  width: containerWidth,
+                                  right: 0.0,
                                   height: 24.0,
                                   child: Center(
                                     // Bar branding: width: 134; height: 4; border-radius: 100px; background: #1C2926;
@@ -1116,8 +1120,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     );
   }
 
-  /// Inner card branding matching Figma layout:
-  /// width: 350; height: 170.39999389648438; top: 32px; left: 20px; gap: 16px;
+  /// Inner card branding: 18 Providers nearby + Find a Provider button
   Widget _buildProvidersInnerCard(double containerWidth) {
     final double cardWidth = containerWidth >= 390
         ? 350.0
@@ -1125,208 +1128,106 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
 
     return SizedBox(
       width: cardWidth,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      height: 41.0,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 1. Heading Branding Row (36x36 icon + title + subtitle)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          // Left side content: width: 152; height: 33; gap: 12px;
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Left side icon branding: width: 36; height: 36; border-radius: 40px; background: #F0F5F2;
-              Container(
-                width: 36.0,
-                height: 36.0,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0F5F2),
-                  borderRadius: BorderRadius.circular(40.0),
+              // Inner content: 18 Providers nearby (16px, weight 500, line-height 22px, #1C2926)
+              Text(
+                '18 Providers nearby',
+                textHeightBehavior: const TextHeightBehavior(
+                  applyHeightToFirstAscent: false,
+                  applyHeightToLastDescent: false,
                 ),
-                child: const Center(
-                  // Vector branding: dual user silhouettes matching Figma
-                  child: CustomPaint(
-                    size: Size(20.0, 19.0),
-                    painter: _ProviderGroupVectorPainter(
-                      color: Color(0xFF1D8070),
-                      backgroundColor: Color(0xFFF0F5F2),
-                    ),
-                  ),
+                style: GoogleFonts.inter(
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF1C2926),
+                  height: 1.15,
+                  letterSpacing: 0.0,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(width: 12.0), // gap: 12px;
-
-              // Inner content branding: width: 302; gap: 12px;
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Content: Providers to show (16px, weight 500, line-height 22px, #1C2926)
-                    Text(
-                      'Providers to show',
-                      textHeightBehavior: const TextHeightBehavior(
-                        applyHeightToFirstAscent: false,
-                        applyHeightToLastDescent: false,
-                      ),
-                      style: GoogleFonts.inter(
-                        fontSize: 16.0,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF1C2926),
-                        height: 1.15,
-                        letterSpacing: 0.0,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2.0),
-                    // Content: Adjust the number of providers on the map. (12px, weight 400, line-height 22px, #566663)
-                    Text(
-                      'Adjust the number of providers on the map.',
-                      textHeightBehavior: const TextHeightBehavior(
-                        applyHeightToFirstAscent: false,
-                        applyHeightToLastDescent: false,
-                      ),
-                      style: GoogleFonts.inter(
-                        fontSize: 12.0,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF566663),
-                        height: 1.15,
-                        letterSpacing: 0.0,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+              const SizedBox(height: 2.0),
+              // Content: Within 1 km radius (12px, weight 400, line-height 22px, #566663)
+              Text(
+                'Within 1 km radius',
+                textHeightBehavior: const TextHeightBehavior(
+                  applyHeightToFirstAscent: false,
+                  applyHeightToLastDescent: false,
                 ),
+                style: GoogleFonts.inter(
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF566663),
+                  height: 1.15,
+                  letterSpacing: 0.0,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
 
-          const SizedBox(height: 16.0), // gap: 16px;
-
-          // 2. Buttons layout: width: 350; height: 44.400001525878906; gap: 8px;
-          SizedBox(
-            width: cardWidth,
-            height: 44.4,
-            child: Row(
-              children: [
-                Expanded(child: _buildCountButton(10)),
-                const SizedBox(width: 8.0), // gap: 8px;
-                Expanded(child: _buildCountButton(20)),
-                const SizedBox(width: 8.0), // gap: 8px;
-                Expanded(child: _buildCountButton(30)),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16.0), // gap: 16px;
-
-          // 3. Bottom layout: width: 350; height: 41; justify-content: space-between;
-          SizedBox(
-            width: cardWidth,
-            height: 41.0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Left side content: width: 152; height: 33; gap: 12px;
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Inner content: 18 Providers nearby (16px, weight 500, line-height 22px, #1C2926)
-                    Text(
-                      '18 Providers nearby',
-                      textHeightBehavior: const TextHeightBehavior(
-                        applyHeightToFirstAscent: false,
-                        applyHeightToLastDescent: false,
-                      ),
-                      style: GoogleFonts.inter(
-                        fontSize: 16.0,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF1C2926),
-                        height: 1.15,
-                        letterSpacing: 0.0,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2.0),
-                    // Content: Within 1 km radius (12px, weight 400, line-height 22px, #566663)
-                    Text(
-                      'Within 1 km radius',
-                      textHeightBehavior: const TextHeightBehavior(
-                        applyHeightToFirstAscent: false,
-                        applyHeightToLastDescent: false,
-                      ),
-                      style: GoogleFonts.inter(
-                        fontSize: 12.0,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF566663),
-                        height: 1.15,
-                        letterSpacing: 0.0,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-
-                // Right side layout: width: 134; height: 41; gap: 12px; border-radius: 60px; padding: 16px; background: #F2F5F4;
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => FindProviderScreen(
-                          serviceCategory: widget.serviceName,
-                        ),
-                      ),
-                    );
-                  },
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    width: 134.0,
-                    height: 41.0,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF2F5F4),
-                      borderRadius: BorderRadius.circular(60.0),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Content: Find a Provider (12px, weight 400, line-height 22px, #1C2926)
-                        Text(
-                          'Find a Provider',
-                          textHeightBehavior: const TextHeightBehavior(
-                            applyHeightToFirstAscent: false,
-                            applyHeightToLastDescent: false,
-                          ),
-                          style: GoogleFonts.inter(
-                            fontSize: 12.0,
-                            fontWeight: FontWeight.w400,
-                            color: const Color(0xFF1C2926),
-                            height: 1.15,
-                            letterSpacing: 0.0,
-                          ),
-                          maxLines: 1,
-                        ),
-                        const SizedBox(width: 12.0), // gap: 12px;
-                        // Vector > branding: width: 4; height: 8; angle: -180 deg; border: 0.6px solid #1C2926;
-                        const CustomPaint(
-                          size: Size(4.0, 8.0),
-                          painter: _ChevronRightVectorPainter(
-                            color: Color(0xFF1C2926),
-                          ),
-                        ),
-                      ],
-                    ),
+          // Right side layout: height: 41; border-radius: 60px; padding: 16px; background: #F2F5F4;
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => FindProviderScreen(
+                    serviceCategory: widget.serviceName,
                   ),
                 ),
-              ],
+              );
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              height: 41.0,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF2F5F4),
+                borderRadius: BorderRadius.circular(60.0),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Content: View all (12px, weight 400, line-height 22px, #1C2926)
+                  Text(
+                    'View all',
+                    textHeightBehavior: const TextHeightBehavior(
+                      applyHeightToFirstAscent: false,
+                      applyHeightToLastDescent: false,
+                    ),
+                    style: GoogleFonts.inter(
+                      fontSize: 12.0,
+                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF1C2926),
+                      height: 1.15,
+                      letterSpacing: 0.0,
+                    ),
+                    maxLines: 1,
+                  ),
+                  const SizedBox(width: 8.0),
+                  // Vector > branding: width: 4; height: 8; angle: -180 deg; border: 0.6px solid #1C2926;
+                  const CustomPaint(
+                    size: Size(4.0, 8.0),
+                    painter: _ChevronRightVectorPainter(
+                      color: Color(0xFF1C2926),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -1334,61 +1235,6 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     );
   }
 
-  /// Button branding matching Figma specifications:
-  /// width: ~110-112; height: 44.4; gap: 10px; border-radius: 6px; padding: 16px;
-  /// Selected (10 default): background: #1D8070; content: #FFFFFF; font: Inter 500, 14px, line-height: 22px
-  /// Unselected (20, 30): border: 1.2px solid #EDF0EF; content: #1C2926; font: Inter 500, 14px, line-height: 22px
-  Widget _buildCountButton(int count) {
-    final bool isSelected = _selectedProviderCount == count;
-
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        setState(() {
-          _selectedProviderCount = count;
-        });
-      },
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        height: 44.4,
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1D8070) : Colors.white,
-          borderRadius: BorderRadius.circular(6.0),
-          border: isSelected
-              ? null
-              : Border.all(
-                  color: const Color(0xFFEDF0EF),
-                  width: 1.2,
-                ),
-          boxShadow: isSelected
-              ? const [
-                  BoxShadow(
-                    color: Color(0x261D8070),
-                    blurRadius: 6.0,
-                    offset: Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          '$count',
-          textHeightBehavior: const TextHeightBehavior(
-            applyHeightToFirstAscent: false,
-            applyHeightToLastDescent: false,
-          ),
-          style: GoogleFonts.inter(
-            fontSize: 14.0,
-            fontWeight: FontWeight.w500,
-            color: isSelected ? const Color(0xFFFFFFFF) : const Color(0xFF1C2926),
-            height: 22.0 / 14.0,
-            letterSpacing: 0.0,
-          ),
-        ),
-      ),
-    );
-  }
 
   /// Selected driver details card within bottom widget matching branding
   Widget _buildSelectedDriverCard(

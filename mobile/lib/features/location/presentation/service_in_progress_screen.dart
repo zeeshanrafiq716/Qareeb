@@ -11,11 +11,13 @@ import 'package:google_fonts/google_fonts.dart';
 class ServiceInProgressScreen extends ConsumerStatefulWidget {
   final String serviceCategory;
   final String providerName;
+  final String headerHeading;
 
   const ServiceInProgressScreen({
     super.key,
     this.serviceCategory = 'Pickup & Delivery',
     this.providerName = 'Ahmad Transport',
+    this.headerHeading = 'Service Complete',
   });
 
   @override
@@ -102,8 +104,9 @@ class _ServiceInProgressScreenState
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                  // 1. Header with standard branding:
-                  // width: 350; height: 36; gap: 16px; top: 56px; left: 20px;
+                  // 1. Header with given branding:
+                  // width: 350; height: 36; top: 56px; left: 20px; gap: 16px; angle: 0 deg; opacity: 1;
+                  // follow previous screens header , header heading will be service complete
                   Positioned(
                     top: 56.0,
                     left: containerWidth >= 390
@@ -113,76 +116,79 @@ class _ServiceInProgressScreenState
                         ? 350.0
                         : (containerWidth - 40.0).clamp(280.0, 350.0),
                     height: 36.0,
-                    child: SizedBox(
-                      width: containerWidth >= 390
-                          ? 350.0
-                          : (containerWidth - 40.0).clamp(280.0, 350.0),
-                      height: 36.0,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Circular Back Button
-                          MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: GestureDetector(
-                              key: const Key('service_in_progress_back_button'),
-                              onTap: () {
-                                HapticFeedback.lightImpact();
-                                Navigator.of(context).maybePop();
-                              },
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                width: 36.0,
-                                height: 36.0,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: const Color(0xFFFFFFFF),
-                                  border: Border.all(
-                                    color: const Color(0xFF566663),
-                                    width: 1.0,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x14000000), // #00000014
-                                      blurRadius: 12.0,
-                                      offset: Offset(0, -2),
-                                      spreadRadius: 0.0,
+                    child: Opacity(
+                      opacity: 1.0,
+                      child: SizedBox(
+                        width: containerWidth >= 390
+                            ? 350.0
+                            : (containerWidth - 40.0).clamp(280.0, 350.0),
+                        height: 36.0,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Circular Back Button matching previous screens
+                            MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                key: const Key('service_complete_back_button'),
+                                onTap: () {
+                                  HapticFeedback.lightImpact();
+                                  Navigator.of(context).maybePop();
+                                },
+                                behavior: HitTestBehavior.opaque,
+                                child: Container(
+                                  width: 36.0,
+                                  height: 36.0,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: const Color(0xFFFFFFFF),
+                                    border: Border.all(
+                                      color: const Color(0xFF566663),
+                                      width: 1.0,
                                     ),
-                                  ],
-                                ),
-                                child: const Center(
-                                  child: CustomPaint(
-                                    size: Size(6.0, 13.0),
-                                    painter: _BackChevronPainter(
-                                      color: Color(0xFF566663),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x14000000), // #00000014
+                                        blurRadius: 12.0,
+                                        offset: Offset(0, -2),
+                                        spreadRadius: 0.0,
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Center(
+                                    child: CustomPaint(
+                                      size: Size(6.0, 13.0),
+                                      painter: _BackChevronPainter(
+                                        color: Color(0xFF566663),
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 16.0), // gap: 16px
+                            const SizedBox(width: 16.0), // gap: 16px
 
-                          // Title: Pickup & Delivery
-                          Expanded(
-                            child: Text(
-                              widget.serviceCategory,
-                              textHeightBehavior: const TextHeightBehavior(
-                                applyHeightToFirstAscent: false,
-                                applyHeightToLastDescent: false,
+                            // Header Heading: Service Complete
+                            Expanded(
+                              child: Text(
+                                widget.headerHeading,
+                                textHeightBehavior: const TextHeightBehavior(
+                                  applyHeightToFirstAscent: false,
+                                  applyHeightToLastDescent: false,
+                                ),
+                                style: GoogleFonts.inter(
+                                  fontSize: 16.0,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF1C2926),
+                                  height: 22.0 / 16.0,
+                                  letterSpacing: 0.0,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              style: GoogleFonts.inter(
-                                fontSize: 16.0,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF1C2926),
-                                height: 22.0 / 16.0,
-                                letterSpacing: 0.0,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),

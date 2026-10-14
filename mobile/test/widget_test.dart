@@ -12,6 +12,8 @@ import 'package:mobile/features/home/presentation/widgets/bottom_nav_bar_widget.
 import 'package:mobile/features/emergency/presentation/emergency_services_screen.dart';
 import 'package:mobile/features/location/presentation/location_permission_screen.dart';
 import 'package:mobile/features/location/presentation/pickup_delivery_screen.dart';
+import 'package:mobile/features/profile/presentation/profile_screen.dart';
+import 'package:mobile/features/requests/presentation/requests_screen.dart';
 
 void main() {
   testWidgets('Qareeb branding title and slogan render correctly', (WidgetTester tester) async {
@@ -73,13 +75,47 @@ void main() {
     expect(find.text('Affordable local travel'), findsOneWidget);
     expect(find.text('Emergency'), findsOneWidget);
     expect(find.text('Urgent roadside aid'), findsOneWidget);
-    expect(find.byType(BottomNavBarWidget), findsOneWidget);
-    expect(find.text('Home'), findsOneWidget);
-    expect(find.byType(StylizedHomeIcon), findsOneWidget);
-    expect(find.text('Request'), findsOneWidget);
-    expect(find.byType(StylizedRequestIcon), findsOneWidget);
-    expect(find.text('Profile'), findsOneWidget);
-    expect(find.byType(StylizedProfileIcon), findsOneWidget);
+    expect(find.byType(BottomNavBarWidget, skipOffstage: true), findsOneWidget);
+    expect(find.text('Home', skipOffstage: true), findsOneWidget);
+    expect(find.byType(StylizedHomeIcon, skipOffstage: true), findsOneWidget);
+    expect(find.text('Request', skipOffstage: true), findsOneWidget);
+    expect(find.byType(StylizedRequestIcon, skipOffstage: true), findsOneWidget);
+    expect(find.text('Profile', skipOffstage: true), findsOneWidget);
+    expect(find.byType(StylizedProfileIcon, skipOffstage: true), findsOneWidget);
+  });
+
+  testWidgets('HomeScreen switches between Home, Request, and Profile tabs', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          home: HomeScreen(),
+        ),
+      ),
+    );
+
+    // Initial state: Home tab is active
+    expect(find.text('Choose Your Ride', skipOffstage: true), findsOneWidget);
+
+    // Tap Request tab
+    await tester.tap(find.text('Request', skipOffstage: true));
+    await tester.pumpAndSettle();
+
+    // Requests screen is now active
+    expect(find.byType(RequestsScreen, skipOffstage: true), findsOneWidget);
+
+    // Tap Profile tab
+    await tester.tap(find.text('Profile', skipOffstage: true));
+    await tester.pumpAndSettle();
+
+    // Profile screen is now active
+    expect(find.byType(ProfileScreen, skipOffstage: true), findsOneWidget);
+
+    // Tap Home tab
+    await tester.tap(find.text('Home', skipOffstage: true));
+    await tester.pumpAndSettle();
+
+    // Home tab is active again
+    expect(find.text('Choose Your Ride', skipOffstage: true), findsOneWidget);
   });
 
   testWidgets('EmergencyServicesScreen renders header gradient, cards, and bottom nav bar', (WidgetTester tester) async {

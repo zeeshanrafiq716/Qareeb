@@ -11,7 +11,7 @@ import '../../../../models/category_model.dart';
 /// - box-shadow: 0px 1px 10px 0px #00000014
 ///
 /// Image Placement Branding:
-/// - width: 112; height: 52; top: 14px; left: 12px;
+/// - width: 98; height: 60; top: 10px; left: 12px; angle: 0 deg; opacity: 1;
 ///
 /// Text Branding:
 /// - width: 169; height: 28; top: 80px;
@@ -19,8 +19,8 @@ import '../../../../models/category_model.dart';
 /// - justify-content: space-between;
 ///
 /// Card Left Side Inner Content:
-/// - Title (e.g. "Ride"): 12px, Inter Medium (500), #172623
-/// - Subtitle (e.g. "City & local rides"): 10px, Inter Regular (400), #566663
+/// - Title (e.g. "Ride"): Inter Medium (500), 12px, leading-trim: CAP_HEIGHT, line-height: 22px, letter-spacing: 0px, #172623
+/// - Subtitle (e.g. "Fast & convenient"): Inter Regular (400), 10px, leading-trim: CAP_HEIGHT, line-height: 22px, letter-spacing: 0px, width: 99, height: 7, #566663
 ///
 /// Right Side Vector Chevron (>):
 /// - width: 5; height: 10; border: 0.6px solid #566663;
@@ -76,8 +76,8 @@ class CategoryCardWidget extends StatelessWidget {
     } else if (assetImagePath != null && assetImagePath!.isNotEmpty) {
       content = Image.asset(
         assetImagePath!,
-        width: 112.0,
-        height: 52.0,
+        width: 98.0,
+        height: 60.0,
         fit: BoxFit.contain,
         alignment: Alignment.centerLeft,
         errorBuilder: (_, _, _) => _buildFallbackImage(),
@@ -85,8 +85,8 @@ class CategoryCardWidget extends StatelessWidget {
     } else if (networkImageUrl != null && networkImageUrl!.isNotEmpty) {
       content = Image.network(
         networkImageUrl!,
-        width: 112.0,
-        height: 52.0,
+        width: 98.0,
+        height: 60.0,
         fit: BoxFit.contain,
         alignment: Alignment.centerLeft,
         errorBuilder: (_, _, _) => _buildFallbackImage(),
@@ -95,10 +95,10 @@ class CategoryCardWidget extends StatelessWidget {
       content = _buildFallbackImage();
     }
 
-    // By default, category image slot strictly follows branding: width: 112, height: 52
+    // By default, category image slot strictly follows branding: width: 98, height: 60
     return SizedBox(
-      width: 112.0,
-      height: 52.0,
+      width: 98.0,
+      height: 60.0,
       child: content,
     );
   }
@@ -160,21 +160,21 @@ class CategoryCardWidget extends StatelessWidget {
       child: child ??
           Stack(
             children: [
-              // 1. Image Placement Branding (width: 112; height: 52; top: 14px; left: 12px)
+              // 1. Image Placement Branding (width: 98; height: 60; top: 10px; left: 12px; angle: 0 deg; opacity: 1)
               Positioned(
-                top: 14.0,
+                top: 10.0,
                 left: 12.0,
-                width: 112.0,
-                height: 52.0,
+                width: 98.0,
+                height: 60.0,
                 child: _buildImage(),
               ),
 
-              // 2. Text Branding & Right Vector Chevron (width: 169; height: 28; top: 80px)
+              // 2. Text Branding & Right Vector Chevron (width: 169; top: 80px, bottom: 8px)
               Positioned(
                 top: 80.0,
                 left: 0.0,
                 right: 0.0,
-                height: 28.0,
+                bottom: 8.0,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12.0),
                   child: Row(
@@ -188,32 +188,40 @@ class CategoryCardWidget extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Title: 12px, Inter Medium 500, #172623
+                            // Title: font-family: Inter; font-weight: 500; font-style: Medium; font-size: 12px; leading-trim: CAP_HEIGHT; line-height: 22px; letter-spacing: 0px;
                             Text(
                               title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
+                              textHeightBehavior: const TextHeightBehavior(
+                                applyHeightToFirstAscent: false,
+                                applyHeightToLastDescent: false,
+                              ),
                               style: GoogleFonts.inter(
                                 fontSize: 12.0,
                                 fontWeight: FontWeight.w500,
                                 color: const Color(0xFF172623),
-                                height: 1.1,
+                                height: 22.0 / 12.0,
                                 letterSpacing: 0.0,
                               ),
                             ),
 
                             const SizedBox(height: 2.0),
 
-                            // Subtitle: 10px, Inter Regular 400, #566663
+                            // Subtitle: font-family: Inter; font-weight: 400; font-style: Regular; font-size: 10px; leading-trim: CAP_HEIGHT; line-height: 22px; letter-spacing: 0px; width: 99; height: 7; opacity: 1; angle: 0 deg;
                             Text(
                               subtitle,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
+                              textHeightBehavior: const TextHeightBehavior(
+                                applyHeightToFirstAscent: false,
+                                applyHeightToLastDescent: false,
+                              ),
                               style: GoogleFonts.inter(
                                 fontSize: 10.0,
                                 fontWeight: FontWeight.w400,
                                 color: const Color(0xFF566663),
-                                height: 1.0,
+                                height: 22.0 / 10.0,
                                 letterSpacing: 0.0,
                               ),
                             ),

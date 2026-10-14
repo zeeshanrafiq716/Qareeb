@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'features/emergency/presentation/emergency_services_screen.dart';
 import 'features/home/presentation/home_screen.dart';
+import 'features/profile/presentation/profile_screen.dart';
+import 'features/requests/presentation/requests_screen.dart';
 import 'features/splash/presentation/splash_screen.dart';
 
 void main() {
@@ -62,6 +64,8 @@ class QareebApp extends StatelessWidget {
       routes: {
         '/': (context) => const SplashScreen(),
         '/home': (context) => const HomeScreen(),
+        '/requests': (context) => const RequestsScreen(),
+        '/profile': (context) => const ProfileScreen(),
         '/emergency': (context) => const EmergencyServicesScreen(),
       },
     );

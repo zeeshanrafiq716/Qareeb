@@ -61,4 +61,22 @@ class AppTextStyles {
     fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
   );
+
+  /// Category card title branding: Inter Medium 500, 12px, line-height 22px, letter-spacing 0px
+  static TextStyle categoryCardTitle = GoogleFonts.inter(
+    fontSize: 12.0,
+    fontWeight: FontWeight.w500,
+    color: const Color(0xFF172623),
+    height: 22.0 / 12.0,
+    letterSpacing: 0.0,
+  );
+
+  /// Category card subtitle branding: Inter Regular 400, 10px, line-height 22px, letter-spacing 0px
+  static TextStyle categoryCardSubtitle = GoogleFonts.inter(
+    fontSize: 10.0,
+    fontWeight: FontWeight.w400,
+    color: const Color(0xFF566663),
+    height: 22.0 / 10.0,
+    letterSpacing: 0.0,
+  );
 }

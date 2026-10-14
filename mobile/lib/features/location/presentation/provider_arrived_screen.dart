@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'service_in_progress_screen.dart';
 
 /// Screen displayed automatically when provider reaches the location.
 /// Follows the exact same layout and branding as LiveTrackingScreen,
@@ -30,6 +31,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  Timer? _completeTimer;
 
   @override
   void initState() {
@@ -42,10 +44,30 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
     _pulseAnimation = Tween<double>(begin: 0.95, end: 1.15).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    // Automatically navigate to Service Complete screen after arrived screen
+    _completeTimer = Timer(const Duration(seconds: 4), () {
+      if (!mounted) return;
+      _navigateToCompleteScreen();
+    });
+  }
+
+  void _navigateToCompleteScreen() {
+    _completeTimer?.cancel();
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => ServiceInProgressScreen(
+          serviceCategory: widget.serviceCategory,
+          providerName: widget.providerName,
+          headerHeading: 'Service Complete',
+        ),
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _completeTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -1173,117 +1195,129 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
 
                                         // 4th section: Replaced status card: "Your Provider has arrived!"
                                         // width: 350; minHeight: 64; gap: 12px; border-radius: 12px; padding: 16px; background: #F2F5F4;
-                                        Container(
-                                          width: containerWidth >= 390
-                                              ? 350.0
-                                              : (containerWidth - 40.0).clamp(280.0, 350.0),
-                                          constraints:
-                                              const BoxConstraints(minHeight: 64.0),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16.0,
-                                            vertical: 12.0,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFF2F5F4),
-                                            borderRadius:
-                                                BorderRadius.circular(12.0),
-                                          ),
-                                          child: Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.center,
-                                            children: [
-                                              // left side icon: 32x32 mint circle with dark teal circle & white checkmark
-                                              Container(
-                                                width: 32.0,
-                                                height: 32.0,
-                                                decoration:
-                                                    const BoxDecoration(
-                                                  color: Color(0xFFDDF0E3),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: Center(
-                                                  child: Container(
-                                                    width: 24.0,
-                                                    height: 24.0,
+                                        MouseRegion(
+                                          cursor: SystemMouseCursors.click,
+                                          child: GestureDetector(
+                                            key: const Key(
+                                                'provider_arrived_status_card'),
+                                            onTap: () {
+                                              HapticFeedback.lightImpact();
+                                              _navigateToCompleteScreen();
+                                            },
+                                            behavior: HitTestBehavior.opaque,
+                                            child: Container(
+                                              width: containerWidth >= 390
+                                                  ? 350.0
+                                                  : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                              constraints:
+                                                  const BoxConstraints(minHeight: 64.0),
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 16.0,
+                                                vertical: 12.0,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFF2F5F4),
+                                                borderRadius:
+                                                    BorderRadius.circular(12.0),
+                                              ),
+                                              child: Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.center,
+                                                children: [
+                                                  // left side icon: 32x32 mint circle with dark teal circle & white checkmark
+                                                  Container(
+                                                    width: 32.0,
+                                                    height: 32.0,
                                                     decoration:
                                                         const BoxDecoration(
-                                                      color: Color(0xFF1D8070),
+                                                      color: Color(0xFFDDF0E3),
                                                       shape: BoxShape.circle,
                                                     ),
-                                                    child: const Center(
-                                                      child: Icon(
-                                                        Icons.check_rounded,
-                                                        size: 16.0,
-                                                        color: Colors.white,
+                                                    child: Center(
+                                                      child: Container(
+                                                        width: 24.0,
+                                                        height: 24.0,
+                                                        decoration:
+                                                            const BoxDecoration(
+                                                          color: Color(0xFF1D8070),
+                                                          shape: BoxShape.circle,
+                                                        ),
+                                                        child: const Center(
+                                                          child: Icon(
+                                                            Icons.check_rounded,
+                                                            size: 16.0,
+                                                            color: Colors.white,
+                                                          ),
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12.0),
+                                                  const SizedBox(width: 12.0),
 
-                                              // right side content:
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    // content: Your Provider has arrived!
-                                                    Text(
-                                                      'Your Provider has arrived!',
-                                                      textHeightBehavior:
-                                                          const TextHeightBehavior(
-                                                        applyHeightToFirstAscent:
-                                                            false,
-                                                        applyHeightToLastDescent:
-                                                            false,
-                                                      ),
-                                                      style: GoogleFonts.inter(
-                                                        fontSize: 14.0,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        color: const Color(
-                                                            0xFF1C2926),
-                                                        height: 22.0 / 14.0,
-                                                        letterSpacing: 0.0,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                    const SizedBox(height: 2.0),
+                                                  // right side content:
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment.start,
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment.center,
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        // content: Your Provider has arrived!
+                                                        Text(
+                                                          'Your Provider has arrived!',
+                                                          textHeightBehavior:
+                                                              const TextHeightBehavior(
+                                                            applyHeightToFirstAscent:
+                                                                false,
+                                                            applyHeightToLastDescent:
+                                                                false,
+                                                          ),
+                                                          style: GoogleFonts.inter(
+                                                            fontSize: 14.0,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                            color: const Color(
+                                                                0xFF1C2926),
+                                                            height: 22.0 / 14.0,
+                                                            letterSpacing: 0.0,
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow:
+                                                              TextOverflow.ellipsis,
+                                                        ),
+                                                        const SizedBox(height: 2.0),
 
-                                                    // content: Provider has arrived. Start service now.
-                                                    Text(
-                                                      'Provider has arrived. Start service now.',
-                                                      textHeightBehavior:
-                                                          const TextHeightBehavior(
-                                                        applyHeightToFirstAscent:
-                                                            false,
-                                                        applyHeightToLastDescent:
-                                                            false,
-                                                      ),
-                                                      style: GoogleFonts.inter(
-                                                        fontSize: 12.0,
-                                                        fontWeight:
-                                                            FontWeight.w400,
-                                                        color: const Color(
-                                                            0xFF566663),
-                                                        height: 22.0 / 12.0,
-                                                        letterSpacing: 0.0,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
+                                                        // content: Provider has arrived. Start service now.
+                                                        Text(
+                                                          'Provider has arrived. Start service now.',
+                                                          textHeightBehavior:
+                                                              const TextHeightBehavior(
+                                                            applyHeightToFirstAscent:
+                                                                false,
+                                                            applyHeightToLastDescent:
+                                                                false,
+                                                          ),
+                                                          style: GoogleFonts.inter(
+                                                            fontSize: 12.0,
+                                                            fontWeight:
+                                                                FontWeight.w400,
+                                                            color: const Color(
+                                                                0xFF566663),
+                                                            height: 22.0 / 12.0,
+                                                            letterSpacing: 0.0,
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow:
+                                                              TextOverflow.ellipsis,
+                                                        ),
+                                                      ],
                                                     ),
-                                                  ],
-                                                ),
+                                                  ),
+                                                ],
                                               ),
-                                            ],
+                                            ),
                                           ),
                                         ),
                                       ],

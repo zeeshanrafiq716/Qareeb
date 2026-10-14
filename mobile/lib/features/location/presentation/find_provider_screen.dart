@@ -437,7 +437,9 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                                 _selectedProviderCount,
                                 (index) => Padding(
                                   padding: const EdgeInsets.only(bottom: 12.0),
-                                  child: _buildServiceCard(cardWidth, index),
+                                  child: Center(
+                                    child: _buildServiceCard(cardWidth, index),
+                                  ),
                                 ),
                               ),
 
@@ -881,15 +883,17 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
         ),
         itemCount: _selectedProviderCount,
         separatorBuilder: (context, index) => const SizedBox(height: 12.0), // gap: 12px;
-        itemBuilder: (context, index) => _buildServiceCard(cardWidth, index),
+        itemBuilder: (context, index) => Center(
+          child: _buildServiceCard(cardWidth, index),
+        ),
       ),
     );
   }
 
-  /// Card branding strictly matching user screenshot:
-  /// Left: Car Image (60x40)
-  /// Center: Ahmad Raza (15px w600), Sedan . AC (12px w400), ★ 4.9 (120) [Available]
-  /// Right: Navigation arrow 0.3 km, 2 min away, Circular Call Button (38x38)
+  /// Card branding matching exact Figma specifications:
+  /// width: 350; height: 78; border-radius: 12px; justify-content: space-between;
+  /// angle: 0 deg; opacity: 1; padding: 16px;
+  /// box-shadow: 0px 1px 12px 0px #0000001A; background: #FFFFFF;
   Widget _buildServiceCard(double cardWidth, int index) {
     final baseItem = _nearbyProviders[index % _nearbyProviders.length];
 
@@ -925,6 +929,8 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
         ? 120
         : (75 + ((index * 19) % 80));
 
+    final double effectiveWidth = math.min(350.0, cardWidth);
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -941,229 +947,211 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
         },
         behavior: HitTestBehavior.opaque,
         child: Container(
-          width: cardWidth,
-          height: 78.0,
+          width: effectiveWidth,
           decoration: BoxDecoration(
             color: const Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(12.0),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x1A000000), // #0000001A
+                color: Color(0x1A000000), // 0px 1px 12px 0px #0000001A
                 blurRadius: 12.0,
                 offset: Offset(0, 1),
                 spreadRadius: 0.0,
               ),
             ],
           ),
-          padding: const EdgeInsets.all(16.0), // padding: 16px;
+          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween, // justify-content: space-between;
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Left side layout branding of card: width: 195; height: 46; gap: 12px;
-              SizedBox(
-                width: 195.0,
-                height: 46.0,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // img branding: width: 60; height: 40;
-                    SizedBox(
+              // Left side: Vehicle Image + Details Column
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Vehicle Image (white Corolla / pickup facing towards provider name)
+                  SizedBox(
+                    width: 60.0,
+                    height: 40.0,
+                    child: Image.asset(
+                      imagePath,
                       width: 60.0,
                       height: 40.0,
-                      child: Image.asset(
-                        imagePath,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Container(
                         width: 60.0,
                         height: 40.0,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          width: 60.0,
-                          height: 40.0,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF0F5F2),
-                            borderRadius: BorderRadius.circular(6.0),
-                          ),
-                          child: const Icon(
-                            Icons.directions_car_filled,
-                            size: 22,
-                            color: Color(0xFF1D8070),
-                          ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F5F2),
+                          borderRadius: BorderRadius.circular(6.0),
+                        ),
+                        child: const Icon(
+                          Icons.directions_car_filled,
+                          size: 22,
+                          color: Color(0xFF1D8070),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12.0), // gap: 12px;
+                  ),
+                  const SizedBox(width: 12.0),
 
-                    // content layout: width: 123; height: 46; gap: 12px;
-                    SizedBox(
-                      width: 123.0,
-                      height: 46.0,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // name branding: width: 72; height: 9; gap: 8px;
-                          SizedBox(
-                            width: 123.0,
-                            height: 16.0,
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                providerName,
-                                textHeightBehavior: const TextHeightBehavior(
-                                  applyHeightToFirstAscent: false,
-                                  applyHeightToLastDescent: false,
-                                ),
-                                style: GoogleFonts.inter(
-                                  fontSize: 14.0,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF1C2926),
-                                  height: 1.15,
-                                ),
-                                maxLines: 1,
-                              ),
-                            ),
-                          ),
-
-                          // review and text layout (width: 60; height: 25; gap: 8px) + available badge layout (width: 42; height: 14; gap: 10px; border-radius: 60px; padding: 4px)
-                          SizedBox(
-                            width: 123.0,
-                            height: 25.0,
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                // review and text layout: width: 60; height: 25; gap: 8px; angle: 0 deg; opacity: 1;
-                                SizedBox(
-                                  width: 60.0,
-                                  height: 25.0,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.centerLeft,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: [
-                                        const Icon(
-                                          Icons.star_rounded,
-                                          size: 13.0,
-                                          color: Color(0xFF1D8070),
-                                        ),
-                                        const SizedBox(width: 2.0),
-                                        Text(
-                                          '$rating',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 11.0,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF1C2926),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 2.0),
-                                        Text(
-                                          '($reviews)',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 10.0,
-                                            fontWeight: FontWeight.w400,
-                                            color: const Color(0xFF566663),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8.0), // gap: 8px;
-
-                                // available badge layout: width: 42; height: 14; gap: 10px; angle: 0 deg; opacity: 1; border-radius: 60px; padding: 4px;
-                                Container(
-                                  width: 42.0,
-                                  height: 14.0,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEDF6F3),
-                                    borderRadius: BorderRadius.circular(60.0),
-                                  ),
-                                  alignment: Alignment.center,
-                                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      baseItem.status,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 8.5,
-                                        fontWeight: FontWeight.w500,
-                                        color: const Color(0xFF1D8070),
-                                        height: 1.0,
-                                      ),
-                                      maxLines: 1,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                  // Center Details Column:
+                  // 1. Ahmad Raza
+                  // 2. Sedan . AC
+                  // 3. ★ 4.9 (120)  [Available]
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Provider Name:
+                      Text(
+                        providerName,
+                        textHeightBehavior: const TextHeightBehavior(
+                          applyHeightToFirstAscent: false,
+                          applyHeightToLastDescent: false,
+                        ),
+                        style: GoogleFonts.inter(
+                          fontSize: 15.0,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1C2926),
+                          height: 1.15,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
-                ),
-              ),
+                      const SizedBox(height: 3.0),
 
-              // Right side: distance and time layout + call button layout
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // distance and time layout: width: 54; height: 29; gap: 12px; angle: 0 deg; opacity: 1;
-                  SizedBox(
-                    width: 54.0,
-                    height: 29.0,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerRight,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      // Vehicle Type:
+                      Text(
+                        vehicleType,
+                        textHeightBehavior: const TextHeightBehavior(
+                          applyHeightToFirstAscent: false,
+                          applyHeightToLastDescent: false,
+                        ),
+                        style: GoogleFonts.inter(
+                          fontSize: 12.0,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF566663),
+                          height: 1.15,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 5.0),
+
+                      // Rating ★ 4.9 (120) and Available badge
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Transform.rotate(
-                                angle: -math.pi / 4.0,
-                                child: const Icon(
-                                  Icons.navigation,
-                                  size: 10.0,
-                                  color: Color(0xFF1C2926),
-                                ),
-                              ),
-                              const SizedBox(width: 2.0),
-                              Text(
-                                distanceStr,
-                                style: GoogleFonts.inter(
-                                  fontSize: 12.0,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF1C2926),
-                                  height: 1.15,
-                                ),
-                              ),
-                            ],
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 14.0,
+                            color: Color(0xFF1D8070),
                           ),
-                          const SizedBox(height: 2.0),
+                          const SizedBox(width: 2.0),
                           Text(
-                            etaStr,
+                            '$rating',
                             style: GoogleFonts.inter(
-                              fontSize: 10.0,
+                              fontSize: 12.0,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1C2926),
+                              height: 1.15,
+                            ),
+                          ),
+                          const SizedBox(width: 2.0),
+                          Text(
+                            '($reviews)',
+                            style: GoogleFonts.inter(
+                              fontSize: 11.0,
                               fontWeight: FontWeight.w400,
                               color: const Color(0xFF566663),
                               height: 1.15,
                             ),
                           ),
+                          const SizedBox(width: 8.0),
+
+                          // Available pill badge:
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7.0, vertical: 2.0),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEDF6F3),
+                              borderRadius: BorderRadius.circular(60.0),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              baseItem.status,
+                              textHeightBehavior: const TextHeightBehavior(
+                                applyHeightToFirstAscent: false,
+                                applyHeightToLastDescent: false,
+                              ),
+                              style: GoogleFonts.inter(
+                                fontSize: 9.0,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF1D8070),
+                                height: 1.15,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                    ),
+                    ],
                   ),
+                ],
+              ),
 
-                  const SizedBox(width: 8.0),
+              // Right side: Distance / ETA and Call button
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Distance and ETA:
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Transform.rotate(
+                            angle: -math.pi / 4.0,
+                            child: const Icon(
+                              Icons.navigation,
+                              size: 11.0,
+                              color: Color(0xFF1C2926),
+                            ),
+                          ),
+                          const SizedBox(width: 3.0),
+                          Text(
+                            distanceStr,
+                            style: GoogleFonts.inter(
+                              fontSize: 14.0,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1C2926),
+                              height: 1.15,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2.0),
+                      Text(
+                        etaStr,
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF566663),
+                          height: 1.15,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 12.0),
 
-                  // call button layout: width: 32; height: 32; angle: 0 deg; opacity: 1; border-radius: 60px; border-width: 0.6px; background: #F5F7F7; border: 0.6px solid #F0F2F2
+                  // Circular Call button:
                   GestureDetector(
                     onTap: () {
                       HapticFeedback.lightImpact();
@@ -1181,20 +1169,16 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                     },
                     behavior: HitTestBehavior.opaque,
                     child: Container(
-                      width: 32.0,
-                      height: 32.0,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5F7F7),
-                        borderRadius: BorderRadius.circular(60.0),
-                        border: Border.all(
-                          color: const Color(0xFFF0F2F2),
-                          width: 0.6,
-                        ),
+                      width: 38.0,
+                      height: 38.0,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF4F6F6),
+                        shape: BoxShape.circle,
                       ),
                       child: const Center(
                         child: Icon(
-                          Icons.phone_rounded,
-                          size: 15.0,
+                          Icons.phone,
+                          size: 18.0,
                           color: Color(0xFF1C2926),
                         ),
                       ),

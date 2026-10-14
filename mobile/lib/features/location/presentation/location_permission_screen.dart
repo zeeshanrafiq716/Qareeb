@@ -109,14 +109,12 @@ class LocationPermissionScreen extends StatelessWidget {
                   ),
 
                   // 3. Heading Branding Layout:
-                  // width: 350; height: 36; top: 56px; left: 20px; gap: 16px;
                   Positioned(
                     top: 56.0,
-                    left: containerWidth >= 390 ? 20.0 : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                    width: containerWidth >= 390 ? 350.0 : (containerWidth - 40.0).clamp(280.0, 350.0),
+                    left: 16.0,
+                    right: 16.0,
                     height: 36.0,
                     child: SizedBox(
-                      width: containerWidth >= 390 ? 350.0 : (containerWidth - 40.0).clamp(280.0, 350.0),
                       height: 36.0,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -477,23 +475,19 @@ class LocationPermissionScreen extends StatelessWidget {
                   ),
 
                   // 9. Location Permission Main Content Widget Branding:
-                  // width: 350; gap: 20px / 24px; top: 348px; left: 20px;
-                  // Dynamic height to cleanly accommodate header (51px), features card (180px), and CTA (75px) without overflow
+                  // 9. Location Permission Main Content Widget Branding:
+                  // 16px padding from left/right screen edges
                   Positioned(
                     top: 348.0,
-                    left: containerWidth >= 390
-                        ? 20.0
-                        : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                    width: containerWidth >= 390
-                        ? 350.0
-                        : (containerWidth - 40.0).clamp(300.0, 350.0),
+                    left: 16.0,
+                    right: 16.0,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                          // content layout branding: width: 350; height: 51; gap: 12px;
+                          // content layout branding: gap: 12px;
                           SizedBox(
-                            width: 350.0,
+                            width: double.infinity,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
@@ -516,7 +510,6 @@ class LocationPermissionScreen extends StatelessWidget {
                                 const SizedBox(height: 12.0),
 
                                 // content: Wee need your location to show nearby providers for Pickup & Delivery.
-                                // width: 350; height: 24; font-family: Inter; font-weight: 400; font-size: 12px; line-height: 100%; color: #566663;
                                 Text(
                                   'Wee need your location to show nearby\nproviders for $serviceName.',
                                   textAlign: TextAlign.center,
@@ -524,7 +517,7 @@ class LocationPermissionScreen extends StatelessWidget {
                                     fontSize: 12.0,
                                     fontWeight: FontWeight.w400,
                                     color: const Color(0xFF566663),
-                                    height: 1.0,
+                                    height: 1.35,
                                     letterSpacing: 0.0,
                                   ),
                                 ),
@@ -536,10 +529,9 @@ class LocationPermissionScreen extends StatelessWidget {
                           const SizedBox(height: 20.0),
 
                           // 10. Next Widget Branding (Feature details card):
-                          // width: 350; height: 279; gap: 20px;
-                          // White card containing the 3 feature items shown in design
+                          // White card with 16px padding from left/right of screen
                           Container(
-                            width: 350.0,
+                            width: double.infinity,
                             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFFFFFF),
@@ -598,16 +590,8 @@ class LocationPermissionScreen extends StatelessWidget {
                           const SizedBox(height: 20.0),
 
                           // 11. CTA Component Branding:
-                          // width: 350; gap: 16px;
-                          // button layout branding: width: 350; height: 52; border-radius: 12px; background: #1D8070;
-                          // button content branding: width: 221; height: 16; top: 18px; left: 113px; justify-content: space-between;
-                          // content inner layout: width: 124; height: 16; gap: 10px;
-                          // content: Allow Location (width: 98; height: 10; Inter Medium 14px; line-height: 22px; color: #FFFFFF)
-                          // icon branding: width: 16; height: 16; background: #FFFFFF;
-                          // vector > branding: width: 6; height: 12; angle: -180 deg; border: 0.8px solid #FFFFFF
-                          // after button branding: content: You can change this later in Settings (Inter Regular 10px #566663, span Settings: Inter Medium 10px #1D8070 underline)
                           SizedBox(
-                            width: 350.0,
+                            width: double.infinity,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -625,7 +609,7 @@ class LocationPermissionScreen extends StatelessWidget {
                                   },
                                   behavior: HitTestBehavior.opaque,
                                   child: Container(
-                                    width: 350.0,
+                                    width: double.infinity,
                                     height: 52.0,
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF1D8070),
@@ -639,15 +623,10 @@ class LocationPermissionScreen extends StatelessWidget {
                                       ],
                                     ),
                                     child: Padding(
-                                      padding: EdgeInsets.only(
-                                        left: (containerWidth >= 390 ? 113.0 : ((containerWidth - 40.0 - 124.0) / 2).clamp(16.0, 113.0)),
-                                        right: 16.0,
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                      child: Stack(
+                                        alignment: Alignment.center,
                                         children: [
-                                          // content inner layout: width: 124; height: 16; gap: 10px;
                                           Row(
                                             mainAxisSize: MainAxisSize.min,
                                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -677,9 +656,12 @@ class LocationPermissionScreen extends StatelessWidget {
                                           ),
 
                                           // vector > branding: width: 6; height: 12; angle: -180 deg; border: 0.8px solid #FFFFFF
-                                          const CustomPaint(
-                                            size: Size(6.0, 12.0),
-                                            painter: _RightChevronPainter(color: Colors.white),
+                                          const Align(
+                                            alignment: Alignment.centerRight,
+                                            child: CustomPaint(
+                                              size: Size(6.0, 12.0),
+                                              painter: _RightChevronPainter(color: Colors.white),
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -789,79 +771,69 @@ class LocationPermissionScreen extends StatelessWidget {
     required String title,
     required String subtitle,
   }) {
-    return SizedBox(
-      width: 318.0,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // left icon branding: width: 36; height: 36; border-radius: 8px; background: #F0F5F2;
-          Container(
-            width: 36.0,
-            height: 36.0,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0F5F2),
-              borderRadius: BorderRadius.circular(8.0),
-            ),
-            child: Center(
-              child: SizedBox(
-                width: 20.0,
-                height: 20.0,
-                child: icon,
-              ),
-            ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // left icon branding: width: 36; height: 36; border-radius: 8px; background: #F0F5F2;
+        Container(
+          width: 36.0,
+          height: 36.0,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0F5F2),
+            borderRadius: BorderRadius.circular(8.0),
           ),
-
-          // gap: 12px;
-          const SizedBox(width: 12.0),
-
-          // content layout branding: width: 270;
-          Expanded(
+          child: Center(
             child: SizedBox(
-              width: 270.0,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // inner content branding: title (Inter Medium 500, 12px, line-height: 22px, color: #1C2926)
-                  Text(
-                    title,
-                    style: GoogleFonts.inter(
-                      fontSize: 12.0,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF1C2926),
-                      height: 1.2,
-                      letterSpacing: 0.0,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  const SizedBox(height: 3.0),
-
-                  // inner content branding: subtitle
-                  // width: 270; height: 19; font-family: Inter; font-weight: 400; font-size: 10px; line-height: 100%; color: #566663
-                  SizedBox(
-                    width: 270.0,
-                    child: Text(
-                      subtitle,
-                      style: GoogleFonts.inter(
-                        fontSize: 10.0,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF566663),
-                        height: 1.0, // line-height: 100%
-                        letterSpacing: 0.0,
-                      ),
-                      maxLines: 2,
-                      softWrap: true,
-                    ),
-                  ),
-                ],
-              ),
+              width: 20.0,
+              height: 20.0,
+              child: icon,
             ),
           ),
-        ],
-      ),
+        ),
+
+        // gap: 12px;
+        const SizedBox(width: 12.0),
+
+        // content layout branding
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // inner content branding: title (Inter Medium 500, 12px, line-height: 22px, color: #1C2926)
+              Text(
+                title,
+                style: GoogleFonts.inter(
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF1C2926),
+                  height: 1.2,
+                  letterSpacing: 0.0,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+
+              const SizedBox(height: 4.0),
+
+              // inner content branding: subtitle with comfortable line height between wrapped lines
+              Text(
+                subtitle,
+                style: GoogleFonts.inter(
+                  fontSize: 10.0,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF566663),
+                  height: 1.5, // 15px line-height for clean breathing room between lines
+                  letterSpacing: 0.0,
+                ),
+                maxLines: 2,
+                softWrap: true,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -5,35 +5,77 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../emergency/presentation/emergency_services_screen.dart';
 import '../../location/presentation/location_permission_screen.dart';
+import '../../profile/presentation/profile_screen.dart';
+import '../../requests/presentation/requests_screen.dart';
 import 'widgets/home_header_widget.dart';
 import 'widgets/services_section_widget.dart';
 import 'widgets/bottom_nav_bar_widget.dart';
 
 /// Home screen hosting the branding header layout and main services section.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int initialTabIndex;
+
+  const HomeScreen({
+    super.key,
+    this.initialTabIndex = 0,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late final ScrollController _scrollController;
+  int _currentTabIndex = 0;
+  ScrollController? _scrollControllerInstance;
+  ScrollController get _scrollController =>
+      _scrollControllerInstance ??= ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
+    _currentTabIndex = widget.initialTabIndex;
+    _scrollControllerInstance ??= ScrollController();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTabIndex != widget.initialTabIndex) {
+      _currentTabIndex = widget.initialTabIndex;
+    }
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _scrollControllerInstance?.dispose();
     super.dispose();
+  }
+
+  void _onTabSelected(int index) {
+    if (_currentTabIndex == index) return;
+    setState(() {
+      _currentTabIndex = index;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    return IndexedStack(
+      index: _currentTabIndex,
+      children: [
+        _buildHomeTab(context),
+        RequestsScreen(
+          onTabSelected: _onTabSelected,
+        ),
+        ProfileScreen(
+          onBackTap: () => _onTabSelected(0),
+          onTabSelected: _onTabSelected,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHomeTab(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -135,7 +177,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     left: (containerWidth - 292.0) / 2,
                     width: 292.0,
                     bottom: isDesktopWeb ? 16.0 : (MediaQuery.of(context).padding.bottom + 12.0),
-                    child: const BottomNavBarWidget(),
+                    child: BottomNavBarWidget(
+                      initialIndex: 0,
+                      onTabSelected: _onTabSelected,
+                    ),
                   ),
                 ],
               ),
