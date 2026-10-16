@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Provider Splash Screen - With car1.png</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #121816;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #e0e0e0;
+    }
+    .header-info {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .header-info h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #9FFFCB;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+    .header-info p {
+      font-size: 13px;
+      color: #8b9c97;
+    }
+
+    /* Screen layout: width: 390; height: 844; angle: 0 deg; opacity: 1; */
+    .screen-container {
+      width: 390px;
+      height: 844px;
+      transform: rotate(0deg);
+      opacity: 1;
+      border-radius: 44px;
+      border: 2px solid rgba(102, 255, 172, 0.2);
+      box-shadow: 0 30px 70px rgba(0, 0, 0, 0.85), 0 0 30px rgba(102, 255, 172, 0.12);
+      position: relative;
+      overflow: hidden;
+      background-color: #1F2927;
+    }
+
+    /* Car background image (assets/images/car1.png) */
+    .car-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      z-index: 1;
+    }
+
+    /* Dual Gradient Overlay matching exact branding */
+    .gradient-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+      background:
+        linear-gradient(180deg, rgba(102, 255, 172, 0.8) -33.53%, rgba(102, 255, 172, 0.460552) 4.23%, rgba(102, 255, 172, 0.25553) 27.03%, rgba(102, 255, 172, 0) 62.38%),
+        linear-gradient(180deg, rgba(31, 41, 39, 0) 50%, rgba(31, 41, 39, 0.398199) 57.27%, rgba(31, 41, 39, 0.817605) 71.17%, rgba(31, 41, 39, 0.92) 82.55%, #1F2927 100%);
+    }
+
+    /* text layout: width: 226; height: 64; top: 150px; left: 82px; angle: 0 deg; opacity: 1; gap: 12px; */
+    .branding-header {
+      position: absolute;
+      top: 150px;
+      left: 82px;
+      width: 226px;
+      transform: rotate(0deg);
+      opacity: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      z-index: 3;
+    }
+
+    /* 1st row layout: width: 210; height: 40; angle: 0 deg; opacity: 1; gap: 10px; */
+    .first-row {
+      width: 210px;
+      height: 40px;
+      transform: rotate(0deg);
+      opacity: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* left side img layout: width: 40; height: 40; angle: 0 deg; opacity: 1; */
+    .q-icon {
+      width: 40px;
+      height: 40px;
+      transform: rotate(0deg);
+      opacity: 1;
+      object-fit: contain;
+    }
+
+    /* content: QAREEB (width: 160, height: 29) + ellipse (12x12, #9FFFCB) */
+    .qareeb-brand {
+      width: 160px;
+      height: 40px;
+      transform: rotate(0deg);
+      opacity: 1;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .qareeb-text {
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 40px;
+      line-height: 100%;
+      letter-spacing: 0%;
+      color: #FFFFFF;
+      height: 29px;
+      display: flex;
+      align-items: center;
+    }
+
+    /* ellipse layout: width: 12; height: 12; angle: 0 deg; opacity: 1; background: #9FFFCB; */
+    .mint-ellipse {
+      width: 12px;
+      height: 12px;
+      transform: rotate(0deg);
+      opacity: 1;
+      background: #9FFFCB;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* content: Service always near you */
+    .slogan-text {
+      width: 226px;
+      transform: rotate(0deg);
+      opacity: 1;
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 100%;
+      letter-spacing: 0%;
+      text-align: center;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* bottom text layout: width: 350; height: 122; top: 570px; left: 20px; angle: 0 deg; opacity: 1; gap: 20px; */
+    .bottom-text-layout {
+      position: absolute;
+      top: 570px;
+      left: 20px;
+      width: 350px;
+      transform: rotate(0deg);
+      opacity: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      z-index: 3;
+    }
+
+    /* content: Ready to respond\nBuilt to deliver (width: 350, height: 70) */
+    .headline {
+      width: 350px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 36px;
+      line-height: 35px;
+      letter-spacing: 0%;
+      color: #FFFFFF;
+      white-space: pre-line;
+    }
+
+    /* content: Manage service requests reach customers \nand stay connected in real time. (width: 350, height: 32) */
+    .subtext {
+      width: 350px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 20px;
+      letter-spacing: 0%;
+      color: #FFFFFF;
+      white-space: pre-line;
+    }
+
+    /* indicator bar: width: 350; height: 27; top: 753px; left: 20px; angle: 0 deg; opacity: 1; gap: 12px; */
+    .indicator-container {
+      position: absolute;
+      top: 753px;
+      left: 20px;
+      width: 350px;
+      transform: rotate(0deg);
+      opacity: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      z-index: 3;
+    }
+
+    /* indicator bar layout: width: 160; height: 6; border-radius: 100px; */
+    .indicator-track {
+      width: 160px;
+      height: 6px;
+      border-radius: 100px;
+      background: #2C3C37;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* inner branding: width: 76; height: 6; border-radius: 100px; background: #9FFFCB; */
+    .indicator-pill {
+      width: 76px;
+      height: 6px;
+      border-radius: 100px;
+      background: #9FFFCB;
+      box-shadow: 0 0 6px rgba(102, 255, 172, 0.4);
+      position: absolute;
+      left: 0;
+      top: 0;
+      animation: slidePill 1.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes slidePill {
+      0% { left: 0px; }
+      100% { left: 84px; }
+    }
+
+    /* content: Getting things ready... (width: 350, height: 9, 12px, #E0E0E0) */
+    .status-text {
+      width: 350px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 12px;
+      line-height: 100%;
+      letter-spacing: 0%;
+      text-align: center;
+      color: #E0E0E0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header-info">
+    <h1>PROVIDER SPLASH SCREEN — WITH CAR1.PNG</h1>
+    <p>Layout: 390 &times; 844 &bull; car1.png &bull; Dual Gradient Overlay &bull; All Branding Elements</p>
+  </div>
+  <div class="screen-container">
+    <!-- 1. Car background image -->
+    <img src="assets/images/car1.png" class="car-bg" alt="Car Background" />
+
+    <!-- 2. Dual Gradient Overlay -->
+    <div class="gradient-overlay"></div>
+
+    <!-- 3. Header Branding -->
+    <div class="branding-header">
+      <div class="first-row">
+        <img src="assets/images/q.png" class="q-icon" alt="Qareeb Q Logo" />
+        <div class="qareeb-brand">
+          <span class="qareeb-text">QAREEB</span>
+          <span class="mint-ellipse"></span>
+        </div>
+      </div>
+      <div class="slogan-text">Service always near you</div>
+    </div>
+
+    <!-- 4. Bottom Text Layout (top: 570px, left: 20px) -->
+    <div class="bottom-text-layout">
+      <div class="headline">Ready to respond
+Built to deliver</div>
+      <div class="subtext">Manage service requests reach customers 
+and stay connected in real time.</div>
+    </div>
+
+    <!-- 5. Indicator Bar (top: 753px, left: 20px) -->
+    <div class="indicator-container">
+      <div class="indicator-track">
+        <div class="indicator-pill"></div>
+      </div>
+      <div class="status-text">Getting things ready...</div>
+    </div>
+  </div>
+</body>
+</html>
