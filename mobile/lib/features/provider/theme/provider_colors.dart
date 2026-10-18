@@ -30,4 +30,38 @@ class ProviderColors {
   // Phone Verification Screen Backdrop Tint
   // background: #1F292829;
   static const Color backdropTint = Color(0x291F2928);
+
+  // Phone Verification Card
+  // background: #FFFFFF;
+  static const Color cardBackground = Color(0xFFFFFFFF);
+  // box-shadow: 0px -2px 12px 0px #00000014;
+  static const Color cardShadow = Color(0x14000000);
+  // bar layout background: #EFF0ED;
+  static const Color cardHandleBar = Color(0xFFEFF0ED);
+
+  // Phone Verification Card Typography
+  // background: #1C2926;
+  static const Color cardTitle = Color(0xFF1C2926);
+  // background: #566663;
+  static const Color cardSubtitle = Color(0xFF566663);
+
+  // Phone Number Widget Layout & Buttons
+  // background: #F2F5F4;
+  static const Color inputBackground = Color(0xFFF2F5F4);
+  // background: #1D8070;
+  static const Color primaryButton = Color(0xFF1D8070);
+  // border: 1px solid #566663 / placeholder
+  static const Color dropdownBorder = Color(0xFF566663);
+  static const Color inputPlaceholder = Color(0xFF566663);
+  // KSA Flag Green
+  static const Color saudiGreen = Color(0xFF006C35);
+
+  // Or Divider & WhatsApp Branding
+  // background: #DEE0DF;
+  static const Color dividerLine = Color(0xFFDEE0DF);
+  // background: #25D366;
+  static const Color whatsappGreen = Color(0xFF25D366);
 }
+
+
+

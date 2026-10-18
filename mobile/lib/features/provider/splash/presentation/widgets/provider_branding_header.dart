@@ -52,6 +52,7 @@ class ProviderBrandingHeader extends StatelessWidget {
                   width: 40.0,
                   height: 40.0,
                   fit: BoxFit.contain,
+                  gaplessPlayback: true,
                 ),
                 const SizedBox(width: 10.0), // gap: 10px
                 // QAREEB + Ellipse Dot
