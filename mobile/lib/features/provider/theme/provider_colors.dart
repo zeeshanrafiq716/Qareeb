@@ -8,6 +8,13 @@ class ProviderColors {
   // Canvas & Background
   static const Color background = Color(0xFF1F2927);
 
+  // Provider Renewed Brand Colors
+  static const Color providerPrimary = Color(0xFF8B53FE); // indicator loader: #8B53FE
+  static const Color splashOverlay = Color(0x1AFFFFFF);   // background: #FFFFFF1A
+  static const double splashBlur = 200.5124053955078;     // backdrop-filter: blur(200.5124053955078px)
+  static const Color splashBackground = Color(0xFFFFFFFF); // clean white canvas
+  static const Color splashGlow = Color(0xFFDECFFC);      // top soft purple glow
+
   // Mint Accent Colors
   static const Color mintAccent = Color(0xFF9FFFCB);
   static const Color mintGlow = Color(0xFF66FFAC);
@@ -48,8 +55,8 @@ class ProviderColors {
   // Phone Number Widget Layout & Buttons
   // background: #F2F5F4;
   static const Color inputBackground = Color(0xFFF2F5F4);
-  // background: #1D8070;
-  static const Color primaryButton = Color(0xFF1D8070);
+  // background: #8B53FE;
+  static const Color primaryButton = Color(0xFF8B53FE);
   // border: 1px solid #566663 / placeholder
   static const Color dropdownBorder = Color(0xFF566663);
   static const Color inputPlaceholder = Color(0xFF566663);

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile/features/provider/home/presentation/provider_home_screen.dart';
+import 'package:mobile/features/provider/theme/provider_colors.dart';
 
 /// Provider Got It Button Widget
 /// Implements exact Figma branding specifications following previous buttons:
@@ -8,7 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 ///   width: 350 (or double.infinity);
 ///   height: 52;
 ///   border-radius: 12px;
-///   background: #1D8070;
+///   background: #8B53FE;
 ///
 /// content: Got it
 ///   font-family: Inter;
@@ -37,7 +39,7 @@ class ProviderGotItButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onTap ?? () => _defaultOnTap(context),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1D8070),
+          backgroundColor: ProviderColors.primaryButton,
           foregroundColor: Colors.white,
           elevation: 0,
           shadowColor: Colors.transparent,
@@ -60,7 +62,18 @@ class ProviderGotItButton extends StatelessWidget {
   }
 
   void _defaultOnTap(BuildContext context) {
-    // Navigate back to root or home screen
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => const ProviderHomeScreen(),
+        transitionsBuilder: (_, animation, _, child) => FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOutCubic,
+          ),
+          child: child,
+        ),
+        transitionDuration: const Duration(milliseconds: 350),
+      ),
+    );
   }
 }

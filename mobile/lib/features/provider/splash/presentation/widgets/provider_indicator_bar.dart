@@ -66,77 +66,79 @@ class _ProviderIndicatorBarState extends State<ProviderIndicatorBar>
 
   @override
   Widget build(BuildContext context) {
-    const double trackWidth = 160.0;
-    const double trackHeight = 6.0;
-    const double pillWidth = 76.0;
-    const double maxSlide = trackWidth - pillWidth; // 84.0 px slide range
+    const double trackWidth = 140.0;
+    const double trackHeight = 5.0;
+    const double pillWidth = 60.0;
+    const double maxSlide = trackWidth - pillWidth; // 80.0 px slide range
 
-    return SizedBox(
-      width: 350.0,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Indicator bar layout: 160 x 6, border-radius: 100px
-          Container(
-            width: trackWidth,
-            height: trackHeight,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2C3C37),
-              borderRadius: BorderRadius.circular(100.0),
-            ),
-            child: widget.animate
-                ? AnimatedBuilder(
-                    animation: _animation,
-                    builder: (context, _) {
-                      return Stack(
-                        children: [
-                          Positioned(
-                            left: _animation.value * maxSlide,
-                            top: 0.0,
-                            child: Container(
-                              width: pillWidth,
-                              height: trackHeight,
-                              decoration: BoxDecoration(
-                                color: ProviderColors.mintAccent, // #9FFFCB
-                                borderRadius: BorderRadius.circular(100.0),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: ProviderColors.mintGlow.withValues(alpha: 0.40),
-                                    blurRadius: 4.0,
-                                  ),
-                                ],
-                              ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Indicator bar track: 140 x 5, border-radius: 100px
+        Container(
+          width: trackWidth,
+          height: trackHeight,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE5E7EB), // clean light grey track
+            borderRadius: BorderRadius.circular(100.0),
+          ),
+          child: widget.animate
+              ? AnimatedBuilder(
+                  animation: _animation,
+                  builder: (context, _) {
+                    return Stack(
+                      children: [
+                        Positioned(
+                          left: _animation.value * maxSlide,
+                          top: 0.0,
+                          child: Container(
+                            width: pillWidth,
+                            height: trackHeight,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8B53FE), // background: #8B53FE
+                              borderRadius: BorderRadius.circular(100.0),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF8B53FE).withValues(alpha: 0.35),
+                                  blurRadius: 6.0,
+                                  spreadRadius: 0.5,
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      );
-                    },
-                  )
-                : Align(
-                    alignment: Alignment.center,
-                    child: Container(
-                      width: pillWidth,
-                      height: trackHeight,
-                      decoration: BoxDecoration(
-                        color: ProviderColors.mintAccent, // #9FFFCB
-                        borderRadius: BorderRadius.circular(100.0),
-                      ),
+                        ),
+                      ],
+                    );
+                  },
+                )
+              : Align(
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: pillWidth,
+                    height: trackHeight,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B53FE), // background: #8B53FE
+                      borderRadius: BorderRadius.circular(100.0),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF8B53FE).withValues(alpha: 0.35),
+                          blurRadius: 6.0,
+                          spreadRadius: 0.5,
+                        ),
+                      ],
                     ),
                   ),
-          ),
-          const SizedBox(height: 12.0), // gap: 12px
-          // Status text: Getting things ready... (12px, #E0E0E0)
-          SizedBox(
-            width: 350.0,
-            child: Text(
-              'Getting things ready...',
-              textAlign: TextAlign.center,
-              style: ProviderTextStyles.indicatorStatus,
-            ),
-          ),
-        ],
-      ),
+                ),
+        ),
+        const SizedBox(height: 10.0), // gap: 10px
+        // Status text: Getting things ready...
+        Text(
+          'Getting things ready...',
+          textAlign: TextAlign.center,
+          style: ProviderTextStyles.indicatorStatus,
+        ),
+      ],
     );
   }
 }

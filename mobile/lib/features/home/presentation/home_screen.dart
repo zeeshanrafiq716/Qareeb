@@ -178,7 +178,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 292.0,
                     bottom: isDesktopWeb ? 16.0 : (MediaQuery.of(context).padding.bottom + 12.0),
                     child: BottomNavBarWidget(
-                      initialIndex: 0,
+                      currentIndex: _currentTabIndex,
+                      initialIndex: _currentTabIndex,
                       onTabSelected: _onTabSelected,
                     ),
                   ),

@@ -84,6 +84,11 @@ class _ServiceInProgressScreenState
                 ? math.min(844.0, (screenHeight - 32.0).clamp(520.0, 844.0))
                 : screenHeight;
 
+            final double cardWidth = containerWidth >= 390
+                ? 350.0
+                : (containerWidth - 32.0).clamp(280.0, 350.0);
+            final double horizontalPadding = math.max(16.0, (containerWidth - cardWidth) / 2.0);
+
             final Widget screenContent = ScrollConfiguration(
               behavior: const MaterialScrollBehavior().copyWith(
                 scrollbars: false,
@@ -98,31 +103,21 @@ class _ServiceInProgressScreenState
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),
-                child: SizedBox(
-                  width: containerWidth,
-                  height: math.max(containerHeight, 860.0),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                  // 1. Header with given branding:
-                  // width: 350; height: 36; top: 56px; left: 20px; gap: 16px; angle: 0 deg; opacity: 1;
-                  // follow previous screens header , header heading will be service complete
-                  Positioned(
-                    top: 56.0,
-                    left: containerWidth >= 390
-                        ? 20.0
-                        : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                    width: containerWidth >= 390
-                        ? 350.0
-                        : (containerWidth - 40.0).clamp(280.0, 350.0),
-                    height: 36.0,
-                    child: Opacity(
-                      opacity: 1.0,
-                      child: SizedBox(
-                        width: containerWidth >= 390
-                            ? 350.0
-                            : (containerWidth - 40.0).clamp(280.0, 350.0),
-                        height: 36.0,
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                child: Center(
+                  child: SizedBox(
+                    width: cardWidth,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 56.0), // top padding to header
+
+                        // 1. Header with given branding:
+                        // width: 350; height: 36; top: 56px; left: 20px; gap: 16px; angle: 0 deg; opacity: 1;
+                        // follow previous screens header , header heading will be service complete
+                        SizedBox(
+                          width: cardWidth,
+                          height: 36.0,
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
@@ -190,27 +185,9 @@ class _ServiceInProgressScreenState
                           ],
                         ),
                       ),
-                    ),
-                  ),
+                      const SizedBox(height: 24.0), // gap: 24px
 
-                  // 2. Next layout branding:
-                  // width: 350; minHeight: 160; top: 116px; left: 20px; gap: 20px; angle: 0 deg; opacity: 1;
-                  Positioned(
-                    top: 116.0,
-                    left: containerWidth >= 390
-                        ? 20.0
-                        : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                    width: containerWidth >= 390
-                        ? 350.0
-                        : (containerWidth - 40.0).clamp(280.0, 350.0),
-                    child: SizedBox(
-                      width: containerWidth >= 390
-                          ? 350.0
-                          : (containerWidth - 40.0).clamp(280.0, 350.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
+                        // 2. Success illustration and text
                           // img layout branding:
                           // width: 174; height: 80; angle: 0 deg; opacity: 1;
                           // tick branding:
@@ -245,9 +222,7 @@ class _ServiceInProgressScreenState
                           // text layout:
                           // width: 350; gap: 12px; angle: 0 deg; opacity: 1;
                           SizedBox(
-                            width: containerWidth >= 390
-                                ? 350.0
-                                : (containerWidth - 40.0).clamp(280.0, 350.0),
+                            width: cardWidth,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.center,
@@ -294,35 +269,11 @@ class _ServiceInProgressScreenState
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // 3. Next widget layout:
-                  // width: 350; minHeight: 411; top: 296px; left: 20px; gap: 12px; angle: 0 deg; opacity: 1;
-                  Positioned(
-                    top: 296.0,
-                    left: containerWidth >= 390
-                        ? 20.0
-                        : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                    width: containerWidth >= 390
-                        ? 350.0
-                        : (containerWidth - 40.0).clamp(280.0, 350.0),
-                    child: SizedBox(
-                      width: containerWidth >= 390
-                          ? 350.0
-                          : (containerWidth - 40.0).clamp(280.0, 350.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                          const SizedBox(height: 26.0), // gap to cards
                           // 1st Card: Provider Profile Card
                           // width: 350; height: 84; gap: 16px; border-radius: 12px; padding: 16px; background: #F2F5F4;
                           Container(
-                            width: containerWidth >= 390
-                                ? 350.0
-                                : (containerWidth - 40.0).clamp(280.0, 350.0),
+                            width: cardWidth,
                             constraints: const BoxConstraints(minHeight: 84.0),
                             padding: const EdgeInsets.all(16.0),
                             decoration: BoxDecoration(
@@ -481,9 +432,7 @@ class _ServiceInProgressScreenState
                           // width: 350; height: 72; gap: 12px; angle: 0 deg; opacity: 1;
                           // border-radius: 12px; padding: 16px; background: #F2F5F4;
                           Container(
-                            width: containerWidth >= 390
-                                ? 350.0
-                                : (containerWidth - 40.0).clamp(280.0, 350.0),
+                            width: cardWidth,
                             height: 72.0,
                             padding: const EdgeInsets.all(16.0),
                             decoration: BoxDecoration(
@@ -575,9 +524,7 @@ class _ServiceInProgressScreenState
                           // width: 350; height: 64; gap: 12px; angle: 0 deg; opacity: 1;
                           // border-radius: 12px; padding: 16px; background: #F2F5F4;
                           Container(
-                            width: containerWidth >= 390
-                                ? 350.0
-                                : (containerWidth - 40.0).clamp(280.0, 350.0),
+                            width: cardWidth,
                             constraints: const BoxConstraints(minHeight: 64.0),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16.0,
@@ -664,9 +611,7 @@ class _ServiceInProgressScreenState
                           // width: 350; height: 64; gap: 12px; angle: 0 deg; opacity: 1;
                           // border-radius: 12px; padding: 16px; background: #EBFFF4;
                           Container(
-                            width: containerWidth >= 390
-                                ? 350.0
-                                : (containerWidth - 40.0).clamp(280.0, 350.0),
+                            width: cardWidth,
                             constraints: const BoxConstraints(minHeight: 64.0),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16.0,
@@ -755,9 +700,7 @@ class _ServiceInProgressScreenState
                           // width: 350; height: 79; gap: 10px; angle: 0 deg; opacity: 1;
                           // border-radius: 12px; padding: 16px; background: #F2F5F4;
                           Container(
-                            width: containerWidth >= 390
-                                ? 350.0
-                                : (containerWidth - 40.0).clamp(280.0, 350.0),
+                            width: cardWidth,
                             constraints: const BoxConstraints(minHeight: 79.0),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16.0,
@@ -871,9 +814,7 @@ class _ServiceInProgressScreenState
                               },
                               behavior: HitTestBehavior.opaque,
                               child: Container(
-                                width: containerWidth >= 390
-                                    ? 350.0
-                                    : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                width: cardWidth,
                                 height: 52.0,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF1D8070),
@@ -936,9 +877,7 @@ class _ServiceInProgressScreenState
                               },
                               behavior: HitTestBehavior.opaque,
                               child: SizedBox(
-                                width: containerWidth >= 390
-                                    ? 350.0
-                                    : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                width: cardWidth,
                                 height: 26.0,
                                 child: Center(
                                   child: Text(
@@ -965,9 +904,7 @@ class _ServiceInProgressScreenState
 
                           // 8. Bottom Indicator Bar: width: 134; height: 4; border-radius: 100px; background: #1C2926;
                           SizedBox(
-                            width: containerWidth >= 390
-                                ? 350.0
-                                : (containerWidth - 40.0).clamp(280.0, 350.0),
+                            width: cardWidth,
                             height: 24.0,
                             child: Center(
                               child: Container(
@@ -982,16 +919,13 @@ class _ServiceInProgressScreenState
                             ),
                           ),
 
-                          const SizedBox(height: 16.0), // bottom safe padding
-                        ],
-                      ),
+                          const SizedBox(height: 24.0), // bottom safe padding
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-        );
+            );
 
             if (isDesktopWeb) {
               return Container(

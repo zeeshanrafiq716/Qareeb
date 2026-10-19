@@ -45,36 +45,25 @@ class ProviderSplashContentLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double actualWidth = width ?? designWidth;
-    final double actualHeight = height ?? designHeight;
-    final double horizontalLeft = ((actualWidth - 350.0) / 2).clamp(12.0, 20.0);
+    final double horizontalPadding = ((actualWidth - 330.0) / 2).clamp(24.0, 32.0);
 
-    return Opacity(
-      opacity: 1.0, // opacity: 1
-      child: Transform.rotate(
-        angle: 0.0, // angle: 0 deg
-        child: SizedBox(
-          width: actualWidth,
-          height: actualHeight,
-          child: Stack(
-            children: [
-              // Inner content layout branding:
-              // width: 350; height: 122; left: 20px; angle: 0 deg; opacity: 1; gap: 20px;
-              Positioned(
-                top: 0.0,
-                left: horizontalLeft,
-                child: const ProviderBottomContent(),
-              ),
-
-              // Indicator bar:
-              // width: 350; height: 27; left: 20px;
-              // On design frame (273h): 273 - 64 - 27 = 182px from top (753px in screen canvas)
-              Positioned(
-                bottom: bottomPadding ?? 64.0,
-                left: horizontalLeft,
-                child: const ProviderIndicatorBar(),
-              ),
-            ],
-          ),
+    return SizedBox(
+      width: actualWidth,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Inner content: Ready to respond / Built to deliver
+            const ProviderBottomContent(),
+            const SizedBox(height: 36.0),
+            // Centered Indicator bar: track #E5E7EB, pill #8B53FE
+            const Center(
+              child: ProviderIndicatorBar(),
+            ),
+            SizedBox(height: bottomPadding ?? 32.0),
+          ],
         ),
       ),
     );

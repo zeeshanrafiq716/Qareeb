@@ -1,25 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Floating Bottom Navigation Bar strictly following Figma screenshot:
+/// Floating Bottom Navigation Bar strictly following Figma branding:
 /// - Outer Container:
 ///   - width: 292; height: 65; border-radius: 60px;
-///   - padding: 4px; background: #1C2926;
-/// - Tabs:
-///   1. Home:
-///      - Active: 96x57 pill, background #2A3D39, border #2B4742, icon & label #9FFFCB
-///      - Custom stylized solid pentagon home icon with lower slit cutout
-///   2. Request:
-///      - Inactive: white outline diamond with right-curved arrow inside, label "Request" #FFFFFF
-///   3. Profile:
-///      - Inactive: white outline user silhouette icon, label "Profile" #FFFFFF
+///   - padding-top: 4px; padding-bottom: 4px; padding-left: 4px;
+///   - background: #1C2926;
+/// - Home tab layout (Active):
+///   - width: 96; height: 57; border-radius: 60px;
+///   - padding-top: 8px; padding-right: 20px; padding-bottom: 8px; padding-left: 20px;
+///   - gap: 8px; border-width: 0.6px; border: 0.6px solid #2B4742;
+///   - background: #2A3D39;
+///   - vector: width: 24; height: 24; color: #9FFFCB;
+///   - content: Home; font-size: 12px; font-weight: 400; line-height: 100%; color: #9FFFCB;
+/// - Inactive tabs (Request, Profile):
+///   - width: 96; height: 57; transparent background;
+///   - vector: 24x24; color: #FFFFFF;
+///   - content: font-size: 12px; font-weight: 400; line-height: 100%; color: #FFFFFF;
 class BottomNavBarWidget extends StatefulWidget {
   final int initialIndex;
+  final int? currentIndex;
   final ValueChanged<int>? onTabSelected;
 
   const BottomNavBarWidget({
     super.key,
     this.initialIndex = 0,
+    this.currentIndex,
     this.onTabSelected,
   });
 
@@ -33,11 +40,21 @@ class _BottomNavBarWidgetState extends State<BottomNavBarWidget> {
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex;
+    _currentIndex = widget.currentIndex ?? widget.initialIndex;
+  }
+
+  @override
+  void didUpdateWidget(covariant BottomNavBarWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.currentIndex != null) {
+      _currentIndex = widget.currentIndex!;
+    } else if (oldWidget.initialIndex != widget.initialIndex) {
+      _currentIndex = widget.initialIndex;
+    }
   }
 
   void _handleTabTap(int index) {
-    if (_currentIndex == index) return;
+    HapticFeedback.lightImpact();
     setState(() {
       _currentIndex = index;
     });
@@ -49,13 +66,18 @@ class _BottomNavBarWidgetState extends State<BottomNavBarWidget> {
     return Container(
       width: 292.0,
       height: 65.0,
-      padding: const EdgeInsets.all(4.0),
+      padding: const EdgeInsets.only(
+        top: 4.0,
+        bottom: 4.0,
+        left: 4.0,
+        right: 0.0,
+      ),
       decoration: BoxDecoration(
         color: const Color(0xFF1C2926),
         borderRadius: BorderRadius.circular(60.0),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1C2926).withValues(alpha: 0.4),
+            color: const Color(0xFF1C2926).withValues(alpha: 0.45),
             blurRadius: 24.0,
             spreadRadius: 0.0,
             offset: const Offset(0, 8),
@@ -65,31 +87,28 @@ class _BottomNavBarWidgetState extends State<BottomNavBarWidget> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 1. Home Tab
-          Expanded(
-            child: _buildTabItem(
-              index: 0,
-              label: 'Home',
-              iconBuilder: (color, isActive) => StylizedHomeIcon(color: color, isFilled: isActive),
-            ),
+          // 1. Home Tab (width: 96, height: 57) - Vector1.png
+          _buildTabItem(
+            index: 0,
+            label: 'Home',
+            iconAsset: 'assets/images/Vector1.png',
+            fallbackBuilder: (color, isActive) => StylizedHomeIcon(color: color, isFilled: isActive),
           ),
 
-          // 2. Request Tab
-          Expanded(
-            child: _buildTabItem(
-              index: 1,
-              label: 'Request',
-              iconBuilder: (color, isActive) => StylizedRequestIcon(color: color),
-            ),
+          // 2. Request Tab (width: 96, height: 57) - Vector2.png
+          _buildTabItem(
+            index: 1,
+            label: 'Request',
+            iconAsset: 'assets/images/Vector2.png',
+            fallbackBuilder: (color, isActive) => StylizedRequestIcon(color: color),
           ),
 
-          // 3. Profile Tab
-          Expanded(
-            child: _buildTabItem(
-              index: 2,
-              label: 'Profile',
-              iconBuilder: (color, isActive) => StylizedProfileIcon(color: color),
-            ),
+          // 3. Profile Tab (width: 96, height: 57) - vector3.png
+          _buildTabItem(
+            index: 2,
+            label: 'Profile',
+            iconAsset: 'assets/images/vector3.png',
+            fallbackBuilder: (color, isActive) => StylizedProfileIcon(color: color),
           ),
         ],
       ),
@@ -99,89 +118,80 @@ class _BottomNavBarWidgetState extends State<BottomNavBarWidget> {
   Widget _buildTabItem({
     required int index,
     required String label,
-    required Widget Function(Color color, bool isActive) iconBuilder,
+    required String iconAsset,
+    required Widget Function(Color color, bool isActive) fallbackBuilder,
   }) {
-    final bool isSelected = _currentIndex == index;
+    final int effectiveCurrent = widget.currentIndex ?? _currentIndex;
+    final bool isSelected = effectiveCurrent == index;
     final Color textColor = isSelected ? const Color(0xFF9FFFCB) : Colors.white;
     final Color iconColor = isSelected ? const Color(0xFF9FFFCB) : Colors.white;
 
-    if (isSelected) {
-      // Active Pill Tab: fills slot, height 57, border-radius 60px, background #2A3D39, border #2B4742
-      return GestureDetector(
-        onTap: () => _handleTabTap(index),
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          width: double.infinity,
-          height: 57.0,
-          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2A3D39),
-            borderRadius: BorderRadius.circular(60.0),
-            border: Border.all(
-              color: const Color(0xFF2B4742),
-              width: 0.6,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 24.0,
-                height: 24.0,
-                child: iconBuilder(iconColor, true),
-              ),
-              const SizedBox(height: 4.0),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                style: GoogleFonts.inter(
-                  fontSize: 12.0,
-                  fontWeight: FontWeight.w400,
-                  color: textColor,
-                  height: 1.0,
-                  letterSpacing: 0.0,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Inactive Tab (fills slot, height: 57)
-    return GestureDetector(
-      onTap: () => _handleTabTap(index),
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: double.infinity,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeInOut,
+        width: 96.0,
         height: 57.0,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 24.0,
-              height: 24.0,
-              child: iconBuilder(iconColor, false),
-            ),
-            const SizedBox(height: 4.0),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              style: GoogleFonts.inter(
-                fontSize: 10.0,
-                fontWeight: FontWeight.w400,
-                color: textColor,
-                height: 1.0,
-                letterSpacing: 0.0,
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF2A3D39) : Colors.transparent,
+          borderRadius: BorderRadius.circular(60.0),
+          border: isSelected
+              ? Border.all(
+                  color: const Color(0xFF2B4742),
+                  width: 0.6,
+                )
+              : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(60.0),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(60.0),
+            splashColor: const Color(0xFF9FFFCB).withValues(alpha: 0.15),
+            highlightColor: const Color(0xFF9FFFCB).withValues(alpha: 0.08),
+            onTap: () => _handleTabTap(index),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 24.0,
+                    height: 24.0,
+                    child: Image.asset(
+                      iconAsset,
+                      width: 24.0,
+                      height: 24.0,
+                      fit: BoxFit.contain,
+                      color: iconColor,
+                      errorBuilder: (context, error, stackTrace) =>
+                          fallbackBuilder(iconColor, isSelected),
+                    ),
+                  ),
+                  const SizedBox(height: 4.0), // gap between icon and label
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    textHeightBehavior: const TextHeightBehavior(
+                      applyHeightToFirstAscent: false,
+                      applyHeightToLastDescent: false,
+                    ),
+                    style: GoogleFonts.inter(
+                      fontSize: 12.0,
+                      fontWeight: FontWeight.w400,
+                      color: textColor,
+                      height: 1.0, // line-height: 100%
+                      letterSpacing: 0.0,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -246,8 +256,8 @@ class _StylizedHomePainter extends CustomPainter {
         ..style = PaintingStyle.fill;
 
       // Inner horizontal slit cutout
-      final slitWidth = w * 0.38;
-      final slitHeight = h * 0.14;
+      final slitWidth = w * 0.40;
+      final slitHeight = h * 0.13;
       final slitRect = RRect.fromRectAndRadius(
         Rect.fromCenter(
           center: Offset(w * 0.5, h * 0.73),
@@ -265,15 +275,15 @@ class _StylizedHomePainter extends CustomPainter {
       final strokePaint = Paint()
         ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.6
+        ..strokeWidth = 1.3
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round;
 
       canvas.drawPath(outerPath, strokePaint);
 
       // Inner slit stroke
-      final slitWidth = w * 0.38;
-      final slitHeight = h * 0.14;
+      final slitWidth = w * 0.40;
+      final slitHeight = h * 0.13;
       final slitRect = RRect.fromRectAndRadius(
         Rect.fromCenter(
           center: Offset(w * 0.5, h * 0.73),
@@ -317,7 +327,7 @@ class _StylizedRequestPainter extends CustomPainter {
     final strokePaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8
+      ..strokeWidth = 1.3
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
@@ -325,7 +335,7 @@ class _StylizedRequestPainter extends CustomPainter {
     final h = size.height;
 
     // 1. Rounded diamond outline
-    final cornerRadius = 3.8;
+    const cornerRadius = 3.6;
     final diamondPath = Path();
     // Top corner
     diamondPath.moveTo(w * 0.5, h * 0.08 + cornerRadius);
@@ -388,7 +398,7 @@ class _StylizedProfilePainter extends CustomPainter {
     final strokePaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8
+      ..strokeWidth = 1.3
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
@@ -404,7 +414,7 @@ class _StylizedProfilePainter extends CustomPainter {
     final rightX = w * 0.78;
     final bottomY = h * 0.88;
     final shoulderY = h * 0.56;
-    final cornerR = 5.0;
+    const cornerR = 5.0;
 
     bodyPath.moveTo(leftX + cornerR, bottomY);
     bodyPath.lineTo(rightX - cornerR, bottomY);

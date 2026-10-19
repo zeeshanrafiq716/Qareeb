@@ -1,10 +1,11 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile/features/provider/auth/presentation/phone_verification_screen.dart';
+import 'package:mobile/features/provider/splash/presentation/widgets/provider_bottom_content.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_branding_header.dart';
-import 'package:mobile/features/provider/splash/presentation/widgets/provider_splash_background.dart';
-import 'package:mobile/features/provider/splash/presentation/widgets/provider_splash_content_layout.dart';
+import 'package:mobile/features/provider/splash/presentation/widgets/provider_indicator_bar.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 
 /// Provider Splash Screen
@@ -36,8 +37,8 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Auto-transition to PhoneVerificationScreen after optimal display (1.8 seconds)
-    _timer = Timer(const Duration(milliseconds: 1800), _navigateToVerification);
+    // Auto-transition to PhoneVerificationScreen after display (3.2 seconds)
+    _timer = Timer(const Duration(milliseconds: 3200), _navigateToVerification);
   }
 
   @override
@@ -45,8 +46,7 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
     super.didChangeDependencies();
     if (!_precached) {
       _precached = true;
-      precacheImage(const AssetImage('assets/images/car1.png'), context);
-      precacheImage(const AssetImage('assets/images/q.png'), context);
+      precacheImage(const AssetImage('assets/images/black.png'), context);
     }
   }
 
@@ -79,14 +79,14 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: ProviderColors.background,
-        systemNavigationBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
     );
 
     return Scaffold(
-      backgroundColor: ProviderColors.background,
+      backgroundColor: Colors.white,
       body: Center(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -98,95 +98,178 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
             final double bottomSafeArea = MediaQuery.of(context).padding.bottom;
             final double topSafeArea = MediaQuery.of(context).padding.top;
 
-            // Content layout branding of splash screen geometry:
-            // width: 390; height: 273; top: 571px; angle: 0 deg; opacity: 1;
-            final double contentLayoutTop = isDesktopWeb
-                ? ProviderSplashContentLayout.designTop // 571.0px
-                : (containerHeight - ProviderSplashContentLayout.designHeight)
-                    .clamp(topSafeArea + 120.0, containerHeight - 240.0);
-            final double contentLayoutHeight = isDesktopWeb
-                ? ProviderSplashContentLayout.designHeight // 273.0px
-                : (containerHeight - contentLayoutTop);
+            // Proportional scaling for mobile screens based on design frame (390 x 844)
+            final double scaleX = containerWidth / designWidth;
+            final double scaleY = containerHeight / designHeight;
 
-            // Header top position adapting gracefully on mobile notches
+            // Exact img alignment branding specifications:
+            // width: 349; height: 473; angle: 0 deg; opacity: 1; top: 150px; left: 41px;
+            final double imgLeft = isDesktopWeb ? 41.0 : (41.0 * scaleX);
+            final double imgTop = isDesktopWeb ? 150.0 : (150.0 * scaleY);
+            final double imgWidth = isDesktopWeb ? 349.0 : (349.0 * scaleX);
+            final double imgHeight = isDesktopWeb ? 473.0 : (473.0 * scaleY);
+
             final double headerTop = isDesktopWeb
-                ? 150.0
-                : (containerHeight < 750
-                    ? (topSafeArea + 16.0)
-                    : (topSafeArea + 48.0).clamp(50.0, 150.0));
+                ? 130.0
+                : (topSafeArea + 36.0).clamp(44.0, 130.0);
+
+            // Bottom content layout top at 571px in 844h design frame
+            final double bottomContentTop = isDesktopWeb
+                ? 571.0
+                : (imgTop + imgHeight - (55.0 * scaleY)).clamp(headerTop + 240.0, containerHeight - 220.0);
 
             final Widget screenContent = GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _navigateToVerification,
-              child: Opacity(
-                opacity: 1.0, // opacity: 1
-                child: Transform.rotate(
-                  angle: 0.0, // angle: 0 deg
-                  child: Container(
-                    width: containerWidth,
-                    height: containerHeight,
-                    color: ProviderColors.background,
-                  child: Stack(
-                    children: [
-                      // 1. Car background image (car1.jpg 138KB fast load, falling back to car1.png)
-                      Positioned.fill(
-                        child: Image.asset(
-                          'assets/images/car1.jpg',
-                          width: containerWidth,
-                          height: containerHeight,
-                          fit: BoxFit.cover,
-                          alignment: Alignment.center,
-                          gaplessPlayback: true,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Image.asset(
-                              'assets/images/car1.png',
-                              width: containerWidth,
-                              height: containerHeight,
-                              fit: BoxFit.cover,
+              child: Container(
+                width: containerWidth,
+                height: containerHeight,
+                color: Colors.white,
+                child: Stack(
+                  children: [
+                    // 1. Base White Canvas
+                    Positioned.fill(
+                      child: Container(color: Colors.white),
+                    ),
+
+                    // 2. Soft Purple/Lavender Top Gradient Glow
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: containerHeight * 0.42,
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            stops: [0.0, 0.40, 0.75, 1.0],
+                            colors: [
+                              Color(0xFFDECFFC), // soft lavender glow
+                              Color(0xFFEADBFE), // mid lavender glow
+                              Color(0x66F5EFFF), // subtle fade
+                              Color(0x00FFFFFF), // blends seamlessly into white
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // 3. Exact user specification:
+                    //    background: #FFFFFF1A;
+                    //    backdrop-filter: blur(200.5124053955078px)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: containerHeight * 0.45,
+                      child: ClipRect(
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(
+                            sigmaX: 200.5124053955078,
+                            sigmaY: 200.5124053955078,
+                          ),
+                          child: Container(
+                            color: const Color(0x1AFFFFFF), // background: #FFFFFF1A
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // 4. Middle Car Image (black.png)
+                    //    img alignment:
+                    //    width: 349; height: 473; angle: 0 deg; opacity: 1; top: 150px; left: 41px;
+                    Positioned(
+                      top: imgTop,
+                      left: imgLeft,
+                      width: imgWidth,
+                      height: imgHeight,
+                      child: Opacity(
+                        opacity: 1.0, // opacity: 1
+                        child: Transform.rotate(
+                          angle: 0.0, // angle: 0 deg
+                          child: ShaderMask(
+                            shaderCallback: (Rect bounds) {
+                              return const LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                stops: [0.0, 0.65, 0.88, 1.0],
+                                colors: [
+                                  Colors.white,
+                                  Colors.white,
+                                  Colors.white54,
+                                  Colors.transparent,
+                                ],
+                              ).createShader(bounds);
+                            },
+                            blendMode: BlendMode.dstIn,
+                            child: Image.asset(
+                              'assets/images/black.png',
+                              width: imgWidth,
+                              height: imgHeight,
+                              fit: BoxFit.contain,
                               alignment: Alignment.center,
                               gaplessPlayback: true,
-                            );
-                          },
+                            ),
+                          ),
                         ),
                       ),
-                      // 2. Dual Gradient Overlay matching exact branding
-                      const Positioned.fill(
-                        child: CustomPaint(
-                          painter: ProviderSplashBackgroundPainter(drawBase: false),
+                    ),
+
+                    // 5. Centered Branding Header: QAREEB • / Service always near you
+                    Positioned(
+                      top: headerTop,
+                      left: 0,
+                      right: 0,
+                      child: const Center(
+                        child: ProviderBrandingHeader(),
+                      ),
+                    ),
+
+                    // 6. Bottom Text Content:
+                    //    "Ready to respond\nBuilt to deliver"
+                    //    "Manage service requests reach customers\nand stay connected in real time."
+                    Positioned(
+                      top: bottomContentTop,
+                      left: 28.0,
+                      right: 28.0,
+                      child: const ProviderBottomContent(),
+                    ),
+
+                    // 7. Centered Indicator Loader:
+                    //    Track: #E5E7EB, Pill: #8B53FE, "Getting things ready..."
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: isDesktopWeb ? 46.0 : (bottomSafeArea + 32.0),
+                      child: const Center(
+                        child: ProviderIndicatorBar(),
+                      ),
+                    ),
+
+                    // 8. iOS Home Indicator Bar
+                    Positioned(
+                      left: (containerWidth - 134.0) / 2,
+                      bottom: isDesktopWeb ? 12.0 : (bottomSafeArea > 0 ? (bottomSafeArea / 2) : 10.0),
+                      child: Container(
+                        width: 134.0,
+                        height: 5.0,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1C2926),
+                          borderRadius: BorderRadius.circular(100.0),
                         ),
                       ),
-                      // 3. Header Branding layout (width: 226, height: 64)
-                      Positioned(
-                        top: headerTop,
-                        left: (containerWidth - 226.0) / 2,
-                        child: const ProviderBrandingHeader(),
-                      ),
-                      // 4. Content layout branding of splash screen:
-                      //    width: 390; height: 273; top: 571px; angle: 0 deg; opacity: 1;
-                      Positioned(
-                        top: contentLayoutTop,
-                        left: 0,
-                        right: 0,
-                        bottom: isDesktopWeb ? null : 0,
-                        height: isDesktopWeb ? ProviderSplashContentLayout.designHeight : null,
-                        child: ProviderSplashContentLayout(
-                          width: containerWidth,
-                          height: isDesktopWeb ? ProviderSplashContentLayout.designHeight : contentLayoutHeight,
-                          bottomPadding: isDesktopWeb ? 64.0 : (bottomSafeArea + 24.0),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          );
+            );
 
             if (isDesktopWeb) {
               return Container(
                 width: double.infinity,
                 height: double.infinity,
-                color: const Color(0xFF141C1A),
+                color: const Color(0xFFF3F4F6),
                 alignment: Alignment.center,
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -196,26 +279,26 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
                     height: designHeight,
                     margin: const EdgeInsets.symmetric(vertical: 24.0),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(40),
+                      borderRadius: BorderRadius.circular(44),
                       border: Border.all(
-                        color: ProviderColors.mintGlow.withValues(alpha: 0.25),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.35),
                         width: 2.0,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.60),
-                          blurRadius: 40,
-                          spreadRadius: 10,
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 36,
+                          spreadRadius: 6,
                         ),
                         BoxShadow(
-                          color: ProviderColors.mintGlow.withValues(alpha: 0.08),
-                          blurRadius: 30,
+                          color: const Color(0xFF8B53FE).withValues(alpha: 0.12),
+                          blurRadius: 28,
                           spreadRadius: 2,
                         ),
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(38),
+                      borderRadius: BorderRadius.circular(42),
                       child: screenContent,
                     ),
                   ),

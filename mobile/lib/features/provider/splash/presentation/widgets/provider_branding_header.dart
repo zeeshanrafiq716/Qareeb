@@ -32,73 +32,40 @@ class ProviderBrandingHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 226.0,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // 1st row layout: 210 x 40, gap: 10px
-          SizedBox(
-            width: 210.0,
-            height: 40.0,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Left side img: 40 x 40 (q.png)
-                Image.asset(
-                  'assets/images/q.png',
-                  width: 40.0,
-                  height: 40.0,
-                  fit: BoxFit.contain,
-                  gaplessPlayback: true,
-                ),
-                const SizedBox(width: 10.0), // gap: 10px
-                // QAREEB + Ellipse Dot
-                SizedBox(
-                  width: 160.0,
-                  height: 40.0,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          'QAREEB',
-                          style: ProviderTextStyles.brandTitle,
-                        ),
-                        const SizedBox(width: 4.0),
-                        // Mint Accent Dot: 12 x 12, #9FFFCB
-                        Container(
-                          width: 12.0,
-                          height: 12.0,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF9FFFCB),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // QAREEB + Purple Dot
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              'QAREEB',
+              style: ProviderTextStyles.brandTitle,
             ),
-          ),
-          const SizedBox(height: 12.0), // gap: 12px
-          // Subtitle: Service always near you (16px, center, #FFFFFF)
-          SizedBox(
-            width: 226.0,
-            child: Text(
-              'Service always near you',
-              textAlign: TextAlign.center,
-              style: ProviderTextStyles.slogan,
+            const SizedBox(width: 6.0),
+            // Accent Dot: 10 x 10, #8B53FE
+            Container(
+              width: 10.0,
+              height: 10.0,
+              margin: const EdgeInsets.only(top: 2.0),
+              decoration: const BoxDecoration(
+                color: Color(0xFF8B53FE),
+                shape: BoxShape.circle,
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+        const SizedBox(height: 8.0),
+        // Subtitle: Service always near you
+        Text(
+          'Service always near you',
+          textAlign: TextAlign.center,
+          style: ProviderTextStyles.slogan,
+        ),
+      ],
     );
   }
 }

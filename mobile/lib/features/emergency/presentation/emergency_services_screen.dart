@@ -105,6 +105,7 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
             final double containerHeight = isDesktopWeb
                 ? math.min(844.0, (constraints.maxHeight - 32.0).clamp(520.0, 844.0))
                 : constraints.maxHeight;
+            final double horizontalPadding = containerWidth < 360 ? 16.0 : 20.0;
 
             // Content cards block ends at 740.0px (285px top + 455px categories section).
             // Clearance ensures the 5th card comfortably scrolls above the floating bottom navigation bar
@@ -175,11 +176,10 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                   // justify-content: space-between; angle: 0 deg; opacity: 1;
                   Positioned(
                     top: 56.0,
-                    left: containerWidth >= 390 ? 20.0 : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                    width: containerWidth >= 390 ? 350.0 : (containerWidth - 40.0).clamp(280.0, 350.0),
+                    left: horizontalPadding,
+                    right: horizontalPadding,
                     height: 36.0,
                     child: SizedBox(
-                      width: containerWidth >= 390 ? 350.0 : (containerWidth - 40.0).clamp(280.0, 350.0),
                       height: 36.0,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -282,11 +282,10 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                   // box-shadow: 0px 1px 8px 0px #0000000F;
                   Positioned(
                     top: 116.0,
-                    left: containerWidth >= 390 ? 20.0 : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                    width: containerWidth >= 390 ? 350.0 : (containerWidth - 40.0).clamp(280.0, 350.0),
+                    left: horizontalPadding,
+                    right: horizontalPadding,
                     height: 110.0,
                     child: Container(
-                      width: containerWidth >= 390 ? 350.0 : (containerWidth - 40.0).clamp(280.0, 350.0),
                       height: 110.0,
                       padding: const EdgeInsets.all(16.0),
                       decoration: BoxDecoration(
@@ -305,24 +304,19 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                           ),
                         ],
                       ),
-                      child: SizedBox(
-                        width: 316.0,
-                        height: 76.0,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Card inner left-side content layout branding:
-                            // width: 212; height: 75; angle: 0 deg; opacity: 1; gap: 10px;
-                            SizedBox(
-                              width: 212.0,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Card inner left-side content layout branding:
+                          Expanded(
+                            child: SizedBox(
                               height: 75.0,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   // content: Emergency
-                                  // width: 53; height: 7; font-size: 10px; font-weight: 400; color: #FF6E05;
                                   Text(
                                     'Emergency',
                                     style: GoogleFonts.inter(
@@ -334,7 +328,6 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                                   ),
 
                                   // content: Get Help Now
-                                  // width: 212; height: 12; font-size: 16px; font-weight: 500; color: #1C2926;
                                   Text(
                                     'Get Help Now',
                                     style: GoogleFonts.inter(
@@ -346,7 +339,6 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                                   ),
 
                                   // content: We’ll connect you with the nearest available emergency team.
-                                  // width: 212; height: 24; font-size: 12px; font-weight: 400; color: #566663; line-height: 100%;
                                   Text(
                                     'We’ll connect you with the nearest\navailable emergency team.',
                                     style: GoogleFonts.inter(
@@ -360,54 +352,54 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                                 ],
                               ),
                             ),
+                          ),
 
-                            // Right img branding:
-                            // width: 92; height: 76; angle: 0 deg; opacity: 1;
-                            // background: linear-gradient(180deg, rgba(255, 255, 255, 0) 24.34%, rgba(255, 255, 255, 0.5) 53.28%, #FFFFFF 91.45%);
-                            SizedBox(
-                              width: 92.0,
-                              height: 76.0,
-                              child: Stack(
-                                children: [
-                                  // Beacon graphic matching uploaded Figma reference
-                                  Positioned.fill(
-                                    child: Image.asset(
-                                      'assets/images/emergency_card_beacon.png',
-                                      width: 92.0,
-                                      height: 76.0,
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return const Icon(
-                                          Icons.warning_amber_rounded,
-                                          color: Color(0xFFFF6E05),
-                                          size: 40.0,
-                                        );
-                                      },
-                                    ),
+                          const SizedBox(width: 8.0),
+
+                          // Right img branding:
+                          SizedBox(
+                            width: 92.0,
+                            height: 76.0,
+                            child: Stack(
+                              children: [
+                                // Beacon graphic matching uploaded Figma reference
+                                Positioned.fill(
+                                  child: Image.asset(
+                                    'assets/images/emergency_card_beacon.png',
+                                    width: 92.0,
+                                    height: 76.0,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(
+                                        Icons.warning_amber_rounded,
+                                        color: Color(0xFFFF6E05),
+                                        size: 40.0,
+                                      );
+                                    },
                                   ),
+                                ),
 
-                                  // Linear gradient overlay fading bottom to white:
-                                  Positioned.fill(
-                                    child: DecoratedBox(
-                                      decoration: const BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          stops: [0.24, 0.53, 0.91],
-                                          colors: [
-                                            Color(0x00FFFFFF), // rgba(255, 255, 255, 0)
-                                            Color(0x80FFFFFF), // rgba(255, 255, 255, 0.5)
-                                            Color(0xFFFFFFFF), // #FFFFFF
-                                          ],
-                                        ),
+                                // Linear gradient overlay fading bottom to white:
+                                Positioned.fill(
+                                  child: DecoratedBox(
+                                    decoration: const BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        stops: [0.24, 0.53, 0.91],
+                                        colors: [
+                                          Color(0x00FFFFFF), // rgba(255, 255, 255, 0)
+                                          Color(0x80FFFFFF), // rgba(255, 255, 255, 0.5)
+                                          Color(0xFFFFFFFF), // #FFFFFF
+                                        ],
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -417,8 +409,8 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                   // Perfectly equal gaps (8.0px) between badges, scaling cleanly on mobile devices without distortion
                   Positioned(
                     top: 238.0,
-                    left: 20.0,
-                    right: 20.0,
+                    left: horizontalPadding,
+                    right: horizontalPadding,
                     height: 28.0,
                     child: Center(
                       child: FittedBox(
@@ -488,151 +480,134 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                   // angle: 0 deg; opacity: 1; gap: 16px;
                   Positioned(
                     top: 285.0,
-                    left: containerWidth >= 390 ? 20.0 : ((containerWidth - 351.0) / 2).clamp(10.0, 20.0),
-                    width: containerWidth >= 390 ? 351.0 : (containerWidth - 40.0).clamp(280.0, 351.0),
-                    height: 455.0,
-                    child: SizedBox(
-                      width: containerWidth >= 390 ? 351.0 : (containerWidth - 40.0).clamp(280.0, 351.0),
-                      height: 455.0,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Heading Section:
-                          // width: 351; height: 31; angle: 0 deg; opacity: 1; gap: 12px;
-                          SizedBox(
-                            width: 351.0,
-                            height: 31.0,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // content : Choose Your Services
-                                // width: 351; height: 10; font-family: Inter; font-weight: 500; font-size: 14px; line-height: 22px; background: #1C2926;
-                                Text(
-                                  'Choose Your Services',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14.0,
-                                    fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF1C2926),
-                                    height: 1.0,
-                                    letterSpacing: 0.0,
-                                  ),
-                                ),
-
-                                // content: Choose a service to get immediate help.
-                                // width: 351; height: 9; font-family: Inter; font-weight: 400; font-size: 12px; line-height: 22px; background: #566663;
-                                Text(
-                                  'Choose a service to get immediate help.',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12.0,
-                                    fontWeight: FontWeight.w400,
-                                    color: const Color(0xFF566663),
-                                    height: 1.0,
-                                    letterSpacing: 0.0,
-                                  ),
-                                ),
-                              ],
+                    left: horizontalPadding,
+                    right: horizontalPadding,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Heading Section:
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // content : Choose Your Services
+                            Text(
+                              'Choose Your Services',
+                              style: GoogleFonts.inter(
+                                fontSize: 14.0,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF1C2926),
+                                height: 1.0,
+                                letterSpacing: 0.0,
+                              ),
                             ),
-                          ),
-
-                          // gap: 16px;
-                          const SizedBox(height: 16.0),
-
-                          // Catagories Section:
-                          // width: 351; height: 408; angle: 0 deg; opacity: 1; gap: 12px;
-                          SizedBox(
-                            width: 351.0,
-                            height: 408.0,
-                            child: Column(
-                              children: [
-                                // 1. Ambulance Card:
-                                _EmergencyCategoryCard(
-                                  title: 'Ambulance',
-                                  subtitle: 'Medical emergency',
-                                  imagePath: 'assets/images/ambulance.png',
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => const LocationPermissionScreen(
-                                          serviceName: 'Ambulance',
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 12.0),
-
-                                // 2. Police Card:
-                                _EmergencyCategoryCard(
-                                  title: 'Police',
-                                  subtitle: 'Crime & security',
-                                  imagePath: 'assets/images/police.png',
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => const LocationPermissionScreen(
-                                          serviceName: 'Police',
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 12.0),
-
-                                // 3. Fire Brigade Card:
-                                _EmergencyCategoryCard(
-                                  title: 'Fire Brigade',
-                                  subtitle: 'Fire & rescue response',
-                                  imagePath: 'assets/images/fire_brigade.png',
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => const LocationPermissionScreen(
-                                          serviceName: 'Fire Brigade',
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 12.0),
-
-                                // 4. Towing Card:
-                                _EmergencyCategoryCard(
-                                  title: 'Tow Truck',
-                                  subtitle: 'Roadside vehicle breakdown',
-                                  imagePath: 'assets/images/towing.png',
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => const LocationPermissionScreen(
-                                          serviceName: 'Tow Truck',
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 12.0),
-
-                                // 5. Hospital Card:
-                                _EmergencyCategoryCard(
-                                  title: 'Hospital',
-                                  subtitle: 'Urgent medical center',
-                                  imagePath: 'assets/images/hospital.png',
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => const LocationPermissionScreen(
-                                          serviceName: 'Hospital',
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
+                            const SizedBox(height: 6.0),
+                            // content: Choose a service to get immediate help.
+                            Text(
+                              'Choose a service to get immediate help.',
+                              style: GoogleFonts.inter(
+                                fontSize: 12.0,
+                                fontWeight: FontWeight.w400,
+                                color: const Color(0xFF566663),
+                                height: 1.0,
+                                letterSpacing: 0.0,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+
+                        // gap: 16px;
+                        const SizedBox(height: 16.0),
+
+                        // Catagories Section:
+                        Column(
+                          children: [
+                            // 1. Ambulance Card:
+                            _EmergencyCategoryCard(
+                              title: 'Ambulance',
+                              subtitle: 'Medical emergency',
+                              imagePath: 'assets/images/ambulance.png',
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const LocationPermissionScreen(
+                                      serviceName: 'Ambulance',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 12.0),
+
+                            // 2. Police Card:
+                            _EmergencyCategoryCard(
+                              title: 'Police',
+                              subtitle: 'Crime & security',
+                              imagePath: 'assets/images/police.png',
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const LocationPermissionScreen(
+                                      serviceName: 'Police',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 12.0),
+
+                            // 3. Fire Brigade Card:
+                            _EmergencyCategoryCard(
+                              title: 'Fire Brigade',
+                              subtitle: 'Fire & rescue response',
+                              imagePath: 'assets/images/fire_brigade.png',
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const LocationPermissionScreen(
+                                      serviceName: 'Fire Brigade',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 12.0),
+
+                            // 4. Towing Card:
+                            _EmergencyCategoryCard(
+                              title: 'Tow Truck',
+                              subtitle: 'Roadside vehicle breakdown',
+                              imagePath: 'assets/images/towing.png',
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const LocationPermissionScreen(
+                                      serviceName: 'Tow Truck',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 12.0),
+
+                            // 5. Hospital Card:
+                            _EmergencyCategoryCard(
+                              title: 'Hospital',
+                              subtitle: 'Urgent medical center',
+                              imagePath: 'assets/images/hospital.png',
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const LocationPermissionScreen(
+                                      serviceName: 'Hospital',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -871,7 +846,7 @@ class _EmergencyCategoryCard extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 351.0,
+        width: double.infinity,
         height: 72.0,
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(

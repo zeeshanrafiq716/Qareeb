@@ -29,31 +29,22 @@ class ProviderBottomContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: 1.0, // opacity: 1
-      child: Transform.rotate(
-        angle: 0.0, // angle: 0 deg
-        child: SizedBox(
-          width: designWidth,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Headline: Ready to respond\nBuilt to deliver (36px, Semi Bold, #FFFFFF)
-              Text(
-                'Ready to respond\nBuilt to deliver',
-                style: ProviderTextStyles.bottomHeadline,
-              ),
-              const SizedBox(height: 16.0), // gap
-              // Subtext: Manage service requests reach customers \nand stay connected in real time.
-              Text(
-                'Manage service requests reach customers \nand stay connected in real time.',
-                style: ProviderTextStyles.bottomSubtitle,
-              ),
-            ],
-          ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Headline: Ready to respond\nBuilt to deliver
+        Text(
+          'Ready to respond\nBuilt to deliver',
+          style: ProviderTextStyles.bottomHeadline,
         ),
-      ),
+        const SizedBox(height: 12.0),
+        // Subtext: Manage service requests reach customers \nand stay connected in real time.
+        Text(
+          'Manage service requests reach customers \nand stay connected in real time.',
+          style: ProviderTextStyles.bottomSubtitle,
+        ),
+      ],
     );
   }
 }

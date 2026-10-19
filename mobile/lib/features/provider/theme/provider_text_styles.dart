@@ -8,64 +8,64 @@ class ProviderTextStyles {
 
   /// QAREEB brand title:
   /// font-family: Inter;
-  /// font-weight: 600 (Semi Bold);
-  /// font-size: 40px;
+  /// font-weight: 700 (Bold);
+  /// font-size: 28px;
   /// line-height: 100%;
-  /// letter-spacing: 0%;
-  /// color: #FFFFFF;
+  /// letter-spacing: 0.5px;
+  /// color: #1C2926;
   static TextStyle brandTitle = GoogleFonts.inter(
-    fontSize: 40.0,
-    fontWeight: FontWeight.w600,
-    color: const Color(0xFFFFFFFF),
-    letterSpacing: 0.0,
+    fontSize: 28.0,
+    fontWeight: FontWeight.w700,
+    color: const Color(0xFF1C2926),
+    letterSpacing: 0.5,
     height: 1.0,
   );
 
   /// Slogan: "Service always near you"
   /// font-family: Inter;
   /// font-weight: 400 (Regular);
-  /// font-size: 16px;
+  /// font-size: 14px;
   /// line-height: 100%;
   /// letter-spacing: 0%;
   /// text-align: center;
-  /// color: #FFFFFF;
+  /// color: #566663;
   static TextStyle slogan = GoogleFonts.inter(
-    fontSize: 16.0,
+    fontSize: 14.0,
     fontWeight: FontWeight.w400,
-    color: const Color(0xFFFFFFFF),
+    color: const Color(0xFF566663),
     letterSpacing: 0.0,
-    height: 1.0,
+    height: 1.2,
   );
 
   /// Bottom Headline:
   /// "Ready to respond\nBuilt to deliver"
-  /// font-family: Inter; font-weight: 600 (Semi Bold); font-size: 36px; color: #FFFFFF;
+  /// font-family: Inter; font-weight: 700 (Bold); font-size: 28px; color: #1C2926;
   static TextStyle bottomHeadline = GoogleFonts.inter(
-    fontSize: 36.0,
-    fontWeight: FontWeight.w600,
-    color: const Color(0xFFFFFFFF),
-    letterSpacing: 0.0,
-    height: 1.05,
+    fontSize: 28.0,
+    fontWeight: FontWeight.w700,
+    color: const Color(0xFF1C2926),
+    letterSpacing: -0.3,
+    height: 1.15,
   );
 
   /// Bottom Subtitle:
   /// "Manage service requests reach customers \nand stay connected in real time."
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 16px; color: #FFFFFF;
+  /// font-family: Inter; font-weight: 400 (Regular); font-size: 13.5px; color: #566663;
   static TextStyle bottomSubtitle = GoogleFonts.inter(
-    fontSize: 16.0,
+    fontSize: 13.5,
     fontWeight: FontWeight.w400,
-    color: const Color(0xFFFFFFFF),
+    color: const Color(0xFF566663),
     letterSpacing: 0.0,
     height: 1.35,
   );
 
   /// Indicator Status Text:
   /// "Getting things ready..."
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 12px; line-height: 100%; color: #E0E0E0;
+  /// font-family: Inter; font-weight: 400 (Regular); font-size: 11.5px; line-height: 100%; color: #71717A;
   static TextStyle indicatorStatus = GoogleFonts.inter(
-    fontSize: 12.0,
+    fontSize: 11.5,
     fontWeight: FontWeight.w400,
-    color: const Color(0xFFE0E0E0),
+    color: const Color(0xFF71717A),
     letterSpacing: 0.0,
     height: 1.0,
   );

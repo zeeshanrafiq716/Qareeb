@@ -720,8 +720,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ? 16.0
                           : (MediaQuery.of(context).padding.bottom + 12.0),
                       child: BottomNavBarWidget(
+                        currentIndex: 2,
                         initialIndex: 2,
-                        onTabSelected: widget.onTabSelected,
+                        onTabSelected: (index) {
+                          if (widget.onTabSelected != null) {
+                            widget.onTabSelected!(index);
+                          } else {
+                            if (index == 0) {
+                              Navigator.of(context).pushReplacementNamed('/home');
+                            } else if (index == 1) {
+                              Navigator.of(context).pushReplacementNamed('/requests');
+                            }
+                          }
+                        },
                       ),
                     ),
                 ],

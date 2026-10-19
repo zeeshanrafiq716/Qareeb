@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'features/provider/auth/presentation/admin_approval_screen.dart';
 import 'features/provider/auth/presentation/otp_verification_screen.dart';
 import 'features/provider/auth/presentation/phone_verification_screen.dart';
 import 'features/provider/auth/presentation/phone_verified_screen.dart';
@@ -10,6 +11,7 @@ import 'features/provider/auth/presentation/provider_location_permission_screen.
 import 'features/provider/auth/presentation/provider_profile_details_screen.dart';
 import 'features/provider/auth/presentation/upload_documents_screen.dart';
 import 'features/provider/auth/presentation/vehicle_service_details_screen.dart';
+import 'features/provider/home/presentation/provider_home_screen.dart';
 import 'features/provider/splash/presentation/provider_splash_screen.dart';
 import 'features/provider/theme/provider_colors.dart';
 
@@ -95,6 +97,11 @@ class QareebProviderApp extends StatelessWidget {
         '/location-permission': (context) => const ProviderLocationPermissionScreen(),
         '/provider/location-permission': (context) => const ProviderLocationPermissionScreen(),
         '/allow-location': (context) => const ProviderLocationPermissionScreen(),
+        '/admin-approval': (context) => const AdminApprovalScreen(),
+        '/provider/admin-approval': (context) => const AdminApprovalScreen(),
+        '/home': (context) => const ProviderHomeScreen(),
+        '/provider/home': (context) => const ProviderHomeScreen(),
+        '/provider-home': (context) => const ProviderHomeScreen(),
       },
     );
   }

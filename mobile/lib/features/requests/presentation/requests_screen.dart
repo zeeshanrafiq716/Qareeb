@@ -81,6 +81,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
             final double containerHeight = isDesktopWeb
                 ? math.min(844.0, (screenHeight - 32.0).clamp(520.0, 844.0))
                 : screenHeight;
+            final double horizontalPadding = containerWidth < 360 ? 16.0 : 20.0;
 
             final Widget screenContent = Container(
               width: containerWidth,
@@ -96,9 +97,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                         scrollbars: false,
                         dragDevices: {
                           PointerDeviceKind.touch,
-                          PointerDeviceKind.mouse,
-                          PointerDeviceKind.trackpad,
                           PointerDeviceKind.stylus,
+                          PointerDeviceKind.trackpad,
                         },
                       ),
                       child: SingleChildScrollView(
@@ -121,124 +121,112 @@ class _RequestsScreenState extends State<RequestsScreen> {
                               // width: 350; height: 36; top: 56px; left: 20px; justify-content: space-between;
                               Positioned(
                                 top: 56.0,
-                                left: containerWidth >= 390
-                                    ? 20.0
-                                    : ((containerWidth - 350.0) / 2)
-                                        .clamp(10.0, 20.0),
-                                width: containerWidth >= 390
-                                    ? 350.0
-                                    : (containerWidth - 40.0)
-                                        .clamp(280.0, 350.0),
-                                child: SizedBox(
-                                  width: containerWidth >= 390
-                                      ? 350.0
-                                      : (containerWidth - 40.0)
-                                          .clamp(280.0, 350.0),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      // Content Layout: width: 231; height: 33; gap: 12px;
-                                      SizedBox(
-                                        width: 231.0,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            // content: Requests
-                                            // width: 231; height: 12; font-family: Inter; font-weight: 500; font-size: 16px;
-                                            // line-height: 22px; color: #1C2926;
-                                            Text(
-                                              'Requests',
-                                              textHeightBehavior:
-                                                  const TextHeightBehavior(
-                                                applyHeightToFirstAscent: false,
-                                                applyHeightToLastDescent: false,
-                                              ),
-                                              style: GoogleFonts.inter(
-                                                fontSize: 16.0,
-                                                fontWeight: FontWeight.w500,
-                                                color: const Color(0xFF1C2926),
-                                                height: 1.15,
-                                                letterSpacing: 0.0,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
+                                left: horizontalPadding,
+                                right: horizontalPadding,
+                                height: 36.0,
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.center,
+                                  children: [
+                                    // Content Layout:
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // content: Requests
+                                          // width: 231; height: 12; font-family: Inter; font-weight: 500; font-size: 16px;
+                                          // line-height: 22px; color: #1C2926;
+                                          Text(
+                                            'Requests',
+                                            textHeightBehavior:
+                                                const TextHeightBehavior(
+                                              applyHeightToFirstAscent: false,
+                                              applyHeightToLastDescent: false,
                                             ),
-                                            const SizedBox(height: 2.0),
+                                            style: GoogleFonts.inter(
+                                              fontSize: 16.0,
+                                              fontWeight: FontWeight.w500,
+                                              color: const Color(0xFF1C2926),
+                                              height: 1.15,
+                                              letterSpacing: 0.0,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2.0),
 
-                                            // content: Track and manage your service requests
-                                            // width: 231; height: 9; font-family: Inter; font-weight: 400; font-size: 12px;
-                                            // line-height: 22px; color: #566663;
-                                            Text(
-                                              'Track and manage your service requests',
-                                              textHeightBehavior:
-                                                  const TextHeightBehavior(
-                                                applyHeightToFirstAscent: false,
-                                                applyHeightToLastDescent: false,
-                                              ),
-                                              style: GoogleFonts.inter(
-                                                fontSize: 12.0,
-                                                fontWeight: FontWeight.w400,
-                                                color: const Color(0xFF566663),
-                                                height: 1.2,
-                                                letterSpacing: 0.0,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
+                                          // content: Track and manage your service requests
+                                          // width: 231; height: 9; font-family: Inter; font-weight: 400; font-size: 12px;
+                                          // line-height: 22px; color: #566663;
+                                          Text(
+                                            'Track and manage your service requests',
+                                            textHeightBehavior:
+                                                const TextHeightBehavior(
+                                              applyHeightToFirstAscent: false,
+                                              applyHeightToLastDescent: false,
                                             ),
-                                          ],
-                                        ),
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12.0,
+                                              fontWeight: FontWeight.w400,
+                                              color: const Color(0xFF566663),
+                                              height: 1.2,
+                                              letterSpacing: 0.0,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
                                       ),
+                                    ),
 
-                                      // Right Icon Branding:
-                                      // width: 36; height: 36; border: 1px solid #525252; box-shadow: 0px -2px 12px 0px #00000014;
-                                      MouseRegion(
-                                        cursor: SystemMouseCursors.click,
-                                        child: GestureDetector(
-                                          key: const Key(
-                                              'requests_header_notification_button'),
-                                          onTap: () {
-                                            HapticFeedback.lightImpact();
-                                            widget.onNotificationTap?.call();
-                                          },
-                                          behavior: HitTestBehavior.opaque,
-                                          child: Container(
-                                            width: 36.0,
-                                            height: 36.0,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: const Color(0xFFFFFFFF),
-                                              border: Border.all(
-                                                color: const Color(0xFF525252),
-                                                width: 1.0,
-                                              ),
-                                              boxShadow: const [
-                                                BoxShadow(
-                                                  color: Color(0x14000000), // #00000014
-                                                  blurRadius: 12.0,
-                                                  offset: Offset(0, -2),
-                                                  spreadRadius: 0.0,
-                                                ),
-                                              ],
+                                    // Right Icon Branding:
+                                    // width: 36; height: 36; border: 1px solid #525252; box-shadow: 0px -2px 12px 0px #00000014;
+                                    MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: GestureDetector(
+                                        key: const Key(
+                                            'requests_header_notification_button'),
+                                        onTap: () {
+                                          HapticFeedback.lightImpact();
+                                          widget.onNotificationTap?.call();
+                                        },
+                                        behavior: HitTestBehavior.opaque,
+                                        child: Container(
+                                          width: 36.0,
+                                          height: 36.0,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: const Color(0xFFFFFFFF),
+                                            border: Border.all(
+                                              color: const Color(0xFF525252),
+                                              width: 1.0,
                                             ),
-                                            child: const Center(
-                                              child: Icon(
-                                                Icons.notifications_none_rounded,
-                                                size: 18.0,
-                                                color: Color(0xFF525252),
+                                            boxShadow: const [
+                                              BoxShadow(
+                                                color: Color(0x14000000), // #00000014
+                                                blurRadius: 12.0,
+                                                offset: Offset(0, -2),
+                                                spreadRadius: 0.0,
                                               ),
+                                            ],
+                                          ),
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons.notifications_none_rounded,
+                                              size: 18.0,
+                                              color: Color(0xFF525252),
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
 
@@ -246,252 +234,265 @@ class _RequestsScreenState extends State<RequestsScreen> {
                               // width: 350; height: 52; top: 116px; left: 20px; gap: 12px;
                               Positioned(
                                 top: 116.0,
-                                left: containerWidth >= 390
-                                    ? 20.0
-                                    : ((containerWidth - 350.0) / 2)
-                                        .clamp(10.0, 20.0),
-                                width: containerWidth >= 390
-                                    ? 350.0
-                                    : (containerWidth - 40.0)
-                                        .clamp(280.0, 350.0),
+                                left: horizontalPadding,
+                                right: horizontalPadding,
                                 height: 52.0,
-                                child: SizedBox(
-                                  width: containerWidth >= 390
-                                      ? 350.0
-                                      : (containerWidth - 40.0)
-                                          .clamp(280.0, 350.0),
-                                  height: 52.0,
-                                  child: Row(
-                                    children: [
-                                      // 1st Button: Active
-                                      // width: 169; height: 52; gap: 6px; border-radius: 12px;
-                                      // padding-top: 16px; padding-bottom: 16px; background: #1D8070;
-                                      Expanded(
-                                        child: MouseRegion(
-                                          cursor: SystemMouseCursors.click,
-                                          child: GestureDetector(
-                                            onTap: () {
-                                              HapticFeedback.lightImpact();
-                                              setState(() {
-                                                _selectedFilterIndex = 0;
-                                              });
-                                            },
-                                            behavior: HitTestBehavior.opaque,
-                                            child: AnimatedContainer(
-                                              duration: const Duration(
-                                                  milliseconds: 180),
-                                              curve: Curves.easeInOut,
-                                              height: 52.0,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 16.0),
-                                              decoration: BoxDecoration(
-                                                color: _activeFilterIndex == 0
-                                                    ? const Color(0xFF1D8070)
-                                                    : const Color(0xFFF2F5F4),
-                                                borderRadius:
-                                                    BorderRadius.circular(12.0),
-                                              ),
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.center,
-                                                children: [
-                                                  // content: Active (width: 43, height: 10, Inter Medium 14px, #FFFFFF)
-                                                  Text(
-                                                    'Active',
-                                                    textHeightBehavior:
-                                                        const TextHeightBehavior(
-                                                      applyHeightToFirstAscent:
-                                                          false,
-                                                      applyHeightToLastDescent:
-                                                          false,
+                                child: Row(
+                                  children: [
+                                    // 1st Button: Active
+                                    // width: 169; height: 52; gap: 6px; border-radius: 12px;
+                                    // padding-top: 16px; padding-bottom: 16px; background: #1D8070;
+                                    Expanded(
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: AnimatedContainer(
+                                          duration: const Duration(
+                                              milliseconds: 180),
+                                          curve: Curves.easeInOut,
+                                          height: 52.0,
+                                          decoration: BoxDecoration(
+                                            color: _activeFilterIndex == 0
+                                                ? const Color(0xFF1D8070)
+                                                : const Color(0xFFF2F5F4),
+                                            borderRadius:
+                                                BorderRadius.circular(12.0),
+                                          ),
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            borderRadius:
+                                                BorderRadius.circular(12.0),
+                                            child: InkWell(
+                                              borderRadius:
+                                                  BorderRadius.circular(12.0),
+                                              splashColor: (_activeFilterIndex == 0
+                                                      ? Colors.white
+                                                      : const Color(0xFF1D8070))
+                                                  .withValues(alpha: 0.18),
+                                              highlightColor: (_activeFilterIndex == 0
+                                                      ? Colors.white
+                                                      : const Color(0xFF1D8070))
+                                                  .withValues(alpha: 0.08),
+                                              onTap: () {
+                                                HapticFeedback.lightImpact();
+                                                setState(() {
+                                                  _selectedFilterIndex = 0;
+                                                });
+                                              },
+                                              child: Center(
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.center,
+                                                  children: [
+                                                    // content: Active (width: 43, height: 10, Inter Medium 14px, #FFFFFF)
+                                                    Text(
+                                                      'Active',
+                                                      textHeightBehavior:
+                                                          const TextHeightBehavior(
+                                                        applyHeightToFirstAscent:
+                                                            false,
+                                                        applyHeightToLastDescent:
+                                                            false,
+                                                      ),
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 14.0,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color:
+                                                            _activeFilterIndex ==
+                                                                    0
+                                                                ? const Color(
+                                                                    0xFFFFFFFF)
+                                                                : const Color(
+                                                                    0xFF1C2926),
+                                                        height: 1.15,
+                                                        letterSpacing: 0.0,
+                                                      ),
                                                     ),
-                                                    style: GoogleFonts.inter(
-                                                      fontSize: 14.0,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      color:
-                                                          _activeFilterIndex ==
-                                                                  0
-                                                              ? const Color(
-                                                                  0xFFFFFFFF)
-                                                              : const Color(
-                                                                  0xFF1C2926),
-                                                      height: 1.15,
-                                                      letterSpacing: 0.0,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 6.0),
+                                                    const SizedBox(width: 6.0),
 
-                                                  // circle branding: width: 20, height: 20, border-radius: 20px, padding: 4px, background: #FFFFFF
-                                                  // content: 1 (font: Inter 400 12px, #1D8070)
-                                                  Container(
-                                                    width: 20.0,
-                                                    height: 20.0,
-                                                    decoration: BoxDecoration(
-                                                      color:
-                                                          _activeFilterIndex ==
-                                                                  0
-                                                              ? const Color(
-                                                                  0xFFFFFFFF)
-                                                              : const Color(
-                                                                  0xFF1C2926),
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                    child: Center(
-                                                      child: Text(
-                                                        '1',
-                                                        textHeightBehavior:
-                                                            const TextHeightBehavior(
-                                                          applyHeightToFirstAscent:
-                                                              false,
-                                                          applyHeightToLastDescent:
-                                                              false,
-                                                        ),
-                                                        style:
-                                                            GoogleFonts.inter(
-                                                          fontSize: 12.0,
-                                                          fontWeight:
-                                                              FontWeight.w400,
-                                                          color:
-                                                              _activeFilterIndex ==
-                                                                      0
-                                                                  ? const Color(
-                                                                      0xFF1D8070)
-                                                                  : const Color(
-                                                                      0xFFFFFFFF),
-                                                          height: 1.0,
-                                                          letterSpacing: 0.0,
+                                                    // circle branding: width: 20, height: 20, border-radius: 20px, padding: 4px, background: #FFFFFF
+                                                    // content: 1 (font: Inter 400 12px, #1D8070)
+                                                    Container(
+                                                      width: 20.0,
+                                                      height: 20.0,
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            _activeFilterIndex ==
+                                                                    0
+                                                                ? const Color(
+                                                                    0xFFFFFFFF)
+                                                                : const Color(
+                                                                    0xFF1C2926),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: Center(
+                                                        child: Text(
+                                                          '1',
+                                                          textHeightBehavior:
+                                                              const TextHeightBehavior(
+                                                            applyHeightToFirstAscent:
+                                                                false,
+                                                            applyHeightToLastDescent:
+                                                                false,
+                                                          ),
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                            fontSize: 12.0,
+                                                            fontWeight:
+                                                                FontWeight.w400,
+                                                            color:
+                                                                _activeFilterIndex ==
+                                                                        0
+                                                                    ? const Color(
+                                                                        0xFF1D8070)
+                                                                    : const Color(
+                                                                        0xFFFFFFFF),
+                                                            height: 1.0,
+                                                            letterSpacing: 0.0,
+                                                          ),
                                                         ),
                                                       ),
                                                     ),
-                                                  ),
-                                                ],
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
                                       ),
+                                    ),
 
-                                      // gap: 12px
-                                      const SizedBox(width: 12.0),
+                                    // gap: 12px
+                                    const SizedBox(width: 12.0),
 
-                                      // 2nd Button: History
-                                      // width: 169; height: 52; gap: 6px; border-radius: 12px;
-                                      // padding-top: 16px; padding-bottom: 16px; background: #F2F5F4;
-                                      Expanded(
-                                        child: MouseRegion(
-                                          cursor: SystemMouseCursors.click,
-                                          child: GestureDetector(
-                                            onTap: () {
-                                              HapticFeedback.lightImpact();
-                                              setState(() {
-                                                _selectedFilterIndex = 1;
-                                              });
-                                            },
-                                            behavior: HitTestBehavior.opaque,
-                                            child: AnimatedContainer(
-                                              duration: const Duration(
-                                                  milliseconds: 180),
-                                              curve: Curves.easeInOut,
-                                              height: 52.0,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 16.0),
-                                              decoration: BoxDecoration(
-                                                color: _activeFilterIndex == 1
-                                                    ? const Color(0xFF1D8070)
-                                                    : const Color(0xFFF2F5F4),
-                                                borderRadius:
-                                                    BorderRadius.circular(12.0),
-                                              ),
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.center,
-                                                children: [
-                                                  // content layout: width: 75, height: 20, gap: 6px
-                                                  // history layout: width: 49, height: 10, content: History (Inter Medium 14px, #1C2926)
-                                                  Text(
-                                                    'History',
-                                                    textHeightBehavior:
-                                                        const TextHeightBehavior(
-                                                      applyHeightToFirstAscent:
-                                                          false,
-                                                      applyHeightToLastDescent:
-                                                          false,
+                                    // 2nd Button: History
+                                    // width: 169; height: 52; gap: 6px; border-radius: 12px;
+                                    // padding-top: 16px; padding-bottom: 16px; background: #F2F5F4;
+                                    Expanded(
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: AnimatedContainer(
+                                          duration: const Duration(
+                                              milliseconds: 180),
+                                          curve: Curves.easeInOut,
+                                          height: 52.0,
+                                          decoration: BoxDecoration(
+                                            color: _activeFilterIndex == 1
+                                                ? const Color(0xFF1D8070)
+                                                : const Color(0xFFF2F5F4),
+                                            borderRadius:
+                                                BorderRadius.circular(12.0),
+                                          ),
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            borderRadius:
+                                                BorderRadius.circular(12.0),
+                                            child: InkWell(
+                                              borderRadius:
+                                                  BorderRadius.circular(12.0),
+                                              splashColor: (_activeFilterIndex == 1
+                                                      ? Colors.white
+                                                      : const Color(0xFF1D8070))
+                                                  .withValues(alpha: 0.18),
+                                              highlightColor: (_activeFilterIndex == 1
+                                                      ? Colors.white
+                                                      : const Color(0xFF1D8070))
+                                                  .withValues(alpha: 0.08),
+                                              onTap: () {
+                                                HapticFeedback.lightImpact();
+                                                setState(() {
+                                                  _selectedFilterIndex = 1;
+                                                });
+                                              },
+                                              child: Center(
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.center,
+                                                  children: [
+                                                    // content layout: width: 75, height: 20, gap: 6px
+                                                    // history layout: width: 49, height: 10, content: History (Inter Medium 14px, #1C2926)
+                                                    Text(
+                                                      'History',
+                                                      textHeightBehavior:
+                                                          const TextHeightBehavior(
+                                                        applyHeightToFirstAscent:
+                                                            false,
+                                                        applyHeightToLastDescent:
+                                                            false,
+                                                      ),
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 14.0,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color:
+                                                            _activeFilterIndex ==
+                                                                    1
+                                                                ? const Color(
+                                                                    0xFFFFFFFF)
+                                                                : const Color(
+                                                                    0xFF1C2926),
+                                                        height: 1.15,
+                                                        letterSpacing: 0.0,
+                                                      ),
                                                     ),
-                                                    style: GoogleFonts.inter(
-                                                      fontSize: 14.0,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      color:
-                                                          _activeFilterIndex ==
-                                                                  1
-                                                              ? const Color(
-                                                                  0xFFFFFFFF)
-                                                              : const Color(
-                                                                  0xFF1C2926),
-                                                      height: 1.15,
-                                                      letterSpacing: 0.0,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 6.0),
+                                                    const SizedBox(width: 6.0),
 
-                                                  // circle branding: width: 20, height: 20, border-radius: 20px, padding: 4px, background: #1C2926
-                                                  // content: 12 (width: 13, height: 9, Inter 400 12px, #FFFFFF)
-                                                  Container(
-                                                    width: 20.0,
-                                                    height: 20.0,
-                                                    decoration: BoxDecoration(
-                                                      color:
-                                                          _activeFilterIndex ==
-                                                                  1
-                                                              ? const Color(
-                                                                  0xFFFFFFFF)
-                                                              : const Color(
-                                                                  0xFF1C2926),
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                    child: Center(
-                                                      child: Text(
-                                                        '12',
-                                                        textHeightBehavior:
-                                                            const TextHeightBehavior(
-                                                          applyHeightToFirstAscent:
-                                                              false,
-                                                          applyHeightToLastDescent:
-                                                              false,
-                                                        ),
-                                                        style:
-                                                            GoogleFonts.inter(
-                                                          fontSize: 11.5,
-                                                          fontWeight:
-                                                              FontWeight.w400,
-                                                          color:
-                                                              _activeFilterIndex ==
-                                                                      1
-                                                                  ? const Color(
-                                                                      0xFF1D8070)
-                                                                  : const Color(
-                                                                      0xFFFFFFFF),
-                                                          height: 1.0,
-                                                          letterSpacing: 0.0,
+                                                    // circle branding: width: 20, height: 20, border-radius: 20px, padding: 4px, background: #1C2926
+                                                    // content: 12 (width: 13, height: 9, Inter 400 12px, #FFFFFF)
+                                                    Container(
+                                                      width: 20.0,
+                                                      height: 20.0,
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            _activeFilterIndex ==
+                                                                    1
+                                                                ? const Color(
+                                                                    0xFFFFFFFF)
+                                                                : const Color(
+                                                                    0xFF1C2926),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: Center(
+                                                        child: Text(
+                                                          '12',
+                                                          textHeightBehavior:
+                                                              const TextHeightBehavior(
+                                                            applyHeightToFirstAscent:
+                                                                false,
+                                                            applyHeightToLastDescent:
+                                                                false,
+                                                          ),
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                            fontSize: 11.5,
+                                                            fontWeight:
+                                                                FontWeight.w400,
+                                                            color:
+                                                                _activeFilterIndex ==
+                                                                        1
+                                                                    ? const Color(
+                                                                        0xFF1D8070)
+                                                                    : const Color(
+                                                                        0xFFFFFFFF),
+                                                            height: 1.0,
+                                                            letterSpacing: 0.0,
+                                                          ),
                                                         ),
                                                       ),
                                                     ),
-                                                  ),
-                                                ],
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
 
@@ -500,20 +501,10 @@ class _RequestsScreenState extends State<RequestsScreen> {
                               if (_activeFilterIndex == 0)
                                 Positioned(
                                   top: 184.0,
-                                  left: containerWidth >= 390
-                                      ? 20.0
-                                      : ((containerWidth - 350.0) / 2)
-                                          .clamp(10.0, 20.0),
-                                  width: containerWidth >= 390
-                                      ? 350.0
-                                      : (containerWidth - 40.0)
-                                          .clamp(280.0, 350.0),
+                                  left: horizontalPadding,
+                                  right: horizontalPadding,
                                   height: 320.0,
                                   child: Container(
-                                    width: containerWidth >= 390
-                                        ? 350.0
-                                        : (containerWidth - 40.0)
-                                            .clamp(280.0, 350.0),
                                     height: 320.0,
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFFFFFFF),
@@ -1301,20 +1292,10 @@ class _RequestsScreenState extends State<RequestsScreen> {
                               if (_activeFilterIndex == 0)
                                 Positioned(
                                   top: 520.0,
-                                  left: containerWidth >= 390
-                                      ? 20.0
-                                      : ((containerWidth - 350.0) / 2)
-                                          .clamp(10.0, 20.0),
-                                  width: containerWidth >= 390
-                                      ? 350.0
-                                      : (containerWidth - 40.0)
-                                          .clamp(280.0, 350.0),
+                                  left: horizontalPadding,
+                                  right: horizontalPadding,
                                   height: 81.0,
                                   child: Container(
-                                    width: containerWidth >= 390
-                                        ? 350.0
-                                        : (containerWidth - 40.0)
-                                            .clamp(280.0, 350.0),
                                     height: 81.0,
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFF2F5F4),
@@ -1398,23 +1379,12 @@ class _RequestsScreenState extends State<RequestsScreen> {
                               if (_activeFilterIndex == 0)
                                 Positioned(
                                   top: 617.0,
-                                  left: containerWidth >= 390
-                                      ? 20.0
-                                      : ((containerWidth - 350.0) / 2)
-                                          .clamp(10.0, 20.0),
-                                  width: containerWidth >= 390
-                                      ? 350.0
-                                      : (containerWidth - 40.0)
-                                          .clamp(280.0, 350.0),
+                                  left: horizontalPadding,
+                                  right: horizontalPadding,
                                   height: 64.0,
-                                  child: SizedBox(
-                                    width: containerWidth >= 390
-                                        ? 350.0
-                                        : (containerWidth - 40.0)
-                                            .clamp(280.0, 350.0),
-                                    child: Row(
-                                      children: [
-                                        // 1st card branding: 1.8 km Distance Away
+                                  child: Row(
+                                    children: [
+                                      // 1st card branding: 1.8 km Distance Away
                                         Expanded(
                                           child: Container(
                                             height: 64.0,
@@ -1639,7 +1609,6 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                       ],
                                     ),
                                   ),
-                                ),
 
                               // -------------------------------------------------------------
                               // HISTORY TAB LAYOUT (_activeFilterIndex == 1)
@@ -1648,14 +1617,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                               if (_activeFilterIndex == 1)
                                 Positioned(
                                   top: 192.0,
-                                  left: containerWidth >= 390
-                                      ? 20.0
-                                      : ((containerWidth - 350.0) / 2)
-                                          .clamp(10.0, 20.0),
-                                  width: containerWidth >= 390
-                                      ? 350.0
-                                      : (containerWidth - 40.0)
-                                          .clamp(280.0, 350.0),
+                                  left: horizontalPadding,
+                                  right: horizontalPadding,
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -1664,10 +1627,6 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                       // 1st widget branding: Searchbar & Filter icon row
                                       // width: 350; height: 49.88; gap: 16px;
                                       SizedBox(
-                                        width: containerWidth >= 390
-                                            ? 350.0
-                                            : (containerWidth - 40.0)
-                                                .clamp(280.0, 350.0),
                                         height: 49.88,
                                         child: Row(
                                           crossAxisAlignment:
@@ -1831,29 +1790,23 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                       // Card widget layout:
                                       // width: 350; height: 476; gap: 12px; angle: 0 deg; opacity: 1;
                                       // -----------------------------------------------------------
-                                      SizedBox(
-                                        width: containerWidth >= 390
-                                            ? 350.0
-                                            : (containerWidth - 40.0)
-                                                .clamp(280.0, 350.0),
-                                        child: Column(
-                                          children: [
-                                            for (int i = 0;
-                                                i < _filteredHistoryItems.length;
-                                                i++) ...[
-                                              if (i > 0)
-                                                const SizedBox(height: 12.0), // gap: 12px;
-                                              _buildHistoryCard(
-                                                _filteredHistoryItems[i],
-                                                containerWidth,
-                                              ),
-                                            ],
-                                            if (_filteredHistoryItems.isEmpty)
-                                              _buildEmptyHistoryState(
-                                                containerWidth,
-                                              ),
+                                      Column(
+                                        children: [
+                                          for (int i = 0;
+                                              i < _filteredHistoryItems.length;
+                                              i++) ...[
+                                            if (i > 0)
+                                              const SizedBox(height: 12.0), // gap: 12px;
+                                            _buildHistoryCard(
+                                              _filteredHistoryItems[i],
+                                              containerWidth,
+                                            ),
                                           ],
-                                        ),
+                                          if (_filteredHistoryItems.isEmpty)
+                                            _buildEmptyHistoryState(
+                                              containerWidth,
+                                            ),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -1874,8 +1827,19 @@ class _RequestsScreenState extends State<RequestsScreen> {
                           ? 16.0
                           : (MediaQuery.of(context).padding.bottom + 12.0),
                       child: BottomNavBarWidget(
+                        currentIndex: 1,
                         initialIndex: 1,
-                        onTabSelected: widget.onTabSelected,
+                        onTabSelected: (index) {
+                          if (widget.onTabSelected != null) {
+                            widget.onTabSelected!(index);
+                          } else {
+                            if (index == 0) {
+                              Navigator.of(context).pushReplacementNamed('/home');
+                            } else if (index == 2) {
+                              Navigator.of(context).pushReplacementNamed('/profile');
+                            }
+                          }
+                        },
                       ),
                     ),
                 ],
@@ -2132,9 +2096,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
   Widget _buildEmptyHistoryState(double containerWidth) {
     return Container(
-      width: containerWidth >= 390
-          ? 350.0
-          : (containerWidth - 40.0).clamp(280.0, 350.0),
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 20.0),
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),
@@ -2183,9 +2145,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
   Widget _buildHistoryCard(_HistoryRequestItem item, double containerWidth) {
     return Container(
-      width: containerWidth >= 390
-          ? 350.0
-          : (containerWidth - 40.0).clamp(280.0, 350.0),
+      width: double.infinity,
       height: 110.0, // height: 110;
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF), // background: #FFFFFF;
