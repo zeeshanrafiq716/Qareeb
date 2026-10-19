@@ -3,7 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'features/provider/auth/presentation/otp_verification_screen.dart';
 import 'features/provider/auth/presentation/phone_verification_screen.dart';
+import 'features/provider/auth/presentation/phone_verified_screen.dart';
+import 'features/provider/auth/presentation/provider_location_permission_screen.dart';
+import 'features/provider/auth/presentation/provider_profile_details_screen.dart';
+import 'features/provider/auth/presentation/upload_documents_screen.dart';
+import 'features/provider/auth/presentation/vehicle_service_details_screen.dart';
 import 'features/provider/splash/presentation/provider_splash_screen.dart';
 import 'features/provider/theme/provider_colors.dart';
 
@@ -76,6 +82,19 @@ class QareebProviderApp extends StatelessWidget {
         '/splash': (context) => const ProviderSplashScreen(),
         '/verification': (context) => const PhoneVerificationScreen(),
         '/phone-verification': (context) => const PhoneVerificationScreen(),
+        '/otp': (context) => const OtpVerificationScreen(),
+        '/otp-verification': (context) => const OtpVerificationScreen(),
+        '/verified': (context) => const PhoneVerifiedScreen(),
+        '/phone-verified': (context) => const PhoneVerifiedScreen(),
+        '/profile-details': (context) => const ProviderProfileDetailsScreen(),
+        '/provider-profile-details': (context) => const ProviderProfileDetailsScreen(),
+        '/vehicle-service-details': (context) => const VehicleServiceDetailsScreen(),
+        '/provider/vehicle-service-details': (context) => const VehicleServiceDetailsScreen(),
+        '/upload-documents': (context) => const UploadDocumentsScreen(),
+        '/provider/upload-documents': (context) => const UploadDocumentsScreen(),
+        '/location-permission': (context) => const ProviderLocationPermissionScreen(),
+        '/provider/location-permission': (context) => const ProviderLocationPermissionScreen(),
+        '/allow-location': (context) => const ProviderLocationPermissionScreen(),
       },
     );
   }

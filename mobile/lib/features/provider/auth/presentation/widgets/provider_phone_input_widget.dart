@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile/features/provider/auth/presentation/otp_verification_screen.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -213,7 +214,22 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
       width: ProviderPhoneInputWidget.designWidth,
       height: ProviderPhoneInputWidget.buttonHeight,
       child: ElevatedButton(
-        onPressed: widget.onContinue ?? () {},
+        onPressed: widget.onContinue ??
+            () {
+              Navigator.of(context).push(
+                PageRouteBuilder(
+                  pageBuilder: (_, _, _) => const OtpVerificationScreen(),
+                  transitionsBuilder: (_, animation, _, child) => FadeTransition(
+                    opacity: CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeInOutCubic,
+                    ),
+                    child: child,
+                  ),
+                  transitionDuration: const Duration(milliseconds: 350),
+                ),
+              );
+            },
         style: ElevatedButton.styleFrom(
           backgroundColor: ProviderColors.primaryButton, // #1D8070
           foregroundColor: Colors.white,

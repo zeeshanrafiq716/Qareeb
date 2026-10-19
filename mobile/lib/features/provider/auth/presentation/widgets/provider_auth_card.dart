@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_content_layout.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_handle_bar.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_scroll_behavior.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 
 /// Provider Phone Verification Card Widget
@@ -17,6 +18,12 @@ import 'package:mobile/features/provider/theme/provider_colors.dart';
 ///   opacity: 1;
 ///   background: #FFFFFF;
 ///   box-shadow: 0px -2px 12px 0px #00000014;
+///
+/// Features frictionless, ultra-easy drag scrolling:
+/// - Supports mouse click-and-drag, touch, and trackpad gestures via [ProviderCardScrollBehavior]
+/// - Springy [BouncingScrollPhysics] with [AlwaysScrollableScrollPhysics]
+/// - Full-width transparent hit-test backdrop so dragging anywhere on the card scrolls smoothly
+/// - Pinned top grab handle and bottom indicator wrapped with [IgnorePointer]
 class ProviderAuthCard extends StatelessWidget {
   final Widget? child;
   final double? width;
@@ -35,13 +42,16 @@ class ProviderAuthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double cardWidth = width ?? designWidth;
+    final double cardHeight = height ?? designHeight;
+
     return Opacity(
       opacity: 1.0, // opacity: 1
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: Container(
-          width: width ?? designWidth,
-          height: height ?? designHeight,
+          width: cardWidth,
+          height: cardHeight,
           decoration: const BoxDecoration(
             color: ProviderColors.cardBackground, // background: #FFFFFF
             borderRadius: BorderRadius.only(
@@ -65,24 +75,51 @@ class ProviderAuthCard extends StatelessWidget {
             child: Stack(
               alignment: Alignment.topCenter,
               children: [
-                // 1. Bar layout (Top Handle): width: 60; height: 4; top: 12px; background: #EFF0ED;
+                // 1. Frictionless Scrollable Content Area: easily scrollable on touch, mouse, trackpad
+                Positioned.fill(
+                  child: ScrollConfiguration(
+                    behavior: const ProviderCardScrollBehavior(),
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      child: Container(
+                        width: double.infinity,
+                        constraints: BoxConstraints(
+                          minHeight: cardHeight > 80.0 ? cardHeight - 80.0 : 0.0,
+                        ),
+                        color: Colors.transparent,
+                        padding: const EdgeInsets.only(
+                          top: 26.0,
+                          bottom: 24.0, // comfortable user-friendly clearance
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Center(
+                              child: SizedBox(
+                                width: ProviderCardContentLayout.designWidth,
+                                child: child ?? const ProviderCardContentLayout(),
+                              ),
+                            ),
+                            const SizedBox(height: 24.0),
+                            const ProviderCardBottomIndicator(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // 2. Bar layout (Top Handle): width: 60; height: 4; top: 12px; background: #EFF0ED;
+                // Pinned at top; IgnorePointer ensures drags on the handle bar smoothly scroll the card
                 const Positioned(
                   top: ProviderCardHandleBar.designTop, // 12.0px
-                  child: ProviderCardHandleBar(),
-                ),
-
-                // 2. Inner Content Layout: width: 350; height: 435.22; gap: 40px;
-                Positioned(
-                  top: ProviderCardContentLayout.designTop, // 24.0px
-                  child: child ?? const ProviderCardContentLayout(),
-                ),
-
-                // 3. Bottom Indicator Bar: width: 134; height: 4; border-radius: 100px; background: #1C2926;
-                const Positioned(
-                  bottom: 8.0,
-                  left: 0,
-                  right: 0,
-                  child: ProviderCardBottomIndicator(),
+                  child: IgnorePointer(
+                    child: ProviderCardHandleBar(),
+                  ),
                 ),
               ],
             ),

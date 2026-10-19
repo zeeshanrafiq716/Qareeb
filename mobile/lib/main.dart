@@ -7,7 +7,13 @@ import 'core/theme/app_theme.dart';
 import 'features/emergency/presentation/emergency_services_screen.dart';
 import 'features/home/presentation/home_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
+import 'features/provider/auth/presentation/otp_verification_screen.dart';
 import 'features/provider/auth/presentation/phone_verification_screen.dart';
+import 'features/provider/auth/presentation/phone_verified_screen.dart';
+import 'features/provider/auth/presentation/provider_location_permission_screen.dart';
+import 'features/provider/auth/presentation/provider_profile_details_screen.dart';
+import 'features/provider/auth/presentation/upload_documents_screen.dart';
+import 'features/provider/auth/presentation/vehicle_service_details_screen.dart';
 import 'features/provider/splash/presentation/provider_splash_screen.dart';
 import 'features/requests/presentation/requests_screen.dart';
 import 'features/splash/presentation/splash_screen.dart';
@@ -72,6 +78,12 @@ class QareebApp extends StatelessWidget {
         '/provider': (context) => const ProviderSplashScreen(),
         '/provider/splash': (context) => const ProviderSplashScreen(),
         '/provider/verification': (context) => const PhoneVerificationScreen(),
+        '/provider/otp': (context) => const OtpVerificationScreen(),
+        '/provider/verified': (context) => const PhoneVerifiedScreen(),
+        '/provider/profile-details': (context) => const ProviderProfileDetailsScreen(),
+        '/provider/vehicle-service-details': (context) => const VehicleServiceDetailsScreen(),
+        '/provider/upload-documents': (context) => const UploadDocumentsScreen(),
+        '/provider/location-permission': (context) => const ProviderLocationPermissionScreen(),
       },
     );
   }

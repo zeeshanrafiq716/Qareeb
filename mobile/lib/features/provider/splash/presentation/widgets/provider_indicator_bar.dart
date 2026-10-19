@@ -42,14 +42,14 @@ class _ProviderIndicatorBarState extends State<ProviderIndicatorBar>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 1400),
     );
 
     // Subtle smooth oscillation between 0.0 and 1.0
     _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: Curves.easeInOutSine,
+        curve: Curves.easeInOutCubic,
       ),
     );
 

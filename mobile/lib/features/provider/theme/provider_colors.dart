@@ -61,6 +61,15 @@ class ProviderColors {
   static const Color dividerLine = Color(0xFFDEE0DF);
   // background: #25D366;
   static const Color whatsappGreen = Color(0xFF25D366);
+
+  // OTP Verification Card Branding
+  // background: #EBFFF4;
+  static const Color otpActiveBackground = Color(0xFFEBFFF4);
+  // ellipse background: #ADB8B4;
+  static const Color otpDotPlaceholder = Color(0xFFADB8B4);
+
+  // Profile Steps Icon Background: #E2F0E6
+  static const Color profileIconBackground = Color(0xFFE2F0E6);
 }
 
 

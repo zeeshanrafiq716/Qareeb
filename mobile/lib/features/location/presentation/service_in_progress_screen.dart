@@ -484,11 +484,8 @@ class _ServiceInProgressScreenState
                             width: containerWidth >= 390
                                 ? 350.0
                                 : (containerWidth - 40.0).clamp(280.0, 350.0),
-                            constraints: const BoxConstraints(minHeight: 72.0),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16.0,
-                              vertical: 16.0,
-                            ),
+                            height: 72.0,
+                            padding: const EdgeInsets.all(16.0),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF2F5F4),
                               borderRadius: BorderRadius.circular(12.0),
@@ -514,53 +511,59 @@ class _ServiceInProgressScreenState
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 12.0), // gap: 12px;
+                                const SizedBox(width: 16.0), // gap: 16px padding between image and text
 
-                                // content branding: width: 83; height: 29; gap: 12px;
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    // content: Toyota Hilux
-                                    // width: 83; height: 10; font-family: Inter; font-weight: 500; font-size: 14px;
-                                    // line-height: 22px; color: #1C2926;
-                                    Text(
-                                      'Toyota Hilux',
-                                      textHeightBehavior:
-                                          const TextHeightBehavior(
-                                        applyHeightToFirstAscent: false,
-                                        applyHeightToLastDescent: false,
+                                // content layout
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // content: Toyota Hilux
+                                      // font-family: Inter; font-weight: 500; font-style: Medium; font-size: 14px;
+                                      // leading-trim: CAP_HEIGHT; line-height: 22px; letter-spacing: 0px; color: #1C2926;
+                                      Text(
+                                        'Toyota Hilux',
+                                        textHeightBehavior:
+                                            const TextHeightBehavior(
+                                          applyHeightToFirstAscent: false,
+                                          applyHeightToLastDescent: false,
+                                        ),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14.0,
+                                          fontWeight: FontWeight.w500,
+                                          color: const Color(0xFF1C2926),
+                                          height: 22.0 / 14.0,
+                                          letterSpacing: 0.0,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14.0,
-                                        fontWeight: FontWeight.w500,
-                                        color: const Color(0xFF1C2926),
-                                        height: 1.2,
-                                        letterSpacing: 0.0,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3.0),
+                                      const SizedBox(height: 3.0), // padding between title and subtitle
 
-                                    // content: ABC-123
-                                    // width: 43; height: 7; font-family: Inter; font-weight: 400; font-size: 10px;
-                                    // line-height: 22px; color: #566663;
-                                    Text(
-                                      'ABC-123',
-                                      textHeightBehavior:
-                                          const TextHeightBehavior(
-                                        applyHeightToFirstAscent: false,
-                                        applyHeightToLastDescent: false,
+                                      // content: ABC-123
+                                      Text(
+                                        'ABC-123',
+                                        textHeightBehavior:
+                                            const TextHeightBehavior(
+                                          applyHeightToFirstAscent: false,
+                                          applyHeightToLastDescent: false,
+                                        ),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 10.0,
+                                          fontWeight: FontWeight.w400,
+                                          color: const Color(0xFF566663),
+                                          height: 1.2,
+                                          letterSpacing: 0.0,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10.0,
-                                        fontWeight: FontWeight.w400,
-                                        color: const Color(0xFF566663),
-                                        height: 1.2,
-                                        letterSpacing: 0.0,
-                                      ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -854,7 +857,7 @@ class _ServiceInProgressScreenState
                             ),
                           ),
 
-                          const SizedBox(height: 16.0), // gap: 16px;
+                          const SizedBox(height: 12.0), // gap: 12px;
 
                           // 6. Action Button: "Done"
                           // width: 350; height: 52; border-radius: 12px; background: #1D8070;

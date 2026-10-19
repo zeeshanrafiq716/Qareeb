@@ -31,20 +31,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     // 1. Route drawing & vehicle reveal animation
     _routeAnimController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2400),
+      duration: const Duration(milliseconds: 1600),
     )..forward();
 
     // 2. Continuous smooth loading progress controller
     _loadingProgressController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2200),
+      duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
 
     // 3. Perform backend health & category sync in background
     _syncWithBackend();
 
     // 4. Auto-transition to HomeScreen after splash animation completes
-    Timer(const Duration(milliseconds: 2800), _navigateToHome);
+    Timer(const Duration(milliseconds: 1800), _navigateToHome);
   }
 
   void _navigateToHome() {

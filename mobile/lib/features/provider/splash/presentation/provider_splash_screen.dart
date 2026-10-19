@@ -36,8 +36,8 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Auto-transition to PhoneVerificationScreen after splash display (2.8 seconds)
-    _timer = Timer(const Duration(milliseconds: 2800), _navigateToVerification);
+    // Auto-transition to PhoneVerificationScreen after optimal display (1.8 seconds)
+    _timer = Timer(const Duration(milliseconds: 1800), _navigateToVerification);
   }
 
   @override
@@ -63,7 +63,7 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
           ),
           child: child,
         ),
-        transitionDuration: const Duration(milliseconds: 650),
+        transitionDuration: const Duration(milliseconds: 450),
       ),
     );
   }

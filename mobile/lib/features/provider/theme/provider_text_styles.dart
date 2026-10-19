@@ -172,6 +172,210 @@ class ProviderTextStyles {
     letterSpacing: 0.0,
     height: 1.0,
   );
+
+  /// OTP Digit (Inter 400 Regular 20px line-height 22px #000000)
+  static TextStyle otpDigit = GoogleFonts.inter(
+    fontSize: 20.0,
+    fontWeight: FontWeight.w400,
+    color: const Color(0xFF000000),
+    letterSpacing: 0.0,
+    height: 22.0 / 20.0,
+  );
+
+  /// Resend Timer Label: "Resend code in "
+  /// font-family: Inter; font-weight: 400 (Regular); font-size: 12px; line-height: 100%; color: #566663;
+  static TextStyle resendTimerText = GoogleFonts.inter(
+    fontSize: 12.0,
+    fontWeight: FontWeight.w400,
+    color: const Color(0xFF566663),
+    letterSpacing: 0.0,
+    height: 1.0,
+  );
+
+  /// Resend Timer Value Span: "00:59"
+  /// font-family: Inter; font-weight: 500 (Medium); font-size: 12px; line-height: 100%; color: #566663;
+  static TextStyle resendTimerSpan = GoogleFonts.inter(
+    fontSize: 12.0,
+    fontWeight: FontWeight.w500,
+    color: const Color(0xFF566663),
+    letterSpacing: 0.0,
+    height: 1.0,
+  );
+
+  /// Change Phone Number Button Text: "Change Phone Number"
+  /// font-family: Inter; font-weight: 500 (Medium); font-size: 14px; line-height: 22px; color: #1C2926;
+  static TextStyle changePhoneButtonText = GoogleFonts.inter(
+    fontSize: 14.0,
+    fontWeight: FontWeight.w500,
+    color: const Color(0xFF1C2926),
+    letterSpacing: 0.0,
+    height: 22.0 / 14.0,
+  );
+
+  /// Header Title: "Phone Verification"
+  /// font-family: Inter;
+  /// font-weight: 500 (Medium);
+  /// font-size: 16px;
+  /// line-height: 24px;
+  /// letter-spacing: 0px;
+  /// color: #1C2926;
+  static TextStyle headerTitle = GoogleFonts.inter(
+    fontSize: 16.0,
+    fontWeight: FontWeight.w500,
+    color: const Color(0xFF1C2926),
+    letterSpacing: 0.0,
+    height: 24.0 / 16.0,
+  );
+
+  /// Provider Profile Details Header Title: "Provider Profile Details"
+  /// font-family: Inter; font-weight: 600 (Semi Bold); font-size: 16px; line-height: 22px; color: #1C2926;
+  static TextStyle profileDetailsHeaderTitle = GoogleFonts.inter(
+    fontSize: 16.0,
+    fontWeight: FontWeight.w600,
+    color: const Color(0xFF1C2926),
+    letterSpacing: 0.0,
+    height: 22.0 / 16.0,
+  );
+
+  /// Provider Profile Details Header Subtitle: "Enter your personal details to continue."
+  /// font-family: Inter; font-weight: 400 (Regular); font-size: 12px; line-height: 16px; color: #566663;
+  static TextStyle profileDetailsHeaderSubtitle = GoogleFonts.inter(
+    fontSize: 12.0,
+    fontWeight: FontWeight.w400,
+    color: const Color(0xFF566663),
+    letterSpacing: 0.0,
+    height: 16.0 / 12.0,
+  );
+
+  /// Verification Successful Title: "Verification Successful"
+  /// font-family: Inter; font-weight: 600 (Semi Bold); font-size: 20px; line-height: 24px; color: #1C2926;
+  static TextStyle verificationSuccessfulTitle = GoogleFonts.inter(
+    fontSize: 20.0,
+    fontWeight: FontWeight.w600,
+    color: const Color(0xFF1C2926),
+    letterSpacing: 0.0,
+    height: 24.0 / 20.0,
+  );
+
+  /// Verification Successful Subtitle: "Your phone is verified. Complete your profile to receive service requests."
+  /// font-family: Inter; font-weight: 400 (Regular); font-size: 12px; line-height: 100%; color: #566663;
+  static TextStyle verificationSuccessfulSubtitle = GoogleFonts.inter(
+    fontSize: 12.0,
+    fontWeight: FontWeight.w400,
+    color: const Color(0xFF566663),
+    letterSpacing: 0.0,
+    height: 1.25,
+  );
+
+  /// Admin Approval Pending Title: "Admin Approval pending"
+  /// font-family: Inter; font-weight: 600 (Semi Bold); font-size: 20px; line-height: 24px; color: #1C2926;
+  static TextStyle adminApprovalPendingTitle = GoogleFonts.inter(
+    fontSize: 20.0,
+    fontWeight: FontWeight.w600,
+    color: const Color(0xFF1C2926),
+    letterSpacing: 0.0,
+    height: 24.0 / 20.0,
+  );
+
+  /// Admin Approval Pending Subtitle: "Your account is submitted our team \nis reviewing it."
+  /// font-family: Inter; font-weight: 400 (Regular); font-size: 12px; line-height: 100%; color: #566663;
+  static TextStyle adminApprovalPendingSubtitle = GoogleFonts.inter(
+    fontSize: 12.0,
+    fontWeight: FontWeight.w400,
+    color: const Color(0xFF566663),
+    letterSpacing: 0.0,
+    height: 1.25,
+  );
+
+
+  /// Step Card Title: "Complete  Your Profile"
+  /// font-family: Inter; font-weight: 500 (Medium); font-size: 14px; line-height: 22px; color: #1C2926;
+  static TextStyle stepCardTitle = GoogleFonts.inter(
+    fontSize: 14.0,
+    fontWeight: FontWeight.w500,
+    color: const Color(0xFF1C2926),
+    letterSpacing: 0.0,
+    height: 22.0 / 14.0,
+  );
+
+  /// Step Card Subtitle: "Add your business details, services, and location."
+  /// font-family: Inter; font-weight: 400 (Regular); font-size: 10px; line-height: 22px; color: #566663;
+  static TextStyle stepCardSubtitle = GoogleFonts.inter(
+    fontSize: 10.0,
+    fontWeight: FontWeight.w400,
+    color: const Color(0xFF566663),
+    letterSpacing: 0.0,
+    height: 1.4,
+  );
+
+  /// Back to Home Primary Button Text: "Back to Home"
+  /// font-family: Inter; font-weight: 500 (Medium); font-size: 14px; line-height: 22px; color: #FFFFFF;
+  static TextStyle backToHomeButtonText = GoogleFonts.inter(
+    fontSize: 14.0,
+    fontWeight: FontWeight.w500,
+    color: const Color(0xFFFFFFFF),
+    letterSpacing: 0.0,
+    height: 22.0 / 14.0,
+  );
+
+  /// Back to Home Secondary/Dark Button Text
+  static TextStyle backToHomeDarkButtonText = GoogleFonts.inter(
+    fontSize: 14.0,
+    fontWeight: FontWeight.w500,
+    color: const Color(0xFF1C2926),
+    letterSpacing: 0.0,
+    height: 22.0 / 14.0,
+  );
+
+  /// Personal Information Heading: "Personal Information"
+  /// font-family: Inter; font-weight: 500 (Medium); font-size: 14px; line-height: 22px; color: #1C2926;
+  static TextStyle personalInformationHeading = GoogleFonts.inter(
+    fontSize: 14.0,
+    fontWeight: FontWeight.w500,
+    color: const Color(0xFF1C2926),
+    letterSpacing: 0.0,
+    height: 22.0 / 14.0,
+  );
+
+  /// Profile Field Label: "Full Name", "Iqama Number", etc.
+  /// font-family: Inter; font-weight: 500 (Medium); font-size: 12px; line-height: 22px; color: #1C2926;
+  static TextStyle profileInputLabel = GoogleFonts.inter(
+    fontSize: 12.0,
+    fontWeight: FontWeight.w500,
+    color: const Color(0xFF1C2926),
+    letterSpacing: 0.0,
+    height: 22.0 / 12.0,
+  );
+
+  /// Profile Field Label Span: "(as per Iqama)"
+  /// font-family: Inter; font-weight: 400 (Regular); font-size: 12px; line-height: 22px; color: #566663;
+  static TextStyle profileInputLabelSpan = GoogleFonts.inter(
+    fontSize: 12.0,
+    fontWeight: FontWeight.w400,
+    color: const Color(0xFF566663),
+    letterSpacing: 0.0,
+    height: 22.0 / 12.0,
+  );
+
+  /// Profile Field Input Text
+  /// font-family: Inter; font-weight: 400 (Regular); font-size: 14px; line-height: 22px; color: #1C2926;
+  static TextStyle profileInputText = GoogleFonts.inter(
+    fontSize: 14.0,
+    fontWeight: FontWeight.w400,
+    color: const Color(0xFF1C2926),
+    letterSpacing: 0.0,
+    height: 22.0 / 14.0,
+  );
+
+  /// Profile Field Input Placeholder
+  /// font-family: Inter; font-weight: 400 (Regular); font-size: 14px; line-height: 22px; color: #566663;
+  static TextStyle profileInputPlaceholder = GoogleFonts.inter(
+    fontSize: 14.0,
+    fontWeight: FontWeight.w400,
+    color: const Color(0xFF566663),
+    letterSpacing: 0.0,
+    height: 22.0 / 14.0,
+  );
 }
 
 
