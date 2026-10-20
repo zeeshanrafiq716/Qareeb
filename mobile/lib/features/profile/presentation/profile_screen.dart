@@ -137,7 +137,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         child: SizedBox(
                           width: containerWidth,
-                          height: math.max(containerHeight, 920.0),
+                          height: math.max(containerHeight, 960.0),
                           child: Stack(
                             clipBehavior: Clip.none,
                             children: [
@@ -592,113 +592,113 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     const SizedBox(height: 12.0), // gap: 12px;
 
                                     // -------------------------------------------------------------
-                                    // Menu Options Card:
-                                    // width: 350; height: 352; gap: 16px; border-radius: 12px;
-                                    // padding: 16px; background: #FFFFFF;
-                                    // box-shadow: 0px 1px 12px 0px #0000001A;
+                                    // Menu Options Cards (Every tab in its own separate card)
                                     // -------------------------------------------------------------
-                                    Container(
+                                    // 1. Personal Information
+                                    _buildProfileMenuCard(
                                       width: containerWidth >= 390
                                           ? 350.0
                                           : (containerWidth - 40.0)
                                               .clamp(280.0, 350.0),
-                                      height: 352.0,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFFFFFF),
-                                        borderRadius:
-                                            BorderRadius.circular(12.0),
-                                        boxShadow: const [
-                                          BoxShadow(
-                                            color: Color(0x1A000000), // 0px 1px 12px 0px #0000001A
-                                            blurRadius: 12.0,
-                                            offset: Offset(0, 1),
-                                            spreadRadius: 0.0,
-                                          ),
-                                        ],
-                                      ),
-                                      padding: const EdgeInsets.all(16.0), // padding: 16px;
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween, // gap: 16px between 7 items of 32px height
-                                        children: [
-                                          // 1. Personal Information
-                                          _buildProfileMenuItem(
-                                            icon: Icons.person_rounded,
-                                            title: 'Personal Information',
-                                            subtitle:
-                                                'Name, phone number and more',
-                                            onTap: () {
-                                              // Navigate / handle personal information
-                                            },
-                                          ),
-
-                                          // 2. Notifications
-                                          _buildProfileMenuItem(
-                                            icon: Icons.notifications_rounded,
-                                            title: 'Notifications',
-                                            subtitle:
-                                                'Manage your alerts and updates',
-                                            onTap: () {
-                                              // Navigate / handle notifications
-                                            },
-                                          ),
-
-                                          // 3. Language
-                                          _buildProfileMenuItem(
-                                            icon: Icons.language_rounded,
-                                            title: 'Language',
-                                            subtitle: 'English (US)',
-                                            onTap: () {
-                                              // Navigate / handle language
-                                            },
-                                          ),
-
-                                          // 4. Saved Locations
-                                          _buildProfileMenuItem(
-                                            icon: Icons.location_on_rounded,
-                                            title: 'Saved Locations',
-                                            subtitle:
-                                                'Home, Work, and other places',
-                                            onTap: () {
-                                              // Navigate / handle saved locations
-                                            },
-                                          ),
-
-                                          // 5. Payment Methods
-                                          _buildProfileMenuItem(
-                                            icon: Icons.credit_card_rounded,
-                                            title: 'Payment Methods',
-                                            subtitle:
-                                                'Manage your payment options',
-                                            onTap: () {
-                                              // Navigate / handle payment methods
-                                            },
-                                          ),
-
-                                          // 6. Privacy & Security
-                                          _buildProfileMenuItem(
-                                            icon: Icons.shield_rounded,
-                                            title: 'Privacy & Security',
-                                            subtitle:
-                                                'Manage your data and security',
-                                            onTap: () {
-                                              // Navigate / handle privacy & security
-                                            },
-                                          ),
-
-                                          // 7. Help & Support
-                                          _buildProfileMenuItem(
-                                            icon: Icons.credit_card_rounded,
-                                            title: 'Help & Support',
-                                            subtitle:
-                                                'Find help or contact us',
-                                            onTap: () {
-                                              // Navigate / handle help & support
-                                            },
-                                          ),
-                                        ],
-                                      ),
+                                      icon: Icons.person_rounded,
+                                      title: 'Personal Information',
+                                      subtitle: 'Name, phone number and more',
+                                      onTap: () {
+                                        // Navigate / handle personal information
+                                      },
                                     ),
+                                    const SizedBox(height: 10.0),
+
+                                    // 2. Notifications
+                                    _buildProfileMenuCard(
+                                      width: containerWidth >= 390
+                                          ? 350.0
+                                          : (containerWidth - 40.0)
+                                              .clamp(280.0, 350.0),
+                                      icon: Icons.notifications_rounded,
+                                      title: 'Notifications',
+                                      subtitle: 'Manage your alerts and updates',
+                                      onTap: () {
+                                        // Navigate / handle notifications
+                                      },
+                                    ),
+                                    const SizedBox(height: 10.0),
+
+                                    // 3. Language
+                                    _buildProfileMenuCard(
+                                      width: containerWidth >= 390
+                                          ? 350.0
+                                          : (containerWidth - 40.0)
+                                              .clamp(280.0, 350.0),
+                                      icon: Icons.language_rounded,
+                                      title: 'Language',
+                                      subtitle: 'English (US)',
+                                      trailingText: 'English (US)',
+                                      onTap: () {
+                                        // Navigate / handle language
+                                      },
+                                    ),
+                                    const SizedBox(height: 10.0),
+
+                                    // 4. Saved Locations
+                                    _buildProfileMenuCard(
+                                      width: containerWidth >= 390
+                                          ? 350.0
+                                          : (containerWidth - 40.0)
+                                              .clamp(280.0, 350.0),
+                                      icon: Icons.location_on_rounded,
+                                      title: 'Saved Locations',
+                                      subtitle: 'Home, Work, and other places',
+                                      onTap: () {
+                                        // Navigate / handle saved locations
+                                      },
+                                    ),
+                                    const SizedBox(height: 10.0),
+
+                                    // 5. Payment Methods
+                                    _buildProfileMenuCard(
+                                      width: containerWidth >= 390
+                                          ? 350.0
+                                          : (containerWidth - 40.0)
+                                              .clamp(280.0, 350.0),
+                                      icon: Icons.credit_card_rounded,
+                                      title: 'Payment Methods',
+                                      subtitle: 'Manage your payment options',
+                                      onTap: () {
+                                        // Navigate / handle payment methods
+                                      },
+                                    ),
+                                    const SizedBox(height: 10.0),
+
+                                    // 6. Privacy & Security
+                                    _buildProfileMenuCard(
+                                      width: containerWidth >= 390
+                                          ? 350.0
+                                          : (containerWidth - 40.0)
+                                              .clamp(280.0, 350.0),
+                                      icon: Icons.shield_rounded,
+                                      title: 'Privacy & Security',
+                                      subtitle: 'Manage your data and security',
+                                      onTap: () {
+                                        // Navigate / handle privacy & security
+                                      },
+                                    ),
+                                    const SizedBox(height: 10.0),
+
+                                    // 7. Help & Support
+                                    _buildProfileMenuCard(
+                                      width: containerWidth >= 390
+                                          ? 350.0
+                                          : (containerWidth - 40.0)
+                                              .clamp(280.0, 350.0),
+                                      icon: Icons.headset_mic_rounded,
+                                      title: 'Help & Support',
+                                      subtitle: 'Find help or contact us',
+                                      onTap: () {
+                                        // Navigate / handle help & support
+                                      },
+                                    ),
+                                    const SizedBox(height: 90.0),
 
                                     // Subsequent widgets inside 512px overview container will be added below
                                   ],
@@ -881,94 +881,138 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  /// Helper widget for the Profile Menu Items
-  /// Branding: width: 318; height: 32; gap: 12px;
-  /// Left side icon: width: 32; height: 32; border-radius: 8px; background: #F3F5F3;
-  /// Content layout: width: 274; height: 26; gap: 10px;
-  /// Title: 12px, Inter Medium, #1C2926; Subtitle: 10px, Inter Regular, #566663;
-  Widget _buildProfileMenuItem({
+  /// Helper widget for the Profile Menu Items - Each rendered in an independent card
+  /// Exact branding:
+  /// - Card: border radius 14px, white background, 1px solid #F0F1F5 border, soft shadow
+  /// - Icon Container: 38x38, border radius 10px, soft purple background #F0EAFE
+  /// - Icon: 20px, brand purple #8B53FE
+  /// - Title: 13.5px, Inter Medium (w500), #1C2926
+  /// - Subtitle: 11px, Inter Regular (w400), #566663
+  /// - Trailing: Right chevron arrow in subtle #9EABA7
+  Widget _buildProfileMenuCard({
+    required double width,
     required IconData icon,
     required String title,
     required String subtitle,
+    String? trailingText,
     VoidCallback? onTap,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8.0),
-        onTap: () {
-          HapticFeedback.lightImpact();
-          onTap?.call();
-        },
-        child: SizedBox(
-          height: 32.0,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // left side icon branding: width: 32; height: 32; border-radius: 8px; background: #F3F5F3;
-              Container(
-                width: 32.0,
-                height: 32.0,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F5F3),
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-                child: Center(
-                  child: Icon(
-                    icon,
-                    size: 18.0,
-                    color: const Color(0xFF1C2926),
+    return Container(
+      width: width,
+      height: 62.0,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(
+          color: const Color(0xFFF0F1F5),
+          width: 1.0,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000), // very soft, clean modern elevation
+            blurRadius: 10.0,
+            offset: Offset(0, 2),
+            spreadRadius: 0.0,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14.0),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14.0),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            onTap?.call();
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 11.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Icon in purple shade container
+                Container(
+                  width: 38.0,
+                  height: 38.0,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0EAFE), // Soft purple shade
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      icon,
+                      size: 20.0,
+                      color: const Color(0xFF8B53FE), // Brand purple
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12.0), // gap: 12px;
+                const SizedBox(width: 14.0), // gap: 14px
 
-              // content layout: width: 274; height: 26; gap: 10px;
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // content: Title (12px, Inter Medium, #1C2926)
-                    Text(
-                      title,
-                      textHeightBehavior: const TextHeightBehavior(
-                        applyHeightToFirstAscent: false,
-                        applyHeightToLastDescent: false,
+                // Text Content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        textHeightBehavior: const TextHeightBehavior(
+                          applyHeightToFirstAscent: false,
+                          applyHeightToLastDescent: false,
+                        ),
+                        style: GoogleFonts.inter(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF1C2926),
+                          height: 1.2,
+                          letterSpacing: -0.1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      style: GoogleFonts.inter(
-                        fontSize: 12.0,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF1C2926),
-                        height: 1.15,
-                        letterSpacing: 0.0,
+                      const SizedBox(height: 2.0),
+                      Text(
+                        subtitle,
+                        textHeightBehavior: const TextHeightBehavior(
+                          applyHeightToFirstAscent: false,
+                          applyHeightToLastDescent: false,
+                        ),
+                        style: GoogleFonts.inter(
+                          fontSize: 11.0,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF566663),
+                          height: 1.2,
+                          letterSpacing: 0.0,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2.0),
-                    // content: Subtitle (10px, Inter Regular, #566663)
-                    Text(
-                      subtitle,
-                      textHeightBehavior: const TextHeightBehavior(
-                        applyHeightToFirstAscent: false,
-                        applyHeightToLastDescent: false,
-                      ),
-                      style: GoogleFonts.inter(
-                        fontSize: 10.0,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF566663),
-                        height: 1.15,
-                        letterSpacing: 0.0,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+
+                // Trailing text if any (e.g. for language)
+                if (trailingText != null) ...[
+                  Text(
+                    trailingText,
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF8B53FE),
+                    ),
+                  ),
+                  const SizedBox(width: 4.0),
+                ],
+
+                // Right chevron arrow
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20.0,
+                  color: Color(0xFF9EABA7),
+                ),
+              ],
+            ),
           ),
         ),
       ),
