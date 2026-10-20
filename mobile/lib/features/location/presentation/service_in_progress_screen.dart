@@ -194,25 +194,14 @@ class _ServiceInProgressScreenState
                           // width: 62.60871124267578; height: 62.60871124267578; top: 9px; left: 144px;
                           ScaleTransition(
                             scale: _scaleAnimation,
-                            child: SizedBox(
+                            child: const SizedBox(
                               width: 174.0,
                               height: 80.0,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  Image.asset(
-                                    'assets/images/service_success_check.png',
-                                    width: 174.0,
-                                    height: 80.0,
-                                    fit: BoxFit.contain,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const CustomPaint(
-                                      size: Size(174.0, 80.0),
-                                      painter: _SuccessTickPainter(),
-                                    ),
-                                  ),
-                                ],
+                              child: Center(
+                                child: CustomPaint(
+                                  size: Size(174.0, 80.0),
+                                  painter: _SuccessTickPainter(),
+                                ),
                               ),
                             ),
                           ),
@@ -377,11 +366,11 @@ class _ServiceInProgressScreenState
                                         crossAxisAlignment:
                                             CrossAxisAlignment.center,
                                         children: [
-                                          // star branding: width: 10; height: 10; background: #07AF2C;
+                                          // star branding in brand purple (#8B53FE)
                                           const Icon(
                                             Icons.star_rounded,
                                             size: 13.0,
-                                            color: Color(0xFF07AF2C),
+                                            color: Color(0xFF8B53FE),
                                           ),
                                           const SizedBox(width: 3.0),
 
@@ -542,14 +531,14 @@ class _ServiceInProgressScreenState
                                   width: 32.0,
                                   height: 32.0,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFE2F0E6),
+                                    color: const Color(0xFFF0EAFE),
                                     borderRadius: BorderRadius.circular(8.0),
                                   ),
                                   child: const Center(
                                     child: Icon(
                                       Icons.calendar_today_rounded,
                                       size: 16.0,
-                                      color: Color(0xFF1D8070),
+                                      color: Color(0xFF8B53FE),
                                     ),
                                   ),
                                 ),
@@ -618,7 +607,7 @@ class _ServiceInProgressScreenState
                               vertical: 12.0,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEBFFF4),
+                              color: const Color(0xFFF0EAFE),
                               borderRadius: BorderRadius.circular(12.0),
                             ),
                             child: Row(
@@ -629,14 +618,14 @@ class _ServiceInProgressScreenState
                                   width: 32.0,
                                   height: 32.0,
                                   decoration: const BoxDecoration(
-                                    color: Color(0xFFD7F5E5),
+                                    color: Color(0xFFEAE0FE),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Center(
                                     child: Icon(
                                       Icons.handshake_rounded,
                                       size: 18.0,
-                                      color: Color(0xFF1D8070),
+                                      color: Color(0xFF8B53FE),
                                     ),
                                   ),
                                 ),
@@ -662,7 +651,7 @@ class _ServiceInProgressScreenState
                                         style: GoogleFonts.inter(
                                           fontSize: 14.0,
                                           fontWeight: FontWeight.w500,
-                                          color: const Color(0xFF1D8070),
+                                          color: const Color(0xFF8B53FE),
                                           height: 1.2,
                                           letterSpacing: 0.0,
                                         ),
@@ -682,7 +671,7 @@ class _ServiceInProgressScreenState
                                         style: GoogleFonts.inter(
                                           fontSize: 12.0,
                                           fontWeight: FontWeight.w400,
-                                          color: const Color(0xFF1D8070),
+                                          color: const Color(0xFF8B53FE),
                                           height: 14.0 / 12.0,
                                           letterSpacing: 0.0,
                                         ),
@@ -784,7 +773,7 @@ class _ServiceInProgressScreenState
                                               painter: _RatingStarPainter(
                                                 isFilled: isFilled,
                                                 fillColor:
-                                                    const Color(0xFFF9BD15),
+                                                    const Color(0xFF8B53FE),
                                                 strokeColor:
                                                     const Color(0xFF566663),
                                                 strokeWidth: 0.8,
@@ -817,11 +806,11 @@ class _ServiceInProgressScreenState
                                 width: cardWidth,
                                 height: 52.0,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1D8070),
+                                  color: const Color(0xFF8B53FE),
                                   borderRadius: BorderRadius.circular(12.0),
                                   boxShadow: const [
                                     BoxShadow(
-                                      color: Color(0x1F1D8070),
+                                      color: Color(0x1F8B53FE),
                                       blurRadius: 10.0,
                                       offset: Offset(0, 4),
                                     ),
@@ -866,7 +855,7 @@ class _ServiceInProgressScreenState
                                         fontSize: 13.0,
                                       ),
                                     ),
-                                    backgroundColor: const Color(0xFF1D8070),
+                                    backgroundColor: const Color(0xFF8B53FE),
                                     duration: const Duration(seconds: 2),
                                     behavior: SnackBarBehavior.floating,
                                     shape: RoundedRectangleBorder(
@@ -890,7 +879,7 @@ class _ServiceInProgressScreenState
                                     style: GoogleFonts.inter(
                                       fontSize: 14.0,
                                       fontWeight: FontWeight.w500,
-                                      color: const Color(0xFF1D8070),
+                                      color: const Color(0xFF8B53FE),
                                       height: 22.0 / 14.0,
                                       letterSpacing: 0.0,
                                     ),
@@ -982,7 +971,7 @@ class _BackChevronPainter extends CustomPainter {
 }
 
 /// Vector Painter fallback replicating the exact success tick illustration:
-/// Mint halos, dark teal checkmark circle, white checkmark, radiating sparks
+/// Brand purple halos, deep purple checkmark circle, white checkmark, radiating sparks
 class _SuccessTickPainter extends CustomPainter {
   const _SuccessTickPainter();
 
@@ -991,46 +980,51 @@ class _SuccessTickPainter extends CustomPainter {
     final double cx = size.width / 2.0;
     final double cy = size.height / 2.0;
 
-    // 1. Concentric Mint Halos
+    // 1. Concentric Soft Purple Halos (matching screenshot)
     final haloPaintOuter = Paint()
-      ..color = const Color(0xFFE8F7F0).withValues(alpha: 0.6)
+      ..color = const Color(0xFFF0EAFE).withValues(alpha: 0.70)
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(cx, cy), 35.0, haloPaintOuter);
+    canvas.drawCircle(Offset(cx, cy), 38.0, haloPaintOuter);
 
     final haloPaintInner = Paint()
-      ..color = const Color(0xFFD6F2E4).withValues(alpha: 0.75)
+      ..color = const Color(0xFFE2D5FE).withValues(alpha: 0.85)
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(cx, cy), 28.0, haloPaintInner);
+    canvas.drawCircle(Offset(cx, cy), 30.0, haloPaintInner);
 
-    // 2. Main Teal Circle (tick circle: ~62.6px bound)
+    // 2. Main Purple Circle with subtle shadow
+    final shadowPaint = Paint()
+      ..color = const Color(0x338B53FE)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx, cy + 2.0), 24.0, shadowPaint);
+
     final circlePaint = Paint()
-      ..color = const Color(0xFF1D8070)
+      ..color = const Color(0xFF8B53FE)
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
-    canvas.drawCircle(Offset(cx, cy), 22.0, circlePaint);
+    canvas.drawCircle(Offset(cx, cy), 24.0, circlePaint);
 
-    // 3. White Checkmark
+    // 3. Crisp White Checkmark
     final checkPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.2
+      ..strokeWidth = 3.6
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..isAntiAlias = true;
 
     final checkPath = Path();
-    checkPath.moveTo(cx - 7.5, cy - 0.5);
+    checkPath.moveTo(cx - 8.0, cy - 0.5);
     checkPath.lineTo(cx - 2.5, cy + 5.5);
-    checkPath.lineTo(cx + 8.5, cy - 5.5);
+    checkPath.lineTo(cx + 9.0, cy - 6.0);
     canvas.drawPath(checkPath, checkPaint);
 
-    // 4. Radiating Sparks (dashes)
-    void drawRay(double angleDeg, double innerR, double outerR, Color color) {
+    // 4. Radiating Sparks (matching screenshot)
+    void drawRay(double angleDeg, double innerR, double outerR, Color color, [double width = 2.4]) {
       final rad = angleDeg * math.pi / 180.0;
       final rayPaint = Paint()
         ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.4
+        ..strokeWidth = width
         ..strokeCap = StrokeCap.round;
       canvas.drawLine(
         Offset(cx + innerR * math.cos(rad), cy + innerR * math.sin(rad)),
@@ -1039,19 +1033,19 @@ class _SuccessTickPainter extends CustomPainter {
       );
     }
 
-    // Yellow sparks
-    drawRay(240, 38.0, 47.0, const Color(0xFFF9BD15));
-    drawRay(300, 38.0, 47.0, const Color(0xFFF9BD15));
+    // Lavender Accent Sparks
+    drawRay(240, 42.0, 52.0, const Color(0xFFC4A8FE), 2.6);
+    drawRay(300, 42.0, 52.0, const Color(0xFFC4A8FE), 2.6);
 
-    // Mint sparks
-    drawRay(205, 38.0, 46.0, const Color(0xFF7DE6B5));
-    drawRay(335, 38.0, 46.0, const Color(0xFF7DE6B5));
-    drawRay(150, 40.0, 48.0, const Color(0xFF7DE6B5));
-    drawRay(30, 40.0, 48.0, const Color(0xFF7DE6B5));
+    // Light Vibrant Purple Sparks
+    drawRay(205, 42.0, 51.0, const Color(0xFFA67AFE), 2.4);
+    drawRay(335, 42.0, 51.0, const Color(0xFFA67AFE), 2.4);
+    drawRay(150, 44.0, 53.0, const Color(0xFFA67AFE), 2.2);
+    drawRay(30, 44.0, 53.0, const Color(0xFFA67AFE), 2.2);
 
-    // Teal sparks
-    drawRay(175, 42.0, 49.0, const Color(0xFF1D8070));
-    drawRay(5, 42.0, 49.0, const Color(0xFF1D8070));
+    // Deep Brand Purple Sparks
+    drawRay(175, 45.0, 54.0, const Color(0xFF8B53FE), 2.4);
+    drawRay(5, 45.0, 54.0, const Color(0xFF8B53FE), 2.4);
   }
 
   @override
@@ -1067,7 +1061,7 @@ class _RatingStarPainter extends CustomPainter {
 
   const _RatingStarPainter({
     required this.isFilled,
-    this.fillColor = const Color(0xFFF9BD15),
+    this.fillColor = const Color(0xFF8B53FE),
     this.strokeColor = const Color(0xFF566663),
     this.strokeWidth = 0.8,
   });

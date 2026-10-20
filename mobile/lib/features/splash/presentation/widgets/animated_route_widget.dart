@@ -1,7 +1,5 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
 
 class AnimatedRouteWidget extends StatefulWidget {
   final double progress;
@@ -29,7 +27,14 @@ class _AnimatedRouteWidgetState extends State<AnimatedRouteWidget>
   }
 
   @override
+  void deactivate() {
+    _pulseController.stop();
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
+    _pulseController.stop();
     _pulseController.dispose();
     super.dispose();
   }
@@ -88,21 +93,10 @@ class _RouteAndCarPainter extends CustomPainter {
       final currentLength = metric.length * drawProgress.clamp(0.0, 1.0);
       final extractedPath = metric.extractPath(0.0, currentLength);
 
-      // Route glow effect
-      final glowPaint = Paint()
-        ..color = AppColors.mintGlow.withValues(alpha: 0.35)
-        ..strokeWidth = 7.0
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
-
-      canvas.drawPath(extractedPath, glowPaint);
-
-      // Primary crisp mint line
+      // Distance line: border: 4px solid #8B53FE
       final routePaint = Paint()
-        ..color = AppColors.mintAccent
-        ..strokeWidth = 3.8
+        ..color = const Color(0xFF8B53FE)
+        ..strokeWidth = 4.0
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round;
@@ -123,36 +117,39 @@ class _RouteAndCarPainter extends CustomPainter {
   }
 
   void _drawUserPin(Canvas canvas, Offset center) {
+    // Ellipse color: background: #8B53FE;
     // 1. Radar Pulse Ring
     final pulseRadius = 12.0 + (pulseValue * 14.0);
     final pulseAlpha = (1.0 - pulseValue).clamp(0.0, 1.0) * 0.45;
     final pulsePaint = Paint()
-      ..color = AppColors.mintAccent.withValues(alpha: pulseAlpha)
+      ..color = const Color(0xFF8B53FE).withValues(alpha: pulseAlpha)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
     canvas.drawCircle(center, pulseRadius, pulsePaint);
 
-    // 2. Outer Beacon Circle
+    // 2. Outer Beacon Ellipse Circle: background: #8B53FE (with soft ambient alpha)
     final outerCirclePaint = Paint()
-      ..color = AppColors.mintAccent.withValues(alpha: 0.3)
+      ..color = const Color(0xFF8B53FE).withValues(alpha: 0.22)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, 12, outerCirclePaint);
 
-    // 3. Solid Beacon Ring
+    // 3. Solid Beacon Ring: background: #8B53FE
     final ringPaint = Paint()
-      ..color = AppColors.mintAccent
+      ..color = const Color(0xFF8B53FE)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5;
     canvas.drawCircle(center, 9, ringPaint);
 
-    // 4. Center Dot
+    // 4. Center Dot: background: #8B53FE
     final dotPaint = Paint()
-      ..color = AppColors.mintAccent
+      ..color = const Color(0xFF8B53FE)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, 4, dotPaint);
 
-    // 5. "You" Tooltip Tag above the pin
+    // 5. "You" Tooltip Tag above the pin:
+    // background: #8B53FE;
+    // box-shadow: 0px 1px 8px 0px #0000000F;
     final tagCenter = Offset(center.dx, center.dy - 26);
     const tagWidth = 36.0;
     const tagHeight = 20.0;
@@ -163,33 +160,38 @@ class _RouteAndCarPainter extends CustomPainter {
       const Radius.circular(radius),
     );
 
-    // Tag shadow
-    canvas.drawRRect(
-      tagRect,
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.35)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
-    );
-
-    // Tag body
-    canvas.drawRRect(
-      tagRect,
-      Paint()..color = AppColors.mintAccent,
-    );
-
     // Tiny pointer triangle towards pin
     final pointerPath = Path()
       ..moveTo(tagCenter.dx - 4, tagCenter.dy + (tagHeight / 2))
       ..lineTo(tagCenter.dx + 4, tagCenter.dy + (tagHeight / 2))
       ..lineTo(tagCenter.dx, tagCenter.dy + (tagHeight / 2) + 4)
       ..close();
-    canvas.drawPath(pointerPath, Paint()..color = AppColors.mintAccent);
+
+    // Box-shadow: 0px 1px 8px 0px #0000000F
+    canvas.save();
+    canvas.translate(0, 1.0);
+    final shadowPaint = Paint()
+      ..color = const Color(0x0F000000)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8.0);
+    canvas.drawRRect(tagRect, shadowPaint);
+    canvas.drawPath(pointerPath, shadowPaint);
+    canvas.restore();
+
+    // Tag body: background: #8B53FE
+    final badgePaint = Paint()..color = const Color(0xFF8B53FE);
+    canvas.drawRRect(tagRect, badgePaint);
+    canvas.drawPath(pointerPath, badgePaint);
 
     // Text "You"
     final textPainter = TextPainter(
-      text: TextSpan(
+      text: const TextSpan(
         text: 'You',
-        style: AppTextStyles.badgeText,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 12.0,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'Inter',
+        ),
       ),
       textDirection: TextDirection.ltr,
     );
@@ -213,7 +215,7 @@ class _RouteAndCarPainter extends CustomPainter {
 
     // Car shadow
     final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.45 * opacity)
+      ..color = Colors.black.withValues(alpha: 0.35 * opacity)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -223,9 +225,9 @@ class _RouteAndCarPainter extends CustomPainter {
       shadowPaint,
     );
 
-    // 1. Car White Chassis Body
+    // 1. Car Purple Shade Chassis Body
     final bodyPaint = Paint()
-      ..color = Colors.white.withValues(alpha: opacity)
+      ..color = const Color(0xFF8B53FE).withValues(alpha: opacity)
       ..style = PaintingStyle.fill;
     final bodyRect = RRect.fromRectAndCorners(
       const Rect.fromLTWH(-11, -23, 22, 46),
@@ -235,9 +237,16 @@ class _RouteAndCarPainter extends CustomPainter {
       bottomRight: const Radius.circular(6),
     );
     canvas.drawRRect(bodyRect, bodyPaint);
+    canvas.drawRRect(
+      bodyRect,
+      Paint()
+        ..color = const Color(0xFF6B35DC).withValues(alpha: opacity)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
 
-    // 2. Side Mirrors
-    final mirrorPaint = Paint()..color = Colors.white.withValues(alpha: opacity);
+    // 2. Side Mirrors (Purple shade)
+    final mirrorPaint = Paint()..color = const Color(0xFFA57CFF).withValues(alpha: opacity);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         const Rect.fromLTWH(-14, -13, 3, 7),
@@ -253,9 +262,9 @@ class _RouteAndCarPainter extends CustomPainter {
       mirrorPaint,
     );
 
-    // 3. Panoramic Glass Roof / Windshields (Dark tint)
+    // 3. Panoramic Glass Roof / Windshields (Deep violet tinted glass)
     final glassPaint = Paint()
-      ..color = const Color(0xFF1E2826).withValues(alpha: opacity)
+      ..color = const Color(0xFF2E1756).withValues(alpha: opacity)
       ..style = PaintingStyle.fill;
 
     // Windshield (front)
@@ -285,9 +294,9 @@ class _RouteAndCarPainter extends CustomPainter {
     );
     canvas.drawRRect(rearGlass, glassPaint);
 
-    // 4. Mint Green Electric Accent Stripe on Hood
+    // 4. Electric Accent Stripe on Hood (Lavender highlight)
     final accentPaint = Paint()
-      ..color = AppColors.mintAccent.withValues(alpha: opacity)
+      ..color = const Color(0xFFE4D5FF).withValues(alpha: opacity)
       ..style = PaintingStyle.fill;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -297,9 +306,9 @@ class _RouteAndCarPainter extends CustomPainter {
       accentPaint,
     );
 
-    // 5. Headlight glow dots
+    // 5. Headlight glow dots (Crisp bright headlights)
     final lightPaint = Paint()
-      ..color = AppColors.mintAccent.withValues(alpha: opacity * 0.9)
+      ..color = const Color(0xFFF3EDFF).withValues(alpha: opacity * 0.95)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(const Offset(-8, -21), 1.6, lightPaint);
     canvas.drawCircle(const Offset(8, -21), 1.6, lightPaint);

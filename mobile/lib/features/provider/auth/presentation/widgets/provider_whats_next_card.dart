@@ -101,7 +101,7 @@ class ProviderWhatsNextCard extends StatelessWidget {
                 width: 36.0,
                 height: 36.0,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFDDF0E3), // background: #DDF0E3
+                  color: Color(0xFFF0EAFE),
                   shape: BoxShape.circle, // border-radius: 67.5px
                 ),
                 child: Center(
@@ -109,7 +109,7 @@ class ProviderWhatsNextCard extends StatelessWidget {
                     width: 28.0,
                     height: 28.0,
                     decoration: const BoxDecoration(
-                      color: Color(0xFF1D8070), // background: #1D8070
+                      color: Color(0xFF8B53FE),
                       shape: BoxShape.circle,
                     ),
                     child: const Center(

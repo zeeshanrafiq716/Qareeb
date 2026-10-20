@@ -8,7 +8,7 @@ import '../../../../models/category_model.dart';
 /// - height: 120
 /// - border-radius: 8px
 /// - background: #FFFFFF
-/// - box-shadow: 0px 1px 10px 0px #00000014
+/// - box-shadow: 0px 1px 12px 0px #0000001A
 ///
 /// Image Placement Branding:
 /// - width: 98; height: 60; top: 10px; left: 12px; angle: 0 deg; opacity: 1;
@@ -150,8 +150,8 @@ class CategoryCardWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(8.0),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x14000000), // #00000014 (opacity: 0.08)
-            blurRadius: 10.0,
+            color: Color(0x1A000000), // #0000001A
+            blurRadius: 12.0,
             spreadRadius: 0.0,
             offset: Offset(0, 1),
           ),

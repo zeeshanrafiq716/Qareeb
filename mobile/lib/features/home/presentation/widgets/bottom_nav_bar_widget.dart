@@ -73,14 +73,14 @@ class _BottomNavBarWidgetState extends State<BottomNavBarWidget> {
         right: 0.0,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C2926),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(60.0),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF1C2926).withValues(alpha: 0.45),
-            blurRadius: 24.0,
+            color: Color(0x1F000000), // 0px 1px 16px 0px #0000001F
+            blurRadius: 16.0,
             spreadRadius: 0.0,
-            offset: const Offset(0, 8),
+            offset: Offset(0, 1),
           ),
         ],
       ),
@@ -123,8 +123,8 @@ class _BottomNavBarWidgetState extends State<BottomNavBarWidget> {
   }) {
     final int effectiveCurrent = widget.currentIndex ?? _currentIndex;
     final bool isSelected = effectiveCurrent == index;
-    final Color textColor = isSelected ? const Color(0xFF9FFFCB) : Colors.white;
-    final Color iconColor = isSelected ? const Color(0xFF9FFFCB) : Colors.white;
+    final Color textColor = isSelected ? const Color(0xFFFFFFFF) : const Color(0xFF566663);
+    final Color iconColor = isSelected ? const Color(0xFFFFFFFF) : const Color(0xFF566663);
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -134,13 +134,17 @@ class _BottomNavBarWidgetState extends State<BottomNavBarWidget> {
         width: 96.0,
         height: 57.0,
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2A3D39) : Colors.transparent,
+          color: isSelected ? const Color(0xFF8B53FE) : Colors.transparent,
           borderRadius: BorderRadius.circular(60.0),
-          border: isSelected
-              ? Border.all(
-                  color: const Color(0xFF2B4742),
-                  width: 0.6,
-                )
+          boxShadow: isSelected
+              ? const [
+                  BoxShadow(
+                    color: Color(0x0F000000), // 0px 0px 12px 0px #0000000F
+                    blurRadius: 12.0,
+                    spreadRadius: 0.0,
+                    offset: Offset(0, 0),
+                  ),
+                ]
               : null,
         ),
         child: Material(
@@ -148,8 +152,8 @@ class _BottomNavBarWidgetState extends State<BottomNavBarWidget> {
           borderRadius: BorderRadius.circular(60.0),
           child: InkWell(
             borderRadius: BorderRadius.circular(60.0),
-            splashColor: const Color(0xFF9FFFCB).withValues(alpha: 0.15),
-            highlightColor: const Color(0xFF9FFFCB).withValues(alpha: 0.08),
+            splashColor: const Color(0xFF8B53FE).withValues(alpha: 0.15),
+            highlightColor: const Color(0xFF8B53FE).withValues(alpha: 0.08),
             onTap: () => _handleTabTap(index),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12.0),

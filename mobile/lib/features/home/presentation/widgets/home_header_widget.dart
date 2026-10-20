@@ -41,7 +41,7 @@ class HomeHeaderWidget extends StatelessWidget {
       child: Stack(
         children: [
           // Background Gradient (width: 390; height: 246)
-          // linear-gradient(180deg, #9FFFCB 0%, rgba(159, 255, 203, 0.37284) 68.53%, rgba(159, 255, 203, 0) 100%)
+          // linear-gradient(180.52deg, #8B53FE -66.75%, rgba(139, 83, 254, 0.37284) -0.59%, rgba(139, 83, 254, 0) 29.8%)
           Positioned(
             top: 0,
             left: 0,
@@ -50,13 +50,12 @@ class HomeHeaderWidget extends StatelessWidget {
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0.0, 0.6853, 1.0],
+                  begin: Alignment(0.009, -1.0),
+                  end: Alignment(-0.009, 1.0),
+                  stops: [0.0, 1.0],
                   colors: [
-                    Color(0xFF9FFFCB), // #9FFFCB 0%
-                    Color(0x5F9FFFCB), // rgba(159, 255, 203, 0.37284) 68.53%
-                    Color(0x009FFFCB), // rgba(159, 255, 203, 0) 100%
+                    Color(0x5F8B53FE), // rgba(139, 83, 254, 0.37284) at -0.59%
+                    Color(0x008B53FE), // rgba(139, 83, 254, 0) at 29.8%
                   ],
                 ),
               ),

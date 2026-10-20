@@ -5,6 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../models/provider_model.dart';
+import '../../../providers/backend_provider.dart';
+import '../../../services/location_service.dart';
 import 'provider_detail_screen.dart';
 
 /// Custom scroll behavior enabling smooth mouse dragging, trackpad gestures, and touch on all devices:
@@ -143,6 +146,25 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                 ? math.min(844.0, (constraints.maxHeight - 32.0).clamp(520.0, 844.0))
                 : constraints.maxHeight;
 
+            final userLocAsync = ref.watch(userLocationProvider);
+            final userLoc = userLocAsync.value ?? UserLocation.defaultLocation;
+
+            final nearbyProvidersAsync = ref.watch(nearbyProvidersProvider);
+            final List<ProviderMarkerModel> liveProviders = nearbyProvidersAsync.value ?? [];
+
+            final String searchQuery = _searchController.text.trim().toLowerCase();
+            final List<ProviderMarkerModel> filteredProviders = searchQuery.isEmpty
+                ? liveProviders
+                : liveProviders.where((p) {
+                    return p.name.toLowerCase().contains(searchQuery) ||
+                        p.categoryName.toLowerCase().contains(searchQuery) ||
+                        p.coordinatesDisplay.contains(searchQuery);
+                  }).toList();
+
+            final int itemsCount = filteredProviders.isNotEmpty
+                ? math.min(_selectedProviderCount, filteredProviders.length)
+                : _selectedProviderCount;
+
             final screenContent = Container(
               width: containerWidth,
               height: containerHeight,
@@ -210,19 +232,42 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                     height: 36.0,
                     child: GestureDetector(
                       key: const Key('find_provider_location_button'),
-                      onTap: () {
+                      onTap: () async {
                         HapticFeedback.lightImpact();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Centering to your location...',
+                              'Detecting exact GPS coordinates...',
                               style: GoogleFonts.inter(
                                 fontSize: 12.0,
                                 color: Colors.white,
                               ),
                             ),
-                            backgroundColor: const Color(0xFF1D8070),
-                            duration: const Duration(seconds: 1),
+                            backgroundColor: const Color(0xFF8B53FE),
+                            duration: const Duration(milliseconds: 1000),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+
+                        final freshLoc = await ref.read(locationServiceProvider).getCurrentLocation();
+                        ref.refresh(userLocationProvider);
+                        ref.refresh(nearbyProvidersProvider);
+
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              freshLoc.isGpsDetected
+                                  ? 'GPS: ${freshLoc.coordinatesDisplay} (${freshLoc.cityName})'
+                                  : 'Location: ${freshLoc.cityName}',
+                              style: GoogleFonts.inter(
+                                fontSize: 12.0,
+                                color: Colors.white,
+                              ),
+                            ),
+                            backgroundColor: const Color(0xFF8B53FE),
+                            duration: const Duration(seconds: 2),
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
@@ -247,7 +292,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                           child: Icon(
                             Icons.my_location_rounded,
                             size: 20.0,
-                            color: Color(0xFF1C2926),
+                            color: Color(0xFF8B53FE),
                           ),
                         ),
                       ),
@@ -352,7 +397,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                                 color: const Color(0xFFFFFFFF),
                                 borderRadius: BorderRadius.circular(8.0),
                                 border: _isSearchOpen
-                                    ? Border.all(color: const Color(0xFF1D8070), width: 1.2)
+                                    ? Border.all(color: const Color(0xFF8B53FE), width: 1.2)
                                     : null,
                                 boxShadow: const [
                                   BoxShadow(
@@ -368,7 +413,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                                   size: const Size(18.0, 18.0),
                                   painter: _SearchVectorPainter(
                                     color: _isSearchOpen
-                                        ? const Color(0xFF1D8070)
+                                        ? const Color(0xFF8B53FE)
                                         : const Color(0xFF1C2926),
                                   ),
                                 ),
@@ -428,17 +473,17 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                             ),
                             children: [
                               // 1. Header controls (Providers to show, buttons, bar, total providers):
-                              Center(child: _buildProvidersInnerCard(containerWidth)),
+                              Center(child: _buildProvidersInnerCard(containerWidth, filteredProviders.length, userLoc)),
 
                               const SizedBox(height: 16.0),
 
                               // 2. Services cards:
                               ...List.generate(
-                                _selectedProviderCount,
+                                itemsCount,
                                 (index) => Padding(
                                   padding: const EdgeInsets.only(bottom: 12.0),
                                   child: Center(
-                                    child: _buildServiceCard(cardWidth, index),
+                                    child: _buildServiceCard(cardWidth, index, filteredProviders),
                                   ),
                                 ),
                               ),
@@ -573,7 +618,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
               return Container(
                 width: double.infinity,
                 height: double.infinity,
-                color: const Color(0xFF141C1A),
+                color: const Color(0xFFF0F1F5),
                 child: Center(
                   child: Container(
                     width: containerWidth,
@@ -581,7 +626,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(42),
                       border: Border.all(
-                        color: const Color(0xFF9FFFCB).withValues(alpha: 0.35),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.25),
                         width: 2.0,
                       ),
                       boxShadow: [
@@ -607,7 +652,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
   }
 
   /// Providers to show widget matching Figma branding from pickup screen:
-  Widget _buildProvidersInnerCard(double containerWidth) {
+  Widget _buildProvidersInnerCard(double containerWidth, [int? totalCount, UserLocation? userLoc]) {
     final double cardWidth = containerWidth >= 390
         ? 350.0
         : (containerWidth - 40.0).clamp(280.0, 350.0);
@@ -622,12 +667,12 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Left side icon branding: width: 36; height: 36; border-radius: 40px; background: #F0F5F2;
+              // Left side icon branding: width: 36; height: 36; border-radius: 40px; background: #F0EAFE;
               Container(
                 width: 36.0,
                 height: 36.0,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0F5F2),
+                  color: const Color(0xFFF0EAFE),
                   borderRadius: BorderRadius.circular(40.0),
                 ),
                 child: const Center(
@@ -635,8 +680,8 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                   child: CustomPaint(
                     size: Size(20.0, 19.0),
                     painter: _ProviderGroupVectorPainter(
-                      color: Color(0xFF1D8070),
-                      backgroundColor: Color(0xFFF0F5F2),
+                      color: Color(0xFF8B53FE),
+                      backgroundColor: Color(0xFFF0EAFE),
                     ),
                   ),
                 ),
@@ -726,7 +771,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
 
           // 4. Total number of providers layout widget branding:
           // width: 350; height: 42; justify-content: space-between;
-          _buildTotalProvidersLayout(cardWidth),
+          _buildTotalProvidersLayout(cardWidth, totalCount, userLoc),
         ],
       ),
     );
@@ -734,7 +779,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
 
   /// Total number of providers layout widget matching exact Figma specifications:
   /// width: 350; height: 42; justify-content: space-between; angle: 0 deg; opacity: 1;
-  Widget _buildTotalProvidersLayout(double cardWidth) {
+  Widget _buildTotalProvidersLayout(double cardWidth, [int? totalCount, UserLocation? userLoc]) {
     return SizedBox(
       width: cardWidth,
       height: 42.0,
@@ -742,9 +787,8 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Left side content layout: width: 152; gap: 12px;
-          SizedBox(
-            width: 152.0,
+          // Left side content layout: gap: 12px;
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -753,7 +797,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                 // content: 18 Providers nearby
                 // width: 152; height: 12; font-family: Inter; font-weight: 500; font-size: 16px; leading-trim: CAP_HEIGHT; line-height: 22px; color: #1C2926;
                 Text(
-                  '18 Providers nearby',
+                  '${totalCount != null && totalCount > 0 ? totalCount : 18} Providers nearby',
                   textHeightBehavior: const TextHeightBehavior(
                     applyHeightToFirstAscent: false,
                     applyHeightToLastDescent: false,
@@ -769,10 +813,11 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2.0),
-                // content: Within 1 km radius
-                // width: 152; height: 9; font-family: Inter; font-weight: 400; font-size: 12px; leading-trim: CAP_HEIGHT; line-height: 22px; color: #566663;
+                // content: Within 1 km radius • locality
                 Text(
-                  'Within 1 km radius',
+                  (userLoc != null && userLoc.cityName.isNotEmpty && userLoc.cityName != 'Detecting Location...')
+                      ? 'Within 1 km radius • ${userLoc.cityName}'
+                      : 'Within 1 km radius',
                   textHeightBehavior: const TextHeightBehavior(
                     applyHeightToFirstAscent: false,
                     applyHeightToLastDescent: false,
@@ -806,7 +851,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                       color: Colors.white,
                     ),
                   ),
-                  backgroundColor: const Color(0xFF1D8070),
+                  backgroundColor: const Color(0xFF8B53FE),
                   duration: const Duration(seconds: 1),
                   behavior: SnackBarBehavior.floating,
                 ),
@@ -905,10 +950,10 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
   /// text layout: width: 57; height: 25; gap: 8px;
   ///   content: Sedan . AC, 10px Inter Regular (400), #566663;
   ///   row 3 layout: width: 57; height: 10; gap: 4px;
-  ///     star branding: width: 10; height: 10; background: #1D8070;
+  ///     star branding: width: 10; height: 10; background: #8B53FE;
   ///     content: 4.9 (120), 10px Inter Regular (400);
-  /// available badge layout: width: 42; height: 14; border-radius: 60px; padding: 4px; background: #F0F5F2;
-  ///   content: Available, 8px Inter Regular (400), #1D8070;
+  /// available badge layout: width: 42; height: 14; border-radius: 60px; padding: 4px; background: #F0EAFE;
+  ///   content: Available, 8px Inter Regular (400), #8B53FE;
   ///
   /// right side content layout:
   /// distance and timer layout: width: 54; height: 29; gap: 12px;
@@ -918,40 +963,47 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
   ///   timer layout: 2 min away, 10px Inter Regular (400), #566663;
   /// call icon layout: width: 36; height: 36; border-radius: 60px; border-width: 0.6px; background: #F5F7F7;
   ///   call icon inner branding: width: 12; height: 12; background: #1C2926;
-  Widget _buildServiceCard(double cardWidth, int index) {
+  Widget _buildServiceCard(double cardWidth, int index, [List<ProviderMarkerModel>? liveProviders]) {
+    final ProviderMarkerModel? liveItem =
+        (liveProviders != null && index < liveProviders.length)
+            ? liveProviders[index]
+            : null;
+
     final baseItem = _nearbyProviders[index % _nearbyProviders.length];
 
     // Card 0 is strictly Ahmad Raza from specs, subsequent cards vary realistically
-    final String providerName = index == 0
-        ? 'Ahmad Raza'
-        : index == 1
-            ? 'Muhammad Bilal'
-            : index == 2
-                ? 'Usman Ali'
-                : index == 3
-                    ? 'Hamza Sheikh'
-                    : 'Provider ${index + 1}';
+    final String providerName = liveItem?.name ??
+        (index == 0
+            ? 'Ahmad Raza'
+            : index == 1
+                ? 'Muhammad Bilal'
+                : index == 2
+                    ? 'Usman Ali'
+                    : index == 3
+                        ? 'Hamza Sheikh'
+                        : 'Provider ${index + 1}');
 
-    final String imagePath = index % 3 == 2
+    final String imagePath = (liveItem?.categorySlug == 'pickup' || index % 3 == 2)
         ? 'assets/images/pickup.png'
         : 'assets/images/car_ride.png';
 
-    final String vehicleType = index % 3 == 2
-        ? 'Pickup . AC'
-        : 'Sedan . AC';
+    final String vehicleType = liveItem != null
+        ? '${liveItem.categoryName} . AC'
+        : (index % 3 == 2 ? 'Pickup . AC' : 'Sedan . AC');
 
-    final double distanceKm = 0.3 + (index * 0.25);
-    final int etaMin = 2 + (index * 2);
+    final double distanceKm = liveItem?.distanceKm ?? (0.3 + (index * 0.25));
+    final String etaStr = liveItem?.etaDisplay ?? ('${2 + (index * 2)} min away');
     final String distanceStr = '${distanceKm.toStringAsFixed(1)} km';
-    final String etaStr = '$etaMin min away';
 
-    final double rating = index == 0
-        ? 4.9
-        : (4.7 + ((index * 3) % 4) * 0.1).clamp(4.6, 5.0);
+    final double rating = liveItem?.ratingAvg ??
+        (index == 0
+            ? 4.9
+            : (4.7 + ((index * 3) % 4) * 0.1).clamp(4.6, 5.0));
 
-    final int reviews = index == 0
-        ? 120
-        : (75 + ((index * 19) % 80));
+    final int reviews = liveItem?.ratingCount ??
+        (index == 0
+            ? 120
+            : (75 + ((index * 19) % 80)));
 
     final double effectiveWidth = math.min(350.0, cardWidth);
 
@@ -963,7 +1015,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => ProviderDetailScreen(
-                serviceCategory: widget.serviceCategory,
+                serviceCategory: liveItem?.categoryName ?? widget.serviceCategory,
                 providerName: providerName,
               ),
             ),
@@ -1012,13 +1064,13 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                             width: 60.0,
                             height: 40.0,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF0F5F2),
+                              color: const Color(0xFFF0EAFE),
                               borderRadius: BorderRadius.circular(6.0),
                             ),
                             child: const Icon(
                               Icons.directions_car_filled,
                               size: 20,
-                              color: Color(0xFF1D8070),
+                              color: Color(0xFF8B53FE),
                             ),
                           ),
                         ),
@@ -1096,7 +1148,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                                           const Icon(
                                             Icons.star_rounded,
                                             size: 11.0,
-                                            color: Color(0xFF1D8070),
+                                            color: Color(0xFF8B53FE),
                                           ),
                                           const SizedBox(width: 3.0),
                                           RichText(
@@ -1134,12 +1186,12 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                                 ),
 
                                 // Available badge layout:
-                                // width: 42; height: 14; border-radius: 60px; padding: 4px; background: #F0F5F2;
+                                // width: 42; height: 14; border-radius: 60px; padding: 4px; background: #F0EAFE;
                                 Container(
                                   width: 42.0,
                                   height: 14.0,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF0F5F2),
+                                    color: const Color(0xFFF0EAFE),
                                     borderRadius: BorderRadius.circular(60.0),
                                   ),
                                   alignment: Alignment.center,
@@ -1152,7 +1204,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                                     style: GoogleFonts.inter(
                                       fontSize: 8.0,
                                       fontWeight: FontWeight.w400,
-                                      color: const Color(0xFF1D8070),
+                                      color: const Color(0xFF8B53FE),
                                       height: 1.0,
                                       letterSpacing: 0.0,
                                     ),
@@ -1246,11 +1298,13 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Calling $providerName (${baseItem.phone})...',
+                              liveItem != null
+                                  ? 'Calling $providerName (GPS: ${liveItem.coordinatesDisplay})...'
+                                  : 'Calling $providerName (${baseItem.phone})...',
                               style: GoogleFonts.inter(fontSize: 12.0, color: Colors.white),
                             ),
-                            backgroundColor: const Color(0xFF1D8070),
-                            duration: const Duration(seconds: 1),
+                            backgroundColor: const Color(0xFF8B53FE),
+                            duration: const Duration(seconds: 2),
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
@@ -1286,7 +1340,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
   }
 
   /// Button branding matching Figma specifications:
-  /// Selected (10 default): background: #1D8070; content: #FFFFFF; font: Inter 500, 15px
+  /// Selected (10 default): background: #8B53FE; content: #FFFFFF; font: Inter 500, 15px
   /// Unselected (20, 30): border: 1.2px solid #EDF0EF; content: #1C2926; font: Inter 500, 15px
   Widget _buildCountButton(int count) {
     final bool isSelected = _selectedProviderCount == count;
@@ -1303,7 +1357,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
         duration: const Duration(milliseconds: 180),
         height: 44.4,
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1D8070) : Colors.white,
+          color: isSelected ? const Color(0xFF8B53FE) : Colors.white,
           borderRadius: BorderRadius.circular(8.0),
           border: isSelected
               ? null
@@ -1314,7 +1368,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
           boxShadow: isSelected
               ? const [
                   BoxShadow(
-                    color: Color(0x261D8070),
+                    color: Color(0x268B53FE),
                     blurRadius: 6.0,
                     offset: Offset(0, 2),
                   ),
@@ -1416,8 +1470,8 @@ class _ProviderGroupVectorPainter extends CustomPainter {
   final Color backgroundColor;
 
   const _ProviderGroupVectorPainter({
-    this.color = const Color(0xFF1D8070),
-    this.backgroundColor = const Color(0xFFF0F5F2),
+    this.color = const Color(0xFF8B53FE),
+    this.backgroundColor = const Color(0xFFF0EAFE),
   });
 
   @override

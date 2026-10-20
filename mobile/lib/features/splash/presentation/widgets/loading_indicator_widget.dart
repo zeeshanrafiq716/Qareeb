@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class LoadingIndicatorWidget extends StatelessWidget {
   final double progress;
@@ -26,7 +25,7 @@ class LoadingIndicatorWidget extends StatelessWidget {
           width: barWidth,
           height: barHeight,
           decoration: BoxDecoration(
-            color: const Color(0xFF2C3C37),
+            color: const Color(0xFFEDE8FD), // soft light lavender track
             borderRadius: BorderRadius.circular(10),
           ),
           child: Align(
@@ -37,11 +36,11 @@ class LoadingIndicatorWidget extends StatelessWidget {
               width: barWidth * progress.clamp(0.0, 1.0),
               height: barHeight,
               decoration: BoxDecoration(
-                color: AppColors.mintAccent,
+                color: const Color(0xFF8B53FE), // #8B53FE indicator loader
                 borderRadius: BorderRadius.circular(10),
-                boxShadow: [
+                boxShadow: const [
                   BoxShadow(
-                    color: AppColors.mintGlow.withValues(alpha: 0.6),
+                    color: Color(0x668B53FE),
                     blurRadius: 4,
                   ),
                 ],
@@ -59,7 +58,12 @@ class LoadingIndicatorWidget extends StatelessWidget {
             statusText,
             key: ValueKey<String>(statusText),
             textAlign: TextAlign.center,
-            style: AppTextStyles.statusText,
+            style: GoogleFonts.inter(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF566663),
+              letterSpacing: 0.2,
+            ),
           ),
         ),
 
@@ -70,7 +74,7 @@ class LoadingIndicatorWidget extends StatelessWidget {
           width: 134,
           height: 5,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.9),
+            color: const Color(0xFF1C2926),
             borderRadius: BorderRadius.circular(100),
           ),
         ),

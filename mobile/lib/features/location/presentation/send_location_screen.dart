@@ -146,7 +146,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                         child: const CustomPaint(
                           size: Size(145.5, 91.0),
                           painter: _RouteVectorPainter(
-                            color: Color(0xFF1D8070),
+                            color: Color(0xFF8B53FE),
                             strokeWidth: 4.0,
                           ),
                         ),
@@ -157,21 +157,15 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                       Positioned(
                         top: 250.0,
                         left: 236.0 + ((containerWidth - 390.0) / 2.0),
-                        width: 15.0,
-                        height: 24.0,
+                        width: 18.0,
+                        height: 28.0,
                         child: Transform.rotate(
                           angle: -60.0 * math.pi / 180.0,
                           alignment: Alignment.center,
-                          child: Image.asset(
-                            'assets/images/car.png',
-                            width: 15.0,
-                            height: 24.0,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => const CustomPaint(
-                              size: Size(15.0, 24.0),
-                              painter: _CarGraphicPainter(
-                                roofColor: Color(0xFF1D8070),
-                              ),
+                          child: const CustomPaint(
+                            size: Size(18.0, 28.0),
+                            painter: _CarGraphicPainter(
+                              roofColor: Color(0xFFA67AFE),
                             ),
                           ),
                         ),
@@ -187,9 +181,9 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                         child: Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFF1D8070).withValues(alpha: 0.12),
+                            color: const Color(0xFF8B53FE).withValues(alpha: 0.12),
                             border: Border.all(
-                              color: const Color(0xFF1D8070).withValues(alpha: 0.22),
+                              color: const Color(0xFF8B53FE).withValues(alpha: 0.22),
                               width: 1.5,
                             ),
                           ),
@@ -203,7 +197,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                         child: Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFF1D8070).withValues(alpha: 0.18),
+                            color: const Color(0xFF8B53FE).withValues(alpha: 0.18),
                           ),
                         ),
                       ),
@@ -221,10 +215,10 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                           height: 36.0,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFFF0FFF7),
+                            color: const Color(0xFFF0EAFE),
                             boxShadow: const [
                               BoxShadow(
-                                color: Color(0x669FFFCB),
+                                color: Color(0x408B53FE),
                                 blurRadius: 4.0,
                                 spreadRadius: 0.0,
                               ),
@@ -236,7 +230,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                               width: 28.0,
                               height: 28.0,
                               decoration: const BoxDecoration(
-                                color: Color(0xFF1D8070),
+                                color: Color(0xFF8B53FE),
                                 shape: BoxShape.circle,
                               ),
                               child: const Center(
@@ -263,7 +257,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                         child: CustomPaint(
                           size: const Size(42.0, 26.0),
                           painter: const _DistanceBadgeTooltipPainter(
-                            color: Color(0xFF1D8070),
+                            color: Color(0xFF8B53FE),
                             cornerRadius: 4.0,
                             pointerX: 10.0,
                             pointerWidth: 8.0,
@@ -443,7 +437,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(42),
                       border: Border.all(
-                        color: const Color(0xFF9FFFCB).withValues(alpha: 0.35),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.35),
                         width: 2.0,
                       ),
                       boxShadow: [
@@ -527,14 +521,14 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                     width: 38.0,
                     height: 38.0,
                     decoration: const BoxDecoration(
-                      color: Color(0xFFEBFFF4),
+                      color: Color(0xFFF0EAFE),
                       shape: BoxShape.circle,
                     ),
                     child: const Center(
                       child: Icon(
                         Icons.location_on_rounded,
                         size: 20.0,
-                        color: Color(0xFF1D8070),
+                        color: Color(0xFF8B53FE),
                       ),
                     ),
                   ),
@@ -572,7 +566,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                       vertical: 4.0,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1D8070),
+                      color: const Color(0xFF8B53FE),
                       borderRadius: BorderRadius.circular(6.0),
                     ),
                     child: Text(
@@ -620,7 +614,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
             width: 60.0,
             height: 60.0,
             decoration: const BoxDecoration(
-              color: Color(0xFFEBFFF4),
+              color: Color(0xFFF0EAFE),
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -628,14 +622,14 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                 width: 44.0,
                 height: 44.0,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFD4F8E8),
+                  color: Color(0xFFEAE0FE),
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
                   child: Icon(
                     Icons.location_on_rounded,
                     size: 26.0,
-                    color: Color(0xFF1D8070),
+                    color: Color(0xFF8B53FE),
                   ),
                 ),
               ),
@@ -673,10 +667,10 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0FFF7),
+              color: const Color(0xFFF0EAFE),
               borderRadius: BorderRadius.circular(20.0),
               border: Border.all(
-                color: const Color(0xFF9FFFCB).withValues(alpha: 0.6),
+                color: const Color(0xFFBA98FE).withValues(alpha: 0.6),
                 width: 0.8,
               ),
             ),
@@ -686,7 +680,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                 const CustomPaint(
                   size: Size(12.0, 14.0),
                   painter: _VerifiedShieldPainter(
-                    shieldColor: Color(0xFF1D8070),
+                    shieldColor: Color(0xFF8B53FE),
                     checkColor: Colors.white,
                   ),
                 ),
@@ -696,7 +690,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                   style: GoogleFonts.inter(
                     fontSize: 11.0,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFF1D8070),
+                    color: const Color(0xFF8B53FE),
                   ),
                 ),
               ],
@@ -877,10 +871,10 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
           child: Container(
             height: 97.6,
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFEBFFF4) : const Color(0xFFF2F5F4),
+              color: isSelected ? const Color(0xFFF0EAFE) : const Color(0xFFF2F5F4),
               borderRadius: BorderRadius.circular(12.0),
               border: Border.all(
-                color: isSelected ? const Color(0xFF1D8070) : Colors.transparent,
+                color: isSelected ? const Color(0xFF8B53FE) : Colors.transparent,
                 width: 0.8,
               ),
             ),
@@ -1122,7 +1116,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                         height: 52.0,
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1D8070),
+                          color: const Color(0xFF8B53FE),
                           borderRadius: BorderRadius.circular(12.0),
                         ),
                         child: Row(
@@ -1192,7 +1186,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF1D8070),
+        backgroundColor: const Color(0xFF8B53FE),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 2),
@@ -1235,7 +1229,7 @@ class _RouteVectorPainter extends CustomPainter {
   final double strokeWidth;
 
   const _RouteVectorPainter({
-    this.color = const Color(0xFF1D8070),
+    this.color = const Color(0xFF8B53FE),
     this.strokeWidth = 4.0,
   });
 
@@ -1270,7 +1264,7 @@ class _RouteVectorPainter extends CustomPainter {
 /// width: 15; height: 24;
 class _CarGraphicPainter extends CustomPainter {
   final Color roofColor;
-  const _CarGraphicPainter({this.roofColor = const Color(0xFF1D8070)});
+  const _CarGraphicPainter({this.roofColor = const Color(0xFFA67AFE)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1378,7 +1372,7 @@ class _DistanceBadgeTooltipPainter extends CustomPainter {
   final double pointerHeight;
 
   const _DistanceBadgeTooltipPainter({
-    this.color = const Color(0xFF1D8070),
+    this.color = const Color(0xFF8B53FE),
     this.cornerRadius = 4.0,
     this.pointerX = 10.0,
     this.pointerWidth = 8.0,
@@ -1426,7 +1420,7 @@ class _VerifiedShieldPainter extends CustomPainter {
   final Color checkColor;
 
   const _VerifiedShieldPainter({
-    this.shieldColor = const Color(0xFF1D8070),
+    this.shieldColor = const Color(0xFF8B53FE),
     this.checkColor = Colors.white,
   });
 

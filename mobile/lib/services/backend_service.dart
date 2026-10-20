@@ -34,6 +34,12 @@ class BackendService {
         List<dynamic> items = [];
         if (data is Map<String, dynamic> && data['data'] is List) {
           items = data['data'] as List<dynamic>;
+        } else if (data is Map<String, dynamic> && data['data'] is Map && (data['data'] as Map)['items'] is List) {
+          items = (data['data'] as Map)['items'] as List<dynamic>;
+        } else if (data is Map<String, dynamic> && data['data'] is Map && (data['data'] as Map)['list'] is List) {
+          items = (data['data'] as Map)['list'] as List<dynamic>;
+        } else if (data is Map<String, dynamic> && data['items'] is List) {
+          items = data['items'] as List<dynamic>;
         } else if (data is List) {
           items = data;
         }

@@ -109,8 +109,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Color(0xFF9FFFCB),
-                            Color(0x009FFFCB), // rgba(159, 255, 203, 0)
+                            Color(0xFFF0EAFE),
+                            Color(0x00F0EAFE),
                           ],
                           stops: [0.0, 1.0],
                         ),
@@ -477,7 +477,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                               .verified_rounded,
                                                           size: 16.0,
                                                           color: Color(
-                                                              0xFF1D8070),
+                                                              0xFF8B53FE),
                                                         ),
                                                       ],
                                                     ),
@@ -560,12 +560,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                               title: 'Total Requests',
                                               value: '12',
                                               iconBgColor:
-                                                  const Color(0xFFF2F5F3),
+                                                  const Color(0xFFF0EAFE),
                                               icon: const CustomPaint(
                                                 size: Size(18.0, 16.0),
                                                 painter:
                                                     _TotalRequestsIconPainter(
-                                                  color: Color(0xFF1D8070),
+                                                  color: Color(0xFF8B53FE),
                                                 ),
                                               ),
                                             ),
@@ -752,7 +752,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(42),
                       border: Border.all(
-                        color: const Color(0xFF9FFFCB).withValues(alpha: 0.35),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.35),
                         width: 2.0,
                       ),
                       boxShadow: [
@@ -980,7 +980,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 class _TotalRequestsIconPainter extends CustomPainter {
   final Color color;
 
-  const _TotalRequestsIconPainter({this.color = const Color(0xFF1D8070)});
+  const _TotalRequestsIconPainter({this.color = const Color(0xFF8B53FE)});
 
   @override
   void paint(Canvas canvas, Size size) {

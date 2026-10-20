@@ -15,9 +15,9 @@ class ProviderColors {
   static const Color splashBackground = Color(0xFFFFFFFF); // clean white canvas
   static const Color splashGlow = Color(0xFFDECFFC);      // top soft purple glow
 
-  // Mint Accent Colors
-  static const Color mintAccent = Color(0xFF9FFFCB);
-  static const Color mintGlow = Color(0xFF66FFAC);
+  // Purple Accent Colors
+  static const Color mintAccent = Color(0xFF8B53FE);
+  static const Color mintGlow = Color(0xFFA67AFE);
 
   // Exact Top Mint Linear Gradient (180deg)
   // linear-gradient(180deg, rgba(102, 255, 172, 0.8) -33.53%, rgba(102, 255, 172, 0.460552) 4.23%, rgba(102, 255, 172, 0.25553) 27.03%, rgba(102, 255, 172, 0) 62.38%)
@@ -75,8 +75,8 @@ class ProviderColors {
   // ellipse background: #ADB8B4;
   static const Color otpDotPlaceholder = Color(0xFFADB8B4);
 
-  // Profile Steps Icon Background: #E2F0E6
-  static const Color profileIconBackground = Color(0xFFE2F0E6);
+  // Profile Steps Icon Background: #F0EAFE
+  static const Color profileIconBackground = Color(0xFFF0EAFE);
 }
 
 

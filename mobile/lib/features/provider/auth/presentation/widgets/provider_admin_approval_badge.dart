@@ -89,15 +89,15 @@ class ProviderAdminApprovalBadge extends StatelessWidget {
       width: designWidth,
       height: designHeight,
       decoration: BoxDecoration(
-        color: const Color(0xFFEBFFF4), // background: #EBFFF4
+        color: const Color(0xFFF0EAFE),
         shape: BoxShape.circle, // border-radius: 620px
         border: Border.all(
-          color: const Color(0x999FFFCB), // #9FFFCB99
+          color: const Color(0x408B53FE), // #9FFFCB99
           width: 1.0,
         ),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x999FFFCB), // box-shadow: 0px 0px 4.13px 0px #9FFFCB99 inset
+            color: Color(0x408B53FE), // box-shadow: 0px 0px 4.13px 0px #9FFFCB99 inset
             blurRadius: 4.13,
             spreadRadius: 0.0,
           ),
@@ -116,11 +116,11 @@ class ProviderAdminApprovalBadge extends StatelessWidget {
               width: innerWidth,
               height: innerHeight,
               decoration: BoxDecoration(
-                color: const Color(0xFF1D8070), // background: #1D8070
+                color: const Color(0xFF8B53FE), // background: #1D8070
                 shape: BoxShape.circle, // border-radius: 418.92px
                 border: const Border(
                   top: BorderSide(
-                    color: Color(0xFF27AD98),
+                    color: Color(0xFFA67AFE),
                     width: 1.05, // border-top-width: 1.05px
                   ),
                 ),
@@ -138,7 +138,7 @@ class ProviderAdminApprovalBadge extends StatelessWidget {
                         width: 66.0438,
                         height: 51.0196,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF27AD98), // background: #27AD98
+                          color: const Color(0xFFA67AFE), // background: #27AD98
                           borderRadius: BorderRadius.circular(8.38), // border-radius: 8.38px
                         ),
                       ),
@@ -217,7 +217,7 @@ class _FolderFrontWavePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF1D8070)
+      ..color = const Color(0xFF8B53FE)
       ..style = PaintingStyle.fill;
 
     final path = Path()

@@ -60,8 +60,15 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
   }
 
   @override
+  void deactivate() {
+    _pulseController.stop();
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
     _arrivalTimer?.cancel();
+    _pulseController.stop();
     _pulseController.dispose();
     super.dispose();
   }
@@ -190,7 +197,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                               child: const CustomPaint(
                                 size: Size(145.5, 91.0),
                                 painter: _RouteVectorPainter(
-                                  color: Color(0xFF1D8070),
+                                  color: Color(0xFF8B53FE),
                                   strokeWidth: 4.0,
                                 ),
                               ),
@@ -214,17 +221,10 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                 child: Transform.rotate(
                                   angle: -60.0 * math.pi / 180.0,
                                   alignment: Alignment.center,
-                                  child: Image.asset(
-                                    'assets/images/car.png',
-                                    width: 15.0,
-                                    height: 24.0,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        const CustomPaint(
-                                      size: Size(15.0, 24.0),
-                                      painter: _CarGraphicPainter(
-                                        roofColor: Color(0xFF1D8070),
-                                      ),
+                                  child: const CustomPaint(
+                                    size: Size(18.0, 28.0),
+                                    painter: _CarGraphicPainter(
+                                      roofColor: Color(0xFFA67AFE),
                                     ),
                                   ),
                                 ),
@@ -242,10 +242,10 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                               child: Container(
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: const Color(0xFF1D8070)
+                                  color: const Color(0xFF8B53FE)
                                       .withValues(alpha: 0.12),
                                   border: Border.all(
-                                    color: const Color(0xFF1D8070)
+                                    color: const Color(0xFF8B53FE)
                                         .withValues(alpha: 0.22),
                                     width: 1.5,
                                   ),
@@ -261,7 +261,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                               child: Container(
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: const Color(0xFF1D8070)
+                                  color: const Color(0xFF8B53FE)
                                       .withValues(alpha: 0.18),
                                 ),
                               ),
@@ -280,10 +280,10 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                 height: 36.0,
                                 decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Color(0xFFF0FFF7),
+                                  color: Color(0xFFF0EAFE),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Color(0x669FFFCB),
+                                      color: Color(0x408B53FE),
                                       blurRadius: 4.0,
                                       spreadRadius: 0.0,
                                     ),
@@ -295,7 +295,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                     width: 28.0,
                                     height: 28.0,
                                     decoration: const BoxDecoration(
-                                      color: Color(0xFF1D8070),
+                                      color: Color(0xFF8B53FE),
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Center(
@@ -323,7 +323,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                               child: CustomPaint(
                                 size: const Size(42.0, 26.0),
                                 painter: const _DistanceBadgeTooltipPainter(
-                                  color: Color(0xFF1D8070),
+                                  color: Color(0xFF8B53FE),
                                   cornerRadius: 4.0,
                                   pointerX: 10.0,
                                   pointerWidth: 8.0,
@@ -666,7 +666,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                                   decoration:
                                                                       BoxDecoration(
                                                                     color: const Color(
-                                                                        0xFFEBF7F2),
+                                                                        0xFFF0EAFE),
                                                                     borderRadius:
                                                                         BorderRadius
                                                                             .circular(
@@ -692,7 +692,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                                           FontWeight
                                                                               .w500,
                                                                       color: const Color(
-                                                                          0xFF1D8070),
+                                                                          0xFF8B53FE),
                                                                       height:
                                                                           1.0,
                                                                       letterSpacing:
@@ -734,7 +734,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                                         FontWeight
                                                                             .w500,
                                                                     color: const Color(
-                                                                        0xFF1D8070),
+                                                                        0xFF8B53FE),
                                                                     height: 1.0,
                                                                     letterSpacing:
                                                                         0.0,
@@ -998,7 +998,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                         height: 32.0,
                                                         decoration:
                                                             const BoxDecoration(
-                                                          color: Color(0xFFE2F0E6),
+                                                          color: Color(0xFFF0EAFE),
                                                           shape:
                                                               BoxShape.circle,
                                                         ),
@@ -1009,7 +1009,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                             painter:
                                                                 _LocationPinPainter(
                                                               color: Color(
-                                                                  0xFF1C2926),
+                                                                  0xFF8B53FE),
                                                             ),
                                                           ),
                                                         ),
@@ -1126,7 +1126,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                         height: 32.0,
                                                         decoration:
                                                             const BoxDecoration(
-                                                          color: Color(0xFFE2F0E6),
+                                                          color: Color(0xFFF0EAFE),
                                                           shape:
                                                               BoxShape.circle,
                                                         ),
@@ -1138,7 +1138,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                                 _ClockIconPainter(
                                                               backgroundColor:
                                                                   Color(
-                                                                      0xFF1C2926),
+                                                                      0xFF8B53FE),
                                                               handColor:
                                                                   Colors.white,
                                                             ),
@@ -1264,7 +1264,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                 height: 32.0,
                                                 decoration:
                                                     const BoxDecoration(
-                                                  color: Color(0xFFDDF0E3),
+                                                  color: Color(0xFFF0EAFE),
                                                   shape: BoxShape.circle,
                                                 ),
                                                 child: const Center(
@@ -1279,7 +1279,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                       valueColor:
                                                           AlwaysStoppedAnimation<
                                                               Color>(
-                                                        Color(0xFF1D8070),
+                                                        Color(0xFF8B53FE),
                                                       ),
                                                     ),
                                                   ),
@@ -1403,7 +1403,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(42),
                       border: Border.all(
-                        color: const Color(0xFF9FFFCB).withValues(alpha: 0.35),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.35),
                         width: 2.0,
                       ),
                       boxShadow: [
@@ -1461,7 +1461,7 @@ class _RouteVectorPainter extends CustomPainter {
   final double strokeWidth;
 
   const _RouteVectorPainter({
-    this.color = const Color(0xFF1D8070),
+    this.color = const Color(0xFF8B53FE),
     this.strokeWidth = 4.0,
   });
 
@@ -1491,7 +1491,7 @@ class _RouteVectorPainter extends CustomPainter {
 /// Top-down car graphic painter matching Figma car asset:
 class _CarGraphicPainter extends CustomPainter {
   final Color roofColor;
-  const _CarGraphicPainter({this.roofColor = const Color(0xFF1D8070)});
+  const _CarGraphicPainter({this.roofColor = const Color(0xFFA67AFE)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1627,7 +1627,7 @@ class _DistanceBadgeTooltipPainter extends CustomPainter {
   final double pointerHeight;
 
   const _DistanceBadgeTooltipPainter({
-    this.color = const Color(0xFF1D8070),
+    this.color = const Color(0xFF8B53FE),
     this.cornerRadius = 4.0,
     this.pointerX = 10.0,
     this.pointerWidth = 8.0,

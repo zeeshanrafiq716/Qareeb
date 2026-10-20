@@ -90,33 +90,45 @@ class _RequestsScreenState extends State<RequestsScreen> {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // Smooth scroll view for tab content
+                  // Smooth scroll view for tab content with full mouse, touch & trackpad support
                   Positioned.fill(
-                    child: ScrollConfiguration(
-                      behavior: const MaterialScrollBehavior().copyWith(
-                        scrollbars: false,
-                        dragDevices: {
-                          PointerDeviceKind.touch,
-                          PointerDeviceKind.stylus,
-                          PointerDeviceKind.trackpad,
-                        },
-                      ),
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
+                    child: Listener(
+                      behavior: HitTestBehavior.translucent,
+                      onPointerSignal: (pointerSignal) {
+                        if (pointerSignal is PointerScrollEvent && _scrollController.hasClients) {
+                          final double target = (_scrollController.offset + pointerSignal.scrollDelta.dy)
+                              .clamp(0.0, _scrollController.position.maxScrollExtent);
+                          _scrollController.jumpTo(target);
+                        }
+                      },
+                      child: ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(context).copyWith(
+                          scrollbars: false,
+                          dragDevices: {
+                            PointerDeviceKind.touch,
+                            PointerDeviceKind.mouse,
+                            PointerDeviceKind.trackpad,
+                            PointerDeviceKind.stylus,
+                            PointerDeviceKind.invertedStylus,
+                            PointerDeviceKind.unknown,
+                          },
                         ),
-                        child: SizedBox(
-                          width: containerWidth,
-                          height: math.max(
-                            containerHeight,
-                            _activeFilterIndex == 1
-                                ? math.max(920.0, 260.0 + _filteredHistoryItems.length * 160.0)
-                                : 980.0,
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
                           ),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
+                          child: SizedBox(
+                            width: containerWidth,
+                            height: math.max(
+                              containerHeight + 140.0,
+                              _activeFilterIndex == 1
+                                  ? math.max(containerHeight + 140.0, 260.0 + _filteredHistoryItems.length * 135.0 + 140.0)
+                                  : 840.0,
+                            ),
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
                               // 1. Header Layout:
                               // width: 350; height: 36; top: 56px; left: 20px; justify-content: space-between;
                               Positioned(
@@ -252,7 +264,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                           height: 52.0,
                                           decoration: BoxDecoration(
                                             color: _activeFilterIndex == 0
-                                                ? const Color(0xFF1D8070)
+                                                ? const Color(0xFF8B53FE)
                                                 : const Color(0xFFF2F5F4),
                                             borderRadius:
                                                 BorderRadius.circular(12.0),
@@ -266,11 +278,11 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                   BorderRadius.circular(12.0),
                                               splashColor: (_activeFilterIndex == 0
                                                       ? Colors.white
-                                                      : const Color(0xFF1D8070))
+                                                      : const Color(0xFF8B53FE))
                                                   .withValues(alpha: 0.18),
                                               highlightColor: (_activeFilterIndex == 0
                                                       ? Colors.white
-                                                      : const Color(0xFF1D8070))
+                                                      : const Color(0xFF8B53FE))
                                                   .withValues(alpha: 0.08),
                                               onTap: () {
                                                 HapticFeedback.lightImpact();
@@ -346,7 +358,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                                 _activeFilterIndex ==
                                                                         0
                                                                     ? const Color(
-                                                                        0xFF1D8070)
+                                                                        0xFF8B53FE)
                                                                     : const Color(
                                                                         0xFFFFFFFF),
                                                             height: 1.0,
@@ -380,7 +392,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                           height: 52.0,
                                           decoration: BoxDecoration(
                                             color: _activeFilterIndex == 1
-                                                ? const Color(0xFF1D8070)
+                                                ? const Color(0xFF8B53FE)
                                                 : const Color(0xFFF2F5F4),
                                             borderRadius:
                                                 BorderRadius.circular(12.0),
@@ -394,11 +406,11 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                   BorderRadius.circular(12.0),
                                               splashColor: (_activeFilterIndex == 1
                                                       ? Colors.white
-                                                      : const Color(0xFF1D8070))
+                                                      : const Color(0xFF8B53FE))
                                                   .withValues(alpha: 0.18),
                                               highlightColor: (_activeFilterIndex == 1
                                                       ? Colors.white
-                                                      : const Color(0xFF1D8070))
+                                                      : const Color(0xFF8B53FE))
                                                   .withValues(alpha: 0.08),
                                               onTap: () {
                                                 HapticFeedback.lightImpact();
@@ -475,7 +487,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                                 _activeFilterIndex ==
                                                                         1
                                                                     ? const Color(
-                                                                        0xFF1D8070)
+                                                                        0xFF8B53FE)
                                                                     : const Color(
                                                                         0xFFFFFFFF),
                                                             height: 1.0,
@@ -534,7 +546,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                               width: 32.0,
                                               height: 32.0,
                                               decoration: const BoxDecoration(
-                                                color: Color(0xFFE7F5EB),
+                                                color: Color(0xFFF0EAFE),
                                                 shape: BoxShape.circle,
                                               ),
                                               child: Center(
@@ -548,7 +560,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                     shape: BoxShape.circle,
                                                     border: Border.all(
                                                       color: const Color(
-                                                          0xFF1D8070),
+                                                          0xFF8B53FE),
                                                       width: 5.0,
                                                     ),
                                                   ),
@@ -684,40 +696,25 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                       painter:
                                                           _RouteVectorPainter(
                                                         color:
-                                                            Color(0xFF1D8070),
+                                                            Color(0xFF8B53FE),
                                                         strokeWidth: 4.0,
                                                       ),
                                                     ),
                                                   ),
 
-                                                  // 3. Car layout: width: 15; height: 24; angle: -120 deg; top: 41px; left: 81px;
+                                                  // 3. Top-down aerodynamic car with brand purple roof (#A67AFE):
                                                   Positioned(
-                                                    top: 41.0,
-                                                    left: 81.0 + offsetX,
-                                                    width: 15.0,
-                                                    height: 24.0,
+                                                    top: 40.0,
+                                                    left: 79.0 + offsetX,
+                                                    width: 18.0,
+                                                    height: 28.0,
                                                     child: Transform.rotate(
-                                                      angle: -120.0 *
-                                                          math.pi /
-                                                          180.0,
-                                                      alignment:
-                                                          Alignment.center,
-                                                      child: Image.asset(
-                                                        'assets/images/car.png',
-                                                        width: 15.0,
-                                                        height: 24.0,
-                                                        fit: BoxFit.contain,
-                                                        errorBuilder: (context,
-                                                                error,
-                                                                stackTrace) =>
-                                                            const CustomPaint(
-                                                          size:
-                                                              Size(15.0, 24.0),
-                                                          painter:
-                                                              _CarGraphicPainter(
-                                                            roofColor: Color(
-                                                                0xFF1D8070),
-                                                          ),
+                                                      angle: -120.0 * math.pi / 180.0,
+                                                      alignment: Alignment.center,
+                                                      child: const CustomPaint(
+                                                        size: Size(18.0, 28.0),
+                                                        painter: _CarGraphicPainter(
+                                                          roofColor: Color(0xFFA67AFE),
                                                         ),
                                                       ),
                                                     ),
@@ -744,7 +741,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                           decoration:
                                                               BoxDecoration(
                                                             color: const Color(
-                                                                0xFF1D8070),
+                                                                0xFF8B53FE),
                                                             borderRadius:
                                                                 BorderRadius
                                                                     .circular(
@@ -790,15 +787,14 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                           painter:
                                                               const _TooltipArrowPainter(
                                                             color: Color(
-                                                                0xFF1D8070),
+                                                                0xFF8B53FE),
                                                           ),
                                                         ),
                                                       ],
                                                     ),
                                                   ),
 
-                                                  // 5. Location Marker Halo & Brand 3D Pin (matching uploaded reference design):
-                                                  // Outer soft glowing mint halo ring
+                                                  // 5. Location Marker Halo & Brand Purple 3D Pin (replaces green Group 5.png):
                                                   Positioned(
                                                     top: 94.0,
                                                     left: 180.5 + offsetX,
@@ -809,42 +805,30 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                       height: 46.0,
                                                       decoration: BoxDecoration(
                                                         shape: BoxShape.circle,
-                                                        color: const Color(0x389FFFCB),
+                                                        color: const Color(0xFFF0EAFE),
                                                         border: Border.all(
-                                                          color: const Color(0x669FFFCB),
-                                                          width: 1.2,
+                                                          color: const Color(0x668B53FE),
+                                                          width: 1.5,
                                                         ),
+                                                        boxShadow: const [
+                                                          BoxShadow(
+                                                            color: Color(0x268B53FE),
+                                                            blurRadius: 10.0,
+                                                            spreadRadius: 2.0,
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
                                                   ),
 
-                                                  // 3D Brand Location Pin (assets/images/Group 5.png):
                                                   Positioned(
-                                                    top: 100.0,
-                                                    left: 186.5 + offsetX,
-                                                    width: 34.0,
-                                                    height: 34.0,
-                                                    child: Center(
-                                                      child: Image.asset(
-                                                        'assets/images/Group 5.png',
-                                                        width: 34.0,
-                                                        height: 34.0,
-                                                        fit: BoxFit.contain,
-                                                        errorBuilder: (context, error, stackTrace) => Container(
-                                                          width: 24.0,
-                                                          height: 24.0,
-                                                          decoration: const BoxDecoration(
-                                                            color: Color(0xFF1D8070),
-                                                            shape: BoxShape.circle,
-                                                          ),
-                                                          child: const Center(
-                                                            child: Icon(
-                                                              Icons.location_on_rounded,
-                                                              size: 14.0,
-                                                              color: Colors.white,
-                                                            ),
-                                                          ),
-                                                        ),
+                                                    top: 97.0,
+                                                    left: 184.5 + offsetX,
+                                                    width: 38.0,
+                                                    height: 38.0,
+                                                    child: const Center(
+                                                      child: _BrandPurpleLocationPinWidget(
+                                                        size: 32.0,
                                                       ),
                                                     ),
                                                   ),
@@ -868,7 +852,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                           decoration:
                                                               BoxDecoration(
                                                             color: const Color(
-                                                                0xFF1D8070),
+                                                                0xFF8B53FE),
                                                             borderRadius:
                                                                 BorderRadius
                                                                     .circular(
@@ -914,7 +898,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                           painter:
                                                               const _TooltipArrowPainter(
                                                             color: Color(
-                                                                0xFF1D8070),
+                                                                0xFF8B53FE),
                                                           ),
                                                         ),
                                                       ],
@@ -1067,7 +1051,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                             Icons.star_rounded,
                                                             size: 11.0,
                                                             color: Color(
-                                                                0xFF1D8070),
+                                                                0xFF8B53FE),
                                                           ),
                                                           const SizedBox(
                                                               width: 4.0), // gap: 4px;
@@ -1407,7 +1391,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                   height: 32.0,
                                                   decoration:
                                                       const BoxDecoration(
-                                                    color: Color(0xFFE2F0E6),
+                                                    color: Color(0xFFF0EAFE),
                                                     shape: BoxShape.circle,
                                                   ),
                                                   child: const Center(
@@ -1416,7 +1400,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                       painter:
                                                           _LocationPinPainter(
                                                         color:
-                                                            Color(0xFF1C2926),
+                                                            Color(0xFF8B53FE),
                                                       ),
                                                     ),
                                                   ),
@@ -1518,7 +1502,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                   height: 32.0,
                                                   decoration:
                                                       const BoxDecoration(
-                                                    color: Color(0xFFE2F0E6),
+                                                    color: Color(0xFFF0EAFE),
                                                     shape: BoxShape.circle,
                                                   ),
                                                   child: const Center(
@@ -1527,7 +1511,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                       painter:
                                                           _ClockIconPainter(
                                                         backgroundColor:
-                                                            Color(0xFF1C2926),
+                                                            Color(0xFF8B53FE),
                                                         handColor:
                                                             Colors.white,
                                                       ),
@@ -1675,7 +1659,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                         },
                                                         cursorColor:
                                                             const Color(
-                                                                0xFF1D8070),
+                                                                0xFF8B53FE),
                                                         style:
                                                             GoogleFonts.inter(
                                                           fontSize: 12.0,
@@ -1817,6 +1801,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                       ),
                     ),
                   ),
+                ),
 
                   // Floating Bottom Navigation Bar (Request tab active: index 1)
                   if (widget.showBottomNav)
@@ -1850,28 +1835,43 @@ class _RequestsScreenState extends State<RequestsScreen> {
               return Container(
                 width: double.infinity,
                 height: double.infinity,
-                color: const Color(0xFF141C1A),
-                child: Center(
-                  child: Container(
-                    width: containerWidth,
-                    height: containerHeight,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(42),
-                      border: Border.all(
-                        color: const Color(0xFF9FFFCB).withValues(alpha: 0.35),
-                        width: 2.0,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.35),
-                          blurRadius: 40,
-                          spreadRadius: 8,
+                color: const Color(0xFFF0F1F5), // Clean modern outer backdrop matching home tab
+                child: Listener(
+                  behavior: HitTestBehavior.translucent,
+                  onPointerSignal: (pointerSignal) {
+                    if (pointerSignal is PointerScrollEvent && _scrollController.hasClients) {
+                      final double target = (_scrollController.offset + pointerSignal.scrollDelta.dy)
+                          .clamp(0.0, _scrollController.position.maxScrollExtent);
+                      _scrollController.jumpTo(target);
+                    }
+                  },
+                  child: Center(
+                    child: Container(
+                      width: containerWidth,
+                      height: containerHeight,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(42),
+                        border: Border.all(
+                          color: const Color(0xFF8B53FE).withValues(alpha: 0.25),
+                          width: 2.0,
                         ),
-                      ],
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF8B53FE).withValues(alpha: 0.12),
+                            blurRadius: 40,
+                            spreadRadius: 6,
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: screenContent,
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: screenContent,
                   ),
                 ),
               );
@@ -1915,7 +1915,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
               fontWeight: FontWeight.w500,
               color: state == _RequestStepState.pending
                   ? const Color(0xFF566663)
-                  : const Color(0xFF1D8070),
+                  : const Color(0xFF8B53FE),
               height: 1.15,
               letterSpacing: 0.0,
             ),
@@ -1957,7 +1957,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
           width: 16.0,
           height: 16.0,
           decoration: BoxDecoration(
-            color: const Color(0xFF1D8070),
+            color: const Color(0xFF8B53FE),
             shape: BoxShape.circle,
             border: Border.all(
               color: const Color(0xFFFFFFFF),
@@ -1982,7 +1982,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
             color: const Color(0xFFF2F5F4),
             shape: BoxShape.circle,
             border: Border.all(
-              color: const Color(0xFF1D8070),
+              color: const Color(0xFF8B53FE),
               width: 1.6,
             ),
           ),
@@ -1991,7 +1991,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
             width: 10.0,
             height: 10.0,
             decoration: const BoxDecoration(
-              color: Color(0xFF1D8070),
+              color: Color(0xFF8B53FE),
               shape: BoxShape.circle,
             ),
           ),
@@ -2020,8 +2020,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
     _HistoryRequestItem(
       providerName: 'Ahmad Transport',
       statusText: 'Completed',
-      statusBgColor: Color(0xFFF0F5F2),
-      statusTextColor: Color(0xFF1D8070),
+      statusBgColor: Color(0xFFF0EAFE),
+      statusTextColor: Color(0xFF8B53FE),
       rating: '4.9',
       trips: '(120 trips)',
       serviceCategory: 'Pickup & Delivery',
@@ -2050,8 +2050,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
     _HistoryRequestItem(
       providerName: 'Hassan Rider',
       statusText: 'Completed',
-      statusBgColor: Color(0xFFF0F5F2),
-      statusTextColor: Color(0xFF1D8070),
+      statusBgColor: Color(0xFFF0EAFE),
+      statusTextColor: Color(0xFF8B53FE),
       rating: '4.9',
       trips: '(120 trips)',
       serviceCategory: 'Rider',
@@ -2065,8 +2065,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
     _HistoryRequestItem(
       providerName: 'Ali Transport',
       statusText: 'Completed',
-      statusBgColor: Color(0xFFF0F5F2),
-      statusTextColor: Color(0xFF1D8070),
+      statusBgColor: Color(0xFFF0EAFE),
+      statusTextColor: Color(0xFF8B53FE),
       rating: '4.9',
       trips: '(120 trips)',
       serviceCategory: 'Ride',
@@ -2302,7 +2302,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                   const Icon(
                                     Icons.star_rounded,
                                     size: 11.0,
-                                    color: Color(0xFF1D8070),
+                                    color: Color(0xFF8B53FE),
                                   ),
                                   const SizedBox(width: 4.0), // gap: 4px;
 
@@ -2569,7 +2569,7 @@ class _RouteVectorPainter extends CustomPainter {
   final double strokeWidth;
 
   const _RouteVectorPainter({
-    this.color = const Color(0xFF1D8070),
+    this.color = const Color(0xFF8B53FE),
     this.strokeWidth = 4.0,
   });
 
@@ -2604,7 +2604,7 @@ class _RouteVectorPainter extends CustomPainter {
 /// Downward tooltip pointer arrow painter
 class _TooltipArrowPainter extends CustomPainter {
   final Color color;
-  const _TooltipArrowPainter({this.color = const Color(0xFF1D8070)});
+  const _TooltipArrowPainter({this.color = const Color(0xFF8B53FE)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2626,45 +2626,253 @@ class _TooltipArrowPainter extends CustomPainter {
       color != oldDelegate.color;
 }
 
-/// Fallback top-down car graphic painter
+/// Detailed aerodynamic top-down car painter with purple roof (#A67AFE)
 class _CarGraphicPainter extends CustomPainter {
   final Color roofColor;
-  const _CarGraphicPainter({this.roofColor = const Color(0xFF1D8070)});
+  const _CarGraphicPainter({this.roofColor = const Color(0xFFA67AFE)});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
+    final double w = size.width;
+    final double h = size.height;
 
+    // 1. Subtle soft shadow
+    final shadowPaint = Paint()
+      ..color = const Color(0x22000000)
+      ..style = PaintingStyle.fill;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(0.5, 1.2, w - 1.0, h - 0.8),
+        Radius.circular(w * 0.28),
+      ),
+      shadowPaint,
+    );
+
+    // 2. Wheels / Tires (Dark rubber)
+    final wheelPaint = Paint()
+      ..color = const Color(0xFF1E293B)
+      ..style = PaintingStyle.fill;
+    final double wheelW = w * 0.16;
+    final double wheelH = h * 0.20;
+    // Front wheels
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(0, h * 0.16, wheelW, wheelH), const Radius.circular(1.0)),
+      wheelPaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(w - wheelW, h * 0.16, wheelW, wheelH), const Radius.circular(1.0)),
+      wheelPaint,
+    );
+    // Rear wheels
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(0, h * 0.64, wheelW, wheelH), const Radius.circular(1.0)),
+      wheelPaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(w - wheelW, h * 0.64, wheelW, wheelH), const Radius.circular(1.0)),
+      wheelPaint,
+    );
+
+    // 3. Aerodynamic White Car Body
     final bodyPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.fill;
-
-    final borderPaint = Paint()
-      ..color = const Color(0xFF2C3A36)
+    final bodyBorder = Paint()
+      ..color = const Color(0xFFCBD5E1)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
 
-    final bodyRRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, w, h),
-      const Radius.circular(3.5),
+    final bodyPath = Path();
+    final double bodyInset = w * 0.08;
+    final double bw = w - bodyInset * 2.0;
+    bodyPath.addRRect(
+      RRect.fromRectAndCorners(
+        Rect.fromLTWH(bodyInset, 0, bw, h),
+        topLeft: Radius.circular(bw * 0.42),
+        topRight: Radius.circular(bw * 0.42),
+        bottomLeft: Radius.circular(bw * 0.35),
+        bottomRight: Radius.circular(bw * 0.35),
+      ),
     );
-    canvas.drawRRect(bodyRRect, bodyPaint);
-    canvas.drawRRect(bodyRRect, borderPaint);
+    canvas.drawPath(bodyPath, bodyPaint);
+    canvas.drawPath(bodyPath, bodyBorder);
 
+    // 4. Side Mirrors (Purple body accent)
+    final mirrorPaint = Paint()
+      ..color = roofColor
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(bodyInset * 0.5, h * 0.32), w * 0.08, mirrorPaint);
+    canvas.drawCircle(Offset(w - bodyInset * 0.5, h * 0.32), w * 0.08, mirrorPaint);
+
+    // 5. Dark Panoramic Glasshouse (Windshield & Rear glass)
+    final glassPaint = Paint()
+      ..color = const Color(0xFF1E293B)
+      ..style = PaintingStyle.fill;
+
+    // Front windshield
+    final frontGlass = Path()
+      ..moveTo(w * 0.22, h * 0.26)
+      ..lineTo(w * 0.78, h * 0.26)
+      ..lineTo(w * 0.82, h * 0.38)
+      ..lineTo(w * 0.18, h * 0.38)
+      ..close();
+    canvas.drawPath(frontGlass, glassPaint);
+
+    // Rear windshield
+    final rearGlass = Path()
+      ..moveTo(w * 0.20, h * 0.68)
+      ..lineTo(w * 0.80, h * 0.68)
+      ..lineTo(w * 0.76, h * 0.80)
+      ..lineTo(w * 0.24, h * 0.80)
+      ..close();
+    canvas.drawPath(rearGlass, glassPaint);
+
+    // 6. Purple Roof (#A67AFE)
     final roofPaint = Paint()
       ..color = roofColor
       ..style = PaintingStyle.fill;
-
     final roofRRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(w * 0.15, h * 0.25, w * 0.7, h * 0.5),
-      const Radius.circular(2.0),
+      Rect.fromLTRB(w * 0.20, h * 0.36, w * 0.80, h * 0.68),
+      Radius.circular(w * 0.12),
     );
     canvas.drawRRect(roofRRect, roofPaint);
+
+    // 7. Antenna dot
+    final dotPaint = Paint()
+      ..color = const Color(0xFF0F172A)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(w * 0.5, h * 0.60), w * 0.05, dotPaint);
+
+    // 8. Front Headlights (Warm white/amber)
+    final headPaint = Paint()
+      ..color = const Color(0xFFFDE68A)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(w * 0.22, h * 0.06), w * 0.07, headPaint);
+    canvas.drawCircle(Offset(w * 0.78, h * 0.06), w * 0.07, headPaint);
+
+    // 9. Rear Taillights (Red)
+    final tailPaint = Paint()
+      ..color = const Color(0xFFEF4444)
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(Rect.fromLTWH(w * 0.18, h * 0.94, w * 0.16, h * 0.04), tailPaint);
+    canvas.drawRect(Rect.fromLTWH(w * 0.66, h * 0.94, w * 0.16, h * 0.04), tailPaint);
   }
 
   @override
-  bool shouldRepaint(covariant _CarGraphicPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _CarGraphicPainter oldDelegate) =>
+      oldDelegate.roofColor != roofColor;
+}
+
+/// Brand 3D-styled Purple Location Pin (replaces green Group 5.png)
+class _BrandPurpleLocationPinWidget extends StatelessWidget {
+  final double size;
+  const _BrandPurpleLocationPinWidget({this.size = 32.0});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(size, size),
+      painter: const _BrandPurpleLocationPinPainter(),
+    );
+  }
+}
+
+class _BrandPurpleLocationPinPainter extends CustomPainter {
+  const _BrandPurpleLocationPinPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+
+    // 1. Oval shadow at bottom base of pin
+    final shadowPaint = Paint()
+      ..color = const Color(0x358B53FE)
+      ..style = PaintingStyle.fill;
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(w * 0.5, h * 0.90),
+        width: w * 0.70,
+        height: h * 0.22,
+      ),
+      shadowPaint,
+    );
+
+    // 2. Base beacon ring at bottom
+    final baseRingPaint = Paint()
+      ..color = const Color(0xFF8B53FE)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(w * 0.5, h * 0.88),
+        width: w * 0.60,
+        height: h * 0.18,
+      ),
+      baseRingPaint,
+    );
+
+    // 3. Teardrop pin body with rich purple gradient
+    final Rect pinRect = Rect.fromLTWH(w * 0.14, 0.0, w * 0.72, h * 0.85);
+    final pinGradient = const LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        Color(0xFFA67AFE), // Lighter vibrant purple highlight
+        Color(0xFF8B53FE), // Deep brand purple
+      ],
+    );
+
+    final pinPaint = Paint()
+      ..shader = pinGradient.createShader(pinRect)
+      ..style = PaintingStyle.fill;
+
+    final pinBorderPaint = Paint()
+      ..color = const Color(0xFF6E36E0)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    final double cx = w * 0.5;
+    final double radius = w * 0.32;
+    final double cy = radius + h * 0.04;
+    final double tipY = h * 0.86;
+
+    final path = Path();
+    path.addArc(
+      Rect.fromCircle(center: Offset(cx, cy), radius: radius),
+      math.pi * 0.78,
+      math.pi * 1.44,
+    );
+    path.lineTo(cx, tipY);
+    path.close();
+
+    canvas.drawPath(path, pinPaint);
+    canvas.drawPath(path, pinBorderPaint);
+
+    // 4. Inner glossy white center dot/lens
+    final innerCenter = Offset(cx, cy);
+    final innerRadius = radius * 0.44;
+
+    final innerLensPaint = Paint()
+      ..shader = const RadialGradient(
+        colors: [
+          Colors.white,
+          Color(0xFFEFE6FF),
+        ],
+      ).createShader(Rect.fromCircle(center: innerCenter, radius: innerRadius))
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(innerCenter, innerRadius, innerLensPaint);
+
+    final innerLensBorder = Paint()
+      ..color = const Color(0x338B53FE)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    canvas.drawCircle(innerCenter, innerRadius, innerLensBorder);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// Location pin icon painter matching Figma specifications:

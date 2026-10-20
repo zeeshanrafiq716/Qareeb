@@ -3,16 +3,18 @@ import 'dart:ui';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../emergency/presentation/emergency_services_screen.dart';
 import '../../location/presentation/location_permission_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../requests/presentation/requests_screen.dart';
+import '../../../providers/backend_provider.dart';
 import 'widgets/home_header_widget.dart';
 import 'widgets/services_section_widget.dart';
 import 'widgets/bottom_nav_bar_widget.dart';
 
 /// Home screen hosting the branding header layout and main services section.
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   final int initialTabIndex;
 
   const HomeScreen({
@@ -21,10 +23,10 @@ class HomeScreen extends StatefulWidget {
   });
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentTabIndex = 0;
   ScrollController? _scrollControllerInstance;
   ScrollController get _scrollController =>
@@ -76,6 +78,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeTab(BuildContext context) {
+    final userLocAsync = ref.watch(userLocationProvider);
+    final String locationText = userLocAsync.when(
+      data: (loc) => loc.cityName.isNotEmpty ? loc.cityName : 'Karachi Pakistan',
+      loading: () => 'Detecting GPS...',
+      error: (_, _) => 'Karachi Pakistan',
+    );
+    final String locationLabel = userLocAsync.when(
+      data: (loc) => loc.isGpsDetected ? 'Real GPS' : 'Current location',
+      loading: () => 'GPS Detecting...',
+      error: (_, _) => 'Current location',
+    );
+
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -87,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FBF9),
+      backgroundColor: Colors.white,
       body: Center(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -101,9 +115,33 @@ class _HomeScreenState extends State<HomeScreen> {
             final homeContent = Container(
               width: containerWidth,
               height: containerHeight,
-              color: const Color(0xFFF9FBF9),
+              color: Colors.white,
               child: Stack(
                 children: [
+                  // Top Purple Glow Gradient from user branding specifications:
+                  // linear-gradient(180.52deg, #8B53FE -66.75%, rgba(139, 83, 254, 0.37284) -0.59%, rgba(139, 83, 254, 0) 29.8%)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: containerHeight * 0.30,
+                    child: const IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment(0.009, -1.0),
+                            end: Alignment(-0.009, 1.0),
+                            stops: [0.0, 1.0],
+                            colors: [
+                              Color(0x5F8B53FE), // rgba(139, 83, 254, 0.37284) at top
+                              Color(0x008B53FE), // rgba(139, 83, 254, 0) at 29.8%
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
                   // Smooth, effortless scroll view with full touch, trackpad, and mouse drag support
                   Positioned.fill(
                     child: ScrollConfiguration(
@@ -128,6 +166,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             // 1. Branding Header Layout (width: 390, height: 246, ends at 246px)
                             HomeHeaderWidget(
+                              location: locationText,
+                              locationLabel: locationLabel,
+                              onLocationTap: () {
+                                HapticFeedback.lightImpact();
+                                ref.refresh(userLocationProvider);
+                              },
                               onCardTap: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
@@ -191,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
               return Container(
                 width: double.infinity,
                 height: double.infinity,
-                color: const Color(0xFF141C1A), // Clean backdrop for web preview
+                color: const Color(0xFFF0F1F5), // Clean modern outer backdrop for web preview
                 child: Listener(
                   behavior: HitTestBehavior.translucent,
                   onPointerSignal: (pointerSignal) {
@@ -223,14 +267,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(42),
                         border: Border.all(
-                          color: const Color(0xFF9FFFCB).withValues(alpha: 0.35),
+                          color: const Color(0xFF8B53FE).withValues(alpha: 0.20),
                           width: 2.0,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.35),
+                            color: const Color(0xFF8B53FE).withValues(alpha: 0.12),
                             blurRadius: 40,
-                            spreadRadius: 8,
+                            spreadRadius: 6,
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
                           ),
                         ],
                       ),

@@ -13,8 +13,8 @@ import '../../location/presentation/location_permission_screen.dart';
 ///
 /// 1. Background Gradient Container:
 /// - width: 390; height: 265;
-/// - angle: 0 deg; opacity: 1;
-/// - background: linear-gradient(180deg, #9FFFCB -9.04%, rgba(159, 255, 203, 0.37284) 56.59%, rgba(159, 255, 203, 0) 86.73%);
+/// - background: linear-gradient(0deg, #FFFFFF, #FFFFFF),
+///   linear-gradient(180.52deg, #8B53FE -66.75%, rgba(139, 83, 254, 0.37284) -0.59%, rgba(139, 83, 254, 0) 29.8%);
 ///
 /// 2. Header Heading Layout:
 /// - width: 350; height: 36;
@@ -96,7 +96,7 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FBF9),
+      backgroundColor: Colors.white,
       body: Center(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -118,7 +118,7 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
             final screenContent = Container(
               width: containerWidth,
               height: containerHeight,
-              color: const Color(0xFFF9FBF9),
+              color: Colors.white,
               child: Stack(
                 children: [
                   // Smooth, effortless scroll view with full touch, trackpad, and mouse drag support
@@ -147,7 +147,7 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                             children: [
                    // 1. Specified Figma Header Background Container:
                   // width: 390; height: 265;
-                  // background: linear-gradient(180deg, #9FFFCB -9.04%, rgba(159, 255, 203, 0.37284) 56.59%, rgba(159, 255, 203, 0) 86.73%);
+                  // background: linear-gradient(180.52deg, #8B53FE -66.75%, rgba(139, 83, 254, 0.37284) -0.59%, rgba(139, 83, 254, 0) 29.8%)
                   Positioned(
                     top: 0,
                     left: 0,
@@ -158,13 +158,12 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                       height: 265.0,
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          stops: [0.0, 0.5659, 0.8673],
+                          begin: Alignment(0.009, -1.0),
+                          end: Alignment(-0.009, 1.0),
+                          stops: [0.0, 1.0],
                           colors: [
-                            Color(0xFF9FFFCB),
-                            Color(0x5F9FFFCB), // rgba(159, 255, 203, 0.37284) 56.59%
-                            Color(0x009FFFCB), // rgba(159, 255, 203, 0) 86.73%
+                            Color(0x5F8B53FE), // rgba(139, 83, 254, 0.37284) -0.59%
+                            Color(0x008B53FE), // rgba(139, 83, 254, 0) 29.8%
                           ],
                         ),
                       ),
@@ -646,7 +645,7 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
               return Container(
                 width: double.infinity,
                 height: double.infinity,
-                color: const Color(0xFF141C1A),
+                color: const Color(0xFFF0F1F5), // Clean modern outer backdrop for web preview
                 child: Listener(
                   behavior: HitTestBehavior.translucent,
                   onPointerSignal: (pointerSignal) {
@@ -676,14 +675,19 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(42),
                         border: Border.all(
-                          color: const Color(0xFF9FFFCB).withValues(alpha: 0.35),
+                          color: const Color(0xFF8B53FE).withValues(alpha: 0.20),
                           width: 2.0,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.35),
+                            color: const Color(0xFF8B53FE).withValues(alpha: 0.12),
                             blurRadius: 40,
-                            spreadRadius: 8,
+                            spreadRadius: 6,
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
                           ),
                         ],
                       ),

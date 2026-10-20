@@ -14,32 +14,31 @@ class MapBackgroundPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // 1. Draw base dark slate (#1F2927 / rgba(31, 41, 39, 1))
-    final baseBgPaint = Paint()..color = const Color(0xFF1F2927);
+    // 1. Draw base white (#FFFFFF)
+    final baseBgPaint = Paint()..color = const Color(0xFFFFFFFF);
     canvas.drawRect(Rect.fromLTWH(0, 0, w, h), baseBgPaint);
 
-    // 2. Top Mint Glow Gradient (exact user specifications):
-    // linear-gradient(180deg, rgba(102, 255, 172, 0.8) -28.97%, rgba(102, 255, 172, 0.0511174) 50.78%, rgba(102, 255, 172, 0) 62.86%)
-    // Normalized to total height span (1.0 + 0.2897 = 1.2897)
+    // 2. Top Purple Glow Gradient (exact user specifications):
+    // linear-gradient(180.52deg, #8B53FE -66.75%, rgba(139, 83, 254, 0.37284) -0.59%, rgba(139, 83, 254, 0) 29.8%)
+    // Normalized to total height span (1.0 + 0.6675 = 1.6675)
     final topGlowShader = const LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      stops: [0.0, 0.6184, 0.7120, 1.0],
+      begin: Alignment(0.009, -1.0),
+      end: Alignment(-0.009, 1.0),
+      stops: [0.0, 0.3968, 0.5790, 1.0],
       colors: [
-        Color(0xCC66FFAC), // rgba(102, 255, 172, 0.8)
-        Color(0x0D66FFAC), // rgba(102, 255, 172, 0.0511174)
-        Color(0x0066FFAC), // rgba(102, 255, 172, 0)
-        Color(0x0066FFAC),
+        Color(0xFF8B53FE), // #8B53FE at -66.75%
+        Color(0x5F8B53FE), // rgba(139, 83, 254, 0.37284) at -0.59%
+        Color(0x008B53FE), // rgba(139, 83, 254, 0) at 29.8%
+        Color(0x008B53FE),
       ],
-    ).createShader(Rect.fromLTWH(0, -0.2897 * h, w, 1.2897 * h));
+    ).createShader(Rect.fromLTWH(0, -0.6675 * h, w, 1.6675 * h));
 
     final topGlowPaint = Paint()..shader = topGlowShader;
     canvas.drawRect(Rect.fromLTWH(0, 0, w, h), topGlowPaint);
 
     // 3. Primary road & mosaic line paint from picture replica
-    // Dark translucent pine-charcoal with rounded caps and joins
     final linePaint = Paint()
-      ..color = const Color(0xFF14241F).withValues(alpha: 0.50)
+      ..color = const Color(0xFF14241F).withValues(alpha: 0.08)
       ..strokeWidth = 1.6
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
@@ -294,22 +293,22 @@ class MapBackgroundPainter extends CustomPainter {
     // Draw the comprehensive geometric mosaic network
     canvas.drawPath(path, linePaint);
 
-    // 4. Bottom dark shading gradient (exact user specifications):
-    // linear-gradient(180deg, rgba(31, 41, 39, 0) 0%, rgba(31, 41, 39, 0.817605) 43.97%, rgba(31, 41, 39, 0.92) 76.78%, #1F2927 100%)
-    final bottomDarkShader = const LinearGradient(
+    // 4. Bottom white shading gradient (exact user specifications):
+    // linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.817605) 43.97%, rgba(255, 255, 255, 0.92) 76.78%, #FFFFFF 100%)
+    final bottomWhiteShader = const LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       stops: [0.0, 0.4397, 0.7678, 1.0],
       colors: [
-        Color(0x001F2927), // rgba(31, 41, 39, 0)
-        Color(0xD11F2927), // rgba(31, 41, 39, 0.817605)
-        Color(0xEB1F2927), // rgba(31, 41, 39, 0.92)
-        Color(0xFF1F2927), // #1F2927
+        Color(0x00FFFFFF), // rgba(255, 255, 255, 0) 0%
+        Color(0xD1FFFFFF), // rgba(255, 255, 255, 0.817605) 43.97%
+        Color(0xEBFFFFFF), // rgba(255, 255, 255, 0.92) 76.78%
+        Color(0xFFFFFFFF), // #FFFFFF 100%
       ],
     ).createShader(Rect.fromLTWH(0, 0, w, h));
 
-    final bottomDarkPaint = Paint()..shader = bottomDarkShader;
-    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), bottomDarkPaint);
+    final bottomWhitePaint = Paint()..shader = bottomWhiteShader;
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), bottomWhitePaint);
   }
 
   @override

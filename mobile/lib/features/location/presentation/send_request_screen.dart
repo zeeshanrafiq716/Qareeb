@@ -187,7 +187,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                     child: const CustomPaint(
                       size: Size(145.5, 91.0),
                       painter: _RouteVectorPainter(
-                        color: Color(0xFF1D8070),
+                        color: Color(0xFF8B53FE),
                         strokeWidth: 4.0,
                       ),
                     ),
@@ -198,21 +198,15 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                   Positioned(
                     top: 258.0,
                     left: 241.0 + ((containerWidth - 390.0) / 2.0),
-                    width: 15.0,
-                    height: 24.0,
+                    width: 18.0,
+                    height: 28.0,
                     child: Transform.rotate(
                       angle: -60.0 * math.pi / 180.0,
                       alignment: Alignment.center,
-                      child: Image.asset(
-                        'assets/images/car.png',
-                        width: 15.0,
-                        height: 24.0,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => const CustomPaint(
-                          size: Size(15.0, 24.0),
-                          painter: _CarGraphicPainter(
-                            roofColor: Color(0xFF1D8070),
-                          ),
+                      child: const CustomPaint(
+                        size: Size(18.0, 28.0),
+                        painter: _CarGraphicPainter(
+                          roofColor: Color(0xFFA67AFE),
                         ),
                       ),
                     ),
@@ -228,9 +222,9 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF1D8070).withValues(alpha: 0.12),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.12),
                         border: Border.all(
-                          color: const Color(0xFF1D8070).withValues(alpha: 0.22),
+                          color: const Color(0xFF8B53FE).withValues(alpha: 0.22),
                           width: 1.5,
                         ),
                       ),
@@ -244,39 +238,40 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF1D8070).withValues(alpha: 0.18),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.18),
                       ),
                     ),
                   ),
 
-                  // Location icon branding:
-                  // width: 36; height: 36; gap: 10px; angle: 0 deg; opacity: 1; border-radius: 40px;
-                  // padding: 4px; top: 153px; left: 111px; background: #F0FFF7; box-shadow: 0px 0px 4px 0px #9FFFCB66 inset;
+                  // Location icon branding in brand purple (#8B53FE):
                   Positioned(
                     top: 153.0,
                     left: 111.0 + ((containerWidth - 390.0) / 2.0),
                     width: 36.0,
                     height: 36.0,
-                    child: Center(
-                      child: Image.asset(
-                        'assets/images/Group 5.png',
-                        width: 36.0,
-                        height: 36.0,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          width: 36.0,
-                          height: 36.0,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Color(0xFFF0FFF7),
+                    child: Container(
+                      width: 36.0,
+                      height: 36.0,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFFF0EAFE),
+                        border: Border.all(
+                          color: const Color(0x668B53FE),
+                          width: 1.5,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x268B53FE),
+                            blurRadius: 8.0,
+                            spreadRadius: 1.0,
                           ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.location_on_rounded,
-                              size: 20.0,
-                              color: Color(0xFF1D8070),
-                            ),
-                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.location_on_rounded,
+                          size: 20.0,
+                          color: Color(0xFF8B53FE),
                         ),
                       ),
                     ),
@@ -294,7 +289,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                     child: CustomPaint(
                       size: const Size(42.0, 26.0),
                       painter: const _DistanceBadgeTooltipPainter(
-                        color: Color(0xFF1D8070),
+                        color: Color(0xFF8B53FE),
                         cornerRadius: 4.0,
                         pointerX: 10.0,
                         pointerWidth: 8.0,
@@ -550,7 +545,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                   width: 55.0,
                                                                   height: 19.0,
                                                                   decoration: BoxDecoration(
-                                                                    color: const Color(0xFFF0F5F2),
+                                                                    color: const Color(0xFFF0EAFE),
                                                                     borderRadius: BorderRadius.circular(60.0),
                                                                   ),
                                                                   alignment: Alignment.center,
@@ -563,7 +558,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                     style: GoogleFonts.inter(
                                                                       fontSize: 10.0,
                                                                       fontWeight: FontWeight.w500,
-                                                                      color: const Color(0xFF1D8070),
+                                                                      color: const Color(0xFF8B53FE),
                                                                       height: 22.0 / 10.0,
                                                                       letterSpacing: 0.0,
                                                                     ),
@@ -590,7 +585,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                       const Icon(
                                                                         Icons.star_rounded,
                                                                         size: 10.0,
-                                                                        color: Color(0xFF07AF2C),
+                                                                        color: Color(0xFF8B53FE),
                                                                       ),
                                                                       const SizedBox(width: 4.0), // gap: 4px;
                                                                       // content: 4.9 (120)
@@ -861,14 +856,14 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                             width: 32.0,
                                                             height: 32.0,
                                                             decoration: const BoxDecoration(
-                                                              color: Color(0xFFE2F0E6),
+                                                              color: Color(0xFFF0EAFE),
                                                               shape: BoxShape.circle,
                                                             ),
                                                             child: const Center(
                                                               child: CustomPaint(
                                                                 size: Size(16.0, 18.0),
                                                                 painter: _LocationPinPainter(
-                                                                  color: Color(0xFF1C2926),
+                                                                  color: Color(0xFF8B53FE),
                                                                 ),
                                                               ),
                                                             ),
@@ -951,16 +946,16 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                             width: 32.0,
                                                             height: 32.0,
                                                             decoration: const BoxDecoration(
-                                                              color: Color(0xFFE2F0E6),
+                                                              color: Color(0xFFF0EAFE),
                                                               shape: BoxShape.circle,
                                                             ),
                                                             child: const Center(
                                                               // icon inner branding:
-                                                              // width: 20; height: 20; angle: 0 deg; opacity: 1; top: 6.2px; left: 6.2px; background: #1C2926;
+                                                              // width: 20; height: 20; angle: 0 deg; opacity: 1; top: 6.2px; left: 6.2px; background: #8B53FE;
                                                               child: CustomPaint(
                                                                 size: Size(20.0, 20.0),
                                                                 painter: _ClockIconPainter(
-                                                                  backgroundColor: Color(0xFF1C2926),
+                                                                  backgroundColor: Color(0xFF8B53FE),
                                                                   handColor: Colors.white,
                                                                 ),
                                                               ),
@@ -1059,7 +1054,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                             width: 28.0,
                                                             height: 28.0,
                                                             decoration: const BoxDecoration(
-                                                              color: Color(0xFFDDF0E3),
+                                                              color: Color(0xFFF0EAFE),
                                                               shape: BoxShape.circle,
                                                             ),
                                                             child: const Center(
@@ -1068,7 +1063,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                               child: CustomPaint(
                                                                 size: Size(14.0, 16.0),
                                                                 painter: _VerifiedShieldPainter(
-                                                                  shieldColor: Color(0xFF1D8070),
+                                                                  shieldColor: Color(0xFF8B53FE),
                                                                   checkColor: Colors.white,
                                                                 ),
                                                               ),
@@ -1157,7 +1152,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                             width: 28.0,
                                                             height: 28.0,
                                                             decoration: const BoxDecoration(
-                                                              color: Color(0xFFDDF0E3),
+                                                              color: Color(0xFFF0EAFE),
                                                               shape: BoxShape.circle,
                                                             ),
                                                             child: const Center(
@@ -1166,7 +1161,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                               child: Icon(
                                                                 Icons.group_rounded,
                                                                 size: 16.0,
-                                                                color: Color(0xFF1D8070),
+                                                                color: Color(0xFF8B53FE),
                                                               ),
                                                             ),
                                                           ),
@@ -1253,14 +1248,14 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                             width: 28.0,
                                                             height: 28.0,
                                                             decoration: const BoxDecoration(
-                                                              color: Color(0xFFDDF0E3),
+                                                              color: Color(0xFFF0EAFE),
                                                               shape: BoxShape.circle,
                                                             ),
                                                             child: const Center(
                                                               child: Icon(
                                                                 Icons.thumb_up_rounded,
                                                                 size: 15.0,
-                                                                color: Color(0xFF1D8070),
+                                                                color: Color(0xFF8B53FE),
                                                               ),
                                                             ),
                                                           ),
@@ -1349,7 +1344,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                           width: 32.0,
                                           height: 32.0,
                                           decoration: const BoxDecoration(
-                                            color: Color(0xFFDDF0E3),
+                                            color: Color(0xFFF0EAFE),
                                             shape: BoxShape.circle,
                                           ),
                                           child: Center(
@@ -1359,7 +1354,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                   ? Icons.check_circle_rounded
                                                   : Icons.send_rounded,
                                               size: 18.0,
-                                              color: const Color(0xFF1D8070),
+                                              color: const Color(0xFF8B53FE),
                                             ),
                                           ),
                                         ),
@@ -1407,7 +1402,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                   fontSize: 12.0,
                                                   fontWeight: FontWeight.w400,
                                                   color: _isAccepted
-                                                      ? const Color(0xFF1D8070)
+                                                      ? const Color(0xFF8B53FE)
                                                       : const Color(0xFF566663),
                                                   height: 1.2,
                                                   letterSpacing: 0.0,
@@ -1635,7 +1630,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(42),
                       border: Border.all(
-                        color: const Color(0xFF9FFFCB).withValues(alpha: 0.35),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.35),
                         width: 2.0,
                       ),
                       boxShadow: [
@@ -1784,7 +1779,7 @@ class _RouteVectorPainter extends CustomPainter {
   final double strokeWidth;
 
   const _RouteVectorPainter({
-    this.color = const Color(0xFF1D8070),
+    this.color = const Color(0xFF8B53FE),
     this.strokeWidth = 4.0,
   });
 
@@ -1814,7 +1809,7 @@ class _RouteVectorPainter extends CustomPainter {
 /// Top-down car graphic painter matching Figma car asset:
 class _CarGraphicPainter extends CustomPainter {
   final Color roofColor;
-  const _CarGraphicPainter({this.roofColor = const Color(0xFF1D8070)});
+  const _CarGraphicPainter({this.roofColor = const Color(0xFFA67AFE)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1950,7 +1945,7 @@ class _DistanceBadgeTooltipPainter extends CustomPainter {
   final double pointerHeight;
 
   const _DistanceBadgeTooltipPainter({
-    this.color = const Color(0xFF1D8070),
+    this.color = const Color(0xFF8B53FE),
     this.cornerRadius = 4.0,
     this.pointerX = 10.0,
     this.pointerWidth = 8.0,
@@ -2020,7 +2015,14 @@ class _RotatingLoaderWidgetState extends State<_RotatingLoaderWidget>
   }
 
   @override
+  void deactivate() {
+    _controller.stop();
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
+    _controller.stop();
     _controller.dispose();
     super.dispose();
   }
@@ -2193,7 +2195,7 @@ class _VerifiedShieldPainter extends CustomPainter {
   final Color checkColor;
 
   const _VerifiedShieldPainter({
-    this.shieldColor = const Color(0xFF1D8070),
+    this.shieldColor = const Color(0xFF8B53FE),
     this.checkColor = Colors.white,
   });
 
@@ -2252,7 +2254,7 @@ class _TimelineTrackPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const brandColor = Color(0xFF1D8070);
+    const brandColor = Color(0xFF8B53FE);
 
     final double topY = 6.5;
     final double botY = math.max(topY + 20.0, size.height - 6.5);

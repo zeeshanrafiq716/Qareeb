@@ -5,13 +5,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../models/provider_model.dart';
+import '../../../providers/backend_provider.dart';
+import '../../../services/location_service.dart';
 import 'find_provider_screen.dart';
+import 'send_request_screen.dart';
 import 'widgets/top_down_car_widget.dart';
 
 /// Screen displayed after allowing location access for Pickup & Delivery.
-/// - Cars are active across the COMPLETE MAP
-/// - When a car enters the circle radius, it arrives near the customer
-/// - When clicked: car size slightly increases and its color turns WHITE
+/// Features a real draggable interactive map, authentic nearby provider cars
+/// covering proper geographic distances, and brand purple styling.
 class PickupDeliveryScreen extends ConsumerStatefulWidget {
   final String serviceName;
 
@@ -24,80 +27,61 @@ class PickupDeliveryScreen extends ConsumerStatefulWidget {
   ConsumerState<PickupDeliveryScreen> createState() => _PickupDeliveryScreenState();
 }
 
-class FakeCar {
+/// Model representing a realistic nearby driver on the map
+class NearbyDriverOnMap {
   final int id;
   final String name;
-  final Color baseColor;
-  // Route center and geometry on complete map (390 x 844)
-  final double routeCenterX;
-  final double routeCenterY;
-  final double radiusX;
-  final double radiusY;
-  final double routeTilt; // in radians
-  final double startAngleRad;
-  final double speedFactor; // 1.0 (CCW) or -1.0 (CW)
+  final String vehicle;
+  final double rating;
+  final int reviews;
+  final double initialDistanceKm;
+  final double baseDistancePx;
+  final double angleRad;
+  final double roadAngle;
+  final double roadLengthPx;
+  final double speed;
+  final Color roofColor;
 
-  const FakeCar({
+  const NearbyDriverOnMap({
     required this.id,
     required this.name,
-    this.baseColor = const Color(0xFF1D8070),
-    required this.routeCenterX,
-    required this.routeCenterY,
-    required this.radiusX,
-    required this.radiusY,
-    this.routeTilt = 0.0,
-    required this.startAngleRad,
-    required this.speedFactor,
+    this.vehicle = 'Sedan • AC',
+    this.rating = 4.9,
+    this.reviews = 120,
+    required this.initialDistanceKm,
+    required this.baseDistancePx,
+    required this.angleRad,
+    required this.roadAngle,
+    this.roadLengthPx = 55.0,
+    this.speed = 0.8,
+    this.roofColor = const Color(0xFFA67AFE),
   });
 
-  /// Calculate continuous position on the map, bounded strictly inside square beacon criteria
-  Offset calculatePosition(
-    double t,
-    double screenWidth, {
-    double beaconTop = 112.0,
-    double beaconHeight = 570.0,
-  }) {
-    // Adapt horizontally for larger web widths
-    final double cx = routeCenterX + (screenWidth - 390.0) / 2.0;
-    final double cy = routeCenterY;
-
-    final double theta = startAngleRad + speedFactor * 2.0 * math.pi * t;
-
-    final double cosTheta = math.cos(theta);
-    final double sinTheta = math.sin(theta);
-    final double cosTilt = math.cos(routeTilt);
-    final double sinTilt = math.sin(routeTilt);
-
-    final double rawX = cx + (radiusX * cosTheta * cosTilt - radiusY * sinTheta * sinTilt);
-    final double rawY = cy + (radiusX * cosTheta * sinTilt + radiusY * sinTheta * cosTilt);
-
-    // Boundary criteria: Cars and badges remain strictly inside the square criteria
-    final double minX = 46.0;
-    final double maxX = screenWidth - 46.0;
-    final double minY = beaconTop + 45.0;
-    final double maxY = beaconTop + beaconHeight - 65.0;
-
-    final double liveX = rawX.clamp(minX, maxX);
-    final double liveY = rawY.clamp(minY, maxY);
-
-    return Offset(liveX, liveY);
+  /// Computes live position on the map space relative to user center
+  Offset calculatePosition(double t, Offset userCenter) {
+    final double baseX = userCenter.dx + baseDistancePx * math.cos(angleRad);
+    final double baseY = userCenter.dy + baseDistancePx * math.sin(angleRad);
+    final double patrol = math.sin(t * speed * 2.0 * math.pi) * (roadLengthPx / 2.0);
+    return Offset(
+      baseX + patrol * math.cos(roadAngle),
+      baseY + patrol * math.sin(roadAngle),
+    );
   }
 
-  /// Calculate continuous analytic heading angle (in clock degrees)
+  /// Calculates car heading (facing forward along direction of motion)
   double calculateHeading(double t) {
-    final double theta = startAngleRad + speedFactor * 2.0 * math.pi * t;
+    final double vel = math.cos(t * speed * 2.0 * math.pi);
+    if (vel >= 0) {
+      return (roadAngle * 180.0 / math.pi) + 90.0;
+    } else {
+      return (roadAngle * 180.0 / math.pi) - 90.0;
+    }
+  }
 
-    final double cosTheta = math.cos(theta);
-    final double sinTheta = math.sin(theta);
-    final double cosTilt = math.cos(routeTilt);
-    final double sinTilt = math.sin(routeTilt);
-
-    final double dTheta = speedFactor * 2.0 * math.pi;
-
-    final double vx = (-radiusX * sinTheta * cosTilt - radiusY * cosTheta * sinTilt) * dTheta;
-    final double vy = (-radiusX * sinTheta * sinTilt + radiusY * cosTheta * cosTilt) * dTheta;
-
-    return math.atan2(vx, -vy) * 180.0 / math.pi;
+  /// Dynamic distance in km from user position
+  double liveDistanceKm(Offset livePos, Offset userCenter) {
+    final double distPx = (livePos - userCenter).distance;
+    return double.parse((distPx / 160.0).clamp(0.2, 5.0).toStringAsFixed(1));
   }
 }
 
@@ -105,432 +89,174 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     with TickerProviderStateMixin {
   late final AnimationController _radarController;
   late final AnimationController _carMotionController;
-  int? _selectedCarId;
-  int _selectedProviderCount = 10;
+  late final AnimationController _recenterController;
 
-  // Cars naturally distributed across the square beacon area without overflowing:
-  // - Kept well within horizontal margins and square rounded bounds
-  // - Kept safely below top header and above bottom edge/button
-  // - Roaming smoothly into and out of customer proximity
-  static const List<FakeCar> fakeCars = [
-    // 1. Uzair: Mid-North near customer center
-    FakeCar(
+  int? _selectedCarId;
+  Offset _mapPanOffset = Offset.zero;
+  double _mapZoomScale = 1.0;
+  bool _isDraggingMap = false;
+
+  /// Realistic, clean, well-spaced nearby providers covering proper distance across the map
+  static const List<NearbyDriverOnMap> nearbyDrivers = [
+    // 1. Uzair Ahmed - 0.4 km away (North-West, within inner radar ring)
+    NearbyDriverOnMap(
       id: 1,
-      name: 'Uzair',
-      baseColor: Color(0xFF108C7B), // Turns WHITE on tap
-      routeCenterX: 155.0,
-      routeCenterY: 340.0,
-      radiusX: 38.0,
-      radiusY: 34.0,
-      routeTilt: 0.12,
-      startAngleRad: math.pi,
-      speedFactor: 1.0,
+      name: 'Uzair Ahmed',
+      vehicle: 'Toyota Corolla • AC',
+      rating: 4.9,
+      reviews: 142,
+      initialDistanceKm: 0.4,
+      baseDistancePx: 68.0,
+      angleRad: -2.2, // ~126° (North-West)
+      roadAngle: 0.4,
+      roadLengthPx: 45.0,
+      speed: 0.8,
     ),
-    // 2. Adnan: North central district
-    FakeCar(
+    // 2. Muhammad Bilal - 0.7 km away (North-East, outer ring)
+    NearbyDriverOnMap(
       id: 2,
-      name: 'Adnan',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 195.0,
-      routeCenterY: 225.0,
-      radiusX: 44.0,
-      radiusY: 32.0,
-      routeTilt: -0.1,
-      startAngleRad: -math.pi / 2.0,
-      speedFactor: -1.0,
+      name: 'Muhammad Bilal',
+      vehicle: 'Honda Civic • AC',
+      rating: 4.8,
+      reviews: 95,
+      initialDistanceKm: 0.7,
+      baseDistancePx: 115.0,
+      angleRad: -0.75, // ~43° (North-East)
+      roadAngle: -0.6,
+      roadLengthPx: 55.0,
+      speed: 0.9,
     ),
-    // 3. Abdul: East district
-    FakeCar(
+    // 3. Adnan Said - 0.9 km away (East avenue)
+    NearbyDriverOnMap(
       id: 3,
-      name: 'Abdul',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 275.0,
-      routeCenterY: 320.0,
-      radiusX: 36.0,
-      radiusY: 38.0,
-      routeTilt: 0.05,
-      startAngleRad: 0.0,
-      speedFactor: 1.0,
+      name: 'Adnan Said',
+      vehicle: 'Toyota Hilux • Pickup',
+      rating: 4.9,
+      reviews: 118,
+      initialDistanceKm: 0.9,
+      baseDistancePx: 148.0,
+      angleRad: 0.15, // ~9° (East)
+      roadAngle: 1.4,
+      roadLengthPx: 60.0,
+      speed: 0.7,
     ),
-    // 4. Mehmood: North-West district
-    FakeCar(
+    // 4. Abdul Ahad - 1.2 km away (South-East district)
+    NearbyDriverOnMap(
       id: 4,
-      name: 'Mehmood',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 115.0,
-      routeCenterY: 215.0,
-      radiusX: 35.0,
-      radiusY: 32.0,
-      routeTilt: 0.15,
-      startAngleRad: -2.3,
-      speedFactor: -1.0,
+      name: 'Abdul Ahad',
+      vehicle: 'Hyundai Elantra • AC',
+      rating: 5.0,
+      reviews: 215,
+      initialDistanceKm: 1.2,
+      baseDistancePx: 195.0,
+      angleRad: 1.65, // ~95° (South-East)
+      roadAngle: -0.8,
+      roadLengthPx: 70.0,
+      speed: 1.0,
     ),
-    // 5. Ubaid: West district
-    FakeCar(
+    // 5. Mehmood Ali - 1.5 km away (South-West district)
+    NearbyDriverOnMap(
       id: 5,
-      name: 'Ubaid',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 95.0,
-      routeCenterY: 325.0,
-      radiusX: 32.0,
-      radiusY: 36.0,
-      routeTilt: -0.1,
-      startAngleRad: 2.8,
-      speedFactor: 1.0,
+      name: 'Mehmood Ali',
+      vehicle: 'Toyota HiAce • Van',
+      rating: 4.9,
+      reviews: 88,
+      initialDistanceKm: 1.5,
+      baseDistancePx: 245.0,
+      angleRad: 2.65, // ~152° (South-West)
+      roadAngle: 0.9,
+      roadLengthPx: 75.0,
+      speed: 0.85,
     ),
-    // 6. Rayan: North-East district
-    FakeCar(
+    // 6. Hamza Sheikh - 2.0 km away (West main road)
+    NearbyDriverOnMap(
       id: 6,
-      name: 'Rayan',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 275.0,
-      routeCenterY: 215.0,
-      radiusX: 36.0,
-      radiusY: 32.0,
-      routeTilt: -0.15,
-      startAngleRad: -0.8,
-      speedFactor: -1.0,
-    ),
-    // 7. Omar: South-East district
-    FakeCar(
-      id: 7,
-      name: 'Omar',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 265.0,
-      routeCenterY: 460.0,
-      radiusX: 34.0,
-      radiusY: 34.0,
-      routeTilt: 0.15,
-      startAngleRad: 1.1,
-      speedFactor: 1.0,
-    ),
-    // 8. Saad: South avenue
-    FakeCar(
-      id: 8,
-      name: 'Saad',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 195.0,
-      routeCenterY: 480.0,
-      radiusX: 40.0,
-      radiusY: 32.0,
-      routeTilt: -0.08,
-      startAngleRad: 1.7,
-      speedFactor: -1.0,
-    ),
-    // 9. Hassan: South-West district
-    FakeCar(
-      id: 9,
-      name: 'Hassan',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 115.0,
-      routeCenterY: 445.0,
-      radiusX: 34.0,
-      radiusY: 34.0,
-      routeTilt: 0.12,
-      startAngleRad: 2.2,
-      speedFactor: 1.0,
-    ),
-    // 10. Ahmad: South-Central avenue
-    FakeCar(
-      id: 10,
-      name: 'Ahmad',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 210.0,
-      routeCenterY: 405.0,
-      radiusX: 36.0,
-      radiusY: 32.0,
-      routeTilt: 0.0,
-      startAngleRad: math.pi / 2.0,
-      speedFactor: -1.0,
-    ),
-    // 11. Bilal: Mid-North
-    FakeCar(
-      id: 11,
-      name: 'Bilal',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 160.0,
-      routeCenterY: 260.0,
-      radiusX: 38.0,
-      radiusY: 34.0,
-      routeTilt: 0.1,
-      startAngleRad: 0.5,
-      speedFactor: 1.0,
-    ),
-    // 12. Tariq: North-East
-    FakeCar(
-      id: 12,
-      name: 'Tariq',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 230.0,
-      routeCenterY: 250.0,
-      radiusX: 42.0,
-      radiusY: 32.0,
-      routeTilt: -0.12,
-      startAngleRad: -1.2,
-      speedFactor: -1.0,
-    ),
-    // 13. Hamza: South-West
-    FakeCar(
-      id: 13,
-      name: 'Hamza',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 135.0,
-      routeCenterY: 380.0,
-      radiusX: 36.0,
-      radiusY: 30.0,
-      routeTilt: 0.08,
-      startAngleRad: 2.5,
-      speedFactor: 1.0,
-    ),
-    // 14. Zeeshan: South-East
-    FakeCar(
-      id: 14,
-      name: 'Zeeshan',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 255.0,
-      routeCenterY: 360.0,
-      radiusX: 34.0,
-      radiusY: 38.0,
-      routeTilt: -0.15,
-      startAngleRad: 0.8,
-      speedFactor: -1.0,
-    ),
-    // 15. Farhan: Central East
-    FakeCar(
-      id: 15,
-      name: 'Farhan',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 185.0,
-      routeCenterY: 350.0,
-      radiusX: 40.0,
-      radiusY: 35.0,
-      routeTilt: 0.05,
-      startAngleRad: -2.0,
-      speedFactor: 1.0,
-    ),
-    // 16. Kashif: Mid-West
-    FakeCar(
-      id: 16,
-      name: 'Kashif',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 110.0,
-      routeCenterY: 300.0,
-      radiusX: 32.0,
-      radiusY: 34.0,
-      routeTilt: -0.1,
-      startAngleRad: 1.8,
-      speedFactor: -1.0,
-    ),
-    // 17. Noman: East avenue
-    FakeCar(
-      id: 17,
-      name: 'Noman',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 280.0,
-      routeCenterY: 410.0,
-      radiusX: 35.0,
-      radiusY: 32.0,
-      routeTilt: 0.14,
-      startAngleRad: -0.5,
-      speedFactor: 1.0,
-    ),
-    // 18. Salman: South-West district
-    FakeCar(
-      id: 18,
-      name: 'Salman',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 125.0,
-      routeCenterY: 470.0,
-      radiusX: 38.0,
-      radiusY: 30.0,
-      routeTilt: -0.06,
-      startAngleRad: 3.0,
-      speedFactor: -1.0,
-    ),
-    // 19. Imran: South-East avenue
-    FakeCar(
-      id: 19,
-      name: 'Imran',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 245.0,
-      routeCenterY: 480.0,
-      radiusX: 36.0,
-      radiusY: 34.0,
-      routeTilt: 0.1,
-      startAngleRad: 1.4,
-      speedFactor: 1.0,
-    ),
-    // 20. Waqas: South central
-    FakeCar(
-      id: 20,
-      name: 'Waqas',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 175.0,
-      routeCenterY: 430.0,
-      radiusX: 40.0,
-      radiusY: 32.0,
-      routeTilt: -0.08,
-      startAngleRad: -1.7,
-      speedFactor: -1.0,
-    ),
-    // 21. Asad: Mid-Central
-    FakeCar(
-      id: 21,
-      name: 'Asad',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 215.0,
-      routeCenterY: 320.0,
-      radiusX: 35.0,
-      radiusY: 36.0,
-      routeTilt: 0.12,
-      startAngleRad: 0.2,
-      speedFactor: 1.0,
-    ),
-    // 22. Faisal: Mid-West avenue
-    FakeCar(
-      id: 22,
-      name: 'Faisal',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 145.0,
-      routeCenterY: 320.0,
-      radiusX: 33.0,
-      radiusY: 35.0,
-      routeTilt: -0.14,
-      startAngleRad: -2.5,
-      speedFactor: -1.0,
-    ),
-    // 23. Junaid: North-East avenue
-    FakeCar(
-      id: 23,
-      name: 'Junaid',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 270.0,
-      routeCenterY: 250.0,
-      radiusX: 37.0,
-      radiusY: 30.0,
-      routeTilt: 0.07,
-      startAngleRad: 2.1,
-      speedFactor: 1.0,
-    ),
-    // 24. Rashid: North-West
-    FakeCar(
-      id: 24,
-      name: 'Rashid',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 105.0,
-      routeCenterY: 240.0,
-      radiusX: 34.0,
-      radiusY: 32.0,
-      routeTilt: -0.09,
-      startAngleRad: -0.9,
-      speedFactor: -1.0,
-    ),
-    // 25. Danish: North avenue
-    FakeCar(
-      id: 25,
-      name: 'Danish',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 185.0,
-      routeCenterY: 210.0,
-      radiusX: 42.0,
-      radiusY: 30.0,
-      routeTilt: 0.15,
-      startAngleRad: 1.9,
-      speedFactor: 1.0,
-    ),
-    // 26. Kamran: North-East corner
-    FakeCar(
-      id: 26,
-      name: 'Kamran',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 260.0,
-      routeCenterY: 200.0,
-      radiusX: 35.0,
-      radiusY: 33.0,
-      routeTilt: -0.11,
-      startAngleRad: -1.4,
-      speedFactor: -1.0,
-    ),
-    // 27. Shoaib: South avenue
-    FakeCar(
-      id: 27,
-      name: 'Shoaib',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 150.0,
-      routeCenterY: 490.0,
-      radiusX: 39.0,
-      radiusY: 31.0,
-      routeTilt: 0.09,
-      startAngleRad: 0.7,
-      speedFactor: 1.0,
-    ),
-    // 28. Haris: South-East district
-    FakeCar(
-      id: 28,
-      name: 'Haris',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 225.0,
-      routeCenterY: 440.0,
-      radiusX: 37.0,
-      radiusY: 33.0,
-      routeTilt: -0.13,
-      startAngleRad: -2.2,
-      speedFactor: -1.0,
-    ),
-    // 29. Naveed: South-West avenue
-    FakeCar(
-      id: 29,
-      name: 'Naveed',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 115.0,
-      routeCenterY: 420.0,
-      radiusX: 33.0,
-      radiusY: 35.0,
-      routeTilt: 0.11,
-      startAngleRad: 2.8,
-      speedFactor: 1.0,
-    ),
-    // 30. Babar: Central district
-    FakeCar(
-      id: 30,
-      name: 'Babar',
-      baseColor: Color(0xFF108C7B),
-      routeCenterX: 205.0,
-      routeCenterY: 280.0,
-      radiusX: 38.0,
-      radiusY: 34.0,
-      routeTilt: -0.07,
-      startAngleRad: 0.0,
-      speedFactor: -1.0,
+      name: 'Hamza Sheikh',
+      vehicle: 'Suzuki Swift • Sedan',
+      rating: 4.7,
+      reviews: 80,
+      initialDistanceKm: 2.0,
+      baseDistancePx: 310.0,
+      angleRad: 3.5, // ~200° (West)
+      roadAngle: -1.2,
+      roadLengthPx: 85.0,
+      speed: 0.75,
     ),
   ];
 
   @override
   void initState() {
     super.initState();
-    // 1. Radar sweep rotation (9.5s smooth loop)
+
+    // 1. Radar animation pulse
     _radarController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 9500),
+      duration: const Duration(milliseconds: 3200),
     )..repeat();
 
-    // 2. Continuous ambient car cruising across complete map (smooth 120s calm pace)
+    // 2. Continuous ambient car cruising across road segments
     _carMotionController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 120),
+      duration: const Duration(seconds: 40),
     )..repeat();
+
+    // 3. Smooth map recentering animation controller
+    _recenterController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+  }
+
+  @override
+  void deactivate() {
+    _radarController.stop();
+    _carMotionController.stop();
+    _recenterController.stop();
+    super.deactivate();
   }
 
   @override
   void dispose() {
     _radarController.dispose();
     _carMotionController.dispose();
+    _recenterController.dispose();
     super.dispose();
   }
 
   void _onCarTapped(int carId) {
+    HapticFeedback.selectionClick();
     setState(() {
       _selectedCarId = (_selectedCarId == carId) ? null : carId;
+    });
+  }
+
+  void _recenterMap() {
+    HapticFeedback.lightImpact();
+    final startOffset = _mapPanOffset;
+    final tween = Tween<Offset>(begin: startOffset, end: Offset.zero);
+    _recenterController.reset();
+    final Animation<Offset> anim = tween.animate(
+      CurvedAnimation(parent: _recenterController, curve: Curves.easeOutCubic),
+    );
+    anim.addListener(() {
+      setState(() {
+        _mapPanOffset = anim.value;
+      });
+    });
+    _recenterController.forward();
+  }
+
+  void _zoomIn() {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _mapZoomScale = (_mapZoomScale + 0.15).clamp(0.75, 1.6);
+    });
+  }
+
+  void _zoomOut() {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _mapZoomScale = (_mapZoomScale - 0.15).clamp(0.75, 1.6);
     });
   }
 
@@ -556,530 +282,477 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
             final double containerHeight = isDesktopWeb
                 ? math.min(844.0, (constraints.maxHeight - 32.0).clamp(520.0, 844.0))
                 : constraints.maxHeight;
-            final double contentHeight = math.max(containerHeight, 844.0);
 
             final double beaconLeft = containerWidth >= 390
                 ? 20.0
                 : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0);
-            final double beaconTop = 112.0;
+            const double beaconTop = 108.0;
             final double beaconWidth = containerWidth >= 390
                 ? 350.0
                 : (containerWidth - (beaconLeft * 2.0));
-            final double beaconHeight = 570.0;
-            final double bottomCardTop = beaconTop + beaconHeight + 14.0;
-            final double bottomCardHeight = math.max(148.0, contentHeight - bottomCardTop);
+            final double beaconHeight = (containerHeight - 270.0).clamp(380.0, 560.0);
+            final double bottomCardTop = beaconTop + beaconHeight + 12.0;
+            final double bottomCardHeight = math.max(140.0, containerHeight - bottomCardTop);
 
-            // Customer location anchor at center of square beacon area on screen
-            final Offset customerCenter = Offset(containerWidth / 2.0, beaconTop + beaconHeight / 2.0);
+            final userLocAsync = ref.watch(userLocationProvider);
+            final userLoc = userLocAsync.value ?? UserLocation.defaultLocation;
+
+            final providersAsync = ref.watch(nearbyProvidersProvider);
+            final liveProviders = providersAsync.value ?? const <ProviderModel>[];
 
             final screenContent = Container(
               width: containerWidth,
               height: containerHeight,
               color: Colors.white,
-              child: ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(
-                  scrollbars: false,
-                  dragDevices: {
-                    PointerDeviceKind.touch,
-                    PointerDeviceKind.mouse,
-                    PointerDeviceKind.trackpad,
-                    PointerDeviceKind.stylus,
-                    PointerDeviceKind.invertedStylus,
-                    PointerDeviceKind.unknown,
-                  },
-                ),
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  child: SizedBox(
-                    width: containerWidth,
-                    height: contentHeight,
-                    child: Stack(
-                      children: [
-                        // 1. Map Widget & Card with minor top, left, right padding
-                        Positioned(
-                          top: beaconTop,
-                          left: beaconLeft,
-                          width: beaconWidth,
-                          height: beaconHeight,
-                          child: Container(
-                            key: const Key('map_widget_beacon'),
-                            width: beaconWidth,
-                            height: beaconHeight,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.rectangle,
-                              borderRadius: BorderRadius.circular(16.0),
-                              border: Border.all(
-                                color: const Color(0xFFCCFFE3), // 1px solid #CCFFE3
-                                width: 1.0,
+              child: Stack(
+                children: [
+                  // 1. REAL INTERACTIVE DRAGGABLE MAP BEACON AREA
+                  Positioned(
+                    top: beaconTop,
+                    left: beaconLeft,
+                    width: beaconWidth,
+                    height: beaconHeight,
+                    child: Container(
+                      key: const Key('map_widget_beacon'),
+                      width: beaconWidth,
+                      height: beaconHeight,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20.0),
+                        border: Border.all(
+                          color: const Color(0xFF8B53FE).withValues(alpha: 0.18),
+                          width: 1.2,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x14000000),
+                            blurRadius: 18.0,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onPanStart: (details) {
+                          setState(() {
+                            _isDraggingMap = true;
+                          });
+                        },
+                        onPanUpdate: (details) {
+                          setState(() {
+                            _mapPanOffset = Offset(
+                              (_mapPanOffset.dx + details.delta.dx).clamp(-400.0, 400.0),
+                              (_mapPanOffset.dy + details.delta.dy).clamp(-350.0, 350.0),
+                            );
+                          });
+                        },
+                        onPanEnd: (details) {
+                          setState(() {
+                            _isDraggingMap = false;
+                          });
+                        },
+                        child: MouseRegion(
+                          cursor: _isDraggingMap
+                              ? SystemMouseCursors.grabbing
+                              : SystemMouseCursors.grab,
+                          child: Stack(
+                            clipBehavior: Clip.hardEdge,
+                            children: [
+                              // A. Real Map Tile Layer (OpenStreetMap / CartoDB Voyager)
+                              _RealMapTileLayer(
+                                centerLat: userLoc.latitude,
+                                centerLng: userLoc.longitude,
+                                zoom: 15,
+                                panOffset: _mapPanOffset,
+                                width: beaconWidth,
+                                height: beaconHeight,
+                                scale: _mapZoomScale,
                               ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x12000000),
-                                  blurRadius: 16.0,
-                                  offset: Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: Stack(
-                              clipBehavior: Clip.hardEdge,
-                              children: [
-                                // Background Map Image clipped inside padded card
-                                Positioned.fill(
-                                  child: Image.asset(
-                                    'assets/images/BG image.png',
-                                    width: beaconWidth,
-                                    height: beaconHeight,
-                                    fit: BoxFit.cover,
-                                    alignment: Alignment.center,
-                                    errorBuilder: (context, error, stackTrace) => Container(
-                                      color: const Color(0xFFF3F4F6),
-                                      child: const Center(
-                                        child: Icon(
-                                          Icons.map_outlined,
-                                          size: 48,
-                                          color: Color(0xFF9CA3AF),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
 
-                                // Radial Gradient Overlay on Map:
-                                // radial-gradient(53.9% 41.56% at 50% 50%, rgba(159, 255, 203, 0.4) 0%, rgba(159, 255, 203, 0.12) 100%)
-                                Positioned.fill(
-                                  child: DecoratedBox(
-                                    decoration: const BoxDecoration(
-                                      gradient: RadialGradient(
-                                        center: Alignment.center,
-                                        radius: 0.539,
-                                        colors: [
-                                          Color(0x669FFFCB), // rgba(159, 255, 203, 0.4) 0%
-                                          Color(0x1F9FFFCB), // rgba(159, 255, 203, 0.12) 100%
-                                        ],
-                                        stops: [0.0, 1.0],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                // Animated curved radar sweep sector across square
-                                Positioned.fill(
-                                  child: AnimatedBuilder(
-                                    animation: _radarController,
-                                    builder: (context, child) {
-                                      final double breath = (math.sin(_radarController.value * 4.0 * math.pi - math.pi / 2.0) + 1.0) / 2.0;
-                                      final double dynamicOpacity = (0.35 + 0.55 * breath).clamp(0.2, 1.0);
-
-                                      return Transform.rotate(
-                                        angle: -_radarController.value * 2.0 * math.pi,
-                                        alignment: Alignment.center,
-                                        child: Opacity(
-                                          opacity: dynamicOpacity,
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                                    child: CustomPaint(
-                                      key: const Key('animated_radar_sector'),
-                                      size: Size(beaconWidth, beaconHeight),
-                                      painter: const _RadarSectorPainter(),
-                                    ),
-                                  ),
-                                ),
-
-                                // Light bold animated circle around customer pin
-                                Positioned(
-                                  top: (beaconHeight - 210.0) / 2.0,
-                                  left: (beaconWidth - 210.0) / 2.0,
-                                  width: 210.0,
-                                  height: 210.0,
+                              // B. Purple Radar Outer Animated Pulse Circle
+                              Positioned(
+                                top: (beaconHeight - 210.0) / 2.0 + _mapPanOffset.dy,
+                                left: (beaconWidth - 210.0) / 2.0 + _mapPanOffset.dx,
+                                width: 210.0,
+                                height: 210.0,
+                                child: IgnorePointer(
                                   child: AnimatedBuilder(
                                     animation: _radarController,
                                     builder: (context, child) {
                                       final double wave = (math.sin(_radarController.value * 4.0 * math.pi) + 1.0) / 2.0;
-                                      final double scale = 0.95 + 0.10 * wave; // Smooth breathing pulse
-                                      final double opacity = (0.75 + 0.25 * wave).clamp(0.0, 1.0);
-
+                                      final double scale = 0.95 + 0.10 * wave;
+                                      final double opacity = (0.65 + 0.35 * wave).clamp(0.0, 1.0);
                                       return Transform.scale(
                                         scale: scale,
-                                        child: Opacity(
-                                          opacity: opacity,
-                                          child: child,
-                                        ),
+                                        child: Opacity(opacity: opacity, child: child),
                                       );
                                     },
                                     child: Container(
-                                      key: const Key('customer_pin_animated_circle'),
-                                      width: 210.0,
-                                      height: 210.0,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: const Color(0x1F9FFFCB),
+                                        color: const Color(0x188B53FE),
                                         border: Border.all(
-                                          color: const Color(0xFF9FFFCB),
-                                          width: 2.2, // Light bold stroke
-                                        ),
-                                        boxShadow: const [
-                                          BoxShadow(
-                                            color: Color(0x389FFFCB),
-                                            blurRadius: 18.0,
-                                            spreadRadius: 2.0,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                // Inner light bold animated wave circle
-                                Positioned(
-                                  top: (beaconHeight - 100.0) / 2.0,
-                                  left: (beaconWidth - 100.0) / 2.0,
-                                  width: 100.0,
-                                  height: 100.0,
-                                  child: AnimatedBuilder(
-                                    animation: _radarController,
-                                    builder: (context, child) {
-                                      final double wave = (math.cos(_radarController.value * 4.0 * math.pi) + 1.0) / 2.0;
-                                      final double scale = 0.92 + 0.14 * wave;
-                                      final double opacity = (0.60 + 0.40 * wave).clamp(0.0, 1.0);
-
-                                      return Transform.scale(
-                                        scale: scale,
-                                        child: Opacity(
-                                          opacity: opacity,
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                                    child: Container(
-                                      key: const Key('customer_pin_inner_pulse'),
-                                      width: 100.0,
-                                      height: 100.0,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: const Color(0x189FFFCB),
-                                        border: Border.all(
-                                          color: const Color(0xFF9FFFCB),
+                                          color: const Color(0xFF8B53FE),
                                           width: 2.0,
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
+                              ),
 
-                                // Rotated layout branding
-                                Positioned(
-                                  top: (beaconHeight - 320.0) / 2.0,
-                                  left: (beaconWidth - 320.0) / 2.0,
-                                  width: 320.0,
-                                  height: 320.0,
-                                  child: Transform.rotate(
-                                    key: const Key('radar_rotated_layout'),
-                                    angle: 65.53 * math.pi / 180.0,
-                                    alignment: Alignment.center,
-                                    child: const SizedBox(
-                                      width: 320.0,
-                                      height: 320.0,
+                              // C. Purple Radar Inner Bold Wave Circle
+                              Positioned(
+                                top: (beaconHeight - 100.0) / 2.0 + _mapPanOffset.dy,
+                                left: (beaconWidth - 100.0) / 2.0 + _mapPanOffset.dx,
+                                width: 100.0,
+                                height: 100.0,
+                                child: IgnorePointer(
+                                  child: AnimatedBuilder(
+                                    animation: _radarController,
+                                    builder: (context, child) {
+                                      final double wave = (math.cos(_radarController.value * 4.0 * math.pi) + 1.0) / 2.0;
+                                      final double scale = 0.92 + 0.14 * wave;
+                                      final double opacity = (0.50 + 0.50 * wave).clamp(0.0, 1.0);
+                                      return Transform.scale(
+                                        scale: scale,
+                                        child: Opacity(opacity: opacity, child: child),
+                                      );
+                                    },
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: const Color(0x188B53FE),
+                                        border: Border.all(
+                                          color: const Color(0xFF8B53FE),
+                                          width: 1.8,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
+                              ),
 
-                                // Customer Real GPS Center Beacon
-                                Positioned(
-                                  top: (beaconHeight - 24.0) / 2.0,
-                                  left: (beaconWidth - 24.0) / 2.0,
+                              // D. Customer Location Center Beacon
+                              Positioned(
+                                top: (beaconHeight - 30.0) / 2.0 + _mapPanOffset.dy,
+                                left: (beaconWidth - 30.0) / 2.0 + _mapPanOffset.dx,
+                                child: Tooltip(
+                                  message: 'Your Location: ${userLoc.cityName}',
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      HapticFeedback.lightImpact();
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            userLoc.isGpsDetected
+                                                ? 'GPS: ${userLoc.coordinatesDisplay} • ${userLoc.cityName}'
+                                                : 'Location: ${userLoc.cityName}',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12.0,
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          backgroundColor: const Color(0xFF8B53FE),
+                                          duration: const Duration(seconds: 2),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    },
+                                    behavior: HitTestBehavior.opaque,
+                                    child: Container(
+                                      key: const Key('user_gps_center_marker'),
+                                      width: 30.0,
+                                      height: 30.0,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: const Color(0xFF8B53FE),
+                                        border: Border.all(color: Colors.white, width: 2.6),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Color(0x408B53FE),
+                                            blurRadius: 12.0,
+                                            spreadRadius: 3.0,
+                                          ),
+                                          BoxShadow(
+                                            color: Color(0x20000000),
+                                            blurRadius: 4.0,
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.my_location,
+                                          size: 14.0,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              // E. Realistic Nearby Provider Cars (properly spaced, zero badge overlap)
+                              AnimatedBuilder(
+                                animation: _carMotionController,
+                                builder: (context, _) {
+                                  final double progress = _carMotionController.value;
+                                  final Offset centerOnMap = Offset(beaconWidth / 2.0, beaconHeight / 2.0);
+
+                                  return Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      for (final car in nearbyDrivers)
+                                        () {
+                                          final Offset livePos = car.calculatePosition(progress, centerOnMap);
+                                          final double heading = car.calculateHeading(progress);
+                                          final bool isSelected = _selectedCarId == car.id;
+                                          final double distKm = car.liveDistanceKm(livePos, centerOnMap);
+
+                                          final double finalX = livePos.dx + _mapPanOffset.dx;
+                                          final double finalY = livePos.dy + _mapPanOffset.dy;
+
+                                          return Positioned(
+                                            top: finalY - 14.25,
+                                            left: finalX - 8.25,
+                                            child: TopDownCarWidget(
+                                              key: ValueKey('driver_car_${car.id}'),
+                                              width: 16.5,
+                                              height: 28.5,
+                                              angle: heading,
+                                              opacity: 1.0,
+                                              driverName: car.name.split(' ').first,
+                                              distanceKm: distKm,
+                                              bodyColor: car.roofColor,
+                                              showBadge: true,
+                                              isSelected: isSelected,
+                                              isInsideRadius: distKm <= 0.8,
+                                              onTap: () => _onCarTapped(car.id),
+                                            ),
+                                          );
+                                        }(),
+                                    ],
+                                  );
+                                },
+                              ),
+
+                              // F. Floating Hint Pill at Top of Map
+                              Positioned(
+                                top: 12.0,
+                                left: 0.0,
+                                right: 0.0,
+                                child: Center(
                                   child: Container(
-                                    key: const Key('user_gps_center_marker'),
-                                    width: 24.0,
-                                    height: 24.0,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 5.0),
                                     decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: const Color(0xFF1D8070),
-                                      border: Border.all(color: Colors.white, width: 2.2),
+                                      color: Colors.white.withValues(alpha: 0.94),
+                                      borderRadius: BorderRadius.circular(20.0),
                                       boxShadow: const [
                                         BoxShadow(
-                                          color: Color(0x381D8070),
-                                          blurRadius: 10.0,
-                                          spreadRadius: 2.0,
-                                        ),
-                                        BoxShadow(
-                                          color: Color(0x1F000000),
-                                          blurRadius: 4.0,
+                                          color: Color(0x12000000),
+                                          blurRadius: 8.0,
+                                          offset: Offset(0, 2),
                                         ),
                                       ],
                                     ),
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.my_location,
-                                        size: 11.5,
-                                        color: Colors.white,
-                                      ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.pan_tool_alt_rounded,
+                                          size: 13.0,
+                                          color: Color(0xFF8B53FE),
+                                        ),
+                                        const SizedBox(width: 5.0),
+                                        Text(
+                                          '6 Drivers nearby • Drag map to explore',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.0,
+                                            fontWeight: FontWeight.w500,
+                                            color: const Color(0xFF1C2926),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+
+                              // G. Floating Map Controls (Zoom in, Zoom out, Recenter)
+                              Positioned(
+                                bottom: 16.0,
+                                right: 14.0,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildFloatingButton(
+                                      icon: Icons.add_rounded,
+                                      tooltip: 'Zoom in',
+                                      onTap: _zoomIn,
+                                    ),
+                                    const SizedBox(height: 8.0),
+                                    _buildFloatingButton(
+                                      icon: Icons.remove_rounded,
+                                      tooltip: 'Zoom out',
+                                      onTap: _zoomOut,
+                                    ),
+                                    const SizedBox(height: 8.0),
+                                    _buildFloatingButton(
+                                      icon: Icons.my_location_rounded,
+                                      tooltip: 'Recenter on my location',
+                                      iconColor: const Color(0xFF8B53FE),
+                                      onTap: _recenterMap,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                      ),
+                    ),
+                  ),
 
-                        // 3. CARS ON THE COMPLETE MAP:
-                        // - Roaming across the square beacon area (100% width x 65% height)
-                        // - When entering customer proximity -> "wo customer k pass aa gaye"
-                        // - When clicked: size slightly increases (1.28x) AND color becomes WHITE (#FFFFFF)
-                        AnimatedBuilder(
-                          animation: _carMotionController,
-                          builder: (context, _) {
-                            final double progress = _carMotionController.value;
-
-                            return Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                for (final car in fakeCars)
-                                  () {
-                                    final Offset livePos = car.calculatePosition(
-                                      progress,
-                                      containerWidth,
-                                      beaconTop: beaconTop,
-                                      beaconHeight: beaconHeight,
-                                    );
-                                    final double heading = car.calculateHeading(progress);
-                                    final bool isSelected = _selectedCarId == car.id;
-
-                                    // Proximity check to customer pin animated circle (radius 110px)
-                                    final double distPx = (livePos - customerCenter).distance;
-                                    final bool isInsideRadius = distPx <= 110.0;
-
-                                    // Dynamic distance in km based on proximity to customer
-                                    final double distanceKm = isInsideRadius
-                                        ? (0.2 + (distPx / 110.0) * 0.5).clamp(0.2, 0.7)
-                                        : (0.7 + ((distPx - 110.0) / 90.0) * 0.7);
-
-                                    return Positioned(
-                                      top: livePos.dy - 14.25,
-                                      left: livePos.dx - 8.25,
-                                      child: TopDownCarWidget(
-                                        key: ValueKey('fake_car_${car.id}'),
-                                        width: 16.5,
-                                        height: 28.5,
-                                        angle: heading,
-                                        opacity: 1.0,
-                                        driverName: car.name,
-                                        distanceKm: distanceKm,
-                                        bodyColor: car.baseColor,
-                                        showBadge: true,
-                                        isSelected: isSelected, // Turns WHITE and scales 1.28x
-                                        isInsideRadius: isInsideRadius,
-                                        onTap: () => _onCarTapped(car.id),
-                                      ),
-                                    );
-                                  }(),
-                              ],
-                            );
-                          },
-                        ),
-
-                        // 4. Current Location Button (Positioned in square card corner)
-                        // width: 36; height: 36;
-                        // border-radius: 8px; background: #FFFFFF; box-shadow: 0px 1px 8px 0px #0000000F;
-                        Positioned(
-                          top: beaconTop + beaconHeight - 36.0 - 12.0,
-                          left: beaconLeft + beaconWidth - 36.0 - 12.0,
-                          width: 36.0,
-                          height: 36.0,
-                          child: GestureDetector(
-                            onTap: () {
-                              HapticFeedback.lightImpact();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Centering to your location...',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12.0,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  backgroundColor: const Color(0xFF1D8070),
-                                  duration: const Duration(seconds: 1),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            },
+                  // 2. HEADER BRANDING:
+                  // width: 350; height: 36; gap: 16px; top: 56px; left: 20px;
+                  Positioned(
+                    top: 56.0,
+                    left: containerWidth >= 390
+                        ? 20.0
+                        : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
+                    width: containerWidth >= 390
+                        ? 350.0
+                        : (containerWidth - 40.0).clamp(280.0, 350.0),
+                    height: 36.0,
+                    child: SizedBox(
+                      width: containerWidth >= 390
+                          ? 350.0
+                          : (containerWidth - 40.0).clamp(280.0, 350.0),
+                      height: 36.0,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          GestureDetector(
+                            key: const Key('pickup_delivery_back_button'),
+                            onTap: () => Navigator.of(context).maybePop(),
                             behavior: HitTestBehavior.opaque,
                             child: Container(
-                              key: const Key('current_location_button'),
                               width: 36.0,
                               height: 36.0,
                               decoration: BoxDecoration(
+                                shape: BoxShape.circle,
                                 color: const Color(0xFFFFFFFF),
-                                borderRadius: BorderRadius.circular(8.0),
+                                border: Border.all(
+                                  color: const Color(0xFF566663),
+                                  width: 1.0,
+                                ),
                                 boxShadow: const [
                                   BoxShadow(
-                                    color: Color(0x0F000000),
-                                    blurRadius: 8.0,
-                                    offset: Offset(0, 1),
+                                    color: Color(0x14000000),
+                                    blurRadius: 12.0,
+                                    offset: Offset(0, -2),
                                     spreadRadius: 0.0,
                                   ),
                                 ],
                               ),
                               child: const Center(
-                                child: Icon(
-                                  Icons.my_location_rounded,
-                                  size: 20.0,
-                                  color: Color(0xFF1D8070),
+                                child: CustomPaint(
+                                  size: Size(6.0, 13.0),
+                                  painter: _BackChevronPainter(
+                                    color: Color(0xFF566663),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-
-                        // 5. Header Branding:
-                        // width: 350; height: 36; gap: 16px; top: 56px; left: 20px;
-                        Positioned(
-                          top: 56.0,
-                          left: containerWidth >= 390
-                              ? 20.0
-                              : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                          width: containerWidth >= 390
-                              ? 350.0
-                              : (containerWidth - 40.0).clamp(280.0, 350.0),
-                          height: 36.0,
-                          child: SizedBox(
-                            width: containerWidth >= 390
-                                ? 350.0
-                                : (containerWidth - 40.0).clamp(280.0, 350.0),
-                            height: 36.0,
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                GestureDetector(
-                                  onTap: () => Navigator.of(context).maybePop(),
-                                  behavior: HitTestBehavior.opaque,
-                                  child: Container(
-                                    width: 36.0,
-                                    height: 36.0,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: const Color(0xFFFFFFFF),
-                                      border: Border.all(
-                                        color: const Color(0xFF566663),
-                                        width: 1.0,
-                                      ),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                          color: Color(0x14000000),
-                                          blurRadius: 12.0,
-                                          offset: Offset(0, -2),
-                                          spreadRadius: 0.0,
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Center(
-                                      child: CustomPaint(
-                                        size: Size(6.0, 13.0),
-                                        painter: _BackChevronPainter(
-                                          color: Color(0xFF566663),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                          const SizedBox(width: 16.0),
+                          Expanded(
+                            child: SizedBox(
+                              width: 298.0,
+                              child: Text(
+                                widget.serviceName,
+                                style: GoogleFonts.inter(
+                                  fontSize: 16.0,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF1C2926),
+                                  height: 22.0 / 16.0,
+                                  letterSpacing: 0.0,
                                 ),
-                                const SizedBox(width: 16.0),
-                                Expanded(
-                                  child: SizedBox(
-                                    width: 298.0,
-                                    child: Text(
-                                      widget.serviceName,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 16.0,
-                                        fontWeight: FontWeight.w500,
-                                        color: const Color(0xFF1C2926),
-                                        height: 22.0 / 16.0,
-                                        letterSpacing: 0.0,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        // 6. Bottom Widget Layout
-                        // 6. Bottom Widget Layout
-                        Positioned(
-                          top: bottomCardTop,
-                          left: 0.0,
-                          width: containerWidth,
-                          height: bottomCardHeight,
-                          child: Container(
-                            key: const Key('bottom_widget_layout'),
-                            width: containerWidth,
-                            height: bottomCardHeight,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFFFFFF),
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(28.0),
-                                topRight: Radius.circular(28.0),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Color(0x14000000), // #00000014
-                                  offset: Offset(0, -2),
-                                  blurRadius: 12.0,
-                                  spreadRadius: 0.0,
-                                ),
-                              ],
-                            ),
-                            child: Stack(
-                              children: [
-                                // Inner card content placed at start of card
-                                Positioned(
-                                  top: 20.0,
-                                  left: containerWidth >= 390 ? 20.0 : 16.0,
-                                  right: containerWidth >= 390 ? 20.0 : 16.0,
-                                  child: _selectedCarId != null
-                                      ? _buildSelectedDriverCard(
-                                          containerWidth,
-                                          customerCenter,
-                                          beaconTop,
-                                          beaconHeight,
-                                        )
-                                      : _buildProvidersInnerCard(containerWidth),
-                                ),
-
-                                // Bottom Bar Layout: positioned near bottom of card
-                                Positioned(
-                                  bottom: 8.0,
-                                  left: 0.0,
-                                  right: 0.0,
-                                  height: 24.0,
-                                  child: Center(
-                                    // Bar branding: width: 134; height: 4; border-radius: 100px; background: #1C2926;
-                                    child: Container(
-                                      key: const Key('bottom_bar_indicator'),
-                                      width: 134.0,
-                                      height: 4.0,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF1C2926),
-                                        borderRadius: BorderRadius.circular(100.0),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
                             ),
                           ),
-                        ),
-                        
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
+
+                  // 3. BOTTOM WIDGET / PROVIDERS CARD
+                  Positioned(
+                    top: bottomCardTop,
+                    left: 0.0,
+                    width: containerWidth,
+                    height: bottomCardHeight,
+                    child: Container(
+                      key: const Key('bottom_widget_layout'),
+                      width: containerWidth,
+                      height: bottomCardHeight,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFFFFFF),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(28.0),
+                          topRight: Radius.circular(28.0),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0x14000000),
+                            offset: Offset(0, -2),
+                            blurRadius: 12.0,
+                            spreadRadius: 0.0,
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20.0, 24.0, 20.0, 12.0),
+                            child: _selectedCarId != null
+                                ? _buildSelectedDriverCard(
+                                    containerWidth,
+                                    liveProviders,
+                                  )
+                                : _buildProvidersInnerCard(
+                                    containerWidth,
+                                    liveProviders,
+                                    userLoc,
+                                  ),
+                          ),
+
+                          // Bottom home indicator bar
+                          Positioned(
+                            bottom: 8.0,
+                            left: 0.0,
+                            right: 0.0,
+                            height: 24.0,
+                            child: Center(
+                              child: Container(
+                                key: const Key('bottom_bar_indicator'),
+                                width: 134.0,
+                                height: 4.0,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1C2926),
+                                  borderRadius: BorderRadius.circular(100.0),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             );
 
@@ -1087,7 +760,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
               return Container(
                 width: double.infinity,
                 height: double.infinity,
-                color: const Color(0xFF141C1A),
+                color: const Color(0xFFF0F1F5),
                 child: Center(
                   child: Container(
                     width: containerWidth,
@@ -1095,7 +768,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(42),
                       border: Border.all(
-                        color: const Color(0xFF9FFFCB).withValues(alpha: 0.35),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.25),
                         width: 2.0,
                       ),
                       boxShadow: [
@@ -1120,11 +793,58 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     );
   }
 
-  /// Inner card branding: 18 Providers nearby + Find a Provider button
-  Widget _buildProvidersInnerCard(double containerWidth) {
+  /// Floating button helper for map controls
+  Widget _buildFloatingButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+    Color iconColor = const Color(0xFF1C2926),
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: 36.0,
+          height: 36.0,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10.0),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x18000000),
+                blurRadius: 8.0,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Icon(
+              icon,
+              size: 20.0,
+              color: iconColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Default Inner card branding: 6 Providers nearby + View all button
+  Widget _buildProvidersInnerCard(
+    double containerWidth,
+    List<ProviderModel> liveProviders,
+    UserLocationModel userLoc,
+  ) {
     final double cardWidth = containerWidth >= 390
         ? 350.0
         : (containerWidth - 40.0).clamp(280.0, 350.0);
+
+    final int count = liveProviders.isNotEmpty ? liveProviders.length : nearbyDrivers.length;
+    final String locationSubtitle = (userLoc.cityName.isNotEmpty && userLoc.cityName != 'Detecting Location...')
+        ? 'Within 2 km radius • ${userLoc.cityName}'
+        : 'Within 2 km radius';
 
     return SizedBox(
       width: cardWidth,
@@ -1133,15 +853,14 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Left side content: width: 152; height: 33; gap: 12px;
+          // Left side content
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Inner content: 18 Providers nearby (16px, weight 500, line-height 22px, #1C2926)
               Text(
-                '18 Providers nearby',
+                '$count Providers nearby',
                 textHeightBehavior: const TextHeightBehavior(
                   applyHeightToFirstAscent: false,
                   applyHeightToLastDescent: false,
@@ -1157,9 +876,8 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 2.0),
-              // Content: Within 1 km radius (12px, weight 400, line-height 22px, #566663)
               Text(
-                'Within 1 km radius',
+                locationSubtitle,
                 textHeightBehavior: const TextHeightBehavior(
                   applyHeightToFirstAscent: false,
                   applyHeightToLastDescent: false,
@@ -1177,7 +895,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
             ],
           ),
 
-          // Right side layout: height: 41; border-radius: 60px; padding: 16px; background: #F2F5F4;
+          // Right side View all button
           GestureDetector(
             onTap: () {
               HapticFeedback.lightImpact();
@@ -1202,7 +920,6 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Content: View all (12px, weight 400, line-height 22px, #1C2926)
                   Text(
                     'View all',
                     textHeightBehavior: const TextHeightBehavior(
@@ -1214,12 +931,10 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                       fontWeight: FontWeight.w400,
                       color: const Color(0xFF1C2926),
                       height: 1.15,
-                      letterSpacing: 0.0,
                     ),
                     maxLines: 1,
                   ),
                   const SizedBox(width: 8.0),
-                  // Vector > branding: width: 4; height: 8; angle: -180 deg; border: 0.6px solid #1C2926;
                   const CustomPaint(
                     size: Size(4.0, 8.0),
                     painter: _ChevronRightVectorPainter(
@@ -1235,35 +950,21 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     );
   }
 
-
-  /// Selected driver details card within bottom widget matching branding
+  /// Selected driver details card within bottom widget
   Widget _buildSelectedDriverCard(
     double containerWidth,
-    Offset customerCenter,
-    double beaconTop,
-    double beaconHeight,
+    List<ProviderModel> liveProviders,
   ) {
-    final selectedCar = fakeCars.firstWhere(
+    final selectedCar = nearbyDrivers.firstWhere(
       (c) => c.id == _selectedCarId,
-      orElse: () => fakeCars.first,
+      orElse: () => nearbyDrivers.first,
     );
-
-    // Live distance and arrival status
-    final livePos = selectedCar.calculatePosition(
-      _carMotionController.value,
-      containerWidth,
-      beaconTop: beaconTop,
-      beaconHeight: beaconHeight,
-    );
-    final double distPx = (livePos - customerCenter).distance;
-    final bool isNearCustomer = distPx <= 110.0;
-    final double displayDistKm = isNearCustomer
-        ? (0.2 + (distPx / 110.0) * 0.5).clamp(0.2, 0.7)
-        : (0.7 + ((distPx - 110.0) / 90.0) * 0.7);
 
     final double cardWidth = containerWidth >= 390
         ? 350.0
         : (containerWidth - 40.0).clamp(280.0, 350.0);
+
+    final String driverName = selectedCar.name;
 
     return SizedBox(
       key: const Key('selected_driver_card'),
@@ -1274,19 +975,18 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
         children: [
           Row(
             children: [
-              // Circular avatar matching left side icon branding
               Container(
-                width: 36.0,
-                height: 36.0,
+                width: 38.0,
+                height: 38.0,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0F5F2),
+                  color: const Color(0xFFF0EAFE),
                   borderRadius: BorderRadius.circular(40.0),
                 ),
                 child: const Center(
                   child: CustomPaint(
                     size: Size(18.0, 16.0),
                     painter: _ProviderCarVectorPainter(
-                      color: Color(0xFF1D8070),
+                      color: Color(0xFF8B53FE),
                     ),
                   ),
                 ),
@@ -1299,23 +999,27 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                   children: [
                     Row(
                       children: [
-                        Text(
-                          selectedCar.name,
-                          style: GoogleFonts.inter(
-                            fontSize: 16.0,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF1C2926),
+                        Flexible(
+                          child: Text(
+                            driverName,
+                            style: GoogleFonts.inter(
+                              fontSize: 15.0,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1C2926),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 8.0),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.5),
+                          padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
                           decoration: BoxDecoration(
                             color: const Color(0xFF10B981).withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4.0),
                           ),
                           child: Text(
-                            'SELECTED',
+                            'ONLINE',
                             style: GoogleFonts.inter(
                               fontSize: 9.0,
                               fontWeight: FontWeight.w700,
@@ -1325,30 +1029,24 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2.0),
+                    const SizedBox(height: 3.0),
                     Row(
                       children: [
-                        Icon(
-                          Icons.near_me,
+                        const Icon(
+                          Icons.near_me_rounded,
                           size: 11.0,
-                          color: isNearCustomer
-                              ? const Color(0xFF059669)
-                              : const Color(0xFF566663),
+                          color: Color(0xFF8B53FE),
                         ),
                         const SizedBox(width: 3.0),
                         Text(
-                          isNearCustomer
-                              ? '${displayDistKm.toStringAsFixed(1)} km • Near Customer'
-                              : '${displayDistKm.toStringAsFixed(1)} km • En Route',
+                          '${selectedCar.initialDistanceKm} km away • ${selectedCar.vehicle}',
                           style: GoogleFonts.inter(
-                            fontSize: 11.5,
-                            fontWeight: isNearCustomer
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                            color: isNearCustomer
-                              ? const Color(0xFF059669)
-                              : const Color(0xFF566663),
+                            fontSize: 11.0,
+                            fontWeight: FontWeight.w400,
+                            color: const Color(0xFF566663),
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -1376,28 +1074,25 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
               ),
             ],
           ),
-          const SizedBox(height: 18.0),
+          const SizedBox(height: 14.0),
           SizedBox(
             width: double.infinity,
             height: 44.0,
             child: ElevatedButton(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: const Color(0xFF1D8070),
-                    content: Text(
-                      'Pickup confirmed with ${selectedCar.name}!',
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
+                HapticFeedback.mediumImpact();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SendRequestScreen(
+                      serviceCategory: widget.serviceName,
+                      providerName: driverName,
+                      distance: '${selectedCar.initialDistanceKm} km',
                     ),
-                    duration: const Duration(seconds: 2),
                   ),
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1D8070),
+                backgroundColor: const Color(0xFF8B53FE),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -1405,7 +1100,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                 ),
               ),
               child: Text(
-                'Confirm ${selectedCar.name.split(' ').first}',
+                'Confirm ${driverName.split(' ').first}',
                 style: GoogleFonts.inter(
                   fontSize: 14.0,
                   fontWeight: FontWeight.w600,
@@ -1415,6 +1110,124 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Real Map Tile Layer supporting OpenStreetMap & CartoDB tiles with offline fallback
+class _RealMapTileLayer extends StatelessWidget {
+  final double centerLat;
+  final double centerLng;
+  final int zoom;
+  final Offset panOffset;
+  final double width;
+  final double height;
+  final double scale;
+
+  const _RealMapTileLayer({
+    required this.centerLat,
+    required this.centerLng,
+    this.zoom = 15,
+    required this.panOffset,
+    required this.width,
+    required this.height,
+    this.scale = 1.0,
+  });
+
+  static int _lon2tileX(double lon, int z) {
+    return ((lon + 180.0) / 360.0 * (1 << z)).floor();
+  }
+
+  static int _lat2tileY(double lat, int z) {
+    final double latRad = lat * math.pi / 180.0;
+    return ((1.0 - math.log(math.tan(latRad) + 1.0 / math.cos(latRad)) / math.pi) / 2.0 * (1 << z)).floor();
+  }
+
+  static double _tileX2pixel(double lon, int z) {
+    return (lon + 180.0) / 360.0 * (1 << z) * 256.0;
+  }
+
+  static double _tileY2pixel(double lat, int z) {
+    final double latRad = lat * math.pi / 180.0;
+    return (1.0 - math.log(math.tan(latRad) + 1.0 / math.cos(latRad)) / math.pi) / 2.0 * (1 << z) * 256.0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const double tileSize = 256.0;
+    final int baseTileX = _lon2tileX(centerLng, zoom);
+    final int baseTileY = _lat2tileY(centerLat, zoom);
+
+    final double centerPixelX = _tileX2pixel(centerLng, zoom);
+    final double centerPixelY = _tileY2pixel(centerLat, zoom);
+    final double subTileOffsetX = centerPixelX - (baseTileX * tileSize);
+    final double subTileOffsetY = centerPixelY - (baseTileY * tileSize);
+
+    final double viewportCenterX = width / 2.0 + panOffset.dx;
+    final double viewportCenterY = height / 2.0 + panOffset.dy;
+
+    final List<Widget> tileWidgets = [];
+
+    for (int dx = -2; dx <= 2; dx++) {
+      for (int dy = -2; dy <= 2; dy++) {
+        final int tileX = baseTileX + dx;
+        final int tileY = baseTileY + dy;
+
+        final double tileLeft = viewportCenterX - subTileOffsetX + (dx * tileSize);
+        final double tileTop = viewportCenterY - subTileOffsetY + (dy * tileSize);
+
+        final String tileUrl =
+            'https://basemaps.cartocdn.com/rastertiles/voyager/$zoom/$tileX/$tileY.png';
+
+        tileWidgets.add(
+          Positioned(
+            left: tileLeft,
+            top: tileTop,
+            width: tileSize,
+            height: tileSize,
+            child: Image.network(
+              tileUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Image.asset(
+                  'assets/images/BG image.png',
+                  fit: BoxFit.cover,
+                );
+              },
+            ),
+          ),
+        );
+      }
+    }
+
+    return ClipRect(
+      child: Transform.scale(
+        scale: scale,
+        alignment: Alignment.center,
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/images/BG image.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                ),
+              ),
+              ...tileWidgets,
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B53FE).withValues(alpha: 0.04),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1446,80 +1259,10 @@ class _BackChevronPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Animated curved radar sector matching Figma design:
-/// Translucent bright mint-green wash (#9FFFCB) sweeping smoothly in circle
-class _RadarSectorPainter extends CustomPainter {
-  final double startAngle;
-  final double sweepAngle;
-
-  const _RadarSectorPainter({
-    this.startAngle = -math.pi / 2.0, // 12 o'clock (top)
-    this.sweepAngle = 65.53 * math.pi / 180.0, // 65.53 deg trailing behind leading edge
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2.0, size.height / 2.0);
-    final radius = math.max(size.width, size.height);
-
-    // Clip to rounded square bounds to prevent sweep bleeding
-    canvas.clipRRect(RRect.fromRectAndRadius(
-      Offset.zero & size,
-      const Radius.circular(24.0),
-    ));
-
-    final path = Path()
-      ..moveTo(center.dx, center.dy)
-      ..arcTo(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        sweepAngle,
-        false,
-      )
-      ..close();
-
-    final sweepGradient = SweepGradient(
-      center: Alignment.center,
-      startAngle: startAngle,
-      endAngle: startAngle + sweepAngle,
-      colors: const [
-        Color(0x9E9FFFCB),
-        Color(0x739FFFCB),
-        Color(0x409FFFCB),
-        Color(0x189FFFCB),
-      ],
-      stops: const [0.0, 0.35, 0.70, 1.0],
-      tileMode: TileMode.clamp,
-    );
-
-    final fillPaint = Paint()
-      ..shader = sweepGradient.createShader(Rect.fromCircle(center: center, radius: radius))
-      ..style = PaintingStyle.fill;
-
-    canvas.drawPath(path, fillPaint);
-
-    final leadingRayPaint = Paint()
-      ..color = const Color(0xCC9FFFCB)
-      ..strokeWidth = 1.2
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawLine(
-      center,
-      Offset(center.dx, center.dy - radius),
-      leadingRayPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _RadarSectorPainter oldDelegate) => false;
-}
-
-/// Vector car branding matching Figma specifications:
-/// width: 18; height: 16; top: 10px; left: 9px; background: #1D8070
+/// Vector car branding matching Figma specifications
 class _ProviderCarVectorPainter extends CustomPainter {
   final Color color;
-  const _ProviderCarVectorPainter({this.color = const Color(0xFF1D8070)});
+  const _ProviderCarVectorPainter({this.color = const Color(0xFF8B53FE)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1537,7 +1280,7 @@ class _ProviderCarVectorPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // Tires peeking out on left and right
+    // Tires peeking out
     const double tireW = 2.0;
     const double tireH = 3.6;
     canvas.drawRRect(
@@ -1555,7 +1298,7 @@ class _ProviderCarVectorPainter extends CustomPainter {
       fillPaint,
     );
 
-    // Car main body and cabin
+    // Car main body
     final bodyPath = Path();
     bodyPath.moveTo(1.5, h * 0.88);
     bodyPath.lineTo(1.5, h * 0.52);
@@ -1570,105 +1313,22 @@ class _ProviderCarVectorPainter extends CustomPainter {
 
     canvas.drawPath(bodyPath, strokePaint);
 
-    // Windshield divider line
+    // Windshield divider
     final windshieldPath = Path();
     windshieldPath.moveTo(3.6, h * 0.44);
     windshieldPath.quadraticBezierTo(w * 0.5, h * 0.46, w - 3.6, h * 0.44);
     canvas.drawPath(windshieldPath, strokePaint);
 
-    // Two circular headlights
+    // Headlights
     canvas.drawCircle(Offset(4.2, h * 0.68), 1.1, strokePaint);
     canvas.drawCircle(Offset(w - 4.2, h * 0.68), 1.1, strokePaint);
-
-    // Front bumper line
-    canvas.drawLine(
-      Offset(w * 0.38, h * 0.72),
-      Offset(w * 0.62, h * 0.72),
-      strokePaint,
-    );
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Vector group/providers branding matching Figma specifications:
-/// Dual user silhouettes (foreground user + background user with cutout contour)
-class _ProviderGroupVectorPainter extends CustomPainter {
-  final Color color;
-  final Color backgroundColor;
-
-  const _ProviderGroupVectorPainter({
-    this.color = const Color(0xFF1D8070),
-    this.backgroundColor = const Color(0xFFF0F5F2),
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final fillPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-
-    final cutoutPaint = Paint()
-      ..color = backgroundColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.4
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..isAntiAlias = true;
-
-    // Scale / center within the provided size (normalized around 20.0 x 19.0)
-    final double scaleX = size.width / 20.0;
-    final double scaleY = size.height / 19.0;
-    canvas.save();
-    canvas.scale(scaleX, scaleY);
-
-    // --- 1. Background Person (Person 2 - Right side) ---
-    // Head 2
-    canvas.drawCircle(const Offset(14.5, 4.4), 3.6, fillPaint);
-
-    // Torso 2 (shoulder peeking out on right)
-    final body2RRect = RRect.fromRectAndCorners(
-      const Rect.fromLTRB(9.5, 10.8, 18.2, 18.2),
-      topLeft: const Radius.circular(5.0),
-      topRight: const Radius.circular(5.0),
-      bottomLeft: const Radius.circular(3.2),
-      bottomRight: const Radius.circular(3.2),
-    );
-    canvas.drawRRect(body2RRect, fillPaint);
-
-    // --- 2. Cutout Contour of Foreground Person (creates transparent gap) ---
-    // Head 1 cutout
-    canvas.drawCircle(const Offset(7.0, 4.8), 3.8, cutoutPaint);
-
-    // Torso 1 cutout
-    final body1RRect = RRect.fromRectAndCorners(
-      const Rect.fromLTRB(0.8, 10.8, 13.2, 18.2),
-      topLeft: const Radius.circular(5.0),
-      topRight: const Radius.circular(5.0),
-      bottomLeft: const Radius.circular(3.2),
-      bottomRight: const Radius.circular(3.2),
-    );
-    canvas.drawRRect(body1RRect, cutoutPaint);
-
-    // --- 3. Foreground Person (Person 1 - Left side) ---
-    // Head 1 fill
-    canvas.drawCircle(const Offset(7.0, 4.8), 3.8, fillPaint);
-
-    // Torso 1 fill
-    canvas.drawRRect(body1RRect, fillPaint);
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _ProviderGroupVectorPainter oldDelegate) =>
-      color != oldDelegate.color || backgroundColor != oldDelegate.backgroundColor;
-}
-
 /// Vector chevron right matching Figma specifications:
-/// width: 4; height: 8; angle: -180 deg; border-width: 0.6px; border: 0.6px solid #1C2926
 class _ChevronRightVectorPainter extends CustomPainter {
   final Color color;
   const _ChevronRightVectorPainter({this.color = const Color(0xFF1C2926)});
@@ -1682,10 +1342,10 @@ class _ChevronRightVectorPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
-    final path = Path()
-      ..moveTo(0.5, 0.5)
-      ..lineTo(size.width - 0.5, size.height / 2.0)
-      ..lineTo(0.5, size.height - 0.5);
+    final path = Path();
+    path.moveTo(0.5, 0.5);
+    path.lineTo(size.width - 0.5, size.height / 2.0);
+    path.lineTo(0.5, size.height - 0.5);
 
     canvas.drawPath(path, paint);
   }
@@ -1693,6 +1353,3 @@ class _ChevronRightVectorPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
-
-

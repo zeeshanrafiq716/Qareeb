@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Top-down car marker widget matching user screenshot:
-/// - Exact aerodynamic vehicle with white body, dark windshield, teal roof (#108C7B),
-///   shark-fin antenna dot, front headlights, red taillights, and teal side-mirrors
+/// - Exact aerodynamic vehicle with white body, dark windshield, purple roof (#8B53FE),
+///   shark-fin antenna dot, front headlights, red taillights, and purple side-mirrors
 /// - Seamless speech bubble tooltip badge with driver name and tilted navigation arrow distance
 /// - Screen corner safe: Adapts alignment so badges never hide or clip off-screen
 /// - When clicked: size increases slightly (1.28x) AND color turns WHITE (#FFFFFF)
@@ -35,7 +35,7 @@ class TopDownCarWidget extends StatelessWidget {
     this.isSelected = false,
     this.isInsideRadius = true,
     this.onTap,
-    this.bodyColor = const Color(0xFF108C7B),
+    this.bodyColor = const Color(0xFFA67AFE),
     this.alignBadgeLeft = false,
     this.alignBadgeBelow = false,
   });
@@ -177,7 +177,7 @@ class _TopDownVectorCarPainter extends CustomPainter {
       shadowRRect,
       Paint()
         ..color = isSelected
-            ? const Color(0x3D10B981)
+            ? const Color(0x3D8B53FE)
             : const Color(0x2E000000)
         ..style = PaintingStyle.fill,
     );
@@ -227,7 +227,7 @@ class _TopDownVectorCarPainter extends CustomPainter {
       ..color = mirrorColor
       ..style = PaintingStyle.fill;
     final Paint mirrorBorderPaint = Paint()
-      ..color = isSelected ? const Color(0xFF10B981) : const Color(0xFF0D6E60)
+      ..color = isSelected ? const Color(0xFF8B53FE) : const Color(0xFFA67AFE)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.55;
 
@@ -273,7 +273,7 @@ class _TopDownVectorCarPainter extends CustomPainter {
 
     // Body contour stroke
     final Paint bodyStrokePaint = Paint()
-      ..color = isSelected ? const Color(0xFF10B981) : const Color(0xFFCBD5E1)
+      ..color = isSelected ? const Color(0xFF8B53FE) : const Color(0xFFCBD5E1)
       ..style = PaintingStyle.stroke
       ..strokeWidth = isSelected ? 1.0 : 0.65;
     canvas.drawPath(bodyPath, bodyStrokePaint);
@@ -345,7 +345,7 @@ class _TopDownVectorCarPainter extends CustomPainter {
       ..close();
     canvas.drawPath(rightWindow, glassPaint);
 
-    // 7. Car Roof (Teal #108C7B in unselected state; Pure WHITE when clicked/selected)
+    // 7. Car Roof (Purple #8B53FE in unselected state; Pure WHITE when clicked/selected)
     final Paint roofPaint = Paint()
       ..color = isSelected ? Colors.white : roofColor
       ..style = PaintingStyle.fill;
@@ -430,7 +430,7 @@ class _SpeechBubbleTooltip extends StatelessWidget {
     return CustomPaint(
       painter: _SpeechBubbleCardPainter(
         backgroundColor: Colors.white,
-        borderColor: isSelected ? const Color(0xFF10B981) : const Color(0xFFE2E8F0),
+        borderColor: isSelected ? const Color(0xFF8B53FE) : const Color(0xFFE2E8F0),
         borderWidth: isSelected ? 1.4 : 0.8,
         borderRadius: 7.0,
         tailWidth: 8.0,
@@ -569,7 +569,7 @@ class _SpeechBubbleCardPainter extends CustomPainter {
     // WebGL2 & CanvasKit safe drop shadow (eliminates SkShadowUtils shader compilation crash)
     final shadowPath = path.shift(const Offset(0, 1.8));
     final shadowPaint = Paint()
-      ..color = isSelected ? const Color(0x3810B981) : const Color(0x1F000000)
+      ..color = isSelected ? const Color(0x388B53FE) : const Color(0x1F000000)
       ..style = PaintingStyle.fill;
     canvas.drawPath(shadowPath, shadowPaint);
 

@@ -172,7 +172,7 @@ class _FolderLeftIcon extends StatelessWidget {
       width: 36.0,
       height: 36.0,
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F5F2), // soft neutral mint container
+        color: const Color(0xFFF0EAFE), // soft neutral mint container
         borderRadius: BorderRadius.circular(8.0), // border-radius: 8px
       ),
       child: Center(
@@ -190,7 +190,7 @@ class _FolderIconPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF1D8070)
+      ..color = const Color(0xFF8B53FE)
       ..style = PaintingStyle.fill;
 
     // Back document / folder tab
@@ -233,7 +233,7 @@ class _IdCardLeftIcon extends StatelessWidget {
       width: 36.0,
       height: 36.0,
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F5F2),
+        color: const Color(0xFFF0EAFE),
         borderRadius: BorderRadius.circular(8.0),
       ),
       child: Center(
@@ -251,11 +251,11 @@ class _IdCardIconPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final fillPaint = Paint()
-      ..color = const Color(0xFF1D8070)
+      ..color = const Color(0xFF8B53FE)
       ..style = PaintingStyle.fill;
 
     final strokePaint = Paint()
-      ..color = const Color(0xFF1D8070)
+      ..color = const Color(0xFF8B53FE)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.6
       ..strokeCap = StrokeCap.round;
@@ -279,7 +279,7 @@ class _IdCardIconPainter extends CustomPainter {
 
     // 3 lines on right side
     final linePaint = Paint()
-      ..color = const Color(0xFF1D8070)
+      ..color = const Color(0xFF8B53FE)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.4
       ..strokeCap = StrokeCap.round;
@@ -303,7 +303,7 @@ class _ApprovalCheckLeftIcon extends StatelessWidget {
       width: 36.0,
       height: 36.0,
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F5F2),
+        color: const Color(0xFFF0EAFE),
         borderRadius: BorderRadius.circular(8.0),
       ),
       child: Center(
@@ -311,7 +311,7 @@ class _ApprovalCheckLeftIcon extends StatelessWidget {
           width: 20.0,
           height: 20.0,
           decoration: const BoxDecoration(
-            color: Color(0xFF1D8070),
+            color: Color(0xFF8B53FE),
             shape: BoxShape.circle,
           ),
           child: const Center(
@@ -337,7 +337,7 @@ class _CompletedStatusBadge extends StatelessWidget {
       width: 20.0,
       height: 20.0,
       decoration: const BoxDecoration(
-        color: Color(0xFFDDF0E3), // background: #DDF0E3
+        color: Color(0xFFF0EAFE),
         shape: BoxShape.circle, // border-radius: 37.81px
       ),
       child: Center(
@@ -345,7 +345,7 @@ class _CompletedStatusBadge extends StatelessWidget {
           width: 15.12, // width: 15.124969482421875
           height: 15.12, // height: 15.124969482421875
           decoration: const BoxDecoration(
-            color: Color(0xFF1D8070), // background: #1D8070
+            color: Color(0xFF8B53FE), // background: #1D8070
             shape: BoxShape.circle,
           ),
           child: const Center(

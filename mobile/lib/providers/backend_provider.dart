@@ -3,7 +3,6 @@ import '../core/api/api_client.dart';
 import '../models/category_model.dart';
 import '../models/health_status_model.dart';
 import '../services/backend_service.dart';
-
 import '../models/provider_model.dart';
 import '../services/location_service.dart';
 
@@ -17,32 +16,49 @@ final backendServiceProvider = Provider<BackendService>((ref) {
 });
 
 final locationServiceProvider = Provider<LocationService>((ref) {
-  return const LocationService();
+  return LocationService();
 });
 
-final userLocationProvider = FutureProvider<UserLocation>((ref) async {
+/// Continuous real-time GPS tracking stream provider
+final userLocationProvider = StreamProvider<UserLocation>((ref) {
   final locService = ref.watch(locationServiceProvider);
-  return await locService.getCurrentLocation();
+  return locService.watchLocation();
 });
 
+/// Health check provider
 final healthCheckProvider = FutureProvider<HealthStatusModel>((ref) async {
   final service = ref.watch(backendServiceProvider);
   return await service.checkHealth();
 });
 
+/// Categories provider
 final categoriesProvider = FutureProvider<List<CategoryModel>>((ref) async {
   final service = ref.watch(backendServiceProvider);
   return await service.getCategories();
 });
 
+/// Real nearby providers based on real user GPS coordinates
 final nearbyProvidersProvider = FutureProvider<List<ProviderMarkerModel>>((ref) async {
-  final userLocAsync = await ref.watch(userLocationProvider.future);
+  final userLoc = await ref.watch(userLocationProvider.future);
   final backendService = ref.watch(backendServiceProvider);
 
   return await backendService.getNearbyProviders(
-    latitude: userLocAsync.latitude,
-    longitude: userLocAsync.longitude,
+    latitude: userLoc.latitude,
+    longitude: userLoc.longitude,
     radiusKm: 5.0,
   );
 });
 
+/// Filtered nearby providers by category slug
+final categoryNearbyProvidersProvider =
+    FutureProvider.family<List<ProviderMarkerModel>, String?>((ref, categorySlug) async {
+  final userLoc = await ref.watch(userLocationProvider.future);
+  final backendService = ref.watch(backendServiceProvider);
+
+  return await backendService.getNearbyProviders(
+    latitude: userLoc.latitude,
+    longitude: userLoc.longitude,
+    radiusKm: 5.0,
+    categorySlug: categorySlug,
+  );
+});

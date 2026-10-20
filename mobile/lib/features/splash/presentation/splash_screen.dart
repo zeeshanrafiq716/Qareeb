@@ -21,6 +21,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late AnimationController _routeAnimController;
   late AnimationController _loadingProgressController;
 
+  Timer? _navTimer;
+
   String _statusText = 'Loading your nearby services...';
   bool _backendConnected = false;
 
@@ -44,7 +46,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _syncWithBackend();
 
     // 4. Auto-transition to HomeScreen after splash animation completes
-    Timer(const Duration(milliseconds: 1800), _navigateToHome);
+    _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToHome);
   }
 
   void _navigateToHome() {
@@ -88,7 +90,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   @override
+  void deactivate() {
+    _routeAnimController.stop();
+    _loadingProgressController.stop();
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
+    _navTimer?.cancel();
+    _routeAnimController.stop();
+    _loadingProgressController.stop();
     _routeAnimController.dispose();
     _loadingProgressController.dispose();
     super.dispose();
@@ -99,14 +111,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: Color(0xFF1F2927),
-        systemNavigationBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1F2927),
+      backgroundColor: Colors.white,
       body: Center(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -123,7 +136,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 child: Container(
                   width: containerWidth,
                   height: containerHeight,
-                  color: const Color(0xFF1F2927),
+                  color: Colors.white,
                 child: Stack(
                   children: [
                     // 1. Procedural Voronoi Road Network Background with Dual Gradients
@@ -181,25 +194,25 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               return Container(
                 width: double.infinity,
                 height: double.infinity,
-                color: const Color(0xFF141C1A), // Subtle outer backdrop for web preview
+                color: const Color(0xFFF0F1F5), // Clean modern outer backdrop for web preview
                 alignment: Alignment.center,
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(42),
                     border: Border.all(
-                      color: const Color(0xFF66FFAC).withValues(alpha: 0.25),
+                      color: const Color(0xFF8B53FE).withValues(alpha: 0.20),
                       width: 2.0,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.6),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.12),
                         blurRadius: 40,
-                        spreadRadius: 10,
+                        spreadRadius: 6,
                       ),
                       BoxShadow(
-                        color: const Color(0xFF66FFAC).withValues(alpha: 0.08),
-                        blurRadius: 30,
-                        spreadRadius: 2,
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),

@@ -122,7 +122,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                   ),
 
                   // 3. Route Line Vector:
-                  // width: 145.5; height: 91; angle: 0 deg; top: 183px; left: 116.5px; border: 4px solid #1D8070;
+                  // width: 145.5; height: 91; angle: 0 deg; top: 183px; left: 116.5px; border: 4px solid #8B53FE;
                   Positioned(
                     top: 183.0,
                     left: 116.5 + ((containerWidth - 390.0) / 2.0),
@@ -131,7 +131,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                     child: const CustomPaint(
                       size: Size(145.5, 91.0),
                       painter: _RouteVectorPainter(
-                        color: Color(0xFF1D8070),
+                        color: Color(0xFF8B53FE),
                         strokeWidth: 4.0,
                       ),
                     ),
@@ -142,28 +142,22 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                   Positioned(
                     top: 258.0,
                     left: 241.0 + ((containerWidth - 390.0) / 2.0),
-                    width: 15.0,
-                    height: 24.0,
+                    width: 18.0,
+                    height: 28.0,
                     child: Transform.rotate(
                       angle: -60.0 * math.pi / 180.0,
                       alignment: Alignment.center,
-                      child: Image.asset(
-                        'assets/images/car.png',
-                        width: 15.0,
-                        height: 24.0,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => const CustomPaint(
-                          size: Size(15.0, 24.0),
-                          painter: _CarGraphicPainter(
-                            roofColor: Color(0xFF1D8070),
-                          ),
+                      child: const CustomPaint(
+                        size: Size(18.0, 28.0),
+                        painter: _CarGraphicPainter(
+                          roofColor: Color(0xFFA67AFE),
                         ),
                       ),
                     ),
                   ),
 
                   // 5. Location Marker Halo & Pin Branding:
-                  // Outer soft glowing mint halo rings:
+                  // Outer soft glowing purple halo rings:
                   Positioned(
                     top: 153.0 - 12.0,
                     left: (111.0 - 12.0) + ((containerWidth - 390.0) / 2.0),
@@ -172,9 +166,9 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF1D8070).withValues(alpha: 0.12),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.12),
                         border: Border.all(
-                          color: const Color(0xFF1D8070).withValues(alpha: 0.22),
+                          color: const Color(0xFF8B53FE).withValues(alpha: 0.22),
                           width: 1.5,
                         ),
                       ),
@@ -188,14 +182,14 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF1D8070).withValues(alpha: 0.18),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.18),
                       ),
                     ),
                   ),
 
                   // location icon branding:
                   // width: 36; height: 36; gap: 10px; angle: 0 deg; opacity: 1; border-radius: 40px;
-                  // padding: 4px; top: 153px; left: 111px; background: #F0FFF7; box-shadow: 0px 0px 4px 0px #9FFFCB66 inset;
+                  // padding: 4px; top: 153px; left: 111px; background: #F0EAFE; box-shadow: 0px 0px 4px 0px #8B53FE40 inset;
                   Positioned(
                     top: 153.0,
                     left: 111.0 + ((containerWidth - 390.0) / 2.0),
@@ -206,10 +200,10 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                       height: 36.0,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFFF0FFF7),
+                        color: const Color(0xFFF0EAFE),
                         boxShadow: const [
                           BoxShadow(
-                            color: Color(0x669FFFCB),
+                            color: Color(0x408B53FE),
                             blurRadius: 4.0,
                             spreadRadius: 0.0,
                           ),
@@ -221,7 +215,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                           width: 28.0,
                           height: 28.0,
                           decoration: const BoxDecoration(
-                            color: Color(0xFF1D8070),
+                            color: Color(0xFF8B53FE),
                             shape: BoxShape.circle,
                           ),
                           child: const Center(
@@ -238,7 +232,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                   ),
 
                   // 6. Distance Badge Branding:
-                  // distanvce badge branding: width: 42; height: 26; angle: 0 deg; top: 124px; left: 119px; background: #1D8070;
+                  // distance badge branding: width: 42; height: 26; angle: 0 deg; top: 124px; left: 119px; background: #8B53FE;
                   // inner branding: width: 42; height: 19; gap: 10px; border-radius: 4px; padding: 6px; top: 124px; left: 119px;
                   // content: 1.8 km (width: 30; height: 7; Inter 400 10px line-height 22px #FFFFFF)
                   Positioned(
@@ -249,7 +243,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                     child: CustomPaint(
                       size: const Size(42.0, 26.0),
                       painter: const _DistanceBadgeTooltipPainter(
-                        color: Color(0xFF1D8070),
+                        color: Color(0xFF8B53FE),
                         cornerRadius: 4.0,
                         pointerX: 10.0,
                         pointerWidth: 8.0,
@@ -519,7 +513,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                           width: 47.0,
                                                           height: 18.0,
                                                           decoration: BoxDecoration(
-                                                            color: const Color(0xFFF0F5F2),
+                                                            color: const Color(0xFFF0EAFE),
                                                             borderRadius: BorderRadius.circular(60.0),
                                                           ),
                                                           alignment: Alignment.center,
@@ -532,7 +526,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                             style: GoogleFonts.inter(
                                                               fontSize: 8.0,
                                                               fontWeight: FontWeight.w500,
-                                                              color: const Color(0xFF1D8070),
+                                                              color: const Color(0xFF8B53FE),
                                                               height: 1.0,
                                                               letterSpacing: 0.0,
                                                             ),
@@ -554,7 +548,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                         const Icon(
                                                           Icons.star_rounded,
                                                           size: 10.0,
-                                                          color: Color(0xFF1D8070),
+                                                          color: Color(0xFF8B53FE),
                                                         ),
                                                         const SizedBox(width: 8.0), // gap: 8px;
 
@@ -781,14 +775,14 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                   width: 32.0,
                                                   height: 32.0,
                                                   decoration: const BoxDecoration(
-                                                    color: Color(0xFFE2F0E6),
+                                                    color: Color(0xFFF0EAFE),
                                                     shape: BoxShape.circle,
                                                   ),
                                                   child: const Center(
                                                     child: CustomPaint(
                                                       size: Size(16.0, 18.0),
                                                       painter: _LocationPinPainter(
-                                                        color: Color(0xFF1C2926),
+                                                        color: Color(0xFF8B53FE),
                                                       ),
                                                     ),
                                                   ),
@@ -871,16 +865,16 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                   width: 32.0,
                                                   height: 32.0,
                                                   decoration: const BoxDecoration(
-                                                    color: Color(0xFFE2F0E6),
+                                                    color: Color(0xFFF0EAFE),
                                                     shape: BoxShape.circle,
                                                   ),
                                                   child: const Center(
                                                     // icon inner branding:
-                                                    // width: 20; height: 20; angle: 0 deg; opacity: 1; top: 6.2px; left: 6.2px; background: #1C2926;
+                                                    // width: 20; height: 20; angle: 0 deg; opacity: 1; top: 6.2px; left: 6.2px; background: #8B53FE;
                                                     child: CustomPaint(
                                                       size: Size(20.0, 20.0),
                                                       painter: _ClockIconPainter(
-                                                        backgroundColor: Color(0xFF1C2926),
+                                                        backgroundColor: Color(0xFF8B53FE),
                                                         handColor: Colors.white,
                                                       ),
                                                     ),
@@ -979,7 +973,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                     width: 28.0,
                                                     height: 28.0,
                                                     decoration: const BoxDecoration(
-                                                      color: Color(0xFFDDF0E3),
+                                                      color: Color(0xFFF0EAFE),
                                                       shape: BoxShape.circle,
                                                     ),
                                                     child: const Center(
@@ -988,7 +982,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                       child: CustomPaint(
                                                         size: Size(14.0, 16.0),
                                                         painter: _VerifiedShieldPainter(
-                                                          shieldColor: Color(0xFF1D8070),
+                                                          shieldColor: Color(0xFF8B53FE),
                                                           checkColor: Colors.white,
                                                         ),
                                                       ),
@@ -1077,7 +1071,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                     width: 28.0,
                                                     height: 28.0,
                                                     decoration: const BoxDecoration(
-                                                      color: Color(0xFFDDF0E3),
+                                                      color: Color(0xFFF0EAFE),
                                                       shape: BoxShape.circle,
                                                     ),
                                                     child: const Center(
@@ -1086,7 +1080,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                       child: Icon(
                                                         Icons.group_rounded,
                                                         size: 16.0,
-                                                        color: Color(0xFF1D8070),
+                                                        color: Color(0xFF8B53FE),
                                                       ),
                                                     ),
                                                   ),
@@ -1173,14 +1167,14 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                     width: 28.0,
                                                     height: 28.0,
                                                     decoration: const BoxDecoration(
-                                                      color: Color(0xFFDDF0E3),
+                                                      color: Color(0xFFF0EAFE),
                                                       shape: BoxShape.circle,
                                                     ),
                                                     child: const Center(
                                                       child: Icon(
                                                         Icons.thumb_up_rounded,
                                                         size: 15.0,
-                                                        color: Color(0xFF1D8070),
+                                                        color: Color(0xFF8B53FE),
                                                       ),
                                                     ),
                                                   ),
@@ -1339,7 +1333,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                 : (containerWidth - 38.0).clamp(280.0, 350.0),
                                             height: 52.0,
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF1D8070),
+                                              color: const Color(0xFF8B53FE),
                                               borderRadius: BorderRadius.circular(12.0),
                                             ),
                                             child: Row(
@@ -1428,7 +1422,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(42),
                       border: Border.all(
-                        color: const Color(0xFF9FFFCB).withValues(alpha: 0.35),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.35),
                         width: 2.0,
                       ),
                       boxShadow: [
@@ -1488,7 +1482,7 @@ class _RouteVectorPainter extends CustomPainter {
   final double strokeWidth;
 
   const _RouteVectorPainter({
-    this.color = const Color(0xFF1D8070),
+    this.color = const Color(0xFF8B53FE),
     this.strokeWidth = 4.0,
   });
 
@@ -1523,7 +1517,7 @@ class _RouteVectorPainter extends CustomPainter {
 /// width: 15; height: 24;
 class _CarGraphicPainter extends CustomPainter {
   final Color roofColor;
-  const _CarGraphicPainter({this.roofColor = const Color(0xFF1D8070)});
+  const _CarGraphicPainter({this.roofColor = const Color(0xFFA67AFE)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1667,7 +1661,7 @@ class _DistanceBadgeTooltipPainter extends CustomPainter {
   final double pointerHeight;
 
   const _DistanceBadgeTooltipPainter({
-    this.color = const Color(0xFF1D8070),
+    this.color = const Color(0xFF8B53FE),
     this.cornerRadius = 4.0,
     this.pointerX = 10.0,
     this.pointerWidth = 8.0,
@@ -1845,7 +1839,7 @@ class _VerifiedShieldPainter extends CustomPainter {
   final Color checkColor;
 
   const _VerifiedShieldPainter({
-    this.shieldColor = const Color(0xFF1D8070),
+    this.shieldColor = const Color(0xFF8B53FE),
     this.checkColor = Colors.white,
   });
 
@@ -1898,7 +1892,7 @@ class _VerifiedShieldPainter extends CustomPainter {
 /// width: 16; height: 12; background: #1D8070;
 class _DeliveryTruckPainter extends CustomPainter {
   final Color color;
-  const _DeliveryTruckPainter({this.color = const Color(0xFF1D8070)});
+  const _DeliveryTruckPainter({this.color = const Color(0xFF8B53FE)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1942,7 +1936,7 @@ class _DeliveryTruckPainter extends CustomPainter {
 
     // Cab window cutout
     final windowPaint = Paint()
-      ..color = const Color(0xFFDDF0E3) // matching mint circle background
+      ..color = const Color(0xFFF0EAFE) // matching purple circle background
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
 
@@ -1965,7 +1959,7 @@ class _DeliveryTruckPainter extends CustomPainter {
 
     // Wheel hubs
     final hubPaint = Paint()
-      ..color = const Color(0xFFDDF0E3)
+      ..color = const Color(0xFFF0EAFE)
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
 

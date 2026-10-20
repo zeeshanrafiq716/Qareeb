@@ -10,4 +10,5 @@ dist/
 .vscode/
 coverage/
 .tmp/
+.temp/
 .data/

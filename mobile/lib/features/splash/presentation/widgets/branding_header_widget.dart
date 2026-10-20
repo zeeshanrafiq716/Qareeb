@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class BrandingHeaderWidget extends StatelessWidget {
   const BrandingHeaderWidget({super.key});
@@ -26,21 +25,27 @@ class BrandingHeaderWidget extends StatelessWidget {
           children: [
             Text(
               'QAREEB',
-              style: AppTextStyles.brandTitle(fontSize: titleFontSize),
+              style: GoogleFonts.inter(
+                fontSize: titleFontSize,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1C2926),
+                letterSpacing: -0.5,
+                height: 1.0,
+              ),
             ),
             const SizedBox(width: 4),
-            // Mint Accent Dot matching reference
+            // Purple Accent Dot matching reference redesign
             Padding(
               padding: EdgeInsets.only(top: titleFontSize * 0.12),
               child: Container(
                 width: dotSize,
                 height: dotSize,
                 decoration: const BoxDecoration(
-                  color: AppColors.mintAccent,
+                  color: Color(0xFF8B53FE),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.mintGlow,
+                      color: Color(0x668B53FE),
                       blurRadius: 6,
                       spreadRadius: 1,
                     ),
@@ -57,7 +62,13 @@ class BrandingHeaderWidget extends StatelessWidget {
         Text(
           'People. Services. Closer.',
           textAlign: TextAlign.center,
-          style: AppTextStyles.slogan(fontSize: sloganFontSize),
+          style: GoogleFonts.inter(
+            fontSize: sloganFontSize,
+            fontWeight: FontWeight.w400,
+            color: const Color(0xFF566663),
+            letterSpacing: 0.1,
+            height: 1.1,
+          ),
         ),
       ],
     );

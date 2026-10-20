@@ -5,13 +5,16 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'pickup_delivery_screen.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../providers/backend_provider.dart';
+
 /// Location Permission screen displayed when selecting any category service.
 /// Designed strictly according to branding specifications:
 /// - Container: width 390; height 843; top: 1px; angle: 0 deg; opacity: 1; scale: crop
 /// - Background Map Image: assets/images/BG image.png
 /// - Gradient Overlay: linear-gradient(180deg, rgba(255, 255, 255, 0) 21.53%, #FFFFFF 45.6%)
 /// - Header: Circular shadow back button + Service Title
-class LocationPermissionScreen extends StatelessWidget {
+class LocationPermissionScreen extends ConsumerWidget {
   final String serviceName;
 
   const LocationPermissionScreen({
@@ -20,7 +23,7 @@ class LocationPermissionScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -181,10 +184,8 @@ class LocationPermissionScreen extends StatelessWidget {
                     ),
                   ),
 
-                  // 4. Ellipse Shape Branding:
-                  // width: 123.99999237060547; height: 123.99999237060547;
-                  // top: 168px; left: 133px; angle: 0 deg; opacity: 1;
-                  // background: #F0FFF7; box-shadow: 0px 0px 4px 0px #9FFFCB66 inset;
+                  // 4. Main Ellipse Branding:
+                  // background: #F0EAFE; box-shadow: 0px 0px 4px 0px #E9E0FE inset;
                   Positioned(
                     top: 168.0,
                     left: (containerWidth - 124.0) / 2,
@@ -195,14 +196,14 @@ class LocationPermissionScreen extends StatelessWidget {
                       height: 124.0,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFFF0FFF7),
+                        color: const Color(0xFFF0EAFE),
                         border: Border.all(
-                          color: const Color(0x669FFFCB), // #9FFFCB66
-                          width: 1.0,
+                          color: const Color(0xFFE9E0FE),
+                          width: 2.0,
                         ),
                         boxShadow: const [
                           BoxShadow(
-                            color: Color(0x669FFFCB), // #9FFFCB66
+                            color: Color(0x40E9E0FE),
                             blurRadius: 4.0,
                             spreadRadius: 0.0,
                           ),
@@ -211,39 +212,54 @@ class LocationPermissionScreen extends StatelessWidget {
                     ),
                   ),
 
-                  // 5. Image Layout Branding & Image Branding:
-                  // img layout branding: width: 97.04349517822266; height: 97.04349517822266; top: 182.47px; left: 147.47px;
-                  // img: Group 5.png available in assets folder
-                  // img branding: width: 70; height: 70; top: 196px; left: 161px;
+                  // 5. Inner Ellipse Branding:
+                  // background: #EAE0FE; box-shadow: 0px 0px 4px 0px #DACBFE inset;
                   Positioned(
-                    top: 182.47,
-                    left: containerWidth >= 390
-                        ? 147.47
-                        : (containerWidth - 97.0435) / 2,
-                    width: 97.0435,
-                    height: 97.0435,
-                    child: Center(
-                      child: Image.asset(
-                        'assets/images/Group 5.png',
-                        width: 97.0435,
-                        height: 97.0435,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => const Icon(
-                          Icons.location_on_rounded,
-                          size: 70.0,
-                          color: Color(0xFF0D9488),
+                    top: 181.48,
+                    left: (containerWidth - 97.04) / 2,
+                    width: 97.04,
+                    height: 97.04,
+                    child: Container(
+                      width: 97.04,
+                      height: 97.04,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFFEAE0FE),
+                        border: Border.all(
+                          color: const Color(0xFFDACBFE),
+                          width: 2.0,
                         ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x40DACBFE),
+                            blurRadius: 4.0,
+                            spreadRadius: 0.0,
+                          ),
+                        ],
                       ),
                     ),
                   ),
 
-                  // 6. "Nearby Providers" Badges Branding:
+                  // 6. Center Location Icon Branding:
+                  // background: linear-gradient(139.03deg, #8B53FE -28.34%, #A67AFE 40.05%, #BA98FE 92.02%)
+                  Positioned(
+                    top: 204.0,
+                    left: (containerWidth - 50.0) / 2,
+                    width: 50.0,
+                    height: 64.0,
+                    child: const BrandLocationPinWidget(
+                      width: 50.0,
+                      height: 64.0,
+                    ),
+                  ),
+
+                  // 7. "Nearby Providers" Badges Branding:
                   // badges branding: width: 112; height: 54; top: 150px; left: 20px;
                   // background: #FFFFFF; box-shadow: 0px 1px 8px 0px #0000000F;
                   // inner layout branding: width: 112; height: 44; top: 150px; left: 20px; gap: 10px;
                   // border-radius: 8px; padding: 8px 12px 8px 8px; background: #FFFFFF;
                   // content: Nearby Providers; width: 54; height: 24; 12px Inter Regular 400; color: #566663;
-                  // icon branding: width: 28; height: 28; inner branding: width: 16; height: 14; color: #1D8070;
+                  // icon branding: width: 28; height: 28; inner branding: width: 16; height: 14; color: #8B53FE;
                   Positioned(
                     top: 150.0,
                     left: containerWidth >= 390
@@ -278,13 +294,13 @@ class LocationPermissionScreen extends StatelessWidget {
                                 height: 28.0,
                                 decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Color(0xFFEDFAF4),
+                                  color: Color(0xFFF0EAFE),
                                 ),
                                 child: const Center(
                                   child: CustomPaint(
                                     size: Size(16.0, 14.0),
                                     painter: _NearbyPinPainter(
-                                      color: Color(0xFF1D8070),
+                                      color: Color(0xFF8B53FE),
                                     ),
                                   ),
                                 ),
@@ -316,12 +332,12 @@ class LocationPermissionScreen extends StatelessWidget {
                     ),
                   ),
 
-                  // 7. "Fast Delivery" Badges Branding (2nd badge):
+                  // 8. "Fast Delivery" Badges Branding (2nd badge):
                   // width: 105; height: 54; top: 130px; left: 265px;
                   // inner branding: width: 105; height: 44; top: 130px; left: 265px; gap: 10px;
                   // border-radius: 8px; padding: 8px 12px 8px 8px; background: #FFFFFF;
                   // content: Fast\nDelivery; width: 47; height: 24; font-family: Inter; font-weight: 400; font-size: 12px; color: #566663;
-                  // icon car branding: width: 28; height: 28; icon inner branding: width: 16; height: 12; color: #1D8070;
+                  // icon car branding: width: 28; height: 28; icon inner branding: width: 16; height: 12; color: #8B53FE;
                   Positioned(
                     top: 130.0,
                     left: containerWidth >= 390
@@ -357,13 +373,13 @@ class LocationPermissionScreen extends StatelessWidget {
                                 height: 28.0,
                                 decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Color(0xFFEDFAF4),
+                                  color: Color(0xFFF0EAFE),
                                 ),
                                 child: const Center(
                                   child: CustomPaint(
                                     size: Size(16.0, 12.0),
                                     painter: _FastDeliveryCarPainter(
-                                      color: Color(0xFF1D8070),
+                                      color: Color(0xFF8B53FE),
                                     ),
                                   ),
                                 ),
@@ -395,12 +411,12 @@ class LocationPermissionScreen extends StatelessWidget {
                     ),
                   ),
 
-                  // 8. "Real-time Tracking" Badges Branding (3rd badge):
+                  // 9. "Real-time Tracking" Badges Branding (3rd badge):
                   // width: 113; height: 54; top: 270px; left: 251px;
                   // inner branding: width: 113; height: 44; top: 270px; left: 251px; gap: 10px;
                   // border-radius: 8px; padding: 8px 12px 8px 8px; background: #FFFFFF;
                   // content: Real-time\nTracking; width: 55; height: 24; font-family: Inter; font-weight: 400; font-size: 12px; color: #566663;
-                  // icon tracking branding: width: 28; height: 28; icon inner branding: width: 14; height: 14; color: #1D8070;
+                  // icon tracking branding: width: 28; height: 28; icon inner branding: width: 14; height: 14; color: #8B53FE;
                   Positioned(
                     top: 270.0,
                     left: containerWidth >= 390
@@ -436,13 +452,13 @@ class LocationPermissionScreen extends StatelessWidget {
                                 height: 28.0,
                                 decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Color(0xFFEDFAF4),
+                                  color: Color(0xFFF0EAFE),
                                 ),
                                 child: const Center(
                                   child: CustomPaint(
                                     size: Size(14.0, 14.0),
                                     painter: _RealTimeTrackingArrowPainter(
-                                      color: Color(0xFF1D8070),
+                                      color: Color(0xFF8B53FE),
                                     ),
                                   ),
                                 ),
@@ -599,6 +615,7 @@ class LocationPermissionScreen extends StatelessWidget {
                                 GestureDetector(
                                   onTap: () {
                                     HapticFeedback.lightImpact();
+                                    ref.refresh(userLocationProvider);
                                     Navigator.of(context).push(
                                       MaterialPageRoute(
                                         builder: (_) => PickupDeliveryScreen(
@@ -612,11 +629,11 @@ class LocationPermissionScreen extends StatelessWidget {
                                     width: double.infinity,
                                     height: 52.0,
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF1D8070),
+                                      color: const Color(0xFF8B53FE),
                                       borderRadius: BorderRadius.circular(12.0),
                                       boxShadow: const [
                                         BoxShadow(
-                                          color: Color(0x261D8070),
+                                          color: Color(0x268B53FE),
                                           blurRadius: 10.0,
                                           offset: Offset(0, 4),
                                         ),
@@ -703,9 +720,9 @@ class LocationPermissionScreen extends StatelessWidget {
                                             style: GoogleFonts.inter(
                                               fontSize: 10.0,
                                               fontWeight: FontWeight.w500,
-                                              color: const Color(0xFF1D8070),
+                                              color: const Color(0xFF8B53FE),
                                               decoration: TextDecoration.underline,
-                                              decorationColor: const Color(0xFF1D8070),
+                                              decorationColor: const Color(0xFF8B53FE),
                                               height: 1.0,
                                               letterSpacing: 0.0,
                                             ),
@@ -741,7 +758,7 @@ class LocationPermissionScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(42),
                       border: Border.all(
-                        color: const Color(0xFF9FFFCB).withValues(alpha: 0.35),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.35),
                         width: 2.0,
                       ),
                       boxShadow: [
@@ -774,12 +791,12 @@ class LocationPermissionScreen extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // left icon branding: width: 36; height: 36; border-radius: 8px; background: #F0F5F2;
+        // left icon branding: width: 36; height: 36; border-radius: 8px; background: #F0EAFE;
         Container(
           width: 36.0,
           height: 36.0,
           decoration: BoxDecoration(
-            color: const Color(0xFFF0F5F2),
+            color: const Color(0xFFF0EAFE),
             borderRadius: BorderRadius.circular(8.0),
           ),
           child: Center(
@@ -908,7 +925,7 @@ class _TooltipBubblePainter extends CustomPainter {
 /// Front-view car vector icon matching Figma fast delivery branding
 class _FastDeliveryCarPainter extends CustomPainter {
   final Color color;
-  const _FastDeliveryCarPainter({this.color = const Color(0xFF1D8070)});
+  const _FastDeliveryCarPainter({this.color = const Color(0xFF8B53FE)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -995,7 +1012,7 @@ class _FastDeliveryCarPainter extends CustomPainter {
 /// Outlined navigation arrow icon matching Figma real-time tracking branding
 class _RealTimeTrackingArrowPainter extends CustomPainter {
   final Color color;
-  const _RealTimeTrackingArrowPainter({this.color = const Color(0xFF1D8070)});
+  const _RealTimeTrackingArrowPainter({this.color = const Color(0xFF8B53FE)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1031,7 +1048,7 @@ class _RealTimeTrackingArrowPainter extends CustomPainter {
 /// Outlined nearby location pin with circular target base
 class _NearbyPinPainter extends CustomPainter {
   final Color color;
-  const _NearbyPinPainter({this.color = const Color(0xFF1D8070)});
+  const _NearbyPinPainter({this.color = const Color(0xFF8B53FE)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1067,10 +1084,10 @@ class _NearbyPinPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Outlined GPS crosshairs target icon matching Figma #1D8070 branding
+/// Outlined GPS crosshairs target icon matching Figma #8B53FE branding
 class _GpsCrosshairsPainter extends CustomPainter {
   final Color color;
-  const _GpsCrosshairsPainter({this.color = const Color(0xFF1D8070)});
+  const _GpsCrosshairsPainter({this.color = const Color(0xFF8B53FE)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1124,10 +1141,10 @@ class _GpsCrosshairsPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Fast service lightning bolt icon matching Figma #1D8070 branding
+/// Fast service lightning bolt icon matching Figma #8B53FE branding
 class _FastServiceBoltPainter extends CustomPainter {
   final Color color;
-  const _FastServiceBoltPainter({this.color = const Color(0xFF1D8070)});
+  const _FastServiceBoltPainter({this.color = const Color(0xFF8B53FE)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1154,10 +1171,10 @@ class _FastServiceBoltPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Privacy shield icon with checkmark matching Figma #1D8070 branding
+/// Privacy shield icon with checkmark matching Figma #8B53FE branding
 class _PrivacyShieldPainter extends CustomPainter {
   final Color color;
-  const _PrivacyShieldPainter({this.color = const Color(0xFF1D8070)});
+  const _PrivacyShieldPainter({this.color = const Color(0xFF8B53FE)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1255,3 +1272,114 @@ class _RightChevronPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+/// Brand Location Pin Widget with smooth teardrop geometry,
+/// vibrant purple gradient: linear-gradient(139.03deg, #8B53FE -28.34%, #A67AFE 40.05%, #BA98FE 92.02%)
+/// and centered white circular donut ring.
+class BrandLocationPinWidget extends StatelessWidget {
+  final double width;
+  final double height;
+
+  const BrandLocationPinWidget({
+    super.key,
+    this.width = 50.0,
+    this.height = 64.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: CustomPaint(
+        size: Size(width, height),
+        painter: const _BrandLocationPinPainter(),
+      ),
+    );
+  }
+}
+
+class _BrandLocationPinPainter extends CustomPainter {
+  const _BrandLocationPinPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    // Radius of circular head
+    final double r = w * 0.48;
+    final Offset center = Offset(w * 0.5, r + 2.0);
+
+    // Tangent angle to top circle (~20 degrees below horizontal)
+    const double theta = 0.35;
+    const double startAngle = theta;
+    const double sweepAngle = 2 * math.pi - 2 * theta;
+
+    final path = Path();
+    // Arc around the top of the pin
+    path.arcTo(
+      Rect.fromCircle(center: center, radius: r),
+      startAngle,
+      -sweepAngle,
+      false,
+    );
+
+    // Left curve from left tangent down to bottom tip
+    final tipPoint = Offset(center.dx, h - 2.0);
+    path.cubicTo(
+      center.dx - r * 0.95, center.dy + r * 0.75,
+      center.dx - 6.0, tipPoint.dy - 12.0,
+      tipPoint.dx - 2.0, tipPoint.dy - 1.0,
+    );
+
+    // Rounded bottom tip
+    path.quadraticBezierTo(
+      tipPoint.dx, tipPoint.dy + 2.0,
+      tipPoint.dx + 2.0, tipPoint.dy - 1.0,
+    );
+
+    // Right curve from bottom tip up to right tangent
+    path.cubicTo(
+      center.dx + 6.0, tipPoint.dy - 12.0,
+      center.dx + r * 0.95, center.dy + r * 0.75,
+      center.dx + r * math.cos(theta), center.dy + r * math.sin(theta),
+    );
+    path.close();
+
+    // 1. Soft purple drop shadow
+    canvas.drawShadow(path, const Color(0x338B53FE), 8.0, true);
+
+    // 2. Purple brand gradient fill:
+    // linear-gradient(139.03deg, #8B53FE -28.34%, #A67AFE 40.05%, #BA98FE 92.02%)
+    const gradient = LinearGradient(
+      begin: Alignment(-0.65, -0.76),
+      end: Alignment(0.65, 0.76),
+      stops: [0.0, 0.4005, 0.9202],
+      colors: [
+        Color(0xFF8B53FE),
+        Color(0xFFA67AFE),
+        Color(0xFFBA98FE),
+      ],
+    );
+
+    final fillPaint = Paint()
+      ..shader = gradient.createShader(Rect.fromLTWH(0, 0, w, h))
+      ..style = PaintingStyle.fill;
+
+    canvas.drawPath(path, fillPaint);
+
+    // 3. Crisp white circular ring (donut) in the center of the head
+    final double ringRadius = r * 0.44;
+    final ringPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.5;
+
+    canvas.drawCircle(center, ringRadius, ringPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BrandLocationPinPainter oldDelegate) => false;
+}
+

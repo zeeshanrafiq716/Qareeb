@@ -119,25 +119,25 @@ class _PhoneVerifiedSuccessBadgePainter extends CustomPainter {
 
     // 1. circle layout: width: 80; height: 80; border: 0.5px solid #E0FFEE;
     final outerCircleFill = Paint()
-      ..color = const Color(0xFFE0FFEE).withValues(alpha: 0.45)
+      ..color = const Color(0xFFF0EAFE).withValues(alpha: 0.45)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(cx, cy), 40.0, outerCircleFill);
 
     final outerCircleBorder = Paint()
-      ..color = const Color(0xFFE0FFEE)
+      ..color = const Color(0xFFF0EAFE)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.5;
     canvas.drawCircle(Offset(cx, cy), 40.0, outerCircleBorder);
 
     // 2. circle shadow layout: width: 62.61; height: 62.61;
     final shadowCirclePaint = Paint()
-      ..color = const Color(0xFFD6F2E4).withValues(alpha: 0.75)
+      ..color = const Color(0xFFEAE0FE).withValues(alpha: 0.75)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(cx, cy), 31.30435, shadowCirclePaint);
 
     // 3. circle layut: width: 48; height: 48; background: #1D8070;
     final innerCirclePaint = Paint()
-      ..color = const Color(0xFF1D8070)
+      ..color = const Color(0xFF8B53FE)
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
     canvas.drawCircle(Offset(cx, cy), 24.0, innerCirclePaint);
@@ -177,14 +177,14 @@ class _PhoneVerifiedSuccessBadgePainter extends CustomPainter {
     drawRay(300, 42.0, 50.0, const Color(0xFFF9BD15));
 
     // Mint sparks
-    drawRay(205, 42.0, 50.0, const Color(0xFF7DE6B5));
-    drawRay(335, 42.0, 50.0, const Color(0xFF7DE6B5));
-    drawRay(150, 43.0, 52.0, const Color(0xFF7DE6B5));
-    drawRay(30, 43.0, 52.0, const Color(0xFF7DE6B5));
+    drawRay(205, 42.0, 50.0, const Color(0xFFA67AFE));
+    drawRay(335, 42.0, 50.0, const Color(0xFFA67AFE));
+    drawRay(150, 43.0, 52.0, const Color(0xFFA67AFE));
+    drawRay(30, 43.0, 52.0, const Color(0xFFA67AFE));
 
     // Teal sparks (mid-left and mid-right)
-    drawRay(175, 44.0, 53.0, const Color(0xFF1D8070));
-    drawRay(5, 44.0, 53.0, const Color(0xFF1D8070));
+    drawRay(175, 44.0, 53.0, const Color(0xFF8B53FE));
+    drawRay(5, 44.0, 53.0, const Color(0xFF8B53FE));
   }
 
   @override
