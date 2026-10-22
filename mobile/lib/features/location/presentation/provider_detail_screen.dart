@@ -3,9 +3,10 @@ import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/localization/app_locale.dart';
 import 'send_location_screen.dart';
 import 'send_request_screen.dart';
+import 'widgets/top_down_car_widget.dart';
 
 /// Screen displayed when user clicks on a provider card.
 /// We proceed step by step following Figma manual branding specifications.
@@ -24,8 +25,11 @@ class ProviderDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
+  AppTranslations get tr => ref.read(translationsProvider);
+
   @override
   Widget build(BuildContext context) {
+    final tr = ref.watch(translationsProvider);
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -142,17 +146,14 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                   Positioned(
                     top: 258.0,
                     left: 241.0 + ((containerWidth - 390.0) / 2.0),
-                    width: 18.0,
-                    height: 28.0,
-                    child: Transform.rotate(
-                      angle: -60.0 * math.pi / 180.0,
-                      alignment: Alignment.center,
-                      child: const CustomPaint(
-                        size: Size(18.0, 28.0),
-                        painter: _CarGraphicPainter(
-                          roofColor: Color(0xFFA67AFE),
-                        ),
-                      ),
+                    child: TopDownCarWidget(
+                      width: 16.5,
+                      height: 28.5,
+                      angle: -60.0,
+                      driverName: widget.providerName,
+                      distanceKm: 1.8,
+                      showBadge: true,
+                      bodyColor: const Color(0xFFA67AFE),
                     ),
                   ),
 
@@ -162,7 +163,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                     top: 153.0 - 12.0,
                     left: (111.0 - 12.0) + ((containerWidth - 390.0) / 2.0),
                     width: 60.0,
-                    height: 60.0,
+                    height: 56.0,
                     child: Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
@@ -213,7 +214,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                       child: Center(
                         child: Container(
                           width: 28.0,
-                          height: 28.0,
+                          constraints: const BoxConstraints(minHeight: 28.0),
                           decoration: const BoxDecoration(
                             color: Color(0xFF8B53FE),
                             shape: BoxShape.circle,
@@ -252,12 +253,12 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                       child: Align(
                         alignment: const Alignment(0.0, -0.45),
                         child: Text(
-                          '1.8 km',
+                          tr.onePointEightKm,
                           textHeightBehavior: const TextHeightBehavior(
                             applyHeightToFirstAscent: false,
                             applyHeightToLastDescent: false,
                           ),
-                          style: GoogleFonts.inter(
+                          style: tr.font(
                             fontSize: 10.0,
                             fontWeight: FontWeight.w400,
                             color: const Color(0xFFFFFFFF),
@@ -317,11 +318,14 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                     ),
                                   ],
                                 ),
-                                child: const Center(
-                                  child: CustomPaint(
-                                    size: Size(6.0, 13.0),
-                                    painter: _BackChevronPainter(
-                                      color: Color(0xFF566663),
+                                child: Center(
+                                  child: Transform.scale(
+                                    scaleX: tr.isArabic ? -1.0 : 1.0,
+                                    child: const CustomPaint(
+                                      size: Size(6.0, 13.0),
+                                      painter: _BackChevronPainter(
+                                        color: Color(0xFF566663),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -333,17 +337,12 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                           // Title: Pickup & Delivery
                           Expanded(
                             child: Text(
-                              widget.serviceCategory,
-                              textHeightBehavior: const TextHeightBehavior(
-                                applyHeightToFirstAscent: false,
-                                applyHeightToLastDescent: false,
-                              ),
-                              style: GoogleFonts.inter(
+                              tr.categoryName(widget.serviceCategory),
+                              style: tr.font(
                                 fontSize: 16.0,
                                 fontWeight: FontWeight.w500,
                                 color: const Color(0xFF1C2926),
-                                height: 22.0 / 16.0,
-                                letterSpacing: 0.0,
+                                height: 1.15,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -486,20 +485,15 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                         Expanded(
                                                           child: FittedBox(
                                                             fit: BoxFit.scaleDown,
-                                                            alignment: Alignment.centerLeft,
+                                                            alignment: AlignmentDirectional.centerStart,
                                                             child: Text(
-                                                              'Ahmad Transport',
-                                                              textHeightBehavior: const TextHeightBehavior(
-                                                                applyHeightToFirstAscent: false,
-                                                                applyHeightToLastDescent: false,
-                                                              ),
-                                                              style: GoogleFonts.inter(
+                                                              tr.formatProviderName(widget.providerName),
+                                                              style: tr.font(
                                                                 fontSize: 14.0,
                                                                 fontWeight: FontWeight.w500,
                                                                 color: const Color(0xFF1C2926),
-                                                                height: 22.0 / 14.0,
-                                                                letterSpacing: 0.0,
-                                                             ),
+                                                                height: 1.15,
+                                                              ),
                                                               maxLines: 1,
                                                             ),
                                                           ),
@@ -510,7 +504,8 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                         // width: 47; height: 18; gap: 10px; border-radius: 60px; padding: 6px; background: #F0F5F2;
                                                         // content: Available (width: 35; height: 6; font-family: Inter; font-weight: 500; font-size: 8px; line-height: 22px; color: #1D8070)
                                                         Container(
-                                                          width: 47.0,
+                                                          padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                                                          constraints: const BoxConstraints(minWidth: 47.0),
                                                           height: 18.0,
                                                           decoration: BoxDecoration(
                                                             color: const Color(0xFFF0EAFE),
@@ -518,17 +513,12 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                           ),
                                                           alignment: Alignment.center,
                                                           child: Text(
-                                                            'Available',
-                                                            textHeightBehavior: const TextHeightBehavior(
-                                                              applyHeightToFirstAscent: false,
-                                                              applyHeightToLastDescent: false,
-                                                            ),
-                                                            style: GoogleFonts.inter(
+                                                            tr.isArabic ? 'متاح' : 'Available',
+                                                            style: tr.font(
                                                               fontSize: 8.0,
                                                               fontWeight: FontWeight.w500,
                                                               color: const Color(0xFF8B53FE),
                                                               height: 1.0,
-                                                              letterSpacing: 0.0,
                                                             ),
                                                           ),
                                                         ),
@@ -553,24 +543,19 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                         const SizedBox(width: 8.0), // gap: 8px;
 
                                                         // content: 4.9 (120 trips)
-                                                        // width: 66; height: 7; font-family: Inter; font-weight: 400; font-size: 10px; line-height: 22px; color: #566663;
+                                                        // width: 66; height: 7; font-family: Inter; font-weight: 400; font-size: 10px; line-height: 22px; color: #566663
                                                         Expanded(
                                                           child: FittedBox(
                                                             fit: BoxFit.scaleDown,
-                                                            alignment: Alignment.centerLeft,
+                                                            alignment: AlignmentDirectional.centerStart,
                                                             child: Text(
-                                                              '4.9 (120 trips)',
-                                                              textHeightBehavior: const TextHeightBehavior(
-                                                                applyHeightToFirstAscent: false,
-                                                                applyHeightToLastDescent: false,
-                                                              ),
-                                                              style: GoogleFonts.inter(
+                                                              tr.isArabic ? '4.9 (120 رحلة)' : '4.9 (120 trips)',
+                                                              style: tr.font(
                                                                 fontSize: 10.0,
                                                                 fontWeight: FontWeight.w400,
                                                                 color: const Color(0xFF566663),
-                                                                height: 22.0 / 10.0,
-                                                                letterSpacing: 0.0,
-                                                             ),
+                                                                height: 1.0,
+                                                              ),
                                                               maxLines: 1,
                                                             ),
                                                           ),
@@ -603,9 +588,12 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                 onTap: () {
                                                   HapticFeedback.lightImpact();
                                                   ScaffoldMessenger.of(context).showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text('Opening WhatsApp...'),
-                                                      duration: Duration(seconds: 1),
+                                                    SnackBar(
+                                                      content: Text(
+                                                        tr.openingWhatsApp,
+                                                        style: tr.font(color: Colors.white),
+                                                      ),
+                                                      duration: const Duration(seconds: 1),
                                                     ),
                                                   );
                                                 },
@@ -637,9 +625,12 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                 onTap: () {
                                                   HapticFeedback.lightImpact();
                                                   ScaffoldMessenger.of(context).showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text('Calling Ahmad Transport...'),
-                                                      duration: Duration(seconds: 1),
+                                                    SnackBar(
+                                                      content: Text(
+                                                        tr.callingProvider(tr.formatProviderName(widget.providerName)),
+                                                        style: tr.font(color: Colors.white),
+                                                      ),
+                                                      duration: const Duration(seconds: 1),
                                                     ),
                                                   );
                                                 },
@@ -703,12 +694,8 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                               // content: Toyota Hilux
                                               // width: 71; height: 9; font-family: Inter; font-weight: 500; font-size: 12px; line-height: 22px; color: #1C2926;
                                               Text(
-                                                'Toyota Hilux',
-                                                textHeightBehavior: const TextHeightBehavior(
-                                                  applyHeightToFirstAscent: false,
-                                                  applyHeightToLastDescent: false,
-                                                ),
-                                                style: GoogleFonts.inter(
+                                                tr.formatVehicleName('Toyota Hilux'),
+                                                style: tr.font(
                                                   fontSize: 12.0,
                                                   fontWeight: FontWeight.w500,
                                                   color: const Color(0xFF1C2926),
@@ -721,12 +708,8 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                               // content: Pickup & Delivery
                                               // width: 99; height: 9; font-family: Inter; font-weight: 400; font-size: 12px; line-height: 22px; color: #566663;
                                               Text(
-                                                'Pickup & Delivery',
-                                                textHeightBehavior: const TextHeightBehavior(
-                                                  applyHeightToFirstAscent: false,
-                                                  applyHeightToLastDescent: false,
-                                                ),
-                                                style: GoogleFonts.inter(
+                                                tr.categoryName(widget.serviceCategory),
+                                                style: tr.font(
                                                   fontSize: 12.0,
                                                   fontWeight: FontWeight.w400,
                                                   color: const Color(0xFF566663),
@@ -745,11 +728,11 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
 
                                 // 3rd section: next widget styling (metric cards grid):
                                 // width: 350; height: 136; gap: 12px; angle: 0 deg; opacity: 1;
-                                SizedBox(
+                                Container(
                                   width: (containerWidth >= 390)
                                       ? 350.0
                                       : (containerWidth - 38.0).clamp(280.0, 350.0),
-                                  height: 136.0,
+                                  constraints: const BoxConstraints(minHeight: 136.0),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
@@ -760,8 +743,8 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                           // width: 169 (flexible on mobile); height: 64; gap: 12px;
                                           Expanded(
                                             child: Container(
-                                              height: 64.0,
-                                              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                                              constraints: const BoxConstraints(minHeight: 56.0),
+                                              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                                               decoration: BoxDecoration(
                                                 color: const Color(0xFFF2F5F4),
                                                 borderRadius: BorderRadius.circular(12.0),
@@ -800,14 +783,10 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                       // width: 43; height: 10; font-family: Inter; font-weight: 500; font-size: 14px; line-height: 22px; color: #1C2926;
                                                       FittedBox(
                                                         fit: BoxFit.scaleDown,
-                                                        alignment: Alignment.centerLeft,
+                                                        alignment: AlignmentDirectional.centerStart,
                                                         child: Text(
-                                                          '1.8 km',
-                                                          textHeightBehavior: const TextHeightBehavior(
-                                                            applyHeightToFirstAscent: false,
-                                                            applyHeightToLastDescent: false,
-                                                          ),
-                                                          style: GoogleFonts.inter(
+                                                          tr.onePointEightKm,
+                                                          style: tr.font(
                                                             fontSize: 14.0,
                                                             fontWeight: FontWeight.w500,
                                                             color: const Color(0xFF1C2926),
@@ -821,14 +800,10 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                       // content: Distance Away
                                                       FittedBox(
                                                         fit: BoxFit.scaleDown,
-                                                        alignment: Alignment.centerLeft,
+                                                        alignment: AlignmentDirectional.centerStart,
                                                         child: Text(
-                                                          'Distance Away',
-                                                          textHeightBehavior: const TextHeightBehavior(
-                                                            applyHeightToFirstAscent: false,
-                                                            applyHeightToLastDescent: false,
-                                                          ),
-                                                          style: GoogleFonts.inter(
+                                                          tr.distanceAway,
+                                                          style: tr.font(
                                                             fontSize: 10.0,
                                                             fontWeight: FontWeight.w400,
                                                             color: const Color(0xFF566663),
@@ -850,8 +825,8 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                         // width: 169 (flexible on mobile); height: 64; gap: 12px;
                                         Expanded(
                                           child: Container(
-                                            height: 64.0,
-                                            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                                            constraints: const BoxConstraints(minHeight: 56.0),
+                                            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                                             decoration: BoxDecoration(
                                               color: const Color(0xFFF2F5F4),
                                               borderRadius: BorderRadius.circular(12.0),
@@ -893,14 +868,10 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                       // width: 37; height: 10; font-family: Inter; font-weight: 500; font-size: 14px; line-height: 22px; color: #1C2926;
                                                       FittedBox(
                                                         fit: BoxFit.scaleDown,
-                                                        alignment: Alignment.centerLeft,
+                                                        alignment: AlignmentDirectional.centerStart,
                                                         child: Text(
-                                                          '6 min',
-                                                          textHeightBehavior: const TextHeightBehavior(
-                                                            applyHeightToFirstAscent: false,
-                                                            applyHeightToLastDescent: false,
-                                                          ),
-                                                          style: GoogleFonts.inter(
+                                                          tr.sixMin,
+                                                          style: tr.font(
                                                             fontSize: 14.0,
                                                             fontWeight: FontWeight.w500,
                                                             color: const Color(0xFF1C2926),
@@ -915,14 +886,10 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                       // width: 71; height: 7; font-family: Inter; font-weight: 400; font-size: 10px; line-height: 22px; color: #566663;
                                                       FittedBox(
                                                         fit: BoxFit.scaleDown,
-                                                        alignment: Alignment.centerLeft,
+                                                        alignment: AlignmentDirectional.centerStart,
                                                         child: Text(
-                                                          'Estimated time',
-                                                          textHeightBehavior: const TextHeightBehavior(
-                                                            applyHeightToFirstAscent: false,
-                                                            applyHeightToLastDescent: false,
-                                                          ),
-                                                          style: GoogleFonts.inter(
+                                                          tr.estimatedTime,
+                                                          style: tr.font(
                                                             fontSize: 10.0,
                                                             fontWeight: FontWeight.w400,
                                                             color: const Color(0xFF566663),
@@ -949,8 +916,8 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                         width: (containerWidth >= 390)
                                             ? 350.0
                                             : (containerWidth - 38.0).clamp(280.0, 350.0),
-                                        height: 60.0,
-                                        padding: const EdgeInsets.all(16.0),
+                                        constraints: const BoxConstraints(minHeight: 58.0),
+                                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFF2F5F4),
                                           borderRadius: BorderRadius.circular(12.0),
@@ -960,15 +927,11 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                           crossAxisAlignment: CrossAxisAlignment.center,
                                           children: [
                                             // left side content:
-                                            // width: 83; height: 28; gap: 10px; angle: 0 deg; opacity: 1;
-                                            SizedBox(
-                                              width: 83.0,
-                                              height: 28.0,
+                                            Expanded(
                                               child: Row(
                                                 crossAxisAlignment: CrossAxisAlignment.center,
                                                 children: [
                                                   // icon on left side branding:
-                                                  // width: 28; height: 28; angle: 0 deg; opacity: 1; border-radius: 60px; background: #DDF0E3;
                                                   Container(
                                                     width: 28.0,
                                                     height: 28.0,
@@ -977,8 +940,6 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                       shape: BoxShape.circle,
                                                     ),
                                                     child: const Center(
-                                                      // icon inner branding :
-                                                      // width: 14; height: 16; top: 6px; left: 7px; background: #1D8070;
                                                       child: CustomPaint(
                                                         size: Size(14.0, 16.0),
                                                         painter: _VerifiedShieldPainter(
@@ -988,27 +949,25 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                       ),
                                                     ),
                                                   ),
-                                                  const SizedBox(width: 10.0), // gap: 10px;
+                                                  const SizedBox(width: 8.0),
 
-                                                  // content branding:
-                                                  // width: 45; height: 26; gap: 10px; angle: 0 deg; opacity: 1;
                                                   Expanded(
                                                     child: Column(
                                                       crossAxisAlignment: CrossAxisAlignment.start,
                                                       mainAxisAlignment: MainAxisAlignment.center,
+                                                      mainAxisSize: MainAxisSize.min,
                                                       children: [
-                                                        // content: Verified
-                                                        // width: 45; height: 9; font-family: Inter; font-weight: 500; font-size: 12px; line-height: 22px; color: #1C2926;
                                                         FittedBox(
                                                           fit: BoxFit.scaleDown,
-                                                          alignment: Alignment.centerLeft,
+                                                          alignment: AlignmentDirectional.centerStart,
                                                           child: Text(
-                                                            'Verified',
+                                                            tr.verified,
+                                                            maxLines: 1,
                                                             textHeightBehavior: const TextHeightBehavior(
                                                               applyHeightToFirstAscent: false,
                                                               applyHeightToLastDescent: false,
                                                             ),
-                                                            style: GoogleFonts.inter(
+                                                            style: tr.font(
                                                               fontSize: 12.0,
                                                               fontWeight: FontWeight.w500,
                                                               color: const Color(0xFF1C2926),
@@ -1019,18 +978,17 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                         ),
                                                         const SizedBox(height: 1.0),
 
-                                                        // content: Providers
-                                                        // width: 45; height: 7; font-family: Inter; font-weight: 400; font-size: 10px; line-height: 22px; color: #566663;
                                                         FittedBox(
                                                           fit: BoxFit.scaleDown,
-                                                          alignment: Alignment.centerLeft,
+                                                          alignment: AlignmentDirectional.centerStart,
                                                           child: Text(
-                                                            'Providers',
+                                                            tr.providersLabel,
+                                                            maxLines: 1,
                                                             textHeightBehavior: const TextHeightBehavior(
                                                               applyHeightToFirstAscent: false,
                                                               applyHeightToLastDescent: false,
                                                             ),
-                                                            style: GoogleFonts.inter(
+                                                            style: tr.font(
                                                               fontSize: 10.0,
                                                               fontWeight: FontWeight.w400,
                                                               color: const Color(0xFF566663),
@@ -1047,8 +1005,8 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                             ),
 
                                             // | branding:
-                                            // width: 0.800000011920929; height: 24; angle: 0 deg; opacity: 1; border-radius: 40px; background: #EDF0E9;
                                             Container(
+                                              margin: const EdgeInsets.symmetric(horizontal: 4.0),
                                               width: 0.8,
                                               height: 24.0,
                                               decoration: BoxDecoration(
@@ -1058,15 +1016,10 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                             ),
 
                                             // center content:
-                                            // width: 85; height: 28; gap: 10px; angle: 0 deg; opacity: 1;
-                                            SizedBox(
-                                              width: 85.0,
-                                              height: 28.0,
+                                            Expanded(
                                               child: Row(
                                                 crossAxisAlignment: CrossAxisAlignment.center,
                                                 children: [
-                                                  // left side icon layout:
-                                                  // width: 28; height: 28; angle: 0 deg; opacity: 1; border-radius: 60px; background: #DDF0E3;
                                                   Container(
                                                     width: 28.0,
                                                     height: 28.0,
@@ -1075,8 +1028,6 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                       shape: BoxShape.circle,
                                                     ),
                                                     child: const Center(
-                                                      // inner icon branding:
-                                                      // width: 16; height: 12; angle: 0 deg; opacity: 1; top: 7.6px; left: 5.5px; background: #1D8070;
                                                       child: Icon(
                                                         Icons.group_rounded,
                                                         size: 16.0,
@@ -1084,27 +1035,25 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                       ),
                                                     ),
                                                   ),
-                                                  const SizedBox(width: 10.0), // gap: 10px;
+                                                  const SizedBox(width: 8.0),
 
-                                                  // content layout:
-                                                  // width: 47; height: 26; gap: 10px; angle: 0 deg; opacity: 1;
                                                   Expanded(
                                                     child: Column(
                                                       crossAxisAlignment: CrossAxisAlignment.start,
                                                       mainAxisAlignment: MainAxisAlignment.center,
+                                                      mainAxisSize: MainAxisSize.min,
                                                       children: [
-                                                        // content: 500+
-                                                        // width: 31; height: 9; font-family: Inter; font-weight: 500; font-size: 12px; line-height: 22px; color: #1C2926;
                                                         FittedBox(
                                                           fit: BoxFit.scaleDown,
-                                                          alignment: Alignment.centerLeft,
+                                                          alignment: AlignmentDirectional.centerStart,
                                                           child: Text(
                                                             '500+',
+                                                            maxLines: 1,
                                                             textHeightBehavior: const TextHeightBehavior(
                                                               applyHeightToFirstAscent: false,
                                                               applyHeightToLastDescent: false,
                                                             ),
-                                                            style: GoogleFonts.inter(
+                                                            style: tr.font(
                                                               fontSize: 12.0,
                                                               fontWeight: FontWeight.w500,
                                                               color: const Color(0xFF1C2926),
@@ -1115,18 +1064,17 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                         ),
                                                         const SizedBox(height: 1.0),
 
-                                                        // content: Deliveries
-                                                        // width: 47; height: 7; font-family: Inter; font-weight: 400; font-size: 10px; line-height: 22px; color: #566663;
                                                         FittedBox(
                                                           fit: BoxFit.scaleDown,
-                                                          alignment: Alignment.centerLeft,
+                                                          alignment: AlignmentDirectional.centerStart,
                                                           child: Text(
-                                                            'Deliveries',
+                                                            tr.deliveriesLabel,
+                                                            maxLines: 1,
                                                             textHeightBehavior: const TextHeightBehavior(
                                                               applyHeightToFirstAscent: false,
                                                               applyHeightToLastDescent: false,
                                                             ),
-                                                            style: GoogleFonts.inter(
+                                                            style: tr.font(
                                                               fontSize: 10.0,
                                                               fontWeight: FontWeight.w400,
                                                               color: const Color(0xFF566663),
@@ -1143,8 +1091,8 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                             ),
 
                                             // | branding will remain same:
-                                            // width: 0.800000011920929; height: 24; angle: 0 deg; opacity: 1; border-radius: 40px; background: #EDF0E9;
                                             Container(
+                                              margin: const EdgeInsets.symmetric(horizontal: 4.0),
                                               width: 0.8,
                                               height: 24.0,
                                               decoration: BoxDecoration(
@@ -1154,15 +1102,10 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                             ),
 
                                             // right content layout:
-                                            // width: 75; height: 28; gap: 10px; angle: 0 deg; opacity: 1;
-                                            SizedBox(
-                                              width: 75.0,
-                                              height: 28.0,
+                                            Expanded(
                                               child: Row(
                                                 crossAxisAlignment: CrossAxisAlignment.center,
                                                 children: [
-                                                  // icon layout and inner branding will same:
-                                                  // width: 28; height: 28; border-radius: 60px; background: #DDF0E3;
                                                   Container(
                                                     width: 28.0,
                                                     height: 28.0,
@@ -1178,26 +1121,25 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                       ),
                                                     ),
                                                   ),
-                                                  const SizedBox(width: 10.0), // gap: 10px;
+                                                  const SizedBox(width: 8.0),
 
-                                                  // content branding also will same:
                                                   Expanded(
                                                     child: Column(
                                                       crossAxisAlignment: CrossAxisAlignment.start,
                                                       mainAxisAlignment: MainAxisAlignment.center,
+                                                      mainAxisSize: MainAxisSize.min,
                                                       children: [
-                                                        // content: 98%
-                                                        // width: 31; height: 9; font-family: Inter; font-weight: 500; font-size: 12px; line-height: 22px; color: #1C2926;
                                                         FittedBox(
                                                           fit: BoxFit.scaleDown,
-                                                          alignment: Alignment.centerLeft,
+                                                          alignment: AlignmentDirectional.centerStart,
                                                           child: Text(
                                                             '98%',
+                                                            maxLines: 1,
                                                             textHeightBehavior: const TextHeightBehavior(
                                                               applyHeightToFirstAscent: false,
                                                               applyHeightToLastDescent: false,
                                                             ),
-                                                            style: GoogleFonts.inter(
+                                                            style: tr.font(
                                                               fontSize: 12.0,
                                                               fontWeight: FontWeight.w500,
                                                               color: const Color(0xFF1C2926),
@@ -1208,18 +1150,17 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                         ),
                                                         const SizedBox(height: 1.0),
 
-                                                        // content: On time
-                                                        // width: 47; height: 7; font-family: Inter; font-weight: 400; font-size: 10px; line-height: 22px; color: #566663;
                                                         FittedBox(
                                                           fit: BoxFit.scaleDown,
-                                                          alignment: Alignment.centerLeft,
+                                                          alignment: AlignmentDirectional.centerStart,
                                                           child: Text(
-                                                            'On time',
+                                                            tr.onTime,
+                                                            maxLines: 1,
                                                             textHeightBehavior: const TextHeightBehavior(
                                                               applyHeightToFirstAscent: false,
                                                               applyHeightToLastDescent: false,
                                                             ),
-                                                            style: GoogleFonts.inter(
+                                                            style: tr.font(
                                                               fontSize: 10.0,
                                                               fontWeight: FontWeight.w400,
                                                               color: const Color(0xFF566663),
@@ -1260,7 +1201,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                           key: const Key('provider_detail_send_location_button'),
                                           onTap: () {
                                             HapticFeedback.lightImpact();
-                                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => SendLocationScreen(serviceCategory: widget.serviceCategory, providerName: 'Ahamd Transport')));
+                                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => SendLocationScreen(serviceCategory: widget.serviceCategory, providerName: widget.providerName)));
                                           },
                                           behavior: HitTestBehavior.opaque,
                                           child: Container(
@@ -1289,12 +1230,8 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                 // content: Send My Location
                                                 // width: 121; height: 10; font-family: Inter; font-weight: 500; font-size: 14px; line-height: 22px; color: #1C2926;
                                                 Text(
-                                                  'Send My Location',
-                                                  textHeightBehavior: const TextHeightBehavior(
-                                                    applyHeightToFirstAscent: false,
-                                                    applyHeightToLastDescent: false,
-                                                  ),
-                                                  style: GoogleFonts.inter(
+                                                  tr.sendMyLocation,
+                                                  style: tr.font(
                                                     fontSize: 14.0,
                                                     fontWeight: FontWeight.w500,
                                                     color: const Color(0xFF1C2926),
@@ -1321,7 +1258,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                 builder: (_) => SendRequestScreen(
                                                   serviceCategory: widget.serviceCategory,
                                                   providerName: widget.providerName,
-                                                  distance: '1.8 km',
+                                                  distance: tr.onePointEightKm,
                                                 ),
                                               ),
                                             );
@@ -1343,12 +1280,8 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                 // content: Send Request
                                                 // width: 94; height: 10; font-family: Inter; font-weight: 500; font-size: 14px; line-height: 22px; color: #FFFFFF;
                                                 Text(
-                                                  'Send Request',
-                                                  textHeightBehavior: const TextHeightBehavior(
-                                                    applyHeightToFirstAscent: false,
-                                                    applyHeightToLastDescent: false,
-                                                  ),
-                                                  style: GoogleFonts.inter(
+                                                  tr.sendRequest,
+                                                  style: tr.font(
                                                     fontSize: 14.0,
                                                     fontWeight: FontWeight.w500,
                                                     color: const Color(0xFFFFFFFF),
@@ -1360,11 +1293,14 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
 
                                                 // right side icon layout:
                                                 // arrow vector: width: 14; height: 12; angle: -180 deg; border-width: 1.5px; border: 1.5px solid #FFFFFF;
-                                                const CustomPaint(
-                                                  size: Size(14.0, 12.0),
-                                                  painter: _ArrowRightPainter(
-                                                    color: Color(0xFFFFFFFF),
-                                                    strokeWidth: 1.5,
+                                                Transform.scale(
+                                                  scaleX: tr.isArabic ? -1.0 : 1.0,
+                                                  child: const CustomPaint(
+                                                    size: Size(14.0, 12.0),
+                                                    painter: _ArrowRightPainter(
+                                                      color: Color(0xFFFFFFFF),
+                                                      strokeWidth: 1.5,
+                                                    ),
                                                   ),
                                                 ),
                                               ],
@@ -1888,91 +1824,6 @@ class _VerifiedShieldPainter extends CustomPainter {
       checkColor != oldDelegate.checkColor;
 }
 
-/// Delivery truck icon painter matching Figma specifications:
-/// width: 16; height: 12; background: #1D8070;
-class _DeliveryTruckPainter extends CustomPainter {
-  final Color color;
-  const _DeliveryTruckPainter({this.color = const Color(0xFF8B53FE)});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-
-    final double sx = size.width / 16.0;
-    final double sy = size.height / 12.0;
-
-    canvas.save();
-    canvas.scale(sx, sy);
-
-    // Truck body path
-    final bodyPath = Path();
-    bodyPath.moveTo(0.5, 9.0);
-    bodyPath.lineTo(0.5, 1.5);
-    bodyPath.quadraticBezierTo(0.5, 0.5, 1.5, 0.5);
-    bodyPath.lineTo(10.0, 0.5);
-    bodyPath.lineTo(10.0, 3.5);
-    bodyPath.lineTo(13.2, 3.5);
-    bodyPath.lineTo(15.5, 6.2);
-    bodyPath.lineTo(15.5, 9.0);
-    bodyPath.lineTo(14.0, 9.0);
-    bodyPath.arcToPoint(
-      const Offset(11.0, 9.0),
-      radius: const Radius.circular(1.6),
-      clockwise: false,
-    );
-    bodyPath.lineTo(5.5, 9.0);
-    bodyPath.arcToPoint(
-      const Offset(2.5, 9.0),
-      radius: const Radius.circular(1.6),
-      clockwise: false,
-    );
-    bodyPath.lineTo(0.5, 9.0);
-    bodyPath.close();
-
-    canvas.drawPath(bodyPath, paint);
-
-    // Cab window cutout
-    final windowPaint = Paint()
-      ..color = const Color(0xFFF0EAFE) // matching purple circle background
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-
-    final windowPath = Path();
-    windowPath.moveTo(10.8, 4.2);
-    windowPath.lineTo(12.8, 4.2);
-    windowPath.lineTo(14.2, 6.0);
-    windowPath.lineTo(10.8, 6.0);
-    windowPath.close();
-    canvas.drawPath(windowPath, windowPaint);
-
-    // Wheels
-    final wheelPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-
-    canvas.drawCircle(const Offset(4.0, 9.5), 1.5, wheelPaint);
-    canvas.drawCircle(const Offset(12.5, 9.5), 1.5, wheelPaint);
-
-    // Wheel hubs
-    final hubPaint = Paint()
-      ..color = const Color(0xFFF0EAFE)
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-
-    canvas.drawCircle(const Offset(4.0, 9.5), 0.6, hubPaint);
-    canvas.drawCircle(const Offset(12.5, 9.5), 0.6, hubPaint);
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _DeliveryTruckPainter oldDelegate) =>
-      color != oldDelegate.color;
-}
 
 /// Arrow vector painter matching Figma specifications:
 /// width: 14; height: 12; angle: -180 deg; border-width: 1.5px; border: 1.5px solid #FFFFFF;

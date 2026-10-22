@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Profile Section Heading Widget
@@ -24,11 +25,11 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 ///   letter-spacing: 0px;
 ///   color: #1C2926;
 class ProviderProfileSectionHeading extends StatelessWidget {
-  final String title;
+  final String? title;
 
   const ProviderProfileSectionHeading({
     super.key,
-    this.title = 'Personal Information',
+    this.title,
   });
 
   static const double designWidth = 350.0;
@@ -37,14 +38,18 @@ class ProviderProfileSectionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String displayTitle = (title != null && title!.isNotEmpty)
+        ? (context.isArabic ? context.auto(title) : title!)
+        : context.l10n.personalInformationHeading;
+
     return Opacity(
       opacity: 1.0, // opacity: 1
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: Text(
-            title,
+            displayTitle,
             style: ProviderTextStyles.personalInformationHeading,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

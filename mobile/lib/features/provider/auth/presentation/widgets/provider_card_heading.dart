@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Auth Card Heading Widget
@@ -35,26 +36,26 @@ class ProviderCardHeading extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Title: "Start with your phone number" (20px, 600, #1C2926)
               SizedBox(
-                width: designWidth,
+                width: double.infinity,
                 child: Text(
-                  'Start with your phone number',
+                  context.l10n.startWithPhoneNumber,
                   textAlign: TextAlign.center,
                   style: ProviderTextStyles.cardHeadingTitle,
                 ),
               ),
-              const SizedBox(height: 12.0), // gap: 12px
-              // Subtitle: "Enter your phone number to access your account \nand receive service requests." (12px, 400, #566663)
+              const SizedBox(height: 8.0), // gap: 8px
+              // Subtitle: "Enter your phone number to access your account and receive service requests."
               SizedBox(
-                width: designWidth,
+                width: double.infinity,
                 child: Text(
-                  'Enter your phone number to access your account \nand receive service requests.',
+                  context.l10n.enterPhoneSubtitle,
                   textAlign: TextAlign.center,
                   style: ProviderTextStyles.cardHeadingSubtitle,
                 ),

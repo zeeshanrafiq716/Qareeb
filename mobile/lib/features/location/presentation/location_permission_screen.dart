@@ -3,6 +3,7 @@ import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/localization/app_locale.dart';
 import 'pickup_delivery_screen.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,6 +25,7 @@ class LocationPermissionScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final tr = ref.watch(translationsProvider);
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -41,10 +43,11 @@ class LocationPermissionScreen extends ConsumerWidget {
           builder: (context, constraints) {
             final bool isDesktopWeb = constraints.maxWidth > 500;
             final double containerWidth = isDesktopWeb ? 390.0 : constraints.maxWidth;
-            final double containerHeight = isDesktopWeb
-                ? math.min(844.0, (constraints.maxHeight - 32.0).clamp(520.0, 844.0))
-                : constraints.maxHeight;
-            final double contentHeight = math.max(containerHeight, 760.0);
+            final double containerHeight = isDesktopWeb ? 844.0 : constraints.maxHeight;
+            final double topSafeArea = MediaQuery.of(context).padding.top;
+            final double headerTop = topSafeArea > 0 ? (topSafeArea + 14.0) : 56.0;
+            final bool shouldScroll = !isDesktopWeb && containerHeight < 680.0;
+            final double contentHeight = shouldScroll ? 720.0 : containerHeight;
 
             final screenContent = Container(
               width: containerWidth,
@@ -63,9 +66,9 @@ class LocationPermissionScreen extends ConsumerWidget {
                   },
                 ),
                 child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
+                  physics: shouldScroll
+                      ? const ClampingScrollPhysics()
+                      : const NeverScrollableScrollPhysics(),
                   child: SizedBox(
                     width: containerWidth,
                     height: contentHeight,
@@ -113,7 +116,7 @@ class LocationPermissionScreen extends ConsumerWidget {
 
                   // 3. Heading Branding Layout:
                   Positioned(
-                    top: 56.0,
+                    top: headerTop,
                     left: 16.0,
                     right: 16.0,
                     height: 36.0,
@@ -147,11 +150,14 @@ class LocationPermissionScreen extends ConsumerWidget {
                                   ),
                                 ],
                               ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.arrow_back_ios_new_rounded,
-                                  size: 15.0,
-                                  color: Color(0xFF172623),
+                              child: Center(
+                                child: Transform.scale(
+                                  scaleX: tr.isArabic ? -1.0 : 1.0,
+                                  child: const Icon(
+                                    Icons.arrow_back_ios_new_rounded,
+                                    size: 15.0,
+                                    color: Color(0xFF172623),
+                                  ),
                                 ),
                               ),
                             ),
@@ -163,11 +169,12 @@ class LocationPermissionScreen extends ConsumerWidget {
                           // content: Pickup & Delivery
                           // width: 298; height: 12; font-family: Inter; font-weight: 500; font-size: 16px; line-height: 22px; background: #1C2926;
                           Expanded(
-                            child: SizedBox(
-                              width: 298.0,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: AlignmentDirectional.centerStart,
                               child: Text(
-                                serviceName,
-                                style: GoogleFonts.inter(
+                                tr.categoryName(serviceName),
+                                style: tr.font(
                                   fontSize: 16.0,
                                   fontWeight: FontWeight.w500, // Medium 500
                                   color: const Color(0xFF1C2926),
@@ -175,7 +182,6 @@ class LocationPermissionScreen extends ConsumerWidget {
                                   letterSpacing: 0.0,
                                 ),
                                 maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),
@@ -311,18 +317,17 @@ class LocationPermissionScreen extends ConsumerWidget {
 
                               // content: Nearby Providers
                               // width: 54; height: 24; font-family: Inter; font-weight: 400; font-size: 12px; line-height: 100%; color: #566663;
-                              SizedBox(
-                                width: 54.0,
-                                height: 24.0,
+                              Flexible(
                                 child: Text(
-                                  'Nearby\nProviders',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12.0,
-                                    fontWeight: FontWeight.w400,
+                                  tr.nearbyProvidersBadge,
+                                  style: tr.font(
+                                    fontSize: 11.0,
+                                    fontWeight: FontWeight.w500,
                                     color: const Color(0xFF566663),
-                                    height: 1.0, // line-height: 100%
-                                    letterSpacing: 0.0,
+                                    height: 1.15,
                                   ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -390,18 +395,17 @@ class LocationPermissionScreen extends ConsumerWidget {
 
                               // content: Fast Delivery
                               // width: 47; height: 24; font-family: Inter; font-weight: 400; font-size: 12px; line-height: 100%; color: #566663;
-                              SizedBox(
-                                width: 47.0,
-                                height: 24.0,
+                              Flexible(
                                 child: Text(
-                                  'Fast\nDelivery',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12.0,
-                                    fontWeight: FontWeight.w400,
+                                  tr.fastDeliveryBadge,
+                                  style: tr.font(
+                                    fontSize: 11.0,
+                                    fontWeight: FontWeight.w500,
                                     color: const Color(0xFF566663),
-                                    height: 1.0, // line-height: 100%
-                                    letterSpacing: 0.0,
+                                    height: 1.15,
                                   ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -469,18 +473,17 @@ class LocationPermissionScreen extends ConsumerWidget {
 
                               // content: Real-time Tracking
                               // width: 55; height: 24; font-family: Inter; font-weight: 400; font-size: 12px; line-height: 100%; color: #566663;
-                              SizedBox(
-                                width: 55.0,
-                                height: 24.0,
+                              Flexible(
                                 child: Text(
-                                  'Real-time\nTracking',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12.0,
-                                    fontWeight: FontWeight.w400,
+                                  tr.realTimeTrackingBadge,
+                                  style: tr.font(
+                                    fontSize: 11.0,
+                                    fontWeight: FontWeight.w500,
                                     color: const Color(0xFF566663),
-                                    height: 1.0, // line-height: 100%
-                                    letterSpacing: 0.0,
+                                    height: 1.15,
                                   ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -494,7 +497,9 @@ class LocationPermissionScreen extends ConsumerWidget {
                   // 9. Location Permission Main Content Widget Branding:
                   // 16px padding from left/right screen edges
                   Positioned(
-                    top: 348.0,
+                    top: containerHeight >= 830.0
+                        ? 348.0
+                        : (containerHeight - 430.0).clamp(300.0, 348.0),
                     left: 16.0,
                     right: 16.0,
                     child: Column(
@@ -511,9 +516,9 @@ class LocationPermissionScreen extends ConsumerWidget {
                                 // inner branding: content: Find Providers near you
                                 // width: 350; height: 15; font-family: Inter; font-weight: 600; font-size: 20px; line-height: 24px; color: #1C2926;
                                 Text(
-                                  'Find Providers near you',
+                                  tr.findProvidersNearYou,
                                   textAlign: TextAlign.center,
-                                  style: GoogleFonts.inter(
+                                  style: tr.font(
                                     fontSize: 20.0,
                                     fontWeight: FontWeight.w600,
                                     color: const Color(0xFF1C2926),
@@ -527,9 +532,9 @@ class LocationPermissionScreen extends ConsumerWidget {
 
                                 // content: Wee need your location to show nearby providers for Pickup & Delivery.
                                 Text(
-                                  'Wee need your location to show nearby\nproviders for $serviceName.',
+                                  tr.needLocationPermissionFor(tr.categoryName(serviceName)),
                                   textAlign: TextAlign.center,
-                                  style: GoogleFonts.inter(
+                                  style: tr.font(
                                     fontSize: 12.0,
                                     fontWeight: FontWeight.w400,
                                     color: const Color(0xFF566663),
@@ -565,12 +570,13 @@ class LocationPermissionScreen extends ConsumerWidget {
                               children: [
                                 // Item 1: See nearby providers
                                 _buildFeatureRow(
+                                  tr: tr,
                                   icon: const CustomPaint(
                                     size: Size(20.0, 20.0),
                                     painter: _GpsCrosshairsPainter(),
                                   ),
-                                  title: 'See nearby providers',
-                                  subtitle: 'Find available pickup & delivery teams around you.',
+                                  title: tr.seeNearbyProviders,
+                                  subtitle: tr.findAvailableTeamsAround,
                                 ),
 
                                 // gap: 20px;
@@ -578,12 +584,13 @@ class LocationPermissionScreen extends ConsumerWidget {
 
                                 // Item 2: Fast service
                                 _buildFeatureRow(
+                                  tr: tr,
                                   icon: const CustomPaint(
                                     size: Size(20.0, 20.0),
                                     painter: _FastServiceBoltPainter(),
                                   ),
-                                  title: 'Fast service',
-                                  subtitle: 'Get quicker and more accurate results.',
+                                  title: tr.fastService,
+                                  subtitle: tr.getQuickerAccurateResults,
                                 ),
 
                                 // gap: 20px;
@@ -591,12 +598,13 @@ class LocationPermissionScreen extends ConsumerWidget {
 
                                 // Item 3: Your privacy matters
                                 _buildFeatureRow(
+                                  tr: tr,
                                   icon: const CustomPaint(
                                     size: Size(20.0, 20.0),
                                     painter: _PrivacyShieldPainter(),
                                   ),
-                                  title: 'Your privacy matters',
-                                  subtitle: 'Your location is only used for this service and can be changed anhytime',
+                                  title: tr.yourPrivacyMatters,
+                                  subtitle: tr.privacyLocationOnlyService,
                                 ),
                               ],
                             ),
@@ -660,8 +668,8 @@ class LocationPermissionScreen extends ConsumerWidget {
                                               // content: Allow Location
                                               // width: 98; height: 10; Inter Medium 14px; line-height: 22px; color: #FFFFFF
                                               Text(
-                                                'Allow Location',
-                                                style: GoogleFonts.inter(
+                                                tr.allowLocation,
+                                                style: tr.font(
                                                   fontSize: 14.0,
                                                   fontWeight: FontWeight.w500,
                                                   color: const Color(0xFFFFFFFF),
@@ -673,11 +681,14 @@ class LocationPermissionScreen extends ConsumerWidget {
                                           ),
 
                                           // vector > branding: width: 6; height: 12; angle: -180 deg; border: 0.8px solid #FFFFFF
-                                          const Align(
-                                            alignment: Alignment.centerRight,
-                                            child: CustomPaint(
-                                              size: Size(6.0, 12.0),
-                                              painter: _RightChevronPainter(color: Colors.white),
+                                          Align(
+                                            alignment: AlignmentDirectional.centerEnd,
+                                            child: Transform.scale(
+                                              scaleX: tr.isArabic ? -1.0 : 1.0,
+                                              child: const CustomPaint(
+                                                size: Size(6.0, 12.0),
+                                                painter: _RightChevronPainter(color: Colors.white),
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -694,10 +705,10 @@ class LocationPermissionScreen extends ConsumerWidget {
                                   onTap: () {
                                     HapticFeedback.selectionClick();
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Opening Location Settings...'),
-                                        backgroundColor: Color(0xFF1C2926),
-                                        duration: Duration(seconds: 2),
+                                      SnackBar(
+                                        content: Text(tr.openingLocationSettings, style: tr.font(color: Colors.white)),
+                                        backgroundColor: const Color(0xFF1C2926),
+                                        duration: const Duration(seconds: 2),
                                       ),
                                     );
                                   },
@@ -706,8 +717,8 @@ class LocationPermissionScreen extends ConsumerWidget {
                                     width: 350.0,
                                     child: Text.rich(
                                       TextSpan(
-                                        text: 'You can change this later in ',
-                                        style: GoogleFonts.inter(
+                                        text: tr.youCanChangeLaterIn,
+                                        style: tr.font(
                                           fontSize: 10.0,
                                           fontWeight: FontWeight.w400,
                                           color: const Color(0xFF566663),
@@ -716,8 +727,8 @@ class LocationPermissionScreen extends ConsumerWidget {
                                         ),
                                         children: [
                                           TextSpan(
-                                            text: 'Settings',
-                                            style: GoogleFonts.inter(
+                                            text: tr.settingsLabel,
+                                            style: tr.font(
                                               fontSize: 10.0,
                                               fontWeight: FontWeight.w500,
                                               color: const Color(0xFF8B53FE),
@@ -751,10 +762,14 @@ class LocationPermissionScreen extends ConsumerWidget {
                 width: double.infinity,
                 height: double.infinity,
                 color: const Color(0xFF141C1A),
-                child: Center(
+                alignment: Alignment.center,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.center,
                   child: Container(
                     width: containerWidth,
                     height: containerHeight,
+                    margin: const EdgeInsets.symmetric(vertical: 24.0),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(42),
                       border: Border.all(
@@ -787,6 +802,7 @@ class LocationPermissionScreen extends ConsumerWidget {
     required Widget icon,
     required String title,
     required String subtitle,
+    required AppTranslations tr,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -821,7 +837,7 @@ class LocationPermissionScreen extends ConsumerWidget {
               // inner content branding: title (Inter Medium 500, 12px, line-height: 22px, color: #1C2926)
               Text(
                 title,
-                style: GoogleFonts.inter(
+                style: tr.font(
                   fontSize: 12.0,
                   fontWeight: FontWeight.w500,
                   color: const Color(0xFF1C2926),
@@ -837,7 +853,7 @@ class LocationPermissionScreen extends ConsumerWidget {
               // inner content branding: subtitle with comfortable line height between wrapped lines
               Text(
                 subtitle,
-                style: GoogleFonts.inter(
+                style: tr.font(
                   fontSize: 10.0,
                   fontWeight: FontWeight.w400,
                   color: const Color(0xFF566663),

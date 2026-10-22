@@ -4,8 +4,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/localization/app_locale.dart';
 import 'live_tracking_screen.dart';
+import 'widgets/top_down_car_widget.dart';
 
 /// Screen displayed when user clicks 'Send Request' in ProviderDetailScreen.
 /// Implements the exact header and map layer of Pickup & Delivery screens as requested.
@@ -29,6 +30,8 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
   Timer? _acceptanceTimer;
   Timer? _navigationTimer;
   bool _isAccepted = false;
+
+  AppTranslations get tr => ref.read(translationsProvider);
 
   @override
   void initState() {
@@ -77,6 +80,8 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
     );
+
+    ref.watch(translationsProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -198,17 +203,14 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                   Positioned(
                     top: 258.0,
                     left: 241.0 + ((containerWidth - 390.0) / 2.0),
-                    width: 18.0,
-                    height: 28.0,
-                    child: Transform.rotate(
-                      angle: -60.0 * math.pi / 180.0,
-                      alignment: Alignment.center,
-                      child: const CustomPaint(
-                        size: Size(18.0, 28.0),
-                        painter: _CarGraphicPainter(
-                          roofColor: Color(0xFFA67AFE),
-                        ),
-                      ),
+                    child: TopDownCarWidget(
+                      width: 16.5,
+                      height: 28.5,
+                      angle: -60.0,
+                      driverName: widget.providerName,
+                      distanceKm: double.tryParse(widget.distance.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 1.8,
+                      showBadge: true,
+                      bodyColor: const Color(0xFFA67AFE),
                     ),
                   ),
 
@@ -218,7 +220,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                     top: 153.0 - 12.0,
                     left: (111.0 - 12.0) + ((containerWidth - 390.0) / 2.0),
                     width: 60.0,
-                    height: 60.0,
+                    height: 56.0,
                     child: Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
@@ -298,12 +300,12 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                       child: Align(
                         alignment: const Alignment(0.0, -0.45),
                         child: Text(
-                          widget.distance,
+                          tr.isArabic ? widget.distance.replaceAll('km', 'كم').replaceAll('min', 'د') : widget.distance,
                           textHeightBehavior: const TextHeightBehavior(
                             applyHeightToFirstAscent: false,
                             applyHeightToLastDescent: false,
                           ),
-                          style: GoogleFonts.inter(
+                          style: tr.font(
                             fontSize: 10.0,
                             fontWeight: FontWeight.w400,
                             color: const Color(0xFFFFFFFF),
@@ -379,12 +381,12 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                           // Title: Pickup & Delivery
                           Expanded(
                             child: Text(
-                              widget.serviceCategory,
+                              tr.categoryName(widget.serviceCategory),
                               textHeightBehavior: const TextHeightBehavior(
                                 applyHeightToFirstAscent: false,
                                 applyHeightToLastDescent: false,
                               ),
-                              style: GoogleFonts.inter(
+                              style: tr.font(
                                 fontSize: 16.0,
                                 fontWeight: FontWeight.w500,
                                 color: const Color(0xFF1C2926),
@@ -513,18 +515,17 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                               crossAxisAlignment: CrossAxisAlignment.center,
                                                               children: [
                                                                 // content: Ahmad Transport
-                                                                // width: 117; height: 10; font-family: Inter; font-weight: 500; font-size: 14px; line-height: 22px; color: #1C2926;
                                                                 SizedBox(
                                                                   width: 117.0,
                                                                   child: Align(
                                                                     alignment: Alignment.centerLeft,
                                                                     child: Text(
-                                                                      'Ahmad Transport',
+                                                                      tr.formatProviderName(widget.providerName.isNotEmpty ? widget.providerName : 'Ahmad Transport'),
                                                                       textHeightBehavior: const TextHeightBehavior(
                                                                         applyHeightToFirstAscent: false,
                                                                         applyHeightToLastDescent: false,
                                                                       ),
-                                                                      style: GoogleFonts.inter(
+                                                                      style: tr.font(
                                                                         fontSize: 14.0,
                                                                         fontWeight: FontWeight.w500,
                                                                         color: const Color(0xFF1C2926),
@@ -539,8 +540,6 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                 const SizedBox(width: 12.0), // gap: 12px;
 
                                                                 // available word layout:
-                                                                // width: 55; height: 19; gap: 10px; border-radius: 60px; padding: 6px; background: #F0F5F2;
-                                                                // content: Available (width: 43; height: 7; font-family: Inter; font-weight: 500; font-size: 10px; line-height: 22px; color: #1D8070;)
                                                                 Container(
                                                                   width: 55.0,
                                                                   height: 19.0,
@@ -550,12 +549,12 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                   ),
                                                                   alignment: Alignment.center,
                                                                   child: Text(
-                                                                    'Available',
+                                                                    tr.available,
                                                                     textHeightBehavior: const TextHeightBehavior(
                                                                       applyHeightToFirstAscent: false,
                                                                       applyHeightToLastDescent: false,
                                                                     ),
-                                                                    style: GoogleFonts.inter(
+                                                                    style: tr.font(
                                                                       fontSize: 10.0,
                                                                       fontWeight: FontWeight.w500,
                                                                       color: const Color(0xFF8B53FE),
@@ -592,7 +591,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                       Text.rich(
                                                                         TextSpan(
                                                                           text: '4.9',
-                                                                          style: GoogleFonts.inter(
+                                                                          style: tr.font(
                                                                             fontSize: 10.0,
                                                                             fontWeight: FontWeight.w500,
                                                                             color: const Color(0xFF1C2926),
@@ -602,7 +601,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                           children: [
                                                                             TextSpan(
                                                                               text: ' (120)',
-                                                                              style: GoogleFonts.inter(
+                                                                              style: tr.font(
                                                                                 fontSize: 10.0,
                                                                                 fontWeight: FontWeight.w400,
                                                                                 color: const Color(0xFF566663),
@@ -637,12 +636,12 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                       // content: Waiting for response
                                                                       Expanded(
                                                                         child: Text(
-                                                                          'Waiting for response',
+                                                                          tr.waitingForResponse,
                                                                           textHeightBehavior: const TextHeightBehavior(
                                                                             applyHeightToFirstAscent: false,
                                                                             applyHeightToLastDescent: false,
                                                                           ),
-                                                                          style: GoogleFonts.inter(
+                                                                          style: tr.font(
                                                                             fontSize: 10.0,
                                                                             fontWeight: FontWeight.w400,
                                                                             color: const Color(0xFFFFAE00),
@@ -683,9 +682,9 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                         onTap: () {
                                                           HapticFeedback.lightImpact();
                                                           ScaffoldMessenger.of(context).showSnackBar(
-                                                            const SnackBar(
-                                                              content: Text('Opening WhatsApp...'),
-                                                              duration: Duration(seconds: 1),
+                                                            SnackBar(
+                                                              content: Text(tr.openingWhatsApp),
+                                                              duration: const Duration(seconds: 1),
                                                             ),
                                                           );
                                                         },
@@ -717,9 +716,9 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                         onTap: () {
                                                           HapticFeedback.lightImpact();
                                                           ScaffoldMessenger.of(context).showSnackBar(
-                                                            const SnackBar(
-                                                              content: Text('Calling Ahmad Transport...'),
-                                                              duration: Duration(seconds: 1),
+                                                            SnackBar(
+                                                              content: Text(tr.callingProvider(tr.formatProviderName(widget.providerName.isNotEmpty ? widget.providerName : 'Ahmad Transport'))),
+                                                              duration: const Duration(seconds: 1),
                                                             ),
                                                           );
                                                         },
@@ -781,14 +780,13 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                     crossAxisAlignment: CrossAxisAlignment.center,
                                                     children: [
                                                       // content: Toyota Hilux
-                                                      // width: 71; height: 9; font-family: Inter; font-weight: 500; font-size: 12px; line-height: 22px; color: #1C2926;
                                                       Text(
-                                                        'Toyota Hilux',
+                                                        tr.formatVehicleName('Toyota Hilux'),
                                                         textHeightBehavior: const TextHeightBehavior(
                                                           applyHeightToFirstAscent: false,
                                                           applyHeightToLastDescent: false,
                                                         ),
-                                                        style: GoogleFonts.inter(
+                                                        style: tr.font(
                                                           fontSize: 12.0,
                                                           fontWeight: FontWeight.w500,
                                                           color: const Color(0xFF1C2926),
@@ -799,14 +797,13 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                       const SizedBox(width: 12.0), // gap: 12px;
 
                                                       // content: Pickup & Delivery
-                                                      // width: 99; height: 9; font-family: Inter; font-weight: 400; font-size: 12px; line-height: 22px; color: #566663;
                                                       Text(
-                                                        'Pickup & Delivery',
+                                                        tr.categoryName(widget.serviceCategory),
                                                         textHeightBehavior: const TextHeightBehavior(
                                                           applyHeightToFirstAscent: false,
                                                           applyHeightToLastDescent: false,
                                                         ),
-                                                        style: GoogleFonts.inter(
+                                                        style: tr.font(
                                                           fontSize: 12.0,
                                                           fontWeight: FontWeight.w400,
                                                           color: const Color(0xFF566663),
@@ -841,8 +838,8 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                   // width: 169 (flexible on mobile); height: 64; gap: 12px;
                                                   Expanded(
                                                     child: Container(
-                                                      height: 64.0,
-                                                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                                                      constraints: const BoxConstraints(minHeight: 56.0),
+                                                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                                                       decoration: BoxDecoration(
                                                         color: const Color(0xFFF2F5F4),
                                                         borderRadius: BorderRadius.circular(12.0),
@@ -883,12 +880,12 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                   fit: BoxFit.scaleDown,
                                                                   alignment: Alignment.centerLeft,
                                                                   child: Text(
-                                                                    '1.8 km',
+                                                                    tr.onePointEightKm,
                                                                     textHeightBehavior: const TextHeightBehavior(
                                                                       applyHeightToFirstAscent: false,
                                                                       applyHeightToLastDescent: false,
                                                                     ),
-                                                                    style: GoogleFonts.inter(
+                                                                    style: tr.font(
                                                                       fontSize: 14.0,
                                                                       fontWeight: FontWeight.w500,
                                                                       color: const Color(0xFF1C2926),
@@ -904,12 +901,12 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                   fit: BoxFit.scaleDown,
                                                                   alignment: Alignment.centerLeft,
                                                                   child: Text(
-                                                                    'Distance Away',
+                                                                    tr.distanceAway,
                                                                     textHeightBehavior: const TextHeightBehavior(
                                                                       applyHeightToFirstAscent: false,
                                                                       applyHeightToLastDescent: false,
                                                                     ),
-                                                                    style: GoogleFonts.inter(
+                                                                    style: tr.font(
                                                                       fontSize: 10.0,
                                                                       fontWeight: FontWeight.w400,
                                                                       color: const Color(0xFF566663),
@@ -931,8 +928,8 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                   // width: 169 (flexible on mobile); height: 64; gap: 12px;
                                                   Expanded(
                                                     child: Container(
-                                                      height: 64.0,
-                                                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                                                      constraints: const BoxConstraints(minHeight: 56.0),
+                                                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
                                                       decoration: BoxDecoration(
                                                         color: const Color(0xFFF2F5F4),
                                                         borderRadius: BorderRadius.circular(12.0),
@@ -976,12 +973,12 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                   fit: BoxFit.scaleDown,
                                                                   alignment: Alignment.centerLeft,
                                                                   child: Text(
-                                                                    '6 min',
+                                                                    tr.sixMin,
                                                                     textHeightBehavior: const TextHeightBehavior(
                                                                       applyHeightToFirstAscent: false,
                                                                       applyHeightToLastDescent: false,
                                                                     ),
-                                                                    style: GoogleFonts.inter(
+                                                                    style: tr.font(
                                                                       fontSize: 14.0,
                                                                       fontWeight: FontWeight.w500,
                                                                       color: const Color(0xFF1C2926),
@@ -998,12 +995,12 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                   fit: BoxFit.scaleDown,
                                                                   alignment: Alignment.centerLeft,
                                                                   child: Text(
-                                                                    'Estimated time',
+                                                                    tr.estimatedTime,
                                                                     textHeightBehavior: const TextHeightBehavior(
                                                                       applyHeightToFirstAscent: false,
                                                                       applyHeightToLastDescent: false,
                                                                     ),
-                                                                    style: GoogleFonts.inter(
+                                                                    style: tr.font(
                                                                       fontSize: 10.0,
                                                                       fontWeight: FontWeight.w400,
                                                                       color: const Color(0xFF566663),
@@ -1030,8 +1027,8 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                 width: containerWidth >= 390
                                                     ? 350.0
                                                     : (containerWidth - 40.0).clamp(280.0, 350.0),
-                                                height: 60.0,
-                                                padding: const EdgeInsets.all(16.0),
+                                                constraints: const BoxConstraints(minHeight: 58.0),
+                                                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
                                                 decoration: BoxDecoration(
                                                   color: const Color(0xFFF2F5F4),
                                                   borderRadius: BorderRadius.circular(12.0),
@@ -1041,15 +1038,11 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                   crossAxisAlignment: CrossAxisAlignment.center,
                                                   children: [
                                                     // left side content:
-                                                    // width: 83; height: 28; gap: 10px; angle: 0 deg; opacity: 1;
-                                                    SizedBox(
-                                                      width: 83.0,
-                                                      height: 28.0,
+                                                    Expanded(
                                                       child: Row(
                                                         crossAxisAlignment: CrossAxisAlignment.center,
                                                         children: [
                                                           // icon on left side branding:
-                                                          // width: 28; height: 28; angle: 0 deg; opacity: 1; border-radius: 60px; background: #DDF0E3;
                                                           Container(
                                                             width: 28.0,
                                                             height: 28.0,
@@ -1058,8 +1051,6 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                               shape: BoxShape.circle,
                                                             ),
                                                             child: const Center(
-                                                              // icon inner branding :
-                                                              // width: 14; height: 16; top: 6px; left: 7px; background: #1D8070;
                                                               child: CustomPaint(
                                                                 size: Size(14.0, 16.0),
                                                                 painter: _VerifiedShieldPainter(
@@ -1069,27 +1060,25 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                               ),
                                                             ),
                                                           ),
-                                                          const SizedBox(width: 10.0), // gap: 10px;
+                                                          const SizedBox(width: 8.0),
 
-                                                          // content branding:
-                                                          // width: 45; height: 26; gap: 10px; angle: 0 deg; opacity: 1;
                                                           Expanded(
                                                             child: Column(
                                                               crossAxisAlignment: CrossAxisAlignment.start,
                                                               mainAxisAlignment: MainAxisAlignment.center,
+                                                              mainAxisSize: MainAxisSize.min,
                                                               children: [
-                                                                // content: Verified
-                                                                // width: 45; height: 9; font-family: Inter; font-weight: 500; font-size: 12px; line-height: 22px; color: #1C2926;
                                                                 FittedBox(
                                                                   fit: BoxFit.scaleDown,
-                                                                  alignment: Alignment.centerLeft,
+                                                                  alignment: AlignmentDirectional.centerStart,
                                                                   child: Text(
-                                                                    'Verified',
+                                                                    tr.verified,
+                                                                    maxLines: 1,
                                                                     textHeightBehavior: const TextHeightBehavior(
                                                                       applyHeightToFirstAscent: false,
                                                                       applyHeightToLastDescent: false,
                                                                     ),
-                                                                    style: GoogleFonts.inter(
+                                                                    style: tr.font(
                                                                       fontSize: 12.0,
                                                                       fontWeight: FontWeight.w500,
                                                                       color: const Color(0xFF1C2926),
@@ -1100,18 +1089,17 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                 ),
                                                                 const SizedBox(height: 1.0),
 
-                                                                // content: Providers
-                                                                // width: 45; height: 7; font-family: Inter; font-weight: 400; font-size: 10px; line-height: 22px; color: #566663;
                                                                 FittedBox(
                                                                   fit: BoxFit.scaleDown,
-                                                                  alignment: Alignment.centerLeft,
+                                                                  alignment: AlignmentDirectional.centerStart,
                                                                   child: Text(
-                                                                    'Providers',
+                                                                    tr.providersLabel,
+                                                                    maxLines: 1,
                                                                     textHeightBehavior: const TextHeightBehavior(
                                                                       applyHeightToFirstAscent: false,
                                                                       applyHeightToLastDescent: false,
                                                                     ),
-                                                                    style: GoogleFonts.inter(
+                                                                    style: tr.font(
                                                                       fontSize: 10.0,
                                                                       fontWeight: FontWeight.w400,
                                                                       color: const Color(0xFF566663),
@@ -1127,9 +1115,9 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                       ),
                                                     ),
 
-                                                    // | branding:
-                                                    // width: 0.800000011920929; height: 24; angle: 0 deg; opacity: 1; border-radius: 40px; background: #EDF0E9;
+                                                    // | divider:
                                                     Container(
+                                                      margin: const EdgeInsets.symmetric(horizontal: 4.0),
                                                       width: 0.8,
                                                       height: 24.0,
                                                       decoration: BoxDecoration(
@@ -1139,15 +1127,10 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                     ),
 
                                                     // center content:
-                                                    // width: 85; height: 28; gap: 10px; angle: 0 deg; opacity: 1;
-                                                    SizedBox(
-                                                      width: 85.0,
-                                                      height: 28.0,
+                                                    Expanded(
                                                       child: Row(
                                                         crossAxisAlignment: CrossAxisAlignment.center,
                                                         children: [
-                                                          // left side icon layout:
-                                                          // width: 28; height: 28; angle: 0 deg; opacity: 1; border-radius: 60px; background: #DDF0E3;
                                                           Container(
                                                             width: 28.0,
                                                             height: 28.0,
@@ -1156,8 +1139,6 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                               shape: BoxShape.circle,
                                                             ),
                                                             child: const Center(
-                                                              // inner icon branding:
-                                                              // width: 16; height: 12; angle: 0 deg; opacity: 1; top: 7.6px; left: 5.5px; background: #1D8070;
                                                               child: Icon(
                                                                 Icons.group_rounded,
                                                                 size: 16.0,
@@ -1165,27 +1146,25 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                               ),
                                                             ),
                                                           ),
-                                                          const SizedBox(width: 10.0), // gap: 10px;
+                                                          const SizedBox(width: 8.0),
 
-                                                          // content layout:
-                                                          // width: 47; height: 26; gap: 10px; angle: 0 deg; opacity: 1;
                                                           Expanded(
                                                             child: Column(
                                                               crossAxisAlignment: CrossAxisAlignment.start,
                                                               mainAxisAlignment: MainAxisAlignment.center,
+                                                              mainAxisSize: MainAxisSize.min,
                                                               children: [
-                                                                // content: 500+
-                                                                // width: 31; height: 9; font-family: Inter; font-weight: 500; font-size: 12px; line-height: 22px; color: #1C2926;
                                                                 FittedBox(
                                                                   fit: BoxFit.scaleDown,
-                                                                  alignment: Alignment.centerLeft,
+                                                                  alignment: AlignmentDirectional.centerStart,
                                                                   child: Text(
                                                                     '500+',
+                                                                    maxLines: 1,
                                                                     textHeightBehavior: const TextHeightBehavior(
                                                                       applyHeightToFirstAscent: false,
                                                                       applyHeightToLastDescent: false,
                                                                     ),
-                                                                    style: GoogleFonts.inter(
+                                                                    style: tr.font(
                                                                       fontSize: 12.0,
                                                                       fontWeight: FontWeight.w500,
                                                                       color: const Color(0xFF1C2926),
@@ -1196,18 +1175,17 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                 ),
                                                                 const SizedBox(height: 1.0),
 
-                                                                // content: Deliveries
-                                                                // width: 47; height: 7; font-family: Inter; font-weight: 400; font-size: 10px; line-height: 22px; color: #566663;
                                                                 FittedBox(
                                                                   fit: BoxFit.scaleDown,
-                                                                  alignment: Alignment.centerLeft,
+                                                                  alignment: AlignmentDirectional.centerStart,
                                                                   child: Text(
-                                                                    'Deliveries',
+                                                                    tr.deliveriesLabel,
+                                                                    maxLines: 1,
                                                                     textHeightBehavior: const TextHeightBehavior(
                                                                       applyHeightToFirstAscent: false,
                                                                       applyHeightToLastDescent: false,
                                                                     ),
-                                                                    style: GoogleFonts.inter(
+                                                                    style: tr.font(
                                                                       fontSize: 10.0,
                                                                       fontWeight: FontWeight.w400,
                                                                       color: const Color(0xFF566663),
@@ -1223,9 +1201,9 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                       ),
                                                     ),
 
-                                                    // | branding will remain same:
-                                                    // width: 0.800000011920929; height: 24; angle: 0 deg; opacity: 1; border-radius: 40px; background: #EDF0E9;
+                                                    // | divider:
                                                     Container(
+                                                      margin: const EdgeInsets.symmetric(horizontal: 4.0),
                                                       width: 0.8,
                                                       height: 24.0,
                                                       decoration: BoxDecoration(
@@ -1235,15 +1213,10 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                     ),
 
                                                     // right content layout:
-                                                    // width: 75; height: 28; gap: 10px; angle: 0 deg; opacity: 1;
-                                                    SizedBox(
-                                                      width: 75.0,
-                                                      height: 28.0,
+                                                    Expanded(
                                                       child: Row(
                                                         crossAxisAlignment: CrossAxisAlignment.center,
                                                         children: [
-                                                          // icon layout and inner branding will same:
-                                                          // width: 28; height: 28; border-radius: 60px; background: #DDF0E3;
                                                           Container(
                                                             width: 28.0,
                                                             height: 28.0,
@@ -1259,26 +1232,25 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                               ),
                                                             ),
                                                           ),
-                                                          const SizedBox(width: 10.0), // gap: 10px;
+                                                          const SizedBox(width: 8.0),
 
-                                                          // content branding also will same:
                                                           Expanded(
                                                             child: Column(
                                                               crossAxisAlignment: CrossAxisAlignment.start,
                                                               mainAxisAlignment: MainAxisAlignment.center,
+                                                              mainAxisSize: MainAxisSize.min,
                                                               children: [
-                                                                // content: 98%
-                                                                // width: 31; height: 9; font-family: Inter; font-weight: 500; font-size: 12px; line-height: 22px; color: #1C2926;
                                                                 FittedBox(
                                                                   fit: BoxFit.scaleDown,
-                                                                  alignment: Alignment.centerLeft,
+                                                                  alignment: AlignmentDirectional.centerStart,
                                                                   child: Text(
                                                                     '98%',
+                                                                    maxLines: 1,
                                                                     textHeightBehavior: const TextHeightBehavior(
                                                                       applyHeightToFirstAscent: false,
                                                                       applyHeightToLastDescent: false,
                                                                     ),
-                                                                    style: GoogleFonts.inter(
+                                                                    style: tr.font(
                                                                       fontSize: 12.0,
                                                                       fontWeight: FontWeight.w500,
                                                                       color: const Color(0xFF1C2926),
@@ -1289,18 +1261,17 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                 ),
                                                                 const SizedBox(height: 1.0),
 
-                                                                // content: On time
-                                                                // width: 47; height: 7; font-family: Inter; font-weight: 400; font-size: 10px; line-height: 22px; color: #566663;
                                                                 FittedBox(
                                                                   fit: BoxFit.scaleDown,
-                                                                  alignment: Alignment.centerLeft,
+                                                                  alignment: AlignmentDirectional.centerStart,
                                                                   child: Text(
-                                                                    'On time',
+                                                                    tr.onTime,
+                                                                    maxLines: 1,
                                                                     textHeightBehavior: const TextHeightBehavior(
                                                                       applyHeightToFirstAscent: false,
                                                                       applyHeightToLastDescent: false,
                                                                     ),
-                                                                    style: GoogleFonts.inter(
+                                                                    style: tr.font(
                                                                       fontSize: 10.0,
                                                                       fontWeight: FontWeight.w400,
                                                                       color: const Color(0xFF566663),
@@ -1330,7 +1301,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                         ? 350.0
                                         : (containerWidth - 40.0).clamp(280.0, 350.0),
                                     constraints: const BoxConstraints(minHeight: 64.0),
-                                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFF2F5F4),
                                       borderRadius: BorderRadius.circular(12.0),
@@ -1371,13 +1342,13 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                               // content: Request Sent or Request Accepted
                                               Text(
                                                 _isAccepted
-                                                    ? 'Request Accepted!'
-                                                    : 'Request Sent',
+                                                    ? tr.requestAccepted
+                                                    : tr.requestSent,
                                                 textHeightBehavior: const TextHeightBehavior(
                                                   applyHeightToFirstAscent: false,
                                                   applyHeightToLastDescent: false,
                                                 ),
-                                                style: GoogleFonts.inter(
+                                                style: tr.font(
                                                   fontSize: 14.0,
                                                   fontWeight: FontWeight.w500,
                                                   color: const Color(0xFF1C2926),
@@ -1392,13 +1363,13 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                               // content: Waiting or Navigating
                                               Text(
                                                 _isAccepted
-                                                    ? 'Provider accepted. Starting live tracking...'
-                                                    : 'Waiting for provider to accept your request.',
+                                                    ? tr.providerAcceptedStartingLive
+                                                    : tr.waitingForProviderAccept,
                                                 textHeightBehavior: const TextHeightBehavior(
                                                   applyHeightToFirstAscent: false,
                                                   applyHeightToLastDescent: false,
                                                 ),
-                                                style: GoogleFonts.inter(
+                                                style: tr.font(
                                                   fontSize: 12.0,
                                                   fontWeight: FontWeight.w400,
                                                   color: _isAccepted
@@ -1455,12 +1426,12 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                           // content: Request sent
                                                           // font-family: Inter; font-weight: 500; font-size: 12px; line-height: 22px; color: #1C2926;
                                                           Text(
-                                                            'Request sent',
+                                                            tr.requestSent,
                                                             textHeightBehavior: const TextHeightBehavior(
                                                               applyHeightToFirstAscent: false,
                                                               applyHeightToLastDescent: false,
                                                             ),
-                                                            style: GoogleFonts.inter(
+                                                            style: tr.font(
                                                               fontSize: 12.0,
                                                               fontWeight: FontWeight.w500,
                                                               color: const Color(0xFF1C2926),
@@ -1472,12 +1443,12 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                           // content: Just now
                                                           // font-family: Inter; font-weight: 400; font-size: 10px; line-height: 22px; color: #566663;
                                                           Text(
-                                                            'Just now',
+                                                            tr.justNow,
                                                             textHeightBehavior: const TextHeightBehavior(
                                                               applyHeightToFirstAscent: false,
                                                               applyHeightToLastDescent: false,
                                                             ),
-                                                            style: GoogleFonts.inter(
+                                                            style: tr.font(
                                                               fontSize: 10.0,
                                                               fontWeight: FontWeight.w400,
                                                               color: const Color(0xFF566663),
@@ -1492,12 +1463,12 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                       // content: Provider accepted
                                                       // font-family: Inter; font-weight: 400; font-size: 12px; line-height: 22px; color: #566663;
                                                       Text(
-                                                        'Provider accepted',
+                                                        tr.providerAccepted,
                                                         textHeightBehavior: const TextHeightBehavior(
                                                           applyHeightToFirstAscent: false,
                                                           applyHeightToLastDescent: false,
                                                         ),
-                                                        style: GoogleFonts.inter(
+                                                        style: tr.font(
                                                           fontSize: 12.0,
                                                           fontWeight: FontWeight.w400,
                                                           color: const Color(0xFF566663),
@@ -1510,12 +1481,12 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                       // content: On the way
                                                       // font-family: Inter; font-weight: 400; font-size: 12px; line-height: 22px; color: #566663;
                                                       Text(
-                                                        'On the way',
+                                                        tr.onTheWay,
                                                         textHeightBehavior: const TextHeightBehavior(
                                                           applyHeightToFirstAscent: false,
                                                           applyHeightToLastDescent: false,
                                                         ),
-                                                        style: GoogleFonts.inter(
+                                                        style: tr.font(
                                                           fontSize: 12.0,
                                                           fontWeight: FontWeight.w400,
                                                           color: const Color(0xFF566663),
@@ -1571,12 +1542,12 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                               ),
                                               alignment: Alignment.center,
                                               child: Text(
-                                                'Cancel',
+                                                tr.cancel,
                                                 textHeightBehavior: const TextHeightBehavior(
                                                   applyHeightToFirstAscent: false,
                                                   applyHeightToLastDescent: false,
                                                 ),
-                                                style: GoogleFonts.inter(
+                                                style: tr.font(
                                                   fontSize: 14.0,
                                                   fontWeight: FontWeight.w500,
                                                   color: const Color(0xFFFF1A00),
@@ -1665,16 +1636,16 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
             borderRadius: BorderRadius.circular(20.0),
           ),
           title: Text(
-            'Cancel Request?',
-            style: GoogleFonts.inter(
+            tr.cancelRequestTitle,
+            style: tr.font(
               fontSize: 18.0,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF1C2926),
             ),
           ),
           content: Text(
-            'Are you sure you want to cancel your request to Ahmad Transport?',
-            style: GoogleFonts.inter(
+            tr.cancelRequestConfirm(tr.formatProviderName(widget.providerName.isNotEmpty ? widget.providerName : 'Ahmad Transport')),
+            style: tr.font(
               fontSize: 14.0,
               fontWeight: FontWeight.w400,
               color: const Color(0xFF566663),
@@ -1695,8 +1666,8 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                       ),
                     ),
                     child: Text(
-                      'No, Keep',
-                      style: GoogleFonts.inter(
+                      tr.noKeep,
+                      style: tr.font(
                         fontSize: 14.0,
                         fontWeight: FontWeight.w500,
                         color: const Color(0xFF566663),
@@ -1718,8 +1689,8 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                       ),
                     ),
                     child: Text(
-                      'Yes, Cancel',
-                      style: GoogleFonts.inter(
+                      tr.yesCancel,
+                      style: tr.font(
                         fontSize: 14.0,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1736,9 +1707,9 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
         _acceptanceTimer?.cancel();
         _navigationTimer?.cancel();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Request cancelled'),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: Text(tr.requestCancelled),
+            duration: const Duration(seconds: 2),
           ),
         );
         Navigator.of(context).maybePop();

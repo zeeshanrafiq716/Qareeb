@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_step_card.dart';
 
 /// Provider Step Cards List Layout Widget
@@ -29,23 +30,33 @@ class ProviderStepCardsList extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: _buildSeparatedCards(),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: _buildSeparatedCards(context),
           ),
         ),
       ),
     );
   }
 
-  List<Widget> _buildSeparatedCards() {
+  List<Widget> _buildSeparatedCards(BuildContext context) {
+    final l10n = context.l10n;
     final list = cards ??
-        const [
-          ProviderStepCard.profile(),
-          ProviderStepCard.getVerified(),
-          ProviderStepCard.startReceivingRequests(),
+        [
+          ProviderStepCard.profile(
+            title: l10n.completeYourProfile,
+            subtitle: l10n.completeProfileSubtitle,
+          ),
+          ProviderStepCard.getVerified(
+            title: l10n.getVerified,
+            subtitle: l10n.getVerifiedSubtitle,
+          ),
+          ProviderStepCard.startReceivingRequests(
+            title: l10n.startReceivingRequests,
+            subtitle: l10n.startReceivingRequestsSubtitle,
+          ),
         ];
 
     final List<Widget> items = [];

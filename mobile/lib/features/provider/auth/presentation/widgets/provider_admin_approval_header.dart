@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_header_back_button.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -23,12 +25,12 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 ///   font-family: Inter; font-weight: 500 (Medium); font-size: 16px;
 ///   line-height: 24px; color: #1C2926;
 class ProviderAdminApprovalHeader extends StatelessWidget {
-  final String title;
+  final String? title;
   final VoidCallback? onBack;
 
   const ProviderAdminApprovalHeader({
     super.key,
-    this.title = 'Admin Approval',
+    this.title,
     this.onBack,
   });
 
@@ -36,17 +38,20 @@ class ProviderAdminApprovalHeader extends StatelessWidget {
   static const double designHeight = 36.0;
   static const double designTop = 56.0;
   static const double designLeft = 20.0;
-  static const double designGap = 14.0;
-  static const double titleWidth = 298.0;
+  static const double designGap = 12.0;
 
   @override
   Widget build(BuildContext context) {
+    final String displayTitle = (title != null && title!.isNotEmpty)
+        ? (context.isArabic ? context.auto(title) : title!)
+        : context.l10n.adminApprovalTitle;
+
     return Opacity(
       opacity: 1.0, // opacity: 1
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           height: designHeight,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -56,21 +61,26 @@ class ProviderAdminApprovalHeader extends StatelessWidget {
                 onTap: onBack ?? () => Navigator.of(context).maybePop(),
               ),
 
-              // gap: 14px
+              // gap: 12px
               const SizedBox(width: designGap),
 
-              // 2. Content: Admin Approval
+              // 2. Content: Admin Approval / موافقة الإدارة
               Expanded(
-                child: SizedBox(
-                  width: titleWidth,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
                   child: Text(
-                    title,
+                    displayTitle,
                     style: ProviderTextStyles.headerTitle,
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
+
+              const SizedBox(width: 12.0),
+
+              // 3. Animated Language Toggle in header
+              const ProviderAnimatedLanguageToggle.compact(),
             ],
           ),
         ),

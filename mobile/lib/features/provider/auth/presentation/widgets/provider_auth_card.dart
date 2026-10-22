@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_content_layout.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_handle_bar.dart';
-import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_scroll_behavior.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 
 /// Provider Phone Verification Card Widget
@@ -37,13 +36,15 @@ class ProviderAuthCard extends StatelessWidget {
   });
 
   static const double designWidth = 390.0;
-  static const double designHeight = 471.0;
-  static const double designTop = 373.0;
+  static const double designHeight = 475.0;
+  static const double designTop = 369.0;
+  static const double horizontalPadding = 20.0;
 
   @override
   Widget build(BuildContext context) {
     final double cardWidth = width ?? designWidth;
     final double cardHeight = height ?? designHeight;
+    final double bottomSafeArea = MediaQuery.of(context).padding.bottom;
 
     return Opacity(
       opacity: 1.0, // opacity: 1
@@ -75,50 +76,34 @@ class ProviderAuthCard extends StatelessWidget {
             child: Stack(
               alignment: Alignment.topCenter,
               children: [
-                // 1. Frictionless Scrollable Content Area: easily scrollable on touch, mouse, trackpad
+                // 1. Fixed, Non-Scrollable Content Area with equal left-to-right padding (20px each)
                 Positioned.fill(
-                  child: ScrollConfiguration(
-                    behavior: const ProviderCardScrollBehavior(),
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(
-                        parent: BouncingScrollPhysics(),
-                      ),
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
-                      child: Container(
-                        width: double.infinity,
-                        constraints: BoxConstraints(
-                          minHeight: cardHeight > 80.0 ? cardHeight - 80.0 : 0.0,
-                        ),
-                        color: Colors.transparent,
-                        padding: const EdgeInsets.only(
-                          top: 26.0,
-                          bottom: 24.0, // comfortable user-friendly clearance
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Center(
-                              child: SizedBox(
-                                width: ProviderCardContentLayout.designWidth,
-                                child: child ?? const ProviderCardContentLayout(),
-                              ),
-                            ),
-                            const SizedBox(height: 24.0),
-                            const ProviderCardBottomIndicator(),
-                          ],
-                        ),
-                      ),
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      top: 24.0,
+                      left: horizontalPadding,
+                      right: horizontalPadding,
+                      bottom: bottomSafeArea > 0 ? (bottomSafeArea + 24.0) : 26.0,
                     ),
+                    child: child ?? const ProviderCardContentLayout(),
                   ),
                 ),
 
                 // 2. Bar layout (Top Handle): width: 60; height: 4; top: 12px; background: #EFF0ED;
-                // Pinned at top; IgnorePointer ensures drags on the handle bar smoothly scroll the card
                 const Positioned(
                   top: ProviderCardHandleBar.designTop, // 12.0px
                   child: IgnorePointer(
                     child: ProviderCardHandleBar(),
+                  ),
+                ),
+
+                // 3. Pinned Bottom Indicator Bar: with safe-area offset so it never gets stuck in bottom
+                Positioned(
+                  bottom: bottomSafeArea > 0 ? (bottomSafeArea + 8.0) : 14.0,
+                  left: 0,
+                  right: 0,
+                  child: const IgnorePointer(
+                    child: ProviderCardBottomIndicator(),
                   ),
                 ),
               ],

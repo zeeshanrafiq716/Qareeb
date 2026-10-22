@@ -59,7 +59,7 @@ class ProviderProfileDetailsContentLayout extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_header_back_button.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_otp_card.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_branding_header.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_splash_background.dart';
@@ -36,14 +38,14 @@ class OtpVerificationScreen extends StatelessWidget {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: ProviderColors.background,
-        systemNavigationBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
     );
 
     return Scaffold(
-      backgroundColor: ProviderColors.background,
+      backgroundColor: Colors.white,
       body: Center(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -52,18 +54,17 @@ class OtpVerificationScreen extends StatelessWidget {
             final double containerHeight = isDesktopWeb ? designHeight : constraints.maxHeight;
 
             final double topSafeArea = MediaQuery.of(context).padding.top;
+            final double toggleTop = topSafeArea > 0 ? (topSafeArea + 16.0) : 48.0;
             final double headerTop = isDesktopWeb
-                ? 150.0
-                : (containerHeight < 750
-                    ? (topSafeArea + 16.0)
-                    : (topSafeArea + 48.0).clamp(50.0, 150.0));
+                ? 120.0
+                : (toggleTop + 36.0 + 16.0).clamp(90.0, 140.0);
 
             // Card layout geometry:
-            // width: 390, height: 371, top: 473px (in 390x844 frame, 473 + 371 = 844)
+            // width: 390, height: 420, top: 424px (in 390x844 frame, 424 + 420 = 844)
             final double cardTop = isDesktopWeb
                 ? ProviderOtpCard.designTop
                 : (containerHeight - ProviderOtpCard.designHeight)
-                    .clamp(topSafeArea + 100.0, containerHeight - 150.0);
+                    .clamp(topSafeArea + 80.0, containerHeight - 150.0);
             final double cardHeight = isDesktopWeb
                 ? ProviderOtpCard.designHeight
                 : (containerHeight - cardTop);
@@ -75,61 +76,59 @@ class OtpVerificationScreen extends StatelessWidget {
                 child: Container(
                   width: containerWidth,
                   height: containerHeight,
-                  color: ProviderColors.background,
+                  color: Colors.white,
                   child: Stack(
                     children: [
-                      // RepaintBoundary isolates and GPU-caches the backdrop filter for 60/120fps buttery smoothness
+                      // Underneath Scene: Splash screen background (truk.png + branding header)
                       Positioned.fill(
                         child: RepaintBoundary(
                           child: Stack(
                             children: [
-                              // 1. Underneath Scene: Car background image (car1.jpg 138KB fast load, falling back to car1.png)
+                              // 1. Base White Canvas
+                              Positioned.fill(
+                                child: Container(color: Colors.white),
+                              ),
+
+                              // 2. Full-bleed Exact Splash Artwork (truk.png)
+                              //    Contains top purple gradient glow, recovery flatbed truck, and bottom white fade
                               Positioned.fill(
                                 child: Image.asset(
-                                  'assets/images/car1.jpg',
+                                  'assets/images/truk.png',
                                   width: containerWidth,
                                   height: containerHeight,
                                   fit: BoxFit.cover,
-                                  alignment: Alignment.center,
+                                  alignment: Alignment.topCenter,
                                   gaplessPlayback: true,
                                   errorBuilder: (context, error, stackTrace) {
-                                    return Image.asset(
-                                      'assets/images/car1.png',
-                                      width: containerWidth,
-                                      height: containerHeight,
-                                      fit: BoxFit.cover,
-                                      alignment: Alignment.center,
-                                      gaplessPlayback: true,
+                                    return const CustomPaint(
+                                      painter: ProviderSplashBrandingPainter(),
                                     );
                                   },
                                 ),
                               ),
 
-                              // 2. Dual Gradient Overlay
-                              const Positioned.fill(
-                                child: CustomPaint(
-                                  painter: ProviderSplashBackgroundPainter(drawBase: false),
+                              // 3. Header Branding in background: QAREEB • / Service always near you
+                              Positioned(
+                                top: headerTop,
+                                left: 0,
+                                right: 0,
+                                child: const Center(
+                                  child: ProviderBrandingHeader(),
                                 ),
                               ),
 
-                              // 3. Header Branding in background
-                              Positioned(
-                                top: headerTop,
-                                left: (containerWidth - 226.0) / 2,
-                                child: const ProviderBrandingHeader(),
-                              ),
-
-                              // 4. Frosted Glass Blur (backdrop-filter: blur(8px))
-                              //    and Tint Overlay (background: #1F292829)
+                              // 4. Frosted Glass Blur & Overlay:
+                              //    background: #FFFFFF1A;
+                              //    backdrop-filter: blur(8px);
                               Positioned.fill(
                                 child: ClipRect(
                                   child: BackdropFilter(
                                     filter: ImageFilter.blur(
-                                      sigmaX: 8.0,
-                                      sigmaY: 8.0,
+                                      sigmaX: 2.0,
+                                      sigmaY: 2.0,
                                     ),
                                     child: Container(
-                                      color: ProviderColors.backdropTint, // #1F292829
+                                      color: const Color(0x1AFFFFFF), // background: #FFFFFF1A
                                     ),
                                   ),
                                 ),
@@ -139,38 +138,23 @@ class OtpVerificationScreen extends StatelessWidget {
                         ),
                       ),
 
-                      // 5. Back Navigation Button
+                      // 5. Top Bar: Back Navigation Button + Animated Language Toggle with equal 20px padding
                       Positioned(
-                        top: isDesktopWeb ? 32.0 : (topSafeArea + 12.0),
-                        left: 16.0,
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => Navigator.of(context).maybePop(),
-                            borderRadius: BorderRadius.circular(24.0),
-                            child: Container(
-                              width: 40.0,
-                              height: 40.0,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.25),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  width: 1.0,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                                color: Colors.white,
-                                size: 18.0,
-                              ),
-                            ),
-                          ),
+                        top: toggleTop,
+                        left: 20.0,
+                        right: 20.0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const ProviderHeaderBackButton(),
+                            const ProviderAnimatedLanguageToggle.compact(),
+                          ],
                         ),
                       ),
 
                       // 6. New OTP White Bottom Card Layout
-                      //    width: 390; height: 371; top: 473px;
+                      //    width: 390; height: 420; top: 424px;
                       //    border-top-left-radius: 28px; border-top-right-radius: 28px;
                       //    angle: 0 deg; opacity: 1; background: #FFFFFF;
                       //    box-shadow: 0px -2px 12px 0px #00000014;
@@ -178,11 +162,10 @@ class OtpVerificationScreen extends StatelessWidget {
                         top: cardTop,
                         left: 0,
                         right: 0,
-                        bottom: isDesktopWeb ? null : 0,
-                        height: isDesktopWeb ? ProviderOtpCard.designHeight : null,
+                        bottom: 0,
                         child: ProviderOtpCard(
                           width: containerWidth,
-                          height: isDesktopWeb ? ProviderOtpCard.designHeight : cardHeight,
+                          height: cardHeight,
                           child: cardContent,
                         ),
                       ),
@@ -196,7 +179,7 @@ class OtpVerificationScreen extends StatelessWidget {
               return Container(
                 width: double.infinity,
                 height: double.infinity,
-                color: const Color(0xFF141C1A),
+                color: const Color(0xFFF3F4F6),
                 alignment: Alignment.center,
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -206,26 +189,26 @@ class OtpVerificationScreen extends StatelessWidget {
                     height: designHeight,
                     margin: const EdgeInsets.symmetric(vertical: 24.0),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(40),
+                      borderRadius: BorderRadius.circular(44),
                       border: Border.all(
-                        color: ProviderColors.mintGlow.withValues(alpha: 0.25),
+                        color: const Color(0xFF8B53FE).withValues(alpha: 0.35),
                         width: 2.0,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.60),
-                          blurRadius: 40,
-                          spreadRadius: 10,
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 36,
+                          spreadRadius: 6,
                         ),
                         BoxShadow(
-                          color: ProviderColors.mintGlow.withValues(alpha: 0.08),
-                          blurRadius: 30,
+                          color: const Color(0xFF8B53FE).withValues(alpha: 0.12),
+                          blurRadius: 28,
                           spreadRadius: 2,
                         ),
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(38),
+                      borderRadius: BorderRadius.circular(42),
                       child: screenContent,
                     ),
                   ),

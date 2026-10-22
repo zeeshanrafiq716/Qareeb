@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
+import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Vehicle Photo Card Widget
 /// Implements exact Figma branding specifications:
@@ -59,9 +59,9 @@ class ProviderVehiclePhotoCard extends StatelessWidget {
   });
 
   static const double cardWidth = 167.0;
-  static const double cardHeight = 158.0;
-  static const double imageWidth = 150.7112274169922;
-  static const double imageHeight = 102.06349182128906;
+  static const double cardHeight = 166.0;
+  static const double imageWidth = 151.0;
+  static const double imageHeight = 96.0;
   static const double uploadBadgeSize = 31.0;
 
   @override
@@ -71,7 +71,7 @@ class ProviderVehiclePhotoCard extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: cardWidth,
+          width: double.infinity,
           height: cardHeight,
           child: CustomPaint(
             painter: const _DashedCardBorderPainter(
@@ -87,7 +87,10 @@ class ProviderVehiclePhotoCard extends StatelessWidget {
                 onTap: onUpload,
                 borderRadius: BorderRadius.circular(16.0),
                 child: Padding(
-                  padding: const EdgeInsets.all(8.0), // top: 8, left: 8, right: 8
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8.0,
+                    vertical: 6.0,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -95,7 +98,7 @@ class ProviderVehiclePhotoCard extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12.0), // border-radius: 12px
                         child: SizedBox(
-                          width: imageWidth,
+                          width: double.infinity,
                           height: imageHeight,
                           child: Stack(
                             fit: StackFit.expand,
@@ -103,8 +106,6 @@ class ProviderVehiclePhotoCard extends StatelessWidget {
                               // Vehicle photo
                               Image.asset(
                                 imageAsset,
-                                width: imageWidth,
-                                height: imageHeight,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => _VehiclePhotoFallback(
                                   title: title,
@@ -128,11 +129,35 @@ class ProviderVehiclePhotoCard extends StatelessWidget {
                                     ],
                                   ),
                                   child: isUploaded
-                                      ? const Center(
-                                          child: Icon(
-                                            Icons.check,
-                                            size: 14.0,
-                                            color: ProviderColors.primaryButton,
+                                      ? Center(
+                                          child: Container(
+                                            width: 22.0,
+                                            height: 22.0,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF0EAFE),
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: const Color(0xFFE9E0FE), // border: 0.5px solid #E9E0FE
+                                                width: 0.5,
+                                              ),
+                                            ),
+                                            child: Center(
+                                              child: Container(
+                                                width: 15.0,
+                                                height: 15.0,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFF8B53FE), // background: #8B53FE
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Center(
+                                                  child: Icon(
+                                                    Icons.check_rounded,
+                                                    size: 10.0,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
                                           ),
                                         )
                                       : const Center(
@@ -153,39 +178,25 @@ class ProviderVehiclePhotoCard extends StatelessWidget {
                         ),
                       ),
 
-                      const Spacer(),
+                      const SizedBox(height: 6.0),
 
-                      // 2. Title: Front View / Rear View (Inter 500 Medium 12px #1C2926)
+                      // 2. Title: ProviderTextStyles.stepCardTitle
                       Text(
                         title,
-                        style: GoogleFonts.inter(
-                          fontSize: 12.0,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF1C2926),
-                          height: 1.15,
-                        ),
+                        style: ProviderTextStyles.stepCardTitle,
                         textAlign: TextAlign.center,
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
 
                       const SizedBox(height: 2.0),
 
-                      // 3. Subtitle: Upload a clear photo (Inter 400 Regular 10px #566663)
+                      // 3. Subtitle: ProviderTextStyles.stepCardSubtitle
                       Text(
                         subtitle,
-                        style: GoogleFonts.inter(
-                          fontSize: 10.0,
-                          fontWeight: FontWeight.w400,
-                          color: const Color(0xFF566663),
-                          height: 1.15,
-                        ),
+                        style: ProviderTextStyles.stepCardSubtitle,
                         textAlign: TextAlign.center,
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-
-                      const SizedBox(height: 2.0),
                     ],
                   ),
                 ),

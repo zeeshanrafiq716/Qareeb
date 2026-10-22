@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/localization/app_locale.dart';
 
 /// Floating Bottom Navigation Bar strictly following Figma branding:
 /// - Outer Container:
@@ -18,7 +20,7 @@ import 'package:google_fonts/google_fonts.dart';
 ///   - width: 96; height: 57; transparent background;
 ///   - vector: 24x24; color: #FFFFFF;
 ///   - content: font-size: 12px; font-weight: 400; line-height: 100%; color: #FFFFFF;
-class BottomNavBarWidget extends StatefulWidget {
+class BottomNavBarWidget extends ConsumerStatefulWidget {
   final int initialIndex;
   final int? currentIndex;
   final ValueChanged<int>? onTabSelected;
@@ -31,10 +33,10 @@ class BottomNavBarWidget extends StatefulWidget {
   });
 
   @override
-  State<BottomNavBarWidget> createState() => _BottomNavBarWidgetState();
+  ConsumerState<BottomNavBarWidget> createState() => _BottomNavBarWidgetState();
 }
 
-class _BottomNavBarWidgetState extends State<BottomNavBarWidget> {
+class _BottomNavBarWidgetState extends ConsumerState<BottomNavBarWidget> {
   late int _currentIndex;
 
   @override
@@ -63,6 +65,8 @@ class _BottomNavBarWidgetState extends State<BottomNavBarWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final tr = ref.watch(translationsProvider);
+
     return Container(
       width: 292.0,
       height: 65.0,
@@ -90,25 +94,28 @@ class _BottomNavBarWidgetState extends State<BottomNavBarWidget> {
           // 1. Home Tab (width: 96, height: 57) - Vector1.png
           _buildTabItem(
             index: 0,
-            label: 'Home',
+            label: tr.navHome,
             iconAsset: 'assets/images/Vector1.png',
             fallbackBuilder: (color, isActive) => StylizedHomeIcon(color: color, isFilled: isActive),
+            tr: tr,
           ),
 
           // 2. Request Tab (width: 96, height: 57) - Vector2.png
           _buildTabItem(
             index: 1,
-            label: 'Request',
+            label: tr.navRequests,
             iconAsset: 'assets/images/Vector2.png',
             fallbackBuilder: (color, isActive) => StylizedRequestIcon(color: color),
+            tr: tr,
           ),
 
           // 3. Profile Tab (width: 96, height: 57) - vector3.png
           _buildTabItem(
             index: 2,
-            label: 'Profile',
+            label: tr.navProfile,
             iconAsset: 'assets/images/vector3.png',
             fallbackBuilder: (color, isActive) => StylizedProfileIcon(color: color),
+            tr: tr,
           ),
         ],
       ),
@@ -120,6 +127,7 @@ class _BottomNavBarWidgetState extends State<BottomNavBarWidget> {
     required String label,
     required String iconAsset,
     required Widget Function(Color color, bool isActive) fallbackBuilder,
+    required AppTranslations tr,
   }) {
     final int effectiveCurrent = widget.currentIndex ?? _currentIndex;
     final bool isSelected = effectiveCurrent == index;
@@ -184,12 +192,11 @@ class _BottomNavBarWidgetState extends State<BottomNavBarWidget> {
                       applyHeightToFirstAscent: false,
                       applyHeightToLastDescent: false,
                     ),
-                    style: GoogleFonts.inter(
+                    style: tr.font(
                       fontSize: 12.0,
                       fontWeight: FontWeight.w400,
                       color: textColor,
                       height: 1.0, // line-height: 100%
-                      letterSpacing: 0.0,
                     ),
                   ),
                 ],

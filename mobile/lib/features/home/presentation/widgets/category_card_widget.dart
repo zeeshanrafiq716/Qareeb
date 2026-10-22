@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../models/category_model.dart';
 
 /// Category card widget strictly matching Figma specifications:
@@ -34,6 +35,7 @@ class CategoryCardWidget extends StatelessWidget {
   final VoidCallback? onTap;
   final double? width;
   final double height;
+  final AppTranslations? tr;
 
   const CategoryCardWidget({
     super.key,
@@ -46,6 +48,7 @@ class CategoryCardWidget extends StatelessWidget {
     this.onTap,
     this.width,
     this.height = 120.0,
+    this.tr,
   });
 
   /// Factory constructor to render any admin/backend CategoryModel with identical branding
@@ -55,16 +58,20 @@ class CategoryCardWidget extends StatelessWidget {
     double? width,
     double height = 120.0,
     Widget? customContent,
+    String? titleOverride,
+    String? subtitleOverride,
+    AppTranslations? tr,
   }) {
     return CategoryCardWidget(
       key: ValueKey('category_card_${model.id}_${model.slug}'),
-      title: model.name,
-      subtitle: model.displaySubtitle,
+      title: titleOverride ?? model.name,
+      subtitle: subtitleOverride ?? model.displaySubtitle,
       assetImagePath: model.displayAssetImage,
       networkImageUrl: model.iconUrl,
       onTap: onTap,
       width: width,
       height: height,
+      tr: tr,
       child: customContent,
     );
   }
@@ -79,7 +86,7 @@ class CategoryCardWidget extends StatelessWidget {
         width: 98.0,
         height: 60.0,
         fit: BoxFit.contain,
-        alignment: Alignment.centerLeft,
+        alignment: AlignmentDirectional.centerStart,
         errorBuilder: (_, _, _) => _buildFallbackImage(),
       );
     } else if (networkImageUrl != null && networkImageUrl!.isNotEmpty) {
@@ -88,7 +95,7 @@ class CategoryCardWidget extends StatelessWidget {
         width: 98.0,
         height: 60.0,
         fit: BoxFit.contain,
-        alignment: Alignment.centerLeft,
+        alignment: AlignmentDirectional.centerStart,
         errorBuilder: (_, _, _) => _buildFallbackImage(),
       );
     } else {
@@ -130,7 +137,7 @@ class CategoryCardWidget extends StatelessWidget {
 
     // Clean transparent icon directly on white card (NO background box or shadow)
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       child: Icon(
         icon,
         size: 38.0,
@@ -141,6 +148,13 @@ class CategoryCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveTitle = (tr != null && tr!.isArabic)
+        ? tr!.categoryName(title, title)
+        : title;
+    final effectiveSubtitle = (tr != null && tr!.isArabic)
+        ? tr!.categorySubtitle(subtitle, subtitle)
+        : subtitle;
+
     final cardContent = Container(
       width: width,
       height: height,
@@ -160,18 +174,17 @@ class CategoryCardWidget extends StatelessWidget {
       child: child ??
           Stack(
             children: [
-              // 1. Image Placement Branding (width: 98; height: 60; top: 10px; left: 12px; angle: 0 deg; opacity: 1)
-              Positioned(
+              // 1. Image Placement Branding (width: 98; height: 60; top: 10px; start: 12px; angle: 0 deg; opacity: 1)
+              PositionedDirectional(
                 top: 10.0,
-                left: 12.0,
+                start: 12.0,
                 width: 98.0,
                 height: 60.0,
                 child: _buildImage(),
               ),
 
-              // 2. Text Branding & Right Vector Chevron (width: 169; top: 80px, bottom: 8px)
+              // 2. Text Branding & Right Vector Chevron (width: 169; bottom: 8px)
               Positioned(
-                top: 80.0,
                 left: 0.0,
                 right: 0.0,
                 bottom: 8.0,
@@ -181,49 +194,55 @@ class CategoryCardWidget extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Left side text column (width: 79; height: 28)
+                      // Leading text column
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Title: font-family: Inter; font-weight: 500; font-style: Medium; font-size: 12px; leading-trim: CAP_HEIGHT; line-height: 22px; letter-spacing: 0px;
+                            // Title
                             Text(
-                              title,
+                              effectiveTitle,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              textHeightBehavior: const TextHeightBehavior(
-                                applyHeightToFirstAscent: false,
-                                applyHeightToLastDescent: false,
-                              ),
-                              style: GoogleFonts.inter(
-                                fontSize: 12.0,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF172623),
-                                height: 22.0 / 12.0,
-                                letterSpacing: 0.0,
-                              ),
+                              style: tr != null
+                                  ? tr!.font(
+                                      fontSize: 12.0,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF172623),
+                                      height: 1.2,
+                                    )
+                                  : GoogleFonts.inter(
+                                      fontSize: 12.0,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF172623),
+                                      height: 1.2,
+                                      letterSpacing: 0.0,
+                                    ),
                             ),
 
                             const SizedBox(height: 2.0),
 
-                            // Subtitle: font-family: Inter; font-weight: 400; font-style: Regular; font-size: 10px; leading-trim: CAP_HEIGHT; line-height: 22px; letter-spacing: 0px; width: 99; height: 7; opacity: 1; angle: 0 deg;
+                            // Subtitle
                             Text(
-                              subtitle,
+                              effectiveSubtitle,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              textHeightBehavior: const TextHeightBehavior(
-                                applyHeightToFirstAscent: false,
-                                applyHeightToLastDescent: false,
-                              ),
-                              style: GoogleFonts.inter(
-                                fontSize: 10.0,
-                                fontWeight: FontWeight.w400,
-                                color: const Color(0xFF566663),
-                                height: 22.0 / 10.0,
-                                letterSpacing: 0.0,
-                              ),
+                              style: tr != null
+                                  ? tr!.font(
+                                      fontSize: 10.0,
+                                      fontWeight: FontWeight.w400,
+                                      color: const Color(0xFF566663),
+                                      height: 1.2,
+                                    )
+                                  : GoogleFonts.inter(
+                                      fontSize: 10.0,
+                                      fontWeight: FontWeight.w400,
+                                      color: const Color(0xFF566663),
+                                      height: 1.2,
+                                      letterSpacing: 0.0,
+                                    ),
                             ),
                           ],
                         ),
@@ -231,11 +250,14 @@ class CategoryCardWidget extends StatelessWidget {
 
                       const SizedBox(width: 6.0),
 
-                      // Vector on right side of >: width: 5; height: 10; border: 0.6px solid #566663
-                      const _VectorChevron(
-                        width: 5.0,
-                        height: 10.0,
-                        color: Color(0xFF566663),
+                      // Vector on right side of >: width: 5; height: 10; border: 0.6px solid #566663 (mirrored for RTL)
+                      Transform.scale(
+                        scaleX: (tr?.isArabic ?? false) ? -1.0 : 1.0,
+                        child: const _VectorChevron(
+                          width: 5.0,
+                          height: 10.0,
+                          color: Color(0xFF566663),
+                        ),
                       ),
                     ],
                   ),

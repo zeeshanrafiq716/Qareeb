@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/phone_verified_screen.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
@@ -41,7 +42,7 @@ class ProviderVerifyCodeButton extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           height: designHeight,
           child: ElevatedButton(
             onPressed: isLoading
@@ -87,7 +88,7 @@ class ProviderVerifyCodeButton extends StatelessWidget {
                     children: [
                       // content: Verify Code (Inter 500 Medium 14px line-height 22px #FFFFFF)
                       Text(
-                        'Verify Code',
+                        context.l10n.verifyCode,
                         style: ProviderTextStyles.continueButtonText,
                       ),
 
@@ -110,14 +111,19 @@ class _VerifyArrowWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: const Size(14.0, 12.0),
-      painter: _VerifyArrowPainter(),
+    return Transform.flip(
+      flipX: Directionality.of(context) == TextDirection.rtl,
+      child: const CustomPaint(
+        size: Size(14.0, 12.0),
+        painter: _VerifyArrowPainter(),
+      ),
     );
   }
 }
 
 class _VerifyArrowPainter extends CustomPainter {
+  const _VerifyArrowPainter();
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()

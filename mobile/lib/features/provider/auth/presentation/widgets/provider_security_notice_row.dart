@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -46,31 +47,30 @@ class ProviderSecurityNoticeRow extends StatelessWidget {
       opacity: 1.0, // opacity: 1
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
-        child: SizedBox(
-          width: designWidth,
-          height: designHeight,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // lock icon branding on left side: width: 12.8; height: 16; color: #566663;
-              const SizedBox(
-                width: lockWidth,
-                height: designHeight,
-                child: CustomPaint(
-                  painter: _LockIconPainter(),
-                ),
+        // Removed fixed-width SizedBox so Arabic text can expand without clipping
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // lock icon branding on left side: width: 12.8; height: 16; color: #566663;
+            SizedBox(
+              width: lockWidth,
+              height: designHeight,
+              child: const CustomPaint(
+                painter: _LockIconPainter(),
               ),
+            ),
 
-              const SizedBox(width: designGap), // gap: 12px
+            const SizedBox(width: designGap), // gap: 12px
 
-              // content: Your Number is safe with us. (Inter 400 Regular 12px #566663)
-              Text(
-                'Your Number is safe with us.',
+            // content: Your Number is safe with us. (Inter 400 Regular 12px #566663)
+            Flexible(
+              child: Text(
+                context.l10n.numberSafeWithUs,
                 style: ProviderTextStyles.securityNotice,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

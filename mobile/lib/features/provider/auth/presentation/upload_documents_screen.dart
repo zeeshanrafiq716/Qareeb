@@ -68,36 +68,29 @@ class UploadDocumentsScreen extends StatelessWidget {
                   child: Stack(
                     children: [
                       // 1. Header Layout
-                      //    width: 350; height: 36; top: 56px; left: 20px; gap: 16px;
+                      //    width: double.infinity; height: 36; top: 56px; left: 20px; right: 20px;
                       Positioned(
                         top: headerTop,
-                        left: ProviderUploadDocumentsHeader.designLeft, // 20.0px
+                        left: 20.0,
+                        right: 20.0,
                         child: const ProviderUploadDocumentsHeader(),
                       ),
 
-                      // 2. Body Content Slot (Scrollable full height)
+                      // 2. Body Content Slot (Scrolls only when necessary, equal 20px margins)
                       Positioned.fill(
-                        top: headerTop + ProviderUploadDocumentsHeader.designHeight,
+                        top: headerTop + ProviderUploadDocumentsHeader.designHeight + 24.0,
                         bottom: 0.0,
                         child: ScrollConfiguration(
                           behavior: const ProviderCardScrollBehavior(),
                           child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(
-                              parent: BouncingScrollPhysics(),
-                            ),
-                            padding: EdgeInsets.only(
-                              top: (152.0 -
-                                      (headerTop +
-                                          ProviderUploadDocumentsHeader.designHeight))
-                                  .clamp(16.0, 100.0), // exact 60px gap matching previous screen (first card at top: 152px)
+                            physics: const ClampingScrollPhysics(),
+                            padding: const EdgeInsets.only(
+                              left: 20.0,
+                              right: 20.0,
+                              top: 12.0,
                               bottom: 24.0,
                             ),
-                            child: Center(
-                              child: SizedBox(
-                                width: ProviderUploadDocumentsHeader.designWidth,
-                                child: body ?? const ProviderUploadDocumentsList(),
-                              ),
-                            ),
+                            child: body ?? const ProviderUploadDocumentsList(),
                           ),
                         ),
                       ),

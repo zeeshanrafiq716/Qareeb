@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Admin Approval Screen Heading Content Layout Widget
@@ -41,13 +42,13 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 ///   text-align: center;
 ///   background: #566663;
 class ProviderAdminApprovalHeading extends StatelessWidget {
-  final String title;
-  final String subtitle;
+  final String? title;
+  final String? subtitle;
 
   const ProviderAdminApprovalHeading({
     super.key,
-    this.title = 'Admin Approval pending',
-    this.subtitle = 'Your account is submitted our team \nis reviewing it.',
+    this.title,
+    this.subtitle,
   });
 
   static const double designWidth = 350.0;
@@ -70,7 +71,7 @@ class ProviderAdminApprovalHeading extends StatelessWidget {
               SizedBox(
                 width: designWidth,
                 child: Text(
-                  title,
+                  title ?? context.l10n.adminApprovalPendingTitle,
                   textAlign: TextAlign.center,
                   style: ProviderTextStyles.adminApprovalPendingTitle,
                 ),
@@ -83,7 +84,7 @@ class ProviderAdminApprovalHeading extends StatelessWidget {
               SizedBox(
                 width: designWidth,
                 child: Text(
-                  subtitle,
+                  subtitle ?? context.l10n.adminApprovalPendingSubtitle,
                   textAlign: TextAlign.center,
                   style: ProviderTextStyles.adminApprovalPendingSubtitle,
                 ),

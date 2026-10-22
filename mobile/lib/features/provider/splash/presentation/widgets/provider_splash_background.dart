@@ -71,3 +71,75 @@ class ProviderSplashBackgroundPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+/// Provider Splash Screen Branding Background Painter
+/// Implements exact Figma CSS specification:
+/// ```css
+/// background: linear-gradient(180.52deg, #8B53FE -66.75%, rgba(139, 83, 254, 0.37284) -0.59%, rgba(139, 83, 254, 0) 29.8%),
+/// linear-gradient(180deg, rgba(255, 255, 255, 0) 47.99%, rgba(255, 255, 255, 0.666786) 55.54%, #FFFFFF 65.82%);
+/// ```
+class ProviderSplashBrandingPainter extends CustomPainter {
+  final bool drawBase;
+  final bool drawTopPurple;
+  final bool drawBottomWhite;
+
+  const ProviderSplashBrandingPainter({
+    this.drawBase = true,
+    this.drawTopPurple = true,
+    this.drawBottomWhite = true,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+
+    // 1. Base White Canvas (#FFFFFF)
+    if (drawBase) {
+      final basePaint = Paint()..color = Colors.white;
+      canvas.drawRect(Rect.fromLTWH(0, 0, w, h), basePaint);
+    }
+
+    // 2. Top Purple Brand Gradient (180.52deg):
+    //    #8B53FE -66.75%, rgba(139, 83, 254, 0.37284) -0.59%, rgba(139, 83, 254, 0) 29.8%
+    if (drawTopPurple) {
+      final double topSpan = (0.298 - (-0.6675)) * h;
+      final topShader = const LinearGradient(
+        begin: Alignment(-0.009, -1.0),
+        end: Alignment(0.009, 1.0),
+        stops: [0.0, 0.68524, 1.0],
+        colors: [
+          Color(0xFF8B53FE),
+          Color.fromRGBO(139, 83, 254, 0.37284),
+          Color.fromRGBO(139, 83, 254, 0.0),
+        ],
+      ).createShader(Rect.fromLTWH(0, -0.6675 * h, w, topSpan));
+
+      final topPaint = Paint()..shader = topShader;
+      canvas.drawRect(Rect.fromLTWH(0, 0, w, h), topPaint);
+    }
+
+    // 3. Bottom White Fade Linear Gradient (180deg):
+    //    rgba(255, 255, 255, 0) 47.99%, rgba(255, 255, 255, 0.666786) 55.54%, #FFFFFF 65.82%
+    if (drawBottomWhite) {
+      final bottomShader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        stops: [0.0, 0.4799, 0.5554, 0.6582, 1.0],
+        colors: [
+          Color.fromRGBO(255, 255, 255, 0.0),
+          Color.fromRGBO(255, 255, 255, 0.0),
+          Color.fromRGBO(255, 255, 255, 0.666786),
+          Color(0xFFFFFFFF),
+          Color(0xFFFFFFFF),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, w, h));
+
+      final bottomPaint = Paint()..shader = bottomShader;
+      canvas.drawRect(Rect.fromLTWH(0, 0, w, h), bottomPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}

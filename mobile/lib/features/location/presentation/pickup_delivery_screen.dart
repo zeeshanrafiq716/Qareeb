@@ -1,10 +1,9 @@
 import 'dart:math' as math;
-import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/localization/app_locale.dart';
 import '../../../models/provider_model.dart';
 import '../../../providers/backend_provider.dart';
 import '../../../services/location_service.dart';
@@ -262,6 +261,8 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
 
   @override
   Widget build(BuildContext context) {
+    final tr = ref.watch(translationsProvider);
+
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -438,7 +439,9 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                 top: (beaconHeight - 30.0) / 2.0 + _mapPanOffset.dy,
                                 left: (beaconWidth - 30.0) / 2.0 + _mapPanOffset.dx,
                                 child: Tooltip(
-                                  message: 'Your Location: ${userLoc.cityName}',
+                                  message: tr.isArabic
+                                      ? 'موقعك: ${userLoc.cityName}'
+                                      : 'Your Location: ${userLoc.cityName}',
                                   child: GestureDetector(
                                     onTap: () {
                                       HapticFeedback.lightImpact();
@@ -446,9 +449,13 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                         SnackBar(
                                           content: Text(
                                             userLoc.isGpsDetected
-                                                ? 'GPS: ${userLoc.coordinatesDisplay} • ${userLoc.cityName}'
-                                                : 'Location: ${userLoc.cityName}',
-                                            style: GoogleFonts.inter(
+                                                ? (tr.isArabic
+                                                    ? 'تحديد تلقائي: ${userLoc.coordinatesDisplay} • ${userLoc.cityName}'
+                                                    : 'GPS: ${userLoc.coordinatesDisplay} • ${userLoc.cityName}')
+                                                : (tr.isArabic
+                                                    ? 'الموقع: ${userLoc.cityName}'
+                                                    : 'Location: ${userLoc.cityName}'),
+                                            style: tr.font(
                                               fontSize: 12.0,
                                               color: Colors.white,
                                               fontWeight: FontWeight.w500,
@@ -566,8 +573,8 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                         ),
                                         const SizedBox(width: 5.0),
                                         Text(
-                                          '6 Drivers nearby • Drag map to explore',
-                                          style: GoogleFonts.inter(
+                                          tr.driversNearbyHint(6),
+                                          style: tr.font(
                                             fontSize: 11.0,
                                             fontWeight: FontWeight.w500,
                                             color: const Color(0xFF1C2926),
@@ -656,11 +663,14 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                   ),
                                 ],
                               ),
-                              child: const Center(
-                                child: CustomPaint(
-                                  size: Size(6.0, 13.0),
-                                  painter: _BackChevronPainter(
-                                    color: Color(0xFF566663),
+                              child: Center(
+                                child: Transform.scale(
+                                  scaleX: tr.isArabic ? -1.0 : 1.0,
+                                  child: const CustomPaint(
+                                    size: Size(6.0, 13.0),
+                                    painter: _BackChevronPainter(
+                                      color: Color(0xFF566663),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -671,8 +681,8 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                             child: SizedBox(
                               width: 298.0,
                               child: Text(
-                                widget.serviceName,
-                                style: GoogleFonts.inter(
+                                tr.categoryName(widget.serviceName, widget.serviceName),
+                                style: tr.font(
                                   fontSize: 16.0,
                                   fontWeight: FontWeight.w500,
                                   color: const Color(0xFF1C2926),
@@ -841,59 +851,62 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
         ? 350.0
         : (containerWidth - 40.0).clamp(280.0, 350.0);
 
+    final tr = ref.watch(translationsProvider);
     final int count = liveProviders.isNotEmpty ? liveProviders.length : nearbyDrivers.length;
     final String locationSubtitle = (userLoc.cityName.isNotEmpty && userLoc.cityName != 'Detecting Location...')
-        ? 'Within 2 km radius • ${userLoc.cityName}'
-        : 'Within 2 km radius';
+        ? '${tr.withinRadius} • ${userLoc.cityName}'
+        : tr.withinRadius;
 
     return SizedBox(
       width: cardWidth,
-      height: 41.0,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Left side content
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$count Providers nearby',
-                textHeightBehavior: const TextHeightBehavior(
-                  applyHeightToFirstAscent: false,
-                  applyHeightToLastDescent: false,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  tr.providersNearbyCount(count),
+                  textHeightBehavior: const TextHeightBehavior(
+                    applyHeightToFirstAscent: false,
+                    applyHeightToLastDescent: false,
+                  ),
+                  style: tr.font(
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1C2926),
+                    height: 1.15,
+                    letterSpacing: 0.0,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                style: GoogleFonts.inter(
-                  fontSize: 16.0,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF1C2926),
-                  height: 1.15,
-                  letterSpacing: 0.0,
+                const SizedBox(height: 2.0),
+                Text(
+                  locationSubtitle,
+                  textHeightBehavior: const TextHeightBehavior(
+                    applyHeightToFirstAscent: false,
+                    applyHeightToLastDescent: false,
+                  ),
+                  style: tr.font(
+                    fontSize: 12.0,
+                    fontWeight: FontWeight.w400,
+                    color: const Color(0xFF566663),
+                    height: 1.15,
+                    letterSpacing: 0.0,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2.0),
-              Text(
-                locationSubtitle,
-                textHeightBehavior: const TextHeightBehavior(
-                  applyHeightToFirstAscent: false,
-                  applyHeightToLastDescent: false,
-                ),
-                style: GoogleFonts.inter(
-                  fontSize: 12.0,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF566663),
-                  height: 1.15,
-                  letterSpacing: 0.0,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+              ],
+            ),
           ),
+          const SizedBox(width: 8.0),
 
           // Right side View all button
           GestureDetector(
@@ -911,8 +924,15 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
             child: Container(
               height: 41.0,
               decoration: BoxDecoration(
-                color: const Color(0xFFF2F5F4),
+                color: const Color(0xFF8B53FE),
                 borderRadius: BorderRadius.circular(60.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x338B53FE),
+                    blurRadius: 6.0,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
@@ -921,24 +941,27 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    'View all',
+                    tr.viewAll,
                     textHeightBehavior: const TextHeightBehavior(
                       applyHeightToFirstAscent: false,
                       applyHeightToLastDescent: false,
                     ),
-                    style: GoogleFonts.inter(
+                    style: tr.font(
                       fontSize: 12.0,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF1C2926),
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
                       height: 1.15,
                     ),
                     maxLines: 1,
                   ),
                   const SizedBox(width: 8.0),
-                  const CustomPaint(
-                    size: Size(4.0, 8.0),
-                    painter: _ChevronRightVectorPainter(
-                      color: Color(0xFF1C2926),
+                  Transform.scale(
+                    scaleX: tr.isArabic ? -1.0 : 1.0,
+                    child: const CustomPaint(
+                      size: Size(4.0, 8.0),
+                      painter: _ChevronRightVectorPainter(
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ],
@@ -955,6 +978,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     double containerWidth,
     List<ProviderModel> liveProviders,
   ) {
+    final tr = ref.watch(translationsProvider);
     final selectedCar = nearbyDrivers.firstWhere(
       (c) => c.id == _selectedCarId,
       orElse: () => nearbyDrivers.first,
@@ -1001,8 +1025,8 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                       children: [
                         Flexible(
                           child: Text(
-                            driverName,
-                            style: GoogleFonts.inter(
+                            tr.formatProviderName(driverName),
+                            style: tr.font(
                               fontSize: 15.0,
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF1C2926),
@@ -1019,8 +1043,8 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                             borderRadius: BorderRadius.circular(4.0),
                           ),
                           child: Text(
-                            'ONLINE',
-                            style: GoogleFonts.inter(
+                            tr.online,
+                            style: tr.font(
                               fontSize: 9.0,
                               fontWeight: FontWeight.w700,
                               color: const Color(0xFF047857),
@@ -1037,16 +1061,17 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                           size: 11.0,
                           color: Color(0xFF8B53FE),
                         ),
-                        const SizedBox(width: 3.0),
-                        Text(
-                          '${selectedCar.initialDistanceKm} km away • ${selectedCar.vehicle}',
-                          style: GoogleFonts.inter(
-                            fontSize: 11.0,
-                            fontWeight: FontWeight.w400,
-                            color: const Color(0xFF566663),
+                        Expanded(
+                          child: Text(
+                            '${tr.kmAway(selectedCar.initialDistanceKm.toStringAsFixed(1))} • ${tr.formatVehicleName(selectedCar.vehicle)}',
+                            style: tr.font(
+                              fontSize: 11.0,
+                              fontWeight: FontWeight.w400,
+                              color: const Color(0xFF566663),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -1100,8 +1125,9 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                 ),
               ),
               child: Text(
-                'Confirm ${driverName.split(' ').first}',
-                style: GoogleFonts.inter(
+                tr.confirmDriver(tr.formatProviderName(driverName).split(' ').first),
+                style: tr.font(
+
                   fontSize: 14.0,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,

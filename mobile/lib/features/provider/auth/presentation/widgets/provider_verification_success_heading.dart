@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Verification Success Heading Content Layout Widget
@@ -47,14 +48,14 @@ class ProviderVerificationSuccessHeading extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // 1. Content: Verification Successful (Inter 600 Semi Bold 20px line-height 24px #1C2926)
               Text(
-                title ?? defaultTitle,
+                title ?? context.l10n.verificationSuccessful,
                 style: ProviderTextStyles.verificationSuccessfulTitle,
                 textAlign: TextAlign.center,
               ),
@@ -62,10 +63,9 @@ class ProviderVerificationSuccessHeading extends StatelessWidget {
               // gap: 12px;
               const SizedBox(height: designGap),
 
-              // 2. Content: Your phone is verified. Complete your profile \nto receive service requests.
-              // (Inter 400 Regular 12px line-height 100% #566663)
+              // 2. Content: Your phone is verified...
               Text(
-                subtitle ?? defaultSubtitle,
+                subtitle ?? context.l10n.verificationSuccessfulSubtitle,
                 style: ProviderTextStyles.verificationSuccessfulSubtitle,
                 textAlign: TextAlign.center,
               ),

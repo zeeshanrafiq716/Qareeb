@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/otp_verification_screen.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
@@ -90,13 +91,14 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: ProviderPhoneInputWidget.designWidth,
+          width: double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1st row layout: width: 350; height: 52.22; gap: 10px;
+              // 1st row layout: width: double.infinity; height: 52.22; gap: 10px;
               SizedBox(
-                width: ProviderPhoneInputWidget.designWidth,
+                width: double.infinity,
                 height: ProviderPhoneInputWidget.row1Height,
                 child: Row(
                   children: [
@@ -106,7 +108,7 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
                     // gap: 10px;
                     const SizedBox(width: ProviderPhoneInputWidget.cardGap),
 
-                    // row 1 2nd card layout: width: 214; height: 52; border-radius: 12px; background: #F2F5F4;
+                    // row 1 2nd card layout: Expanded; height: 52; border-radius: 12px; background: #F2F5F4;
                     Expanded(
                       child: _buildPhoneNumberInputCard(),
                     ),
@@ -117,7 +119,7 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
               // gap: 16px;
               const SizedBox(height: ProviderPhoneInputWidget.rowGap),
 
-              // button layout: width: 350; height: 52; border-radius: 12px; background: #1D8070;
+              // button layout: width: double.infinity; height: 52; border-radius: 12px; background: #8B53FE;
               _buildContinueButton(),
             ],
           ),
@@ -211,7 +213,7 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
   /// arrow icon branding: width: 14; height: 12; border: 1.5px solid #FFFFFF
   Widget _buildContinueButton() {
     return SizedBox(
-      width: ProviderPhoneInputWidget.designWidth,
+      width: double.infinity,
       height: ProviderPhoneInputWidget.buttonHeight,
       child: ElevatedButton(
         onPressed: widget.onContinue ??
@@ -246,7 +248,7 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
           children: [
             // content: Continue (Inter 500 14px #FFFFFF)
             Text(
-              'Continue',
+              context.l10n.continueButtonText,
               style: ProviderTextStyles.continueButtonText,
             ),
 
@@ -284,6 +286,8 @@ class _SaudiFlagWidget extends StatelessWidget {
 }
 
 class _SaudiFlagPainter extends CustomPainter {
+  const _SaudiFlagPainter();
+
   @override
   void paint(Canvas canvas, Size size) {
     final whitePaint = Paint()
@@ -331,14 +335,16 @@ class _DropdownChevronWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: const Size(11.0, 5.0),
+    return const CustomPaint(
+      size: Size(11.0, 5.0),
       painter: _DropdownChevronPainter(),
     );
   }
 }
 
 class _DropdownChevronPainter extends CustomPainter {
+  const _DropdownChevronPainter();
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
@@ -367,14 +373,19 @@ class _ContinueArrowWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: const Size(14.0, 12.0),
-      painter: _ContinueArrowPainter(),
+    return Transform.flip(
+      flipX: Directionality.of(context) == TextDirection.rtl,
+      child: CustomPaint(
+        size: const Size(14.0, 12.0),
+        painter: _ContinueArrowPainter(),
+      ),
     );
   }
 }
 
 class _ContinueArrowPainter extends CustomPainter {
+  const _ContinueArrowPainter();
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()

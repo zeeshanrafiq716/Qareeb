@@ -21,7 +21,7 @@ class ProviderCardContentLayout extends StatelessWidget {
 
   static const double designWidth = 350.0;
   static const double designHeight = 435.22216796875;
-  static const double designGap = 40.0;
+  static const double designGap = 20.0;
   static const double designTop = 24.0;
 
   @override
@@ -31,18 +31,18 @@ class ProviderCardContentLayout extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Heading Content Layout (width: 350, height: 51, gap: 12)
+              // 1. Heading Content Layout
               const ProviderCardHeading(),
 
-              // Gap: 40px between heading and upcoming form layout
+              // Gap: 20px between heading and form layout
               const SizedBox(height: designGap),
 
-              // 2. Next Widget Layout: width: 350; height: 280.22; gap: 20px;
+              // 2. Next Widget Layout: formContent
               formContent ?? const ProviderAuthFormLayout(),
             ],
           ),

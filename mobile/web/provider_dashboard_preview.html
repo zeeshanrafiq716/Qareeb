@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Provider Dashboard Screen - Qareeb</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #141C1A;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #e0e0e0;
+    }
+    .header-info {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .header-info h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #8B53FE;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+    .header-info p {
+      font-size: 13px;
+      color: #8b9c97;
+    }
+
+    /* Screen layout: width: 392; height: 844; */
+    .screen-container {
+      width: 392px;
+      height: 844px;
+      border-radius: 40px;
+      border: 2px solid rgba(139, 83, 254, 0.25);
+      background: #FFFFFF;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(139, 83, 254, 0.15);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Purple Glow Gradient */
+    .top-glow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 236px;
+      background: linear-gradient(180deg, rgba(139, 83, 254, 0.37) 0%, rgba(139, 83, 254, 0) 100%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Header: top: 56px, left: 20px, right: 20px, height: 46px */
+    .dashboard-header {
+      position: absolute;
+      top: 56px;
+      left: 20px;
+      right: 20px;
+      height: 46px;
+      display: flex;
+      align-items: center;
+      z-index: 10;
+    }
+    .back-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      border: 1px solid #F0EFF2;
+    }
+    .back-btn svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: #1C2926;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .header-text {
+      margin-left: 12px;
+      flex: 1;
+      min-width: 0;
+    }
+    .header-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1C2926;
+      line-height: 22px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .header-subtitle {
+      font-size: 11px;
+      font-weight: 400;
+      color: #566663;
+      line-height: 16px;
+      white-space: nowrap;
+    }
+    .lang-toggle {
+      width: 58px;
+      height: 28px;
+      background: #F3F2F5;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      padding: 2px;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+    .lang-opt {
+      flex: 1;
+      height: 24px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10.5px;
+      font-weight: 500;
+      color: #616166;
+      transition: all 0.2s ease;
+    }
+    .lang-opt.active {
+      background: #8B53FE;
+      color: #FFFFFF;
+      font-weight: 600;
+    }
+
+    /* Scrollable Body: top: 116px, left: 20px, width: 350px */
+    .dashboard-body {
+      position: absolute;
+      top: 116px;
+      left: 20px;
+      right: 20px;
+      bottom: 0;
+      overflow-y: auto;
+      padding-bottom: 32px;
+      z-index: 5;
+      scrollbar-width: none;
+    }
+    .dashboard-body::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Profile Views Card: width: 350px; height: 377px; */
+    .profile-views-card {
+      width: 350px;
+      height: 377px;
+      border-radius: 16px;
+      background: #FFFFFF;
+      box-shadow: 0px 1px 12px rgba(0, 0, 0, 0.10);
+      position: relative;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    /* Top Content Layout: width: 318px; height: 124px; */
+    .card-top-content {
+      width: 318px;
+      height: 124px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .eye-icon-box {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #F3F2F5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .eye-svg {
+      width: 20px;
+      height: 16px;
+    }
+    .headings-box h3 {
+      font-size: 14px;
+      font-weight: 500;
+      color: #252527;
+      line-height: 22px;
+    }
+    .headings-box p {
+      font-size: 12px;
+      font-weight: 400;
+      color: #616166;
+      line-height: 100%;
+      margin-top: 3px;
+    }
+    .stat-row-3 {
+      width: 173px;
+      height: 23px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .stat-val-24 {
+      font-size: 32px;
+      font-weight: 600;
+      color: #252527;
+      line-height: 22px;
+    }
+    .pct-badge {
+      height: 18px;
+      padding: 2px 6px;
+      border-radius: 60px;
+      background: #F3F2F5;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .pct-arrow {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #8B53FE;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pct-arrow svg {
+      width: 6px;
+      height: 6px;
+      fill: none;
+      stroke: #FFFFFF;
+      stroke-width: 2;
+    }
+    .pct-text {
+      font-size: 10px;
+      font-weight: 500;
+      color: #8B53FE;
+      line-height: 22px;
+    }
+    .vs-text {
+      font-size: 10px;
+      font-weight: 400;
+      color: #616166;
+      line-height: 100%;
+    }
+
+    /* Tabs Row: width: 318px; height: 27px; top: 154px; left: 16px; gap: 6px; */
+    .tabs-row {
+      position: absolute;
+      top: 154px;
+      left: 16px;
+      width: 318px;
+      height: 27px;
+      display: flex;
+      gap: 6px;
+    }
+    .tab-pill {
+      width: 58.8px;
+      height: 27px;
+      border-radius: 20px;
+      background: #F3F2F5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 400;
+      color: #616166;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+    .tab-pill.active {
+      background: #8B53FE;
+      color: #FFFFFF;
+      font-weight: 500;
+    }
+
+    /* Graph: width: 318px; height: 152px; top: 205px; left: 16px; */
+    .graph-container {
+      position: absolute;
+      top: 205px;
+      left: 16px;
+      width: 318px;
+      height: 152px;
+      display: flex;
+      gap: 6px;
+      align-items: flex-end;
+    }
+    .bar-col {
+      width: 40.29px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+    }
+    .bar-col:nth-child(6) {
+      width: 41px;
+    }
+    .bar-val {
+      font-size: 11px;
+      font-weight: 400;
+      color: #252527;
+      margin-bottom: 5px;
+    }
+    .bar-rect {
+      width: 100%;
+      border-radius: 6px;
+      background: #F3F2F5;
+      transition: all 0.2s ease;
+    }
+    .bar-col.active .bar-rect {
+      background: #8B53FE;
+    }
+    .bar-col.active .bar-day {
+      color: #8B53FE;
+      font-weight: 500;
+    }
+    .bar-day {
+      font-size: 10px;
+      font-weight: 400;
+      color: #616166;
+      margin-top: 7px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header-info">
+    <h1>Qareeb - Provider Dashboard</h1>
+    <p>Pixel-perfect implementation of Figma redlines & widgets</p>
+  </div>
+
+  <div class="screen-container">
+    <div class="top-glow"></div>
+
+    <!-- 1. Header (top: 56px, left: 20px, height: 46px) -->
+    <div class="dashboard-header">
+      <div class="back-btn" title="Back">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      </div>
+      <div class="header-text">
+        <div class="header-title" id="txt-title">Dashboard</div>
+        <div class="header-subtitle" id="txt-subtitle">See how customers find and contact you.</div>
+      </div>
+      <div class="lang-toggle" onclick="toggleLang()">
+        <div class="lang-opt active" id="btn-en">EN</div>
+        <div class="lang-opt" id="btn-ar">عربي</div>
+      </div>
+    </div>
+
+    <!-- 2. Scrollable Body (top: 116px, left: 20px, width: 350px) -->
+    <div class="dashboard-body">
+      <!-- 350x377 Profile Views Card -->
+      <div class="profile-views-card">
+        <!-- Content Layout: 173x122 -->
+        <div class="card-top-content">
+          <div class="eye-icon-box">
+            <svg class="eye-svg" viewBox="0 0 20 16">
+              <path d="M0,8 Q10,0 20,8 Q10,16 0,8 Z" fill="#8B53FE" />
+              <circle cx="10" cy="8" r="3.2" fill="#FFFFFF" />
+            </svg>
+          </div>
+          <div class="headings-box">
+            <h3 id="txt-heading">Profile Views</h3>
+            <p id="txt-subheading">Customers viewed your profile</p>
+          </div>
+          <div class="stat-row-3">
+            <div class="stat-val-24" id="txt-count">24</div>
+            <div class="pct-badge">
+              <div class="pct-arrow">
+                <svg viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+              </div>
+              <span class="pct-text" id="txt-trend">+12%</span>
+            </div>
+            <span class="vs-text" id="txt-vs">vs yesterday</span>
+          </div>
+        </div>
+
+        <!-- Next Row Layout: Tabs (318x27, top: 154px, left: 16px) -->
+        <div class="tabs-row">
+          <div class="tab-pill active" onclick="selectTab(0, this)">Today</div>
+          <div class="tab-pill" onclick="selectTab(1, this)">Yesterday</div>
+          <div class="tab-pill" onclick="selectTab(2, this)">10days</div>
+          <div class="tab-pill" onclick="selectTab(3, this)">15 days</div>
+          <div class="tab-pill" onclick="selectTab(4, this)">20 days</div>
+        </div>
+
+        <!-- Graph Layout: 318x152, top: 205px, left: 16px -->
+        <div class="graph-container">
+          <!-- Mon: h: 20, v: 1 -->
+          <div class="bar-col" onclick="selectBar(0, this)">
+            <span class="bar-val">1</span>
+            <div class="bar-rect" style="height: 20px;"></div>
+            <span class="bar-day" data-day-en="Mon" data-day-ar="إثنين">Mon</span>
+          </div>
+          <!-- Tue: h: 70, v: 3 -->
+          <div class="bar-col" onclick="selectBar(1, this)">
+            <span class="bar-val">3</span>
+            <div class="bar-rect" style="height: 70px;"></div>
+            <span class="bar-day" data-day-en="Tue" data-day-ar="ثلاثاء">Tue</span>
+          </div>
+          <!-- Wed: h: 90, v: 4 -->
+          <div class="bar-col" onclick="selectBar(2, this)">
+            <span class="bar-val">4</span>
+            <div class="bar-rect" style="height: 90px;"></div>
+            <span class="bar-day" data-day-en="Wed" data-day-ar="أربعاء">Wed</span>
+          </div>
+          <!-- Thu: h: 116, v: 7 -->
+          <div class="bar-col" onclick="selectBar(3, this)">
+            <span class="bar-val">7</span>
+            <div class="bar-rect" style="height: 116px;"></div>
+            <span class="bar-day" data-day-en="Thu" data-day-ar="خميس">Thu</span>
+          </div>
+          <!-- Fri: h: 90, v: 4 (Active #8B53FE) -->
+          <div class="bar-col active" onclick="selectBar(4, this)">
+            <span class="bar-val">4</span>
+            <div class="bar-rect" style="height: 90px;"></div>
+            <span class="bar-day" data-day-en="Fri" data-day-ar="جمعة">Fri</span>
+          </div>
+          <!-- Sat: h: 48, v: 2 -->
+          <div class="bar-col" onclick="selectBar(5, this)">
+            <span class="bar-val">2</span>
+            <div class="bar-rect" style="height: 48px;"></div>
+            <span class="bar-day" data-day-en="Sat" data-day-ar="سبت">Sat</span>
+          </div>
+          <!-- Sun: h: 69, v: 3 -->
+          <div class="bar-col" onclick="selectBar(6, this)">
+            <span class="bar-val">3</span>
+            <div class="bar-rect" style="height: 69px;"></div>
+            <span class="bar-day" data-day-en="Sun" data-day-ar="أحد">Sun</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isArabic = false;
+    const tabCounts = [24, 21, 184, 268, 345];
+    const tabTrends = ['+12%', '+5%', '+18%', '+22%', '+15%'];
+
+    function selectTab(index, el) {
+      document.querySelectorAll('.tab-pill').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('txt-count').innerText = tabCounts[index];
+      document.getElementById('txt-trend').innerText = tabTrends[index];
+    }
+
+    function selectBar(index, el) {
+      document.querySelectorAll('.bar-col').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function toggleLang() {
+      isArabic = !isArabic;
+      document.getElementById('btn-en').classList.toggle('active', !isArabic);
+      document.getElementById('btn-ar').classList.toggle('active', isArabic);
+
+      const title = document.getElementById('txt-title');
+      const subtitle = document.getElementById('txt-subtitle');
+      const heading = document.getElementById('txt-heading');
+      const subheading = document.getElementById('txt-subheading');
+      const vs = document.getElementById('txt-vs');
+
+      if (isArabic) {
+        title.innerText = 'لوحة التحكم';
+        subtitle.innerText = 'تعرف على كيفية عثور العملاء عليك والتواصل معك.';
+        heading.innerText = 'مشاهدات الملف الشخصي';
+        subheading.innerText = 'العملاء الذين شاهدوا ملفك الشخصي';
+        vs.innerText = 'مقارنة بالأمس';
+      } else {
+        title.innerText = 'Dashboard';
+        subtitle.innerText = 'See how customers find and contact you.';
+        heading.innerText = 'Profile Views';
+        subheading.innerText = 'Customers viewed your profile';
+        vs.innerText = 'vs yesterday';
+      }
+
+      document.querySelectorAll('.bar-day').forEach(el => {
+        el.innerText = isArabic ? el.getAttribute('data-day-ar') : el.getAttribute('data-day-en');
+      });
+    }
+  </script>
+</body>
+</html>

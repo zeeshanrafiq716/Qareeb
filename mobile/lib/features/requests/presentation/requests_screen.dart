@@ -3,12 +3,15 @@ import 'dart:ui';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/localization/app_locale.dart';
 import '../../home/presentation/widgets/bottom_nav_bar_widget.dart';
+import '../../location/presentation/widgets/top_down_car_widget.dart';
 
 /// Requests Tab screen with branding header layout.
 /// Hosts the request management view and floating bottom navigation bar.
-class RequestsScreen extends StatefulWidget {
+class RequestsScreen extends ConsumerStatefulWidget {
   final VoidCallback? onNotificationTap;
   final ValueChanged<int>? onTabSelected;
   final bool showBottomNav;
@@ -21,10 +24,10 @@ class RequestsScreen extends StatefulWidget {
   });
 
   @override
-  State<RequestsScreen> createState() => _RequestsScreenState();
+  ConsumerState<RequestsScreen> createState() => _RequestsScreenState();
 }
 
-class _RequestsScreenState extends State<RequestsScreen> {
+class _RequestsScreenState extends ConsumerState<RequestsScreen> {
   ScrollController? _scrollControllerInstance;
   ScrollController get _scrollController =>
       _scrollControllerInstance ??= ScrollController();
@@ -35,6 +38,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
   int? _selectedFilterIndex = 0; // 0: Active, 1: History
   int get _activeFilterIndex => _selectedFilterIndex ?? 0;
+
+  late AppTranslations _tr;
+  AppTranslations get tr => _tr;
 
   @override
   void initState() {
@@ -52,6 +58,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _tr = ref.watch(translationsProvider);
+    final tr = _tr;
+
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -155,13 +164,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                           // width: 231; height: 12; font-family: Inter; font-weight: 500; font-size: 16px;
                                           // line-height: 22px; color: #1C2926;
                                           Text(
-                                            'Requests',
-                                            textHeightBehavior:
-                                                const TextHeightBehavior(
-                                              applyHeightToFirstAscent: false,
-                                              applyHeightToLastDescent: false,
-                                            ),
-                                            style: GoogleFonts.inter(
+                                            tr.requestsTitle,
+                                            style: tr.font(
                                               fontSize: 16.0,
                                               fontWeight: FontWeight.w500,
                                               color: const Color(0xFF1C2926),
@@ -177,13 +181,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                           // width: 231; height: 9; font-family: Inter; font-weight: 400; font-size: 12px;
                                           // line-height: 22px; color: #566663;
                                           Text(
-                                            'Track and manage your service requests',
-                                            textHeightBehavior:
-                                                const TextHeightBehavior(
-                                              applyHeightToFirstAscent: false,
-                                              applyHeightToLastDescent: false,
-                                            ),
-                                            style: GoogleFonts.inter(
+                                            tr.requestsSubtitle,
+                                            style: tr.font(
                                               fontSize: 12.0,
                                               fontWeight: FontWeight.w400,
                                               color: const Color(0xFF566663),
@@ -299,15 +298,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                   children: [
                                                     // content: Active (width: 43, height: 10, Inter Medium 14px, #FFFFFF)
                                                     Text(
-                                                      'Active',
-                                                      textHeightBehavior:
-                                                          const TextHeightBehavior(
-                                                        applyHeightToFirstAscent:
-                                                            false,
-                                                        applyHeightToLastDescent:
-                                                            false,
-                                                      ),
-                                                      style: GoogleFonts.inter(
+                                                      tr.activeFilter,
+                                                      style: tr.font(
                                                         fontSize: 14.0,
                                                         fontWeight:
                                                             FontWeight.w500,
@@ -342,15 +334,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                       child: Center(
                                                         child: Text(
                                                           '1',
-                                                          textHeightBehavior:
-                                                              const TextHeightBehavior(
-                                                            applyHeightToFirstAscent:
-                                                                false,
-                                                            applyHeightToLastDescent:
-                                                                false,
-                                                          ),
-                                                          style:
-                                                              GoogleFonts.inter(
+                                                          style: tr.font(
                                                             fontSize: 12.0,
                                                             fontWeight:
                                                                 FontWeight.w400,
@@ -428,15 +412,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                     // content layout: width: 75, height: 20, gap: 6px
                                                     // history layout: width: 49, height: 10, content: History (Inter Medium 14px, #1C2926)
                                                     Text(
-                                                      'History',
-                                                      textHeightBehavior:
-                                                          const TextHeightBehavior(
-                                                        applyHeightToFirstAscent:
-                                                            false,
-                                                        applyHeightToLastDescent:
-                                                            false,
-                                                      ),
-                                                      style: GoogleFonts.inter(
+                                                      tr.historyFilter,
+                                                      style: tr.font(
                                                         fontSize: 14.0,
                                                         fontWeight:
                                                             FontWeight.w500,
@@ -471,15 +448,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                       child: Center(
                                                         child: Text(
                                                           '12',
-                                                          textHeightBehavior:
-                                                              const TextHeightBehavior(
-                                                            applyHeightToFirstAscent:
-                                                                false,
-                                                            applyHeightToLastDescent:
-                                                                false,
-                                                          ),
-                                                          style:
-                                                              GoogleFonts.inter(
+                                                          style: tr.font(
                                                             fontSize: 11.5,
                                                             fontWeight:
                                                                 FontWeight.w400,
@@ -576,17 +545,10 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                     CrossAxisAlignment.start,
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  // content: Your provider is on the way (Inter Medium 14px, #1C2926)
+                                                  // content: Your provider is on the way
                                                   Text(
-                                                    'Your provider is on the way',
-                                                    textHeightBehavior:
-                                                        const TextHeightBehavior(
-                                                      applyHeightToFirstAscent:
-                                                          false,
-                                                      applyHeightToLastDescent:
-                                                          false,
-                                                    ),
-                                                    style: GoogleFonts.inter(
+                                                    tr.providerOnTheWay,
+                                                    style: tr.font(
                                                       fontSize: 14.0,
                                                       fontWeight:
                                                           FontWeight.w500,
@@ -601,17 +563,10 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                   ),
                                                   const SizedBox(height: 2.0),
 
-                                                  // content: Almost there! Your provider will arrive soon. (Inter Regular 12px, #566663)
+                                                  // content: Almost there! Your provider will arrive soon.
                                                   Text(
-                                                    'Almost there! Your provider will arrive soon.',
-                                                    textHeightBehavior:
-                                                        const TextHeightBehavior(
-                                                      applyHeightToFirstAscent:
-                                                          false,
-                                                      applyHeightToLastDescent:
-                                                          false,
-                                                    ),
-                                                    style: GoogleFonts.inter(
+                                                    tr.providerArrivingSoon,
+                                                    style: tr.font(
                                                       fontSize: 12.0,
                                                       fontWeight:
                                                           FontWeight.w400,
@@ -706,17 +661,12 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                   Positioned(
                                                     top: 40.0,
                                                     left: 79.0 + offsetX,
-                                                    width: 18.0,
-                                                    height: 28.0,
-                                                    child: Transform.rotate(
-                                                      angle: -120.0 * math.pi / 180.0,
-                                                      alignment: Alignment.center,
-                                                      child: const CustomPaint(
-                                                        size: Size(18.0, 28.0),
-                                                        painter: _CarGraphicPainter(
-                                                          roofColor: Color(0xFFA67AFE),
-                                                        ),
-                                                      ),
+                                                    child: const TopDownCarWidget(
+                                                      width: 16.5,
+                                                      height: 28.5,
+                                                      angle: -120.0,
+                                                      showBadge: false,
+                                                      bodyColor: Color(0xFFA67AFE),
                                                     ),
                                                   ),
 
@@ -759,16 +709,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                           alignment:
                                                               Alignment.center,
                                                           child: Text(
-                                                            '8 min away',
-                                                            textHeightBehavior:
-                                                                const TextHeightBehavior(
-                                                              applyHeightToFirstAscent:
-                                                                  false,
-                                                              applyHeightToLastDescent:
-                                                                  false,
-                                                            ),
-                                                            style: GoogleFonts
-                                                                .inter(
+                                                            tr.eightMinAway,
+                                                            style: tr.font(
                                                               fontSize: 8.0,
                                                               fontWeight:
                                                                   FontWeight
@@ -870,16 +812,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                           alignment:
                                                               Alignment.center,
                                                           child: Text(
-                                                            'You',
-                                                            textHeightBehavior:
-                                                                const TextHeightBehavior(
-                                                              applyHeightToFirstAscent:
-                                                                  false,
-                                                              applyHeightToLastDescent:
-                                                                  false,
-                                                            ),
-                                                            style: GoogleFonts
-                                                                .inter(
+                                                            tr.youBadge,
+                                                            style: tr.font(
                                                               fontSize: 8.0,
                                                               fontWeight:
                                                                   FontWeight
@@ -1012,17 +946,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                         MainAxisSize.min,
                                                     children: [
                                                       // 1st row: content: Ahmad Transport
-                                                      // width: 100; height: 9; font-family: Inter; font-weight: 500; font-size: 12px; color: #1C2926;
                                                       Text(
-                                                        'Ahmad Transport',
-                                                        textHeightBehavior:
-                                                            const TextHeightBehavior(
-                                                          applyHeightToFirstAscent:
-                                                              false,
-                                                          applyHeightToLastDescent:
-                                                              false,
-                                                        ),
-                                                        style: GoogleFonts.inter(
+                                                        tr.formatProviderName('Ahmad Transport'),
+                                                        style: tr.font(
                                                           fontSize: 12.0,
                                                           fontWeight:
                                                               FontWeight.w500,
@@ -1060,8 +986,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                               children: [
                                                                 TextSpan(
                                                                   text: '4.9 ',
-                                                                  style: GoogleFonts
-                                                                      .inter(
+                                                                  style: tr.font(
                                                                     fontSize:
                                                                         10.0,
                                                                     fontWeight:
@@ -1077,9 +1002,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                                 ),
                                                                 TextSpan(
                                                                   text:
-                                                                      '(120 trips)',
-                                                                  style: GoogleFonts
-                                                                      .inter(
+                                                                      tr.isArabic ? '(120 Ø±Ø­Ù„Ø©)' : '(120 trips)',
+                                                                  style: tr.font(
                                                                     fontSize:
                                                                         10.0,
                                                                     fontWeight:
@@ -1095,13 +1019,6 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                                 ),
                                                               ],
                                                             ),
-                                                            textHeightBehavior:
-                                                                const TextHeightBehavior(
-                                                              applyHeightToFirstAscent:
-                                                                  false,
-                                                              applyHeightToLastDescent:
-                                                                  false,
-                                                            ),
                                                           ),
                                                         ],
                                                       ),
@@ -1110,15 +1027,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
                                                       // Pickup & Delivery (matches screenshot)
                                                       Text(
-                                                        'Pickup & Delivery',
-                                                        textHeightBehavior:
-                                                            const TextHeightBehavior(
-                                                          applyHeightToFirstAscent:
-                                                              false,
-                                                          applyHeightToLastDescent:
-                                                              false,
-                                                        ),
-                                                        style: GoogleFonts.inter(
+                                                        tr.pickupDelivery,
+                                                        style: tr.font(
                                                           fontSize: 10.0,
                                                           fontWeight:
                                                               FontWeight.w400,
@@ -1154,16 +1064,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                           const SizedBox(
                                                               width: 4.0),
                                                           Text(
-                                                            'Toyota Hilux',
-                                                            textHeightBehavior:
-                                                                const TextHeightBehavior(
-                                                              applyHeightToFirstAscent:
-                                                                  false,
-                                                              applyHeightToLastDescent:
-                                                                  false,
-                                                            ),
-                                                            style: GoogleFonts
-                                                                .inter(
+                                                            tr.formatVehicleName('Toyota Hilux'),
+                                                            style: tr.font(
                                                               fontSize: 10.0,
                                                               fontWeight:
                                                                   FontWeight
@@ -1213,8 +1115,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                             child: Text(
                                                               '#',
                                                               style:
-                                                                  GoogleFonts
-                                                                      .inter(
+                                                                  tr.font(
                                                                 fontSize: 7.0,
                                                                 fontWeight:
                                                                     FontWeight
@@ -1229,15 +1130,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                               width: 4.0),
                                                           Text(
                                                             'ABC-123',
-                                                            textHeightBehavior:
-                                                                const TextHeightBehavior(
-                                                              applyHeightToFirstAscent:
-                                                                  false,
-                                                              applyHeightToLastDescent:
-                                                                  false,
-                                                            ),
-                                                            style: GoogleFonts
-                                                                .inter(
+                                                            style: tr.font(
                                                               fontSize: 10.0,
                                                               fontWeight:
                                                                   FontWeight
@@ -1257,10 +1150,13 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                               ),
 
                                               // right side of card icon >: width: 7; height: ~15; border: 1px solid #566663
-                                              const Icon(
-                                                Icons.chevron_right_rounded,
-                                                size: 20.0,
-                                                color: Color(0xFF566663),
+                                              Transform.scale(
+                                                scaleX: tr.isArabic ? -1.0 : 1.0,
+                                                child: const Icon(
+                                                  Icons.chevron_right_rounded,
+                                                  size: 20.0,
+                                                  color: Color(0xFF566663),
+                                                ),
                                               ),
                                             ],
                                           ),
@@ -1311,7 +1207,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                               children: [
                                                 Expanded(
                                                   child: _buildStepperItem(
-                                                    title: 'Request Sent',
+                                                    title: tr.requestSent,
                                                     time: '9:20 AM',
                                                     state: _RequestStepState
                                                         .completed,
@@ -1319,7 +1215,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                 ),
                                                 Expanded(
                                                   child: _buildStepperItem(
-                                                    title: 'Accepted',
+                                                    title: tr.accepted,
                                                     time: '9:22 AM',
                                                     state: _RequestStepState
                                                         .completed,
@@ -1327,7 +1223,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                 ),
                                                 Expanded(
                                                   child: _buildStepperItem(
-                                                    title: 'On the way',
+                                                    title: tr.onTheWay,
                                                     time: '9:28 AM',
                                                     state: _RequestStepState
                                                         .active,
@@ -1335,7 +1231,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                 ),
                                                 Expanded(
                                                   child: _buildStepperItem(
-                                                    title: 'Arrived',
+                                                    title: tr.arrived,
                                                     time: null,
                                                     state: _RequestStepState
                                                         .pending,
@@ -1343,7 +1239,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                 ),
                                                 Expanded(
                                                   child: _buildStepperItem(
-                                                    title: 'Completed',
+                                                    title: tr.completed,
                                                     time: null,
                                                     state: _RequestStepState
                                                         .pending,
@@ -1418,19 +1314,12 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                       // content: 1.8 km
                                                       FittedBox(
                                                         fit: BoxFit.scaleDown,
-                                                        alignment: Alignment
-                                                            .centerLeft,
+                                                        alignment: AlignmentDirectional
+                                                            .centerStart,
                                                         child: Text(
-                                                          '1.8 km',
-                                                          textHeightBehavior:
-                                                              const TextHeightBehavior(
-                                                            applyHeightToFirstAscent:
-                                                                false,
-                                                            applyHeightToLastDescent:
-                                                                false,
-                                                          ),
+                                                          tr.onePointEightKm,
                                                           style:
-                                                              GoogleFonts.inter(
+                                                              tr.font(
                                                             fontSize: 14.0,
                                                             fontWeight:
                                                                 FontWeight.w500,
@@ -1447,19 +1336,12 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                       // content: Distance Away
                                                       FittedBox(
                                                         fit: BoxFit.scaleDown,
-                                                        alignment: Alignment
-                                                            .centerLeft,
+                                                        alignment: AlignmentDirectional
+                                                            .centerStart,
                                                         child: Text(
-                                                          'Distance Away',
-                                                          textHeightBehavior:
-                                                              const TextHeightBehavior(
-                                                            applyHeightToFirstAscent:
-                                                                false,
-                                                            applyHeightToLastDescent:
-                                                                false,
-                                                          ),
+                                                          tr.distanceAway,
                                                           style:
-                                                              GoogleFonts.inter(
+                                                              tr.font(
                                                             fontSize: 10.0,
                                                             fontWeight:
                                                                 FontWeight.w400,
@@ -1531,19 +1413,12 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                       // content: 8 min
                                                       FittedBox(
                                                         fit: BoxFit.scaleDown,
-                                                        alignment: Alignment
-                                                            .centerLeft,
+                                                        alignment: AlignmentDirectional
+                                                            .centerStart,
                                                         child: Text(
-                                                          '8 min',
-                                                          textHeightBehavior:
-                                                              const TextHeightBehavior(
-                                                            applyHeightToFirstAscent:
-                                                                false,
-                                                            applyHeightToLastDescent:
-                                                                false,
-                                                          ),
+                                                          tr.isArabic ? '8 Ø¯' : '8 min',
                                                           style:
-                                                              GoogleFonts.inter(
+                                                              tr.font(
                                                             fontSize: 14.0,
                                                             fontWeight:
                                                                 FontWeight.w500,
@@ -1560,19 +1435,12 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                       // content: Estimated time
                                                       FittedBox(
                                                         fit: BoxFit.scaleDown,
-                                                        alignment: Alignment
-                                                            .centerLeft,
+                                                        alignment: AlignmentDirectional
+                                                            .centerStart,
                                                         child: Text(
-                                                          'Estimated time',
-                                                          textHeightBehavior:
-                                                              const TextHeightBehavior(
-                                                            applyHeightToFirstAscent:
-                                                                false,
-                                                            applyHeightToLastDescent:
-                                                                false,
-                                                          ),
+                                                          tr.estimatedTime,
                                                           style:
-                                                              GoogleFonts.inter(
+                                                              tr.font(
                                                             fontSize: 10.0,
                                                             fontWeight:
                                                                 FontWeight.w400,
@@ -1661,7 +1529,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                             const Color(
                                                                 0xFF8B53FE),
                                                         style:
-                                                            GoogleFonts.inter(
+                                                            tr.font(
                                                           fontSize: 12.0,
                                                           fontWeight:
                                                               FontWeight.w400,
@@ -1673,10 +1541,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                                         decoration:
                                                             InputDecoration(
                                                           hintText:
-                                                              'Search requests',
+                                                              tr.searchRequests,
                                                           hintStyle:
-                                                              GoogleFonts
-                                                                  .inter(
+                                                              tr.font(
                                                             fontSize: 12.0,
                                                             fontWeight:
                                                                 FontWeight.w400,
@@ -1905,12 +1772,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
           width: 64.0,
           child: Text(
             title,
-            textHeightBehavior: const TextHeightBehavior(
-              applyHeightToFirstAscent: false,
-              applyHeightToLastDescent: false,
-            ),
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: tr.font(
               fontSize: 10.0,
               fontWeight: FontWeight.w500,
               color: state == _RequestStepState.pending
@@ -1929,12 +1792,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
             width: 64.0,
             child: Text(
               time,
-              textHeightBehavior: const TextHeightBehavior(
-                applyHeightToFirstAscent: false,
-                applyHeightToLastDescent: false,
-              ),
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
+              style: tr.font(
                 fontSize: 8.0,
                 fontWeight: FontWeight.w400,
                 color: const Color(0xFF566663),
@@ -2024,7 +1883,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
       statusTextColor: Color(0xFF8B53FE),
       rating: '4.9',
       trips: '(120 trips)',
-      serviceCategory: 'Pickup & Delivery',
+      serviceCategory: 'Pickup',
       vehicleName: 'Toyota Hilux',
       vehicleIcon: Icons.local_shipping_outlined,
       plateNumber: 'ABC-123',
@@ -2121,8 +1980,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
             ),
             const SizedBox(height: 10.0),
             Text(
-              'No requests found',
-              style: GoogleFonts.inter(
+              tr.noRequestsFound,
+              style: tr.font(
                 fontSize: 14.0,
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFF1C2926),
@@ -2130,8 +1989,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
             ),
             const SizedBox(height: 4.0),
             Text(
-              'Try searching with a different term',
-              style: GoogleFonts.inter(
+              tr.trySearchingDifferent,
+              style: tr.font(
                 fontSize: 11.0,
                 fontWeight: FontWeight.w400,
                 color: const Color(0xFF566663),
@@ -2146,7 +2005,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
   Widget _buildHistoryCard(_HistoryRequestItem item, double containerWidth) {
     return Container(
       width: double.infinity,
-      height: 110.0, // height: 110;
+      constraints: const BoxConstraints(minHeight: 110.0), // constraints: minHeight 110;
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF), // background: #FFFFFF;
         borderRadius: BorderRadius.circular(12.0), // border-radius: 12px;
@@ -2202,7 +2061,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                   item.providerName.isNotEmpty
                                       ? item.providerName[0]
                                       : '?',
-                                  style: GoogleFonts.inter(
+                                  style: tr.font(
                                     fontSize: 18.0,
                                     fontWeight: FontWeight.w600,
                                     color: const Color(0xFF1C2926),
@@ -2242,18 +2101,12 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                   // font-family: Inter; font-weight: 500; font-size: 12px; line-height: 22px; color: #1C2926;
                                   Flexible(
                                     child: Text(
-                                      item.providerName,
-                                      textHeightBehavior:
-                                          const TextHeightBehavior(
-                                        applyHeightToFirstAscent: false,
-                                        applyHeightToLastDescent: false,
-                                      ),
-                                      style: GoogleFonts.inter(
+                                      tr.formatProviderName(item.providerName),
+                                      style: tr.font(
                                         fontSize: 12.0,
                                         fontWeight: FontWeight.w500,
                                         color: const Color(0xFF1C2926),
                                         height: 1.15,
-                                        letterSpacing: 0.0,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -2276,18 +2129,12 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                     ),
                                     alignment: Alignment.center,
                                     child: Text(
-                                      item.statusText,
-                                      textHeightBehavior:
-                                          const TextHeightBehavior(
-                                        applyHeightToFirstAscent: false,
-                                        applyHeightToLastDescent: false,
-                                      ),
-                                      style: GoogleFonts.inter(
+                                      (item.statusText == 'Completed' ? tr.completed : (item.statusText == 'Cancelled' ? tr.cancelled : item.statusText)),
+                                      style: tr.font(
                                         fontSize: 10.0,
                                         fontWeight: FontWeight.w400,
                                         color: item.statusTextColor,
                                         height: 1.0,
-                                        letterSpacing: 0.0,
                                       ),
                                     ),
                                   ),
@@ -2312,30 +2159,23 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                       children: [
                                         TextSpan(
                                           text: '${item.rating} ',
-                                          style: GoogleFonts.inter(
+                                          style: tr.font(
                                             fontSize: 10.0,
                                             fontWeight: FontWeight.w400,
                                             color: const Color(0xFF1C2926),
                                             height: 1.15,
-                                            letterSpacing: 0.0,
                                           ),
                                         ),
                                         TextSpan(
-                                          text: item.trips,
-                                          style: GoogleFonts.inter(
+                                          text: tr.formatTripsString(item.trips),
+                                          style: tr.font(
                                             fontSize: 10.0,
                                             fontWeight: FontWeight.w400,
                                             color: const Color(0xFF566663),
                                             height: 1.15,
-                                            letterSpacing: 0.0,
                                           ),
                                         ),
                                       ],
-                                    ),
-                                    textHeightBehavior:
-                                        const TextHeightBehavior(
-                                      applyHeightToFirstAscent: false,
-                                      applyHeightToLastDescent: false,
                                     ),
                                   ),
                                   const SizedBox(width: 8.0), // gap: 8px;
@@ -2343,18 +2183,12 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                   // content: Pickup & Delivery (Inter Regular 10px, #566663)
                                   Flexible(
                                     child: Text(
-                                      item.serviceCategory,
-                                      textHeightBehavior:
-                                          const TextHeightBehavior(
-                                        applyHeightToFirstAscent: false,
-                                        applyHeightToLastDescent: false,
-                                      ),
-                                      style: GoogleFonts.inter(
+                                      tr.categoryName(item.serviceCategory, item.serviceCategory),
+                                      style: tr.font(
                                         fontSize: 10.0,
                                         fontWeight: FontWeight.w400,
                                         color: const Color(0xFF566663),
                                         height: 1.15,
-                                        letterSpacing: 0.0,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -2377,18 +2211,12 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
                                   // content: Toyota Hilux (Inter Medium 10px, #1C2926)
                                   Text(
-                                    item.vehicleName,
-                                    textHeightBehavior:
-                                        const TextHeightBehavior(
-                                      applyHeightToFirstAscent: false,
-                                      applyHeightToLastDescent: false,
-                                    ),
-                                    style: GoogleFonts.inter(
+                                    tr.formatVehicleName(item.vehicleName),
+                                    style: tr.font(
                                       fontSize: 10.0,
                                       fontWeight: FontWeight.w500,
                                       color: const Color(0xFF1C2926),
                                       height: 1.15,
-                                      letterSpacing: 0.0,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -2417,12 +2245,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                     alignment: Alignment.center,
                                     child: Text(
                                       '#',
-                                      textHeightBehavior:
-                                          const TextHeightBehavior(
-                                        applyHeightToFirstAscent: false,
-                                        applyHeightToLastDescent: false,
-                                      ),
-                                      style: GoogleFonts.inter(
+                                      style: tr.font(
                                         fontSize: 6.5,
                                         fontWeight: FontWeight.w600,
                                         color: const Color(0xFF566663),
@@ -2435,17 +2258,11 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                   // content: ABC-123 (Inter Regular 10px, #566663)
                                   Text(
                                     item.plateNumber,
-                                    textHeightBehavior:
-                                        const TextHeightBehavior(
-                                      applyHeightToFirstAscent: false,
-                                      applyHeightToLastDescent: false,
-                                    ),
-                                    style: GoogleFonts.inter(
+                                    style: tr.font(
                                       fontSize: 10.0,
                                       fontWeight: FontWeight.w400,
                                       color: const Color(0xFF566663),
                                       height: 1.15,
-                                      letterSpacing: 0.0,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -2455,18 +2272,12 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
                               // 4th row branding: content: 10 Sep 2026, 2:15 PM (Inter Regular 10px, #566663)
                               Text(
-                                item.dateTime,
-                                textHeightBehavior:
-                                    const TextHeightBehavior(
-                                  applyHeightToFirstAscent: false,
-                                  applyHeightToLastDescent: false,
-                                ),
-                                style: GoogleFonts.inter(
+                                tr.formatDateTimeString(item.dateTime),
+                                style: tr.font(
                                   fontSize: 10.0,
                                   fontWeight: FontWeight.w400,
                                   color: const Color(0xFF566663),
                                   height: 1.15,
-                                  letterSpacing: 0.0,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -2476,12 +2287,15 @@ class _RequestsScreenState extends State<RequestsScreen> {
                         ),
 
                         // card right side > branding: width: 6; height: 12; angle: -180 deg; border: 0.8px solid #566663
-                        const Padding(
-                          padding: EdgeInsets.only(left: 4.0),
-                          child: Icon(
-                            Icons.chevron_right_rounded,
-                            size: 18.0,
-                            color: Color(0xFF566663),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4.0),
+                          child: Transform.scale(
+                            scaleX: tr.isArabic ? -1.0 : 1.0,
+                            child: const Icon(
+                              Icons.chevron_right_rounded,
+                              size: 18.0,
+                              color: Color(0xFF566663),
+                            ),
                           ),
                         ),
                       ],

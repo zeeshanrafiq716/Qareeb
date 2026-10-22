@@ -2,7 +2,9 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/localization/app_locale.dart';
 import 'core/theme/app_theme.dart';
 import 'features/emergency/presentation/emergency_services_screen.dart';
 import 'features/home/presentation/home_screen.dart';
@@ -17,6 +19,7 @@ import 'features/provider/auth/presentation/upload_documents_screen.dart';
 import 'features/provider/auth/presentation/vehicle_service_details_screen.dart';
 import 'features/provider/home/presentation/provider_home_screen.dart';
 import 'features/provider/splash/presentation/provider_splash_screen.dart';
+import 'features/provider/theme/provider_text_styles.dart';
 import 'features/requests/presentation/requests_screen.dart';
 import 'features/splash/presentation/splash_screen.dart';
 
@@ -61,15 +64,29 @@ void main() {
   );
 }
 
-class QareebApp extends StatelessWidget {
+class QareebApp extends ConsumerWidget {
   const QareebApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(appLocaleProvider);
+    final isArabic = locale.languageCode == 'ar';
+    ProviderTextStyles.isArabic = isArabic;
+
     return MaterialApp(
       title: 'QAREEB',
+      onGenerateTitle: (context) => context.l10n.appTitle,
       debugShowCheckedModeBanner: false,
+      locale: locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
       theme: AppTheme.darkTheme,
+      builder: (context, child) {
+        return Directionality(
+          textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+          child: child ?? const SizedBox(),
+        );
+      },
       initialRoute: '/',
       routes: {
         '/': (context) => const SplashScreen(),

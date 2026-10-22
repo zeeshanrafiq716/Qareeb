@@ -38,7 +38,7 @@ class ProviderPhoneVerifiedFirstPart extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: child ??
               Column(
                 mainAxisSize: MainAxisSize.min,

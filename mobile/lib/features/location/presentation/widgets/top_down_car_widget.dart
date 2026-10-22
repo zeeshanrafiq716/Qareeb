@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/localization/app_locale.dart';
 
 /// Top-down car marker widget matching user screenshot:
 /// - Exact aerodynamic vehicle with white body, dark windshield, purple roof (#8B53FE),
@@ -127,9 +128,11 @@ class TopDownCarWidget extends StatelessWidget {
               child: animatedCar,
             ),
 
-            // Speech Bubble Tooltip attached directly on top of car (bilkul car k oopr sth attach)
+            // Speech Bubble Tooltip attached directly to car (adapts alignment near edges)
             Positioned(
-              bottom: isSelected ? (height + 2.0) : (height - 1.5),
+              top: alignBadgeBelow ? (isSelected ? (height + 2.0) : (height - 1.5)) : null,
+              bottom: !alignBadgeBelow ? (isSelected ? (height + 2.0) : (height - 1.5)) : null,
+              right: alignBadgeLeft ? ((width / 2.0) - 12.0) : null,
               child: GestureDetector(
                 onTap: onTap,
                 behavior: HitTestBehavior.opaque,
@@ -137,7 +140,9 @@ class TopDownCarWidget extends StatelessWidget {
                   driverName: driverName!,
                   distanceKm: distanceKm,
                   isSelected: isSelected,
-                  tailOnCenter: true,
+                  tailOnCenter: !alignBadgeLeft,
+                  tailOnRight: alignBadgeLeft,
+                  tailOnTop: alignBadgeBelow,
                 ),
               ),
             ),
@@ -408,7 +413,7 @@ class _TopDownVectorCarPainter extends CustomPainter {
 /// - Tilted navigation arrow + distance (e.g. ➤ 0.7 km)
 /// - Supports tailOnRight (flips to left of car near screen edge)
 /// - Supports tailOnTop (flips below car near header edge)
-class _SpeechBubbleTooltip extends StatelessWidget {
+class _SpeechBubbleTooltip extends ConsumerWidget {
   final String driverName;
   final double? distanceKm;
   final bool isSelected;
@@ -426,7 +431,10 @@ class _SpeechBubbleTooltip extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tr = ref.watch(translationsProvider);
+    final localizedDriverName = tr.formatProviderName(driverName).trim().split(' ').first;
+
     return CustomPaint(
       painter: _SpeechBubbleCardPainter(
         backgroundColor: Colors.white,
@@ -452,8 +460,8 @@ class _SpeechBubbleTooltip extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
-              driverName.trim().split(' ').first,
-              style: GoogleFonts.inter(
+              localizedDriverName,
+              style: tr.font(
                 fontSize: isSelected ? 10.5 : 10.0,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF1C2926),
@@ -475,8 +483,10 @@ class _SpeechBubbleTooltip extends StatelessWidget {
                   ),
                   const SizedBox(width: 3.0),
                   Text(
-                    '${distanceKm!.toStringAsFixed(1)} km',
-                    style: GoogleFonts.inter(
+                    tr.isArabic
+                        ? '${distanceKm!.toStringAsFixed(1)} كم'
+                        : '${distanceKm!.toStringAsFixed(1)} km',
+                    style: tr.font(
                       fontSize: 9.0,
                       fontWeight: FontWeight.w500,
                       color: const Color(0xFF566663),
@@ -492,6 +502,7 @@ class _SpeechBubbleTooltip extends StatelessWidget {
     );
   }
 }
+
 
 class _SpeechBubbleCardPainter extends CustomPainter {
   final Color backgroundColor;

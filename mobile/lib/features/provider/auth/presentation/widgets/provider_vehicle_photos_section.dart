@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_vehicle_photo_card.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
+import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Vehicle Photos Section Widget
 /// Implements exact Figma branding specifications:
@@ -42,9 +43,9 @@ class ProviderVehiclePhotosSection extends StatefulWidget {
   });
 
   static const double designWidth = 350.0;
-  static const double designHeight = 203.0;
+  static const double designHeight = 212.0;
   static const double headingHeight = 29.0;
-  static const double framersHeight = 158.0;
+  static const double framersHeight = 166.0;
   static const double sectionGap = 16.0;
   static const double cardGap = 16.0;
 
@@ -69,7 +70,9 @@ class _ProviderVehiclePhotosSectionState
             const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
             const SizedBox(width: 8),
             Text(
-              !current ? '$viewName photo selected' : '$viewName photo removed',
+              context.isArabic
+                  ? (!current ? 'تم اختيار صورة $viewName' : 'تمت إزالة صورة $viewName')
+                  : (!current ? '$viewName photo selected' : '$viewName photo removed'),
               style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
             ),
           ],
@@ -89,44 +92,33 @@ class _ProviderVehiclePhotosSectionState
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: ProviderVehiclePhotosSection.designWidth,
+          width: double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Heading Layout: width: 350; height: 29; gap: 12px;
+              // 1. Heading Layout: width: double.infinity; height: 29; gap: 12px;
               SizedBox(
-                width: ProviderVehiclePhotosSection.designWidth,
+                width: double.infinity,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title: Vehicle Photos (Inter 500 Medium 14px line-height 22px #1C2926)
+                    // Title: Vehicle Photos (ProviderTextStyles.whatsNextTitle)
                     Text(
-                      'Vehicle Photos',
-                      style: GoogleFonts.inter(
-                        fontSize: 14.0,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF1C2926),
-                        height: 1.15,
-                      ),
+                      context.l10n.vehiclePhotosTitle,
+                      style: ProviderTextStyles.whatsNextTitle,
                       maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
 
                     const SizedBox(height: 4.0),
 
-                    // Subtitle: Upload front and rear photos of your vehicle (Inter 400 Regular 10px line-height 22px #566663)
+                    // Subtitle: Upload front and rear photos of your vehicle
                     Text(
-                      'Upload front and rear photos of your vehicle',
-                      style: GoogleFonts.inter(
-                        fontSize: 10.0,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF566663),
-                        height: 1.15,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      context.l10n.vehiclePhotosSubtitle,
+                      style: ProviderTextStyles.stepCardSubtitle,
+                      maxLines: 2,
+                      softWrap: true,
                     ),
                   ],
                 ),
@@ -135,47 +127,51 @@ class _ProviderVehiclePhotosSectionState
               // gap: 16px
               const SizedBox(height: ProviderVehiclePhotosSection.sectionGap),
 
-              // 2. Framers Layout: width: 350; height: 158; gap: 16px;
+              // 2. Framers Layout: width: double.infinity; height: 158; gap: 12px;
               SizedBox(
-                width: ProviderVehiclePhotosSection.designWidth,
+                width: double.infinity,
                 height: ProviderVehiclePhotosSection.framersHeight,
                 child: Row(
                   children: [
-                    // 1st Card: Front View (width: 167; height: 158; border: 1px dashed #1D8070)
-                    ProviderVehiclePhotoCard(
-                      title: 'Front View',
-                      subtitle: 'Upload a clear photo',
-                      imageAsset: 'assets/images/vehicle_photo_front_view.jpg',
-                      isUploaded: _frontUploaded,
-                      onUpload: () {
-                        widget.onFrontUpload != null
-                            ? widget.onFrontUpload!()
-                            : _handleUpload(
-                                'Front view',
-                                (val) => _frontUploaded = val,
-                                _frontUploaded,
-                              );
-                      },
+                    // 1st Card: Front View
+                    Expanded(
+                      child: ProviderVehiclePhotoCard(
+                        title: context.l10n.frontView,
+                        subtitle: context.l10n.tapToUpload,
+                        imageAsset: 'assets/images/vehicle_photo_front_view.jpg',
+                        isUploaded: _frontUploaded,
+                        onUpload: () {
+                          widget.onFrontUpload != null
+                              ? widget.onFrontUpload!()
+                              : _handleUpload(
+                                  context.l10n.frontView,
+                                  (val) => _frontUploaded = val,
+                                  _frontUploaded,
+                                );
+                        },
+                      ),
                     ),
 
-                    // gap: 16px;
-                    const SizedBox(width: ProviderVehiclePhotosSection.cardGap),
+                    // gap: 12px;
+                    const SizedBox(width: 12.0),
 
-                    // 2nd Card: Rear View (width: 167; height: 158; border: 1px dashed #1D8070)
-                    ProviderVehiclePhotoCard(
-                      title: 'Rear View',
-                      subtitle: 'Upload a clear photo',
-                      imageAsset: 'assets/images/vehicle_photo_rear_view.jpg',
-                      isUploaded: _rearUploaded,
-                      onUpload: () {
-                        widget.onRearUpload != null
-                            ? widget.onRearUpload!()
-                            : _handleUpload(
-                                'Rear view',
-                                (val) => _rearUploaded = val,
-                                _rearUploaded,
-                              );
-                      },
+                    // 2nd Card: Rear View
+                    Expanded(
+                      child: ProviderVehiclePhotoCard(
+                        title: context.l10n.rearView,
+                        subtitle: context.l10n.tapToUpload,
+                        imageAsset: 'assets/images/vehicle_photo_rear_view.jpg',
+                        isUploaded: _rearUploaded,
+                        onUpload: () {
+                          widget.onRearUpload != null
+                              ? widget.onRearUpload!()
+                              : _handleUpload(
+                                  context.l10n.rearView,
+                                  (val) => _rearUploaded = val,
+                                  _rearUploaded,
+                                );
+                        },
+                      ),
                     ),
                   ],
                 ),

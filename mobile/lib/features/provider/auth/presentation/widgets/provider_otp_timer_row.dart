@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -127,7 +128,7 @@ class _ProviderOtpTimerRowState extends State<ProviderOtpTimerRow> {
               // content: Resend code in 00:59
               Text.rich(
                 TextSpan(
-                  text: 'Resend code in ',
+                  text: context.l10n.resendCodeIn,
                   style: ProviderTextStyles.resendTimerText,
                   children: [
                     TextSpan(

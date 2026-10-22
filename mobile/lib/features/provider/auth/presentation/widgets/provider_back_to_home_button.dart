@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/provider_profile_details_screen.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
@@ -36,7 +37,7 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 ///   border-width: 1.5px;
 ///   border: 1.5px solid #FFFFFF;
 class ProviderBackToHomeButton extends StatelessWidget {
-  final String title;
+  final String? title;
   final VoidCallback? onTap;
   final Widget? icon;
   final bool isPrimary;
@@ -44,7 +45,7 @@ class ProviderBackToHomeButton extends StatelessWidget {
 
   const ProviderBackToHomeButton({
     super.key,
-    this.title = 'Back to Home',
+    this.title,
     this.onTap,
     this.icon,
     this.isPrimary = true,
@@ -55,7 +56,7 @@ class ProviderBackToHomeButton extends StatelessWidget {
   /// (background: #F2F5F4, text: #1C2926)
   const ProviderBackToHomeButton.secondary({
     super.key,
-    this.title = 'Back to Home',
+    this.title,
     this.onTap,
     this.icon,
     this.isLoading = false,
@@ -67,6 +68,10 @@ class ProviderBackToHomeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String displayTitle = (title != null && title!.isNotEmpty)
+        ? (context.isArabic ? context.auto(title) : title!)
+        : context.l10n.backToHome;
+
     final Color backgroundColor = isPrimary
         ? ProviderColors.primaryButton // #1D8070
         : ProviderColors.inputBackground; // #F2F5F4
@@ -84,7 +89,7 @@ class ProviderBackToHomeButton extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           height: designHeight,
           child: ElevatedButton(
             onPressed: isLoading
@@ -113,9 +118,9 @@ class ProviderBackToHomeButton extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // content: Back to Home (Inter 500 Medium 14px line-height 22px #FFFFFF)
+                      // content: Back to Home / العودة للرئيسية
                       Text(
-                        title,
+                        displayTitle,
                         style: textStyle,
                       ),
 
@@ -160,9 +165,12 @@ class _BackToHomeArrowWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: const Size(16.0, 12.0),
-      painter: _BackToHomeArrowPainter(color: color),
+    return Transform.flip(
+      flipX: Directionality.of(context) == TextDirection.rtl,
+      child: CustomPaint(
+        size: const Size(16.0, 12.0),
+        painter: _BackToHomeArrowPainter(color: color),
+      ),
     );
   }
 }

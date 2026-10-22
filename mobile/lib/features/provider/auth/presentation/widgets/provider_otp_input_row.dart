@@ -134,7 +134,7 @@ class _ProviderOtpInputRowState extends State<ProviderOtpInputRow> {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: ProviderOtpInputRow.designWidth,
+          width: double.infinity,
           height: ProviderOtpInputRow.designHeight,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

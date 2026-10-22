@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -132,11 +133,15 @@ class _ProviderIndicatorBarState extends State<ProviderIndicatorBar>
                 ),
         ),
         const SizedBox(height: 10.0), // gap: 10px
-        // Status text: Getting things ready...
+        // Status text: Getting things ready... (Arabic: جارٍ تجهيز كل شيء...)
         Text(
-          'Getting things ready...',
+          context.l10n.providerGettingThingsReady,
           textAlign: TextAlign.center,
           style: ProviderTextStyles.indicatorStatus,
+          textHeightBehavior: const TextHeightBehavior(
+            applyHeightToFirstAscent: false,
+            applyHeightToLastDescent: false,
+          ),
         ),
       ],
     );

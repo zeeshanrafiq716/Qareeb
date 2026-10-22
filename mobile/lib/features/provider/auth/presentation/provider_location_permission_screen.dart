@@ -2,10 +2,12 @@ import 'dart:math' as math;
 import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/admin_approval_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
+import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Location Permission Screen
 /// Follows the exact same branding and visual design as the Customer side LocationPermissionScreen:
@@ -55,8 +57,11 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
             final bool isDesktopWeb = constraints.maxWidth > 500;
             final double containerWidth = isDesktopWeb ? designWidth : constraints.maxWidth;
             final double containerHeight = isDesktopWeb ? designHeight : constraints.maxHeight;
+            final double topSafeArea = MediaQuery.of(context).padding.top;
+            final double headerTop = topSafeArea > 0 ? (topSafeArea + 14.0) : 56.0;
             final double bottomSafeArea = MediaQuery.of(context).padding.bottom;
-            final double contentHeight = math.max(containerHeight, 810.0);
+            final bool shouldScroll = !isDesktopWeb && containerHeight < 680.0;
+            final double contentHeight = shouldScroll ? 720.0 : containerHeight;
 
             final screenContent = Container(
               width: containerWidth,
@@ -119,9 +124,9 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                         },
                       ),
                       child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
-                        ),
+                        physics: shouldScroll
+                            ? const ClampingScrollPhysics()
+                            : const NeverScrollableScrollPhysics(),
                         child: SizedBox(
                           width: containerWidth,
                           height: contentHeight,
@@ -129,13 +134,13 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                             children: [
                               // Heading Branding Layout:
                               Positioned(
-                          top: 56.0,
-                          left: 16.0,
-                          right: 16.0,
-                          height: 36.0,
-                          child: SizedBox(
-                            height: 36.0,
-                            child: Row(
+                                top: headerTop,
+                                left: 20.0,
+                                right: 20.0,
+                                height: 36.0,
+                                child: SizedBox(
+                                  height: 36.0,
+                                  child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 // Circular back button with drop shadow
@@ -171,27 +176,27 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                                   ),
                                 ),
 
-                                // gap: 16px;
-                                const SizedBox(width: 16.0),
+                                // gap: 12px;
+                                const SizedBox(width: 12.0),
 
                                 // Service Title
                                 Expanded(
-                                  child: SizedBox(
-                                    width: 298.0,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: AlignmentDirectional.centerStart,
                                     child: Text(
-                                      serviceName,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 16.0,
-                                        fontWeight: FontWeight.w500, // Medium 500
-                                        color: const Color(0xFF1C2926),
-                                        height: 22.0 / 16.0, // line-height: 22px
-                                        letterSpacing: 0.0,
-                                      ),
+                                      context.isArabic
+                                          ? context.auto(serviceName)
+                                          : serviceName,
+                                      style: ProviderTextStyles.headerTitle,
                                       maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ),
+
+                                const SizedBox(width: 8.0),
+
+                                const ProviderAnimatedLanguageToggle.compact(),
                               ],
                             ),
                           ),
@@ -318,14 +323,8 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                                       width: 54.0,
                                       height: 24.0,
                                       child: Text(
-                                        'Nearby\nProviders',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12.0,
-                                          fontWeight: FontWeight.w400,
-                                          color: const Color(0xFF566663),
-                                          height: 1.0,
-                                          letterSpacing: 0.0,
-                                        ),
+                                        context.l10n.nearbyProviders,
+                                        style: ProviderTextStyles.securityNotice,
                                       ),
                                     ),
                                   ],
@@ -387,14 +386,8 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                                       width: 47.0,
                                       height: 24.0,
                                       child: Text(
-                                        'Fast\nDelivery',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12.0,
-                                          fontWeight: FontWeight.w400,
-                                          color: const Color(0xFF566663),
-                                          height: 1.0,
-                                          letterSpacing: 0.0,
-                                        ),
+                                        context.l10n.fastDelivery,
+                                        style: ProviderTextStyles.securityNotice,
                                       ),
                                     ),
                                   ],
@@ -456,14 +449,8 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                                       width: 55.0,
                                       height: 24.0,
                                       child: Text(
-                                        'Real-time\nTracking',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12.0,
-                                          fontWeight: FontWeight.w400,
-                                          color: const Color(0xFF566663),
-                                          height: 1.0,
-                                          letterSpacing: 0.0,
-                                        ),
+                                        context.l10n.realtimeTracking,
+                                        style: ProviderTextStyles.securityNotice,
                                       ),
                                     ),
                                   ],
@@ -475,7 +462,9 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
 
                         // 9. Location Permission Main Content Widget Branding:
                         Positioned(
-                          top: 348.0,
+                          top: containerHeight >= 830.0
+                              ? 348.0
+                              : (containerHeight - 430.0).clamp(300.0, 348.0),
                           left: 16.0,
                           right: 16.0,
                           child: Column(
@@ -490,28 +479,16 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      headline ?? 'Find Providers near you',
+                                      headline ?? context.l10n.findProvidersNearYou,
                                       textAlign: TextAlign.center,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 20.0,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF1C2926),
-                                        height: 24.0 / 20.0,
-                                        letterSpacing: 0.0,
-                                      ),
+                                      style: ProviderTextStyles.verificationSuccessfulTitle,
                                     ),
                                     const SizedBox(height: 12.0),
                                     Text(
                                       description ??
-                                          'Wee need your location to show nearby\nproviders for $serviceName.',
+                                          context.l10n.locationNeededForService(context.isArabic ? context.auto(serviceName) : serviceName),
                                       textAlign: TextAlign.center,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12.0,
-                                        fontWeight: FontWeight.w400,
-                                        color: const Color(0xFF566663),
-                                        height: 1.35,
-                                        letterSpacing: 0.0,
-                                      ),
+                                      style: ProviderTextStyles.cardHeadingSubtitle,
                                     ),
                                   ],
                                 ),
@@ -539,36 +516,39 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                                   children: [
                                     // Item 1: See nearby providers
                                     _buildFeatureRow(
+                                      context: context,
                                       icon: const CustomPaint(
                                         size: Size(20.0, 20.0),
                                         painter: _GpsCrosshairsPainter(),
                                       ),
-                                      title: 'See nearby providers',
-                                      subtitle: 'Find available pickup & delivery teams around you.',
+                                      title: context.l10n.seeNearbyProviders,
+                                      subtitle: context.l10n.seeNearbyProvidersSubtitle,
                                     ),
 
                                     const SizedBox(height: 20.0),
 
                                     // Item 2: Fast service
                                     _buildFeatureRow(
+                                      context: context,
                                       icon: const CustomPaint(
                                         size: Size(20.0, 20.0),
                                         painter: _FastServiceBoltPainter(),
                                       ),
-                                      title: 'Fast service',
-                                      subtitle: 'Get quicker and more accurate results.',
+                                      title: context.l10n.fastService,
+                                      subtitle: context.l10n.fastServiceSubtitle,
                                     ),
 
                                     const SizedBox(height: 20.0),
 
                                     // Item 3: Your privacy matters
                                     _buildFeatureRow(
+                                      context: context,
                                       icon: const CustomPaint(
                                         size: Size(20.0, 20.0),
                                         painter: _PrivacyShieldPainter(),
                                       ),
-                                      title: 'Your privacy matters',
-                                      subtitle: 'Your location is only used for this service and can be changed anhytime',
+                                      title: context.l10n.yourPrivacyMatters,
+                                      subtitle: context.l10n.yourPrivacyMattersSubtitle,
                                     ),
                                   ],
                                 ),
@@ -646,14 +626,8 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                                                   ),
                                                   const SizedBox(width: 10.0),
                                                   Text(
-                                                    'Allow Location',
-                                                    style: GoogleFonts.inter(
-                                                      fontSize: 14.0,
-                                                      fontWeight: FontWeight.w500,
-                                                      color: const Color(0xFFFFFFFF),
-                                                      height: 22.0 / 14.0,
-                                                      letterSpacing: 0.0,
-                                                    ),
+                                                    context.l10n.allowLocation,
+                                                    style: ProviderTextStyles.continueButtonText,
                                                   ),
                                                 ],
                                               ),
@@ -679,10 +653,10 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                                       onTap: () {
                                         HapticFeedback.selectionClick();
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Opening Location Settings...'),
-                                            backgroundColor: Color(0xFF1C2926),
-                                            duration: Duration(seconds: 2),
+                                          SnackBar(
+                                            content: Text(context.l10n.openingLocationSettings),
+                                            backgroundColor: const Color(0xFF1C2926),
+                                            duration: const Duration(seconds: 2),
                                           ),
                                         );
                                       },
@@ -691,26 +665,12 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                                         width: 350.0,
                                         child: Text.rich(
                                           TextSpan(
-                                            text: 'You can change this later in ',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 10.0,
-                                              fontWeight: FontWeight.w400,
-                                              color: const Color(0xFF566663),
-                                              height: 1.0,
-                                              letterSpacing: 0.0,
-                                            ),
+                                            text: context.l10n.youCanChangeThisLaterIn,
+                                            style: ProviderTextStyles.stepCardSubtitle.copyWith(fontSize: 10.0, height: 1.0),
                                             children: [
                                               TextSpan(
-                                                text: 'Settings',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 10.0,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: const Color(0xFF8B53FE),
-                                                  decoration: TextDecoration.underline,
-                                                  decorationColor: const Color(0xFF8B53FE),
-                                                  height: 1.0,
-                                                  letterSpacing: 0.0,
-                                                ),
+                                                text: context.l10n.settingsLink,
+                                                style: ProviderTextStyles.stepCardSubtitle.copyWith(fontSize: 10.0, fontWeight: FontWeight.w500, color: const Color(0xFF8B53FE), decoration: TextDecoration.underline, decorationColor: const Color(0xFF8B53FE), height: 1.0),
                                               ),
                                             ],
                                           ),
@@ -785,6 +745,7 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
   }
 
   Widget _buildFeatureRow({
+    BuildContext? context,
     required Widget icon,
     required String title,
     required String subtitle,
@@ -816,26 +777,14 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: GoogleFonts.inter(
-                  fontSize: 12.0,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF1C2926),
-                  height: 1.2,
-                  letterSpacing: 0.0,
-                ),
+                style: ProviderTextStyles.stepCardTitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 4.0),
               Text(
                 subtitle,
-                style: GoogleFonts.inter(
-                  fontSize: 10.0,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF566663),
-                  height: 1.5,
-                  letterSpacing: 0.0,
-                ),
+                style: ProviderTextStyles.stepCardSubtitle,
                 maxLines: 2,
                 softWrap: true,
               ),

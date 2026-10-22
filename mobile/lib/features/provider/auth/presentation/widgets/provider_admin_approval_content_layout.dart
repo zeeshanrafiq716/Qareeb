@@ -68,10 +68,10 @@ class ProviderAdminApprovalContentLayout extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 1. img layout branding (124x124 centered illustration badge)
               badge ?? const Center(child: ProviderAdminApprovalBadge()),

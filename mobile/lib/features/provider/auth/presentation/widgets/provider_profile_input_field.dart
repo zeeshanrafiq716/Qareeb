@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -47,6 +48,10 @@ class ProviderProfileInputField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String displayLabel = context.isArabic ? context.auto(label) : label;
+    final String? displaySpan = (labelSpan != null && context.isArabic) ? context.auto(labelSpan) : labelSpan;
+    final String? displayPlaceholder = (placeholder.isNotEmpty && context.isArabic) ? context.auto(placeholder) : placeholder;
+
     return SizedBox(
       width: width,
       child: Column(
@@ -54,17 +59,17 @@ class ProviderProfileInputField extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Label branding: Inter 500 Medium 12px #1C2926, optional span: Inter 400 #566663
-          if (labelSpan != null)
+          if (displaySpan != null)
             Text.rich(
               TextSpan(
                 children: [
                   TextSpan(
-                    text: label,
+                    text: displayLabel,
                     style: ProviderTextStyles.profileInputLabel,
                   ),
                   const TextSpan(text: ' '),
                   TextSpan(
-                    text: labelSpan,
+                    text: displaySpan,
                     style: ProviderTextStyles.profileInputLabelSpan,
                   ),
                 ],
@@ -74,7 +79,7 @@ class ProviderProfileInputField extends StatelessWidget {
             )
           else
             Text(
-              label,
+              displayLabel,
               style: ProviderTextStyles.profileInputLabel,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -106,21 +111,38 @@ class ProviderProfileInputField extends StatelessWidget {
 
                 // Text field content (Inter 400 Regular 14px line-height 22px #1C2926 / placeholder: #566663)
                 Expanded(
-                  child: TextField(
-                    controller: controller,
-                    readOnly: readOnly,
-                    onTap: onTap,
-                    keyboardType: keyboardType,
-                    style: ProviderTextStyles.profileInputText,
-                    cursorColor: ProviderColors.primaryButton,
-                    decoration: InputDecoration(
-                      hintText: placeholder,
-                      hintStyle: ProviderTextStyles.profileInputPlaceholder,
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
+                  child: readOnly
+                      ? InkWell(
+                          onTap: onTap,
+                          child: Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              (controller?.text.isNotEmpty == true)
+                                  ? (context.isArabic ? context.auto(controller!.text) : controller!.text)
+                                  : (displayPlaceholder ?? ''),
+                              style: (controller?.text.isNotEmpty == true)
+                                  ? ProviderTextStyles.profileInputText
+                                  : ProviderTextStyles.profileInputPlaceholder,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                      : TextField(
+                          controller: controller,
+                          readOnly: false,
+                          onTap: onTap,
+                          keyboardType: keyboardType,
+                          style: ProviderTextStyles.profileInputText,
+                          cursorColor: ProviderColors.primaryButton,
+                          decoration: InputDecoration(
+                            hintText: displayPlaceholder,
+                            hintStyle: ProviderTextStyles.profileInputPlaceholder,
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
                 ),
 
                 // Trailing suffix icon (e.g. dropdown chevron)

@@ -4,12 +4,15 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/localization/app_locale.dart';
 import '../../emergency/presentation/emergency_services_screen.dart';
 import '../../location/presentation/location_permission_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../requests/presentation/requests_screen.dart';
 import '../../../providers/backend_provider.dart';
+import '../../../providers/notifications_provider.dart';
 import 'widgets/home_header_widget.dart';
+import 'widgets/notification_popup_card.dart';
 import 'widgets/services_section_widget.dart';
 import 'widgets/bottom_nav_bar_widget.dart';
 
@@ -78,16 +81,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildHomeTab(BuildContext context) {
+    final tr = ref.watch(translationsProvider);
+    final notifState = ref.watch(notificationsProvider);
     final userLocAsync = ref.watch(userLocationProvider);
     final String locationText = userLocAsync.when(
-      data: (loc) => loc.cityName.isNotEmpty ? loc.cityName : 'Karachi Pakistan',
-      loading: () => 'Detecting GPS...',
-      error: (_, _) => 'Karachi Pakistan',
+      data: (loc) => loc.cityName.isNotEmpty
+          ? loc.cityName
+          : (tr.isArabic ? 'كراتشي، باكستان' : 'Karachi Pakistan'),
+      loading: () => tr.gpsDetecting,
+      error: (_, _) => (tr.isArabic ? 'كراتشي، باكستان' : 'Karachi Pakistan'),
     );
     final String locationLabel = userLocAsync.when(
-      data: (loc) => loc.isGpsDetected ? 'Real GPS' : 'Current location',
-      loading: () => 'GPS Detecting...',
-      error: (_, _) => 'Current location',
+      data: (loc) => loc.isGpsDetected ? tr.realGps : tr.currentLocation,
+      loading: () => tr.gpsDetecting,
+      error: (_, _) => tr.currentLocation,
     );
 
     SystemChrome.setSystemUIOverlayStyle(
@@ -106,7 +113,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final bool isDesktopWeb = constraints.maxWidth > 500;
-            final double containerWidth = isDesktopWeb ? 390.0 : constraints.maxWidth;
+            final double containerWidth = isDesktopWeb ? 392.0 : constraints.maxWidth;
             // On desktop web, dynamically fit within browser viewport so frame never gets clipped
             final double containerHeight = isDesktopWeb
                 ? math.min(844.0, (constraints.maxHeight - 32.0).clamp(520.0, 844.0))
@@ -124,7 +131,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     top: 0,
                     left: 0,
                     right: 0,
-                    height: containerHeight * 0.30,
+                    height: containerHeight * 0.298,
                     child: const IgnorePointer(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
@@ -227,6 +234,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       onTabSelected: _onTabSelected,
                     ),
                   ),
+
+                  // 3. Notification Card Overlay after clicking bell icon
+                  //    Exact layout: width: 350; height: 96; top: 106px; left: 21px;
+                  if (notifState.isCustomerCardVisible) ...[
+                    Positioned.fill(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () {
+                          ref
+                              .read(notificationsProvider.notifier)
+                              .hideCustomerCard();
+                        },
+                      ),
+                    ),
+                    Positioned(
+                      top: 106.0,
+                      left: isDesktopWeb ? 21.0 : ((containerWidth - 350.0) / 2).clamp(10.0, 21.0),
+                      width: 350.0,
+                      height: 96.0,
+                      child: NotificationPopupCard(
+                        badgeText: tr.isArabic
+                            ? notifState.customerNotification.badgeTextAr
+                            : notifState.customerNotification.badgeTextEn,
+                        title: tr.isArabic
+                            ? notifState.customerNotification.titleAr
+                            : notifState.customerNotification.titleEn,
+                        location: tr.isArabic
+                            ? notifState.customerNotification.locationAr
+                            : notifState.customerNotification.locationEn,
+                        distance: tr.isArabic
+                            ? notifState.customerNotification.distanceAr
+                            : notifState.customerNotification.distanceEn,
+                        time: tr.isArabic
+                            ? notifState.customerNotification.timeAr
+                            : notifState.customerNotification.timeEn,
+                        imageAsset: notifState.customerNotification.imageAsset,
+                        onDismiss: () {
+                          ref
+                              .read(notificationsProvider.notifier)
+                              .dismissCustomerNotification();
+                        },
+                      ),
+                    ),
+                  ],
                 ],
               ),
             );

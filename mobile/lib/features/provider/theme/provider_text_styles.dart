@@ -1,79 +1,84 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_typography.dart';
 
 /// Provider App Dedicated Text Styles
 /// Segregated to keep customer side styles completely untouched.
+/// Dynamically selects Cairo for Arabic and Inter for English to prevent text clipping.
 class ProviderTextStyles {
   ProviderTextStyles._();
 
-  /// QAREEB brand title:
-  /// font-family: Inter;
-  /// font-weight: 700 (Bold);
-  /// font-size: 28px;
-  /// line-height: 100%;
-  /// letter-spacing: 0.5px;
-  /// color: #1C2926;
-  static TextStyle brandTitle = GoogleFonts.inter(
-    fontSize: 28.0,
+  static bool _manualArabic = true;
+  static bool get isArabic => _manualArabic;
+  static set isArabic(bool val) => _manualArabic = val;
+
+  static TextStyle _font({
+    required double fontSize,
+    required FontWeight fontWeight,
+    required Color color,
+    double? height,
+    double? letterSpacing,
+    bool? isArabicOverride,
+  }) {
+    final arabic = isArabicOverride ?? isArabic;
+    return AppTypography.fontForLocale(
+      isArabic: arabic,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      height: height ?? (arabic ? 1.28 : 1.15),
+      letterSpacing: arabic ? 0.0 : letterSpacing,
+    );
+  }
+
+  /// QAREEB / قريب brand title
+  static TextStyle get brandTitle => _font(
+    fontSize: isArabic ? 34.0 : 30.0,
     fontWeight: FontWeight.w700,
-    color: const Color(0xFF1C2926),
-    letterSpacing: 0.5,
-    height: 1.0,
+    color: const Color(0xFF231F20),
+    letterSpacing: isArabic ? 0.0 : 0.2,
+    height: isArabic ? 1.25 : 1.0,
+    isArabicOverride: isArabic,
   );
 
   /// Slogan: "Service always near you"
-  /// font-family: Inter;
-  /// font-weight: 400 (Regular);
-  /// font-size: 14px;
-  /// line-height: 100%;
-  /// letter-spacing: 0%;
-  /// text-align: center;
-  /// color: #566663;
-  static TextStyle slogan = GoogleFonts.inter(
+  static TextStyle get slogan => _font(
     fontSize: 14.0,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w500,
     color: const Color(0xFF566663),
     letterSpacing: 0.0,
-    height: 1.2,
+    height: 1.30,
   );
 
-  /// Bottom Headline:
-  /// "Ready to respond\nBuilt to deliver"
-  /// font-family: Inter; font-weight: 700 (Bold); font-size: 28px; color: #1C2926;
-  static TextStyle bottomHeadline = GoogleFonts.inter(
-    fontSize: 28.0,
+  /// Bottom Headline
+  static TextStyle get bottomHeadline => _font(
+    fontSize: 30.0,
     fontWeight: FontWeight.w700,
     color: const Color(0xFF1C2926),
-    letterSpacing: -0.3,
-    height: 1.15,
-  );
-
-  /// Bottom Subtitle:
-  /// "Manage service requests reach customers \nand stay connected in real time."
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 13.5px; color: #566663;
-  static TextStyle bottomSubtitle = GoogleFonts.inter(
-    fontSize: 13.5,
-    fontWeight: FontWeight.w400,
-    color: const Color(0xFF566663),
     letterSpacing: 0.0,
-    height: 1.35,
+    height: 1.30,
   );
 
-  /// Indicator Status Text:
-  /// "Getting things ready..."
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 11.5px; line-height: 100%; color: #71717A;
-  static TextStyle indicatorStatus = GoogleFonts.inter(
-    fontSize: 11.5,
+  /// Bottom Subtitle
+  static TextStyle get bottomSubtitle => _font(
+    fontSize: 14.0,
     fontWeight: FontWeight.w400,
+    color: const Color(0xFF6B7280),
+    letterSpacing: 0.0,
+    height: 1.45,
+  );
+
+  /// Indicator Status Text
+  static TextStyle get indicatorStatus => _font(
+    fontSize: 12.0,
+    fontWeight: FontWeight.w500,
     color: const Color(0xFF71717A),
     letterSpacing: 0.0,
-    height: 1.0,
+    height: 1.25,
   );
 
-  /// Card Heading Title:
-  /// "Start with your phone number"
-  /// font-family: Inter; font-weight: 600 (Semi Bold); font-size: 20px; line-height: 24px; color: #1C2926;
-  static TextStyle cardHeadingTitle = GoogleFonts.inter(
+  /// Card Heading Title
+  static TextStyle get cardHeadingTitle => _font(
     fontSize: 20.0,
     fontWeight: FontWeight.w600,
     color: const Color(0xFF1C2926),
@@ -81,21 +86,17 @@ class ProviderTextStyles {
     height: 24.0 / 20.0,
   );
 
-  /// Card Heading Subtitle:
-  /// "Enter your phone number to access your account \nand receive service requests."
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 12px; line-height: 100%; color: #566663;
-  static TextStyle cardHeadingSubtitle = GoogleFonts.inter(
+  /// Card Heading Subtitle
+  static TextStyle get cardHeadingSubtitle => _font(
     fontSize: 12.0,
     fontWeight: FontWeight.w400,
     color: const Color(0xFF566663),
     letterSpacing: 0.0,
-    height: 1.0,
+    height: 1.25,
   );
 
-  /// Phone Input Label:
-  /// "Phone Number"
-  /// font-family: Inter; font-weight: 500 (Medium); font-size: 14px; line-height: 22px; color: #1C2926;
-  static TextStyle phoneInputLabel = GoogleFonts.inter(
+  /// Phone Input Label
+  static TextStyle get phoneInputLabel => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w500,
     color: const Color(0xFF1C2926),
@@ -104,8 +105,7 @@ class ProviderTextStyles {
   );
 
   /// Country Code: "+966"
-  /// font-family: Inter; font-weight: 500 (Medium); font-size: 14px; line-height: 22px; color: #1C2926;
-  static TextStyle phoneCode = GoogleFonts.inter(
+  static TextStyle get phoneCode => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w500,
     color: const Color(0xFF1C2926),
@@ -113,9 +113,8 @@ class ProviderTextStyles {
     height: 22.0 / 14.0,
   );
 
-  /// Phone Number Input:
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 14px; line-height: 22px; color: #1C2926;
-  static TextStyle phoneInput = GoogleFonts.inter(
+  /// Phone Number Input
+  static TextStyle get phoneInput => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w400,
     color: const Color(0xFF1C2926),
@@ -123,9 +122,8 @@ class ProviderTextStyles {
     height: 22.0 / 14.0,
   );
 
-  /// Phone Number Placeholder: "50 123 4567"
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 14px; line-height: 22px; color: #566663;
-  static TextStyle phonePlaceholder = GoogleFonts.inter(
+  /// Phone Number Placeholder
+  static TextStyle get phonePlaceholder => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w400,
     color: const Color(0xFF566663),
@@ -133,9 +131,8 @@ class ProviderTextStyles {
     height: 22.0 / 14.0,
   );
 
-  /// Continue Button Text: "Continue"
-  /// font-family: Inter; font-weight: 500 (Medium); font-size: 14px; line-height: 22px; color: #FFFFFF;
-  static TextStyle continueButtonText = GoogleFonts.inter(
+  /// Continue Button Text
+  static TextStyle get continueButtonText => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w500,
     color: const Color(0xFFFFFFFF),
@@ -143,9 +140,8 @@ class ProviderTextStyles {
     height: 22.0 / 14.0,
   );
 
-  /// Divider "or" text:
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 14px; line-height: 22px; color: #566663;
-  static TextStyle orDividerText = GoogleFonts.inter(
+  /// Divider "or" text
+  static TextStyle get orDividerText => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w400,
     color: const Color(0xFF566663),
@@ -153,9 +149,8 @@ class ProviderTextStyles {
     height: 22.0 / 14.0,
   );
 
-  /// WhatsApp Button Text: "Continue with WhatsApp"
-  /// font-family: Inter; font-weight: 500 (Medium); font-size: 14px; line-height: 22px; color: #1C2926;
-  static TextStyle whatsappButtonText = GoogleFonts.inter(
+  /// WhatsApp Button Text
+  static TextStyle get whatsappButtonText => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w500,
     color: const Color(0xFF1C2926),
@@ -163,18 +158,17 @@ class ProviderTextStyles {
     height: 22.0 / 14.0,
   );
 
-  /// Security Notice: "Your Number is safe with us."
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 12px; line-height: 100%; color: #566663;
-  static TextStyle securityNotice = GoogleFonts.inter(
+  /// Security Notice
+  static TextStyle get securityNotice => _font(
     fontSize: 12.0,
     fontWeight: FontWeight.w400,
     color: const Color(0xFF566663),
     letterSpacing: 0.0,
-    height: 1.0,
+    height: 1.15,
   );
 
-  /// OTP Digit (Inter 400 Regular 20px line-height 22px #000000)
-  static TextStyle otpDigit = GoogleFonts.inter(
+  /// OTP Digit
+  static TextStyle get otpDigit => _font(
     fontSize: 20.0,
     fontWeight: FontWeight.w400,
     color: const Color(0xFF000000),
@@ -182,29 +176,26 @@ class ProviderTextStyles {
     height: 22.0 / 20.0,
   );
 
-  /// Resend Timer Label: "Resend code in "
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 12px; line-height: 100%; color: #566663;
-  static TextStyle resendTimerText = GoogleFonts.inter(
+  /// Resend Timer Label
+  static TextStyle get resendTimerText => _font(
     fontSize: 12.0,
     fontWeight: FontWeight.w400,
     color: const Color(0xFF566663),
     letterSpacing: 0.0,
-    height: 1.0,
+    height: 1.15,
   );
 
-  /// Resend Timer Value Span: "00:59"
-  /// font-family: Inter; font-weight: 500 (Medium); font-size: 12px; line-height: 100%; color: #566663;
-  static TextStyle resendTimerSpan = GoogleFonts.inter(
+  /// Resend Timer Value Span
+  static TextStyle get resendTimerSpan => _font(
     fontSize: 12.0,
     fontWeight: FontWeight.w500,
     color: const Color(0xFF566663),
     letterSpacing: 0.0,
-    height: 1.0,
+    height: 1.15,
   );
 
-  /// Change Phone Number Button Text: "Change Phone Number"
-  /// font-family: Inter; font-weight: 500 (Medium); font-size: 14px; line-height: 22px; color: #1C2926;
-  static TextStyle changePhoneButtonText = GoogleFonts.inter(
+  /// Change Phone Number Button Text
+  static TextStyle get changePhoneButtonText => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w500,
     color: const Color(0xFF1C2926),
@@ -212,14 +203,8 @@ class ProviderTextStyles {
     height: 22.0 / 14.0,
   );
 
-  /// Header Title: "Phone Verification"
-  /// font-family: Inter;
-  /// font-weight: 500 (Medium);
-  /// font-size: 16px;
-  /// line-height: 24px;
-  /// letter-spacing: 0px;
-  /// color: #1C2926;
-  static TextStyle headerTitle = GoogleFonts.inter(
+  /// Header Title
+  static TextStyle get headerTitle => _font(
     fontSize: 16.0,
     fontWeight: FontWeight.w500,
     color: const Color(0xFF1C2926),
@@ -227,9 +212,8 @@ class ProviderTextStyles {
     height: 24.0 / 16.0,
   );
 
-  /// Provider Profile Details Header Title: "Provider Profile Details"
-  /// font-family: Inter; font-weight: 600 (Semi Bold); font-size: 16px; line-height: 22px; color: #1C2926;
-  static TextStyle profileDetailsHeaderTitle = GoogleFonts.inter(
+  /// Provider Profile Details Header Title
+  static TextStyle get profileDetailsHeaderTitle => _font(
     fontSize: 16.0,
     fontWeight: FontWeight.w600,
     color: const Color(0xFF1C2926),
@@ -237,9 +221,8 @@ class ProviderTextStyles {
     height: 22.0 / 16.0,
   );
 
-  /// Provider Profile Details Header Subtitle: "Enter your personal details to continue."
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 12px; line-height: 16px; color: #566663;
-  static TextStyle profileDetailsHeaderSubtitle = GoogleFonts.inter(
+  /// Provider Profile Details Header Subtitle
+  static TextStyle get profileDetailsHeaderSubtitle => _font(
     fontSize: 12.0,
     fontWeight: FontWeight.w400,
     color: const Color(0xFF566663),
@@ -247,9 +230,8 @@ class ProviderTextStyles {
     height: 16.0 / 12.0,
   );
 
-  /// Verification Successful Title: "Verification Successful"
-  /// font-family: Inter; font-weight: 600 (Semi Bold); font-size: 20px; line-height: 24px; color: #1C2926;
-  static TextStyle verificationSuccessfulTitle = GoogleFonts.inter(
+  /// Verification Successful Title
+  static TextStyle get verificationSuccessfulTitle => _font(
     fontSize: 20.0,
     fontWeight: FontWeight.w600,
     color: const Color(0xFF1C2926),
@@ -257,9 +239,8 @@ class ProviderTextStyles {
     height: 24.0 / 20.0,
   );
 
-  /// Verification Successful Subtitle: "Your phone is verified. Complete your profile to receive service requests."
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 12px; line-height: 100%; color: #566663;
-  static TextStyle verificationSuccessfulSubtitle = GoogleFonts.inter(
+  /// Verification Successful Subtitle
+  static TextStyle get verificationSuccessfulSubtitle => _font(
     fontSize: 12.0,
     fontWeight: FontWeight.w400,
     color: const Color(0xFF566663),
@@ -267,9 +248,8 @@ class ProviderTextStyles {
     height: 1.25,
   );
 
-  /// Admin Approval Pending Title: "Admin Approval pending"
-  /// font-family: Inter; font-weight: 600 (Semi Bold); font-size: 20px; line-height: 24px; color: #1C2926;
-  static TextStyle adminApprovalPendingTitle = GoogleFonts.inter(
+  /// Admin Approval Pending Title
+  static TextStyle get adminApprovalPendingTitle => _font(
     fontSize: 20.0,
     fontWeight: FontWeight.w600,
     color: const Color(0xFF1C2926),
@@ -277,9 +257,8 @@ class ProviderTextStyles {
     height: 24.0 / 20.0,
   );
 
-  /// Admin Approval Pending Subtitle: "Your account is submitted our team \nis reviewing it."
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 12px; line-height: 100%; color: #566663;
-  static TextStyle adminApprovalPendingSubtitle = GoogleFonts.inter(
+  /// Admin Approval Pending Subtitle
+  static TextStyle get adminApprovalPendingSubtitle => _font(
     fontSize: 12.0,
     fontWeight: FontWeight.w400,
     color: const Color(0xFF566663),
@@ -287,10 +266,8 @@ class ProviderTextStyles {
     height: 1.25,
   );
 
-
-  /// Step Card Title: "Complete  Your Profile"
-  /// font-family: Inter; font-weight: 500 (Medium); font-size: 14px; line-height: 22px; color: #1C2926;
-  static TextStyle stepCardTitle = GoogleFonts.inter(
+  /// Step Card Title
+  static TextStyle get stepCardTitle => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w500,
     color: const Color(0xFF1C2926),
@@ -298,19 +275,17 @@ class ProviderTextStyles {
     height: 22.0 / 14.0,
   );
 
-  /// Step Card Subtitle: "Add your business details, services, and location."
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 10px; line-height: 22px; color: #566663;
-  static TextStyle stepCardSubtitle = GoogleFonts.inter(
+  /// Step Card Subtitle
+  static TextStyle get stepCardSubtitle => _font(
     fontSize: 10.0,
     fontWeight: FontWeight.w400,
     color: const Color(0xFF566663),
     letterSpacing: 0.0,
-    height: 1.4,
+    height: 1.35,
   );
 
-  /// Back to Home Primary Button Text: "Back to Home"
-  /// font-family: Inter; font-weight: 500 (Medium); font-size: 14px; line-height: 22px; color: #FFFFFF;
-  static TextStyle backToHomeButtonText = GoogleFonts.inter(
+  /// Back to Home Primary Button Text
+  static TextStyle get backToHomeButtonText => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w500,
     color: const Color(0xFFFFFFFF),
@@ -319,7 +294,7 @@ class ProviderTextStyles {
   );
 
   /// Back to Home Secondary/Dark Button Text
-  static TextStyle backToHomeDarkButtonText = GoogleFonts.inter(
+  static TextStyle get backToHomeDarkButtonText => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w500,
     color: const Color(0xFF1C2926),
@@ -327,9 +302,8 @@ class ProviderTextStyles {
     height: 22.0 / 14.0,
   );
 
-  /// Personal Information Heading: "Personal Information"
-  /// font-family: Inter; font-weight: 500 (Medium); font-size: 14px; line-height: 22px; color: #1C2926;
-  static TextStyle personalInformationHeading = GoogleFonts.inter(
+  /// Personal Information Heading
+  static TextStyle get personalInformationHeading => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w500,
     color: const Color(0xFF1C2926),
@@ -337,9 +311,8 @@ class ProviderTextStyles {
     height: 22.0 / 14.0,
   );
 
-  /// Profile Field Label: "Full Name", "Iqama Number", etc.
-  /// font-family: Inter; font-weight: 500 (Medium); font-size: 12px; line-height: 22px; color: #1C2926;
-  static TextStyle profileInputLabel = GoogleFonts.inter(
+  /// Profile Field Label
+  static TextStyle get profileInputLabel => _font(
     fontSize: 12.0,
     fontWeight: FontWeight.w500,
     color: const Color(0xFF1C2926),
@@ -347,9 +320,8 @@ class ProviderTextStyles {
     height: 22.0 / 12.0,
   );
 
-  /// Profile Field Label Span: "(as per Iqama)"
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 12px; line-height: 22px; color: #566663;
-  static TextStyle profileInputLabelSpan = GoogleFonts.inter(
+  /// Profile Field Label Span
+  static TextStyle get profileInputLabelSpan => _font(
     fontSize: 12.0,
     fontWeight: FontWeight.w400,
     color: const Color(0xFF566663),
@@ -358,8 +330,7 @@ class ProviderTextStyles {
   );
 
   /// Profile Field Input Text
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 14px; line-height: 22px; color: #1C2926;
-  static TextStyle profileInputText = GoogleFonts.inter(
+  static TextStyle get profileInputText => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w400,
     color: const Color(0xFF1C2926),
@@ -368,14 +339,30 @@ class ProviderTextStyles {
   );
 
   /// Profile Field Input Placeholder
-  /// font-family: Inter; font-weight: 400 (Regular); font-size: 14px; line-height: 22px; color: #566663;
-  static TextStyle profileInputPlaceholder = GoogleFonts.inter(
+  static TextStyle get profileInputPlaceholder => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w400,
     color: const Color(0xFF566663),
     letterSpacing: 0.0,
     height: 22.0 / 14.0,
   );
-}
 
+  /// What's Next? Card Title
+  static TextStyle get whatsNextTitle => _font(
+    fontSize: 14.0,
+    fontWeight: FontWeight.w500,
+    color: const Color(0xFF1C2926),
+    letterSpacing: 0.0,
+    height: 22.0 / 14.0,
+  );
+
+  /// What's Next? Card Subtitle
+  static TextStyle get whatsNextSubtitle => _font(
+    fontSize: 12.0,
+    fontWeight: FontWeight.w400,
+    color: const Color(0xFF566663),
+    letterSpacing: 0.0,
+    height: 14.0 / 12.0,
+  );
+}
 

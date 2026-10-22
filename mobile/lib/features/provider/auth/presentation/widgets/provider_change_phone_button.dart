@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -54,7 +55,7 @@ class ProviderChangePhoneButton extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           height: designHeight,
           child: Material(
             color: ProviderColors.inputBackground, // background: #F2F5F4
@@ -75,7 +76,7 @@ class ProviderChangePhoneButton extends StatelessWidget {
 
                     // content: Change Phone Number (Inter 500 Medium 14px line-height 22px #1C2926)
                     Text(
-                      'Change Phone Number',
+                      context.l10n.changePhoneNumber,
                       style: ProviderTextStyles.changePhoneButtonText,
                     ),
                   ],
@@ -94,9 +95,12 @@ class _BackArrowWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: const Size(14.0, 12.0),
-      painter: _BackArrowPainter(),
+    return Transform.flip(
+      flipX: Directionality.of(context) == TextDirection.rtl,
+      child: const CustomPaint(
+        size: Size(14.0, 12.0),
+        painter: _BackArrowPainter(),
+      ),
     );
   }
 }
@@ -104,6 +108,8 @@ class _BackArrowWidget extends StatelessWidget {
 /// Left back arrow painter matching Figma specifications:
 /// width: 14; height: 12; angle: 0 deg; border: 1.5px solid #1C2926;
 class _BackArrowPainter extends CustomPainter {
+  const _BackArrowPainter();
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()

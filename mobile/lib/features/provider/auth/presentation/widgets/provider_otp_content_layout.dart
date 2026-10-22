@@ -37,15 +37,15 @@ class ProviderOtpContentLayout extends StatelessWidget {
     this.showHandleBar = false,
   });
 
-  static const double designWidth = 390.0;
+  static const double designWidth = 350.0;
   static const double designHeight = 359.0;
   static const double designTop = 12.0;
-  static const double designGap = 40.0;
+  static const double designGap = 16.0;
   static const double horizontalPadding = 20.0;
 
   static const double innerWidth = 350.0;
   static const double innerHeight = 295.0;
-  static const double innerGap = 20.0;
+  static const double innerGap = 16.0;
 
   @override
   Widget build(BuildContext context) {
@@ -54,28 +54,25 @@ class ProviderOtpContentLayout extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (showHandleBar) ...[
-                  // 1. Top grab handle pill bar: width: 60; height: 4; border-radius: 60px; background: #EFF0ED;
-                  const ProviderCardHandleBar(),
+          width: double.infinity,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showHandleBar) ...[
+                // 1. Top grab handle pill bar: width: 60; height: 4; border-radius: 60px; background: #EFF0ED;
+                const ProviderCardHandleBar(),
 
-                  // Gap: 40px
-                  const SizedBox(height: designGap),
-                ],
-
-                // 2. inner content layout: width: 350; height: 295; gap: 20px;
-                innerContent ??
-                    ProviderOtpInnerContentLayout(
-                      children: children,
-                    ),
+                // Gap: 16px
+                const SizedBox(height: designGap),
               ],
-            ),
+
+              // 2. inner content layout
+              innerContent ??
+                  ProviderOtpInnerContentLayout(
+                    children: children,
+                  ),
+            ],
           ),
         ),
       ),
@@ -91,7 +88,7 @@ class ProviderOtpContentLayout extends StatelessWidget {
 ///   height: 295;
 ///   angle: 0 deg;
 ///   opacity: 1;
-///   gap: 20px;
+///   gap: 16px;
 class ProviderOtpInnerContentLayout extends StatelessWidget {
   final List<Widget>? children;
 
@@ -102,7 +99,7 @@ class ProviderOtpInnerContentLayout extends StatelessWidget {
 
   static const double designWidth = 350.0;
   static const double designHeight = 295.0;
-  static const double designGap = 20.0;
+  static const double designGap = 16.0;
 
   @override
   Widget build(BuildContext context) {
@@ -111,10 +108,10 @@ class ProviderOtpInnerContentLayout extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: _buildSeparatedChildren(),
           ),
         ),

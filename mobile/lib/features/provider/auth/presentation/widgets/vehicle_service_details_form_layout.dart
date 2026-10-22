@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_continue_button.dart';
@@ -144,7 +145,7 @@ class _VehicleServiceDetailsFormLayoutState
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(
-                          item,
+                          context.isArabic ? context.auto(item) : item,
                           style: ProviderTextStyles.profileInputText.copyWith(
                             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                             color: isSelected
@@ -153,10 +154,34 @@ class _VehicleServiceDetailsFormLayoutState
                           ),
                         ),
                         trailing: isSelected
-                            ? const Icon(
-                                Icons.check_circle,
-                                color: ProviderColors.primaryButton,
-                                size: 20.0,
+                            ? Container(
+                                width: 22.0,
+                                height: 22.0,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF0EAFE),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xFFE9E0FE), // border: 0.5px solid #E9E0FE
+                                    width: 0.5,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Container(
+                                    width: 15.0,
+                                    height: 15.0,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF8B53FE), // background: #8B53FE
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.check_rounded,
+                                        size: 10.0,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               )
                             : null,
                         onTap: () {
@@ -178,20 +203,20 @@ class _VehicleServiceDetailsFormLayoutState
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: VehicleServiceDetailsFormLayout.designWidth,
+      width: double.infinity,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // 1. Service Category (Dropdown)
           ProviderProfileInputField(
-            label: 'Service Category',
-            placeholder: 'Vehicle Towing',
+            label: context.l10n.serviceCategoryLabel,
+            placeholder: context.isArabic ? 'سطحة وسحب سيارات' : 'Vehicle Towing',
             controller: _serviceCategoryCtrl,
             readOnly: true,
             onTap: () {
               _showSelectionModal(
-                title: 'Select Service Category',
+                title: context.l10n.selectServiceCategory,
                 options: serviceCategories,
                 selectedValue: _serviceCategoryCtrl.text,
                 onSelected: (val) {
@@ -208,13 +233,13 @@ class _VehicleServiceDetailsFormLayoutState
 
           // 2. Vehicle Type (Dropdown)
           ProviderProfileInputField(
-            label: 'Vehicle Type',
-            placeholder: 'Flatbed Truck',
+            label: context.l10n.vehicleTypeLabel,
+            placeholder: context.isArabic ? 'سطحة هيدروليك' : 'Flatbed Truck',
             controller: _vehicleTypeCtrl,
             readOnly: true,
             onTap: () {
               _showSelectionModal(
-                title: 'Select Vehicle Type',
+                title: context.l10n.selectVehicleType,
                 options: vehicleTypes,
                 selectedValue: _vehicleTypeCtrl.text,
                 onSelected: (val) {
@@ -231,8 +256,8 @@ class _VehicleServiceDetailsFormLayoutState
 
           // 3. Plate Number (Text Input)
           ProviderProfileInputField(
-            label: 'Plate Number',
-            placeholder: 'ABC 1234',
+            label: context.l10n.plateNumberLabel,
+            placeholder: context.isArabic ? 'أ ب ج 1234' : 'ABC 1234',
             controller: _plateNumberCtrl,
             keyboardType: TextInputType.text,
             icon: const LicensePlateOutlineIconWidget(),
@@ -243,8 +268,8 @@ class _VehicleServiceDetailsFormLayoutState
 
           // 4. Vehicle Model (Text Input)
           ProviderProfileInputField(
-            label: 'Vehicle Model',
-            placeholder: 'Enter vehicle model',
+            label: context.l10n.vehicleModelLabel,
+            placeholder: context.isArabic ? 'أدخل موديل المركبة' : 'Enter vehicle model',
             controller: _vehicleModelCtrl,
             keyboardType: TextInputType.text,
             icon: const TruckOutlineIconWidget(),
@@ -255,13 +280,13 @@ class _VehicleServiceDetailsFormLayoutState
 
           // 5. Vehicle Color (Selectable/Input)
           ProviderProfileInputField(
-            label: 'Vehicle Color',
-            placeholder: 'White',
+            label: context.l10n.vehicleColorLabel,
+            placeholder: context.isArabic ? 'أبيض' : 'White',
             controller: _vehicleColorCtrl,
             readOnly: true,
             onTap: () {
               _showSelectionModal(
-                title: 'Select Vehicle Color',
+                title: context.l10n.selectVehicleColor,
                 options: vehicleColors,
                 selectedValue: _vehicleColorCtrl.text,
                 onSelected: (val) {

@@ -3,7 +3,9 @@ import 'dart:ui';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/localization/app_locale.dart';
 import '../../home/presentation/widgets/bottom_nav_bar_widget.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../location/presentation/location_permission_screen.dart';
@@ -21,14 +23,15 @@ import '../../location/presentation/location_permission_screen.dart';
 /// - top: 56px; left: 20px;
 /// - justify-content: space-between;
 /// - angle: 0 deg; opacity: 1;
-class EmergencyServicesScreen extends StatefulWidget {
+class EmergencyServicesScreen extends ConsumerStatefulWidget {
   const EmergencyServicesScreen({super.key});
 
   @override
-  State<EmergencyServicesScreen> createState() => _EmergencyServicesScreenState();
+  ConsumerState<EmergencyServicesScreen> createState() => _EmergencyServicesScreenState();
 }
 
-class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
+class _EmergencyServicesScreenState extends ConsumerState<EmergencyServicesScreen> {
+  AppTranslations get tr => ref.read(translationsProvider);
   late final ScrollController _scrollController;
 
   @override
@@ -48,8 +51,8 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
     required String label,
   }) {
     return Container(
-      height: 28.0,
-      padding: const EdgeInsets.symmetric(horizontal: 10.0),
+      constraints: const BoxConstraints(minHeight: 28.0),
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(31.0),
@@ -70,11 +73,11 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
           const SizedBox(width: 6.0),
           Text(
             label,
-            style: GoogleFonts.inter(
+            style: tr.font(
               fontSize: 10.0,
               fontWeight: FontWeight.w400,
               color: const Color(0xFF1C2926),
-              height: 1.0,
+              height: 1.1,
               letterSpacing: 0.0,
             ),
           ),
@@ -85,6 +88,7 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(translationsProvider);
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -207,11 +211,14 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                                       ),
                                     ],
                                   ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.arrow_back_ios_new_rounded,
-                                      size: 15.0,
-                                      color: Color(0xFF1C2926),
+                                  child: Center(
+                                    child: Transform.scale(
+                                      scaleX: tr.isArabic ? -1.0 : 1.0,
+                                      child: const Icon(
+                                        Icons.arrow_back_ios_new_rounded,
+                                        size: 15.0,
+                                        color: Color(0xFF1C2926),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -225,22 +232,22 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    'Emergency Services',
-                                    style: GoogleFonts.inter(
+                                    tr.emergencyServices,
+                                    style: tr.font(
                                       fontSize: 16.0,
                                       fontWeight: FontWeight.w600,
                                       color: const Color(0xFF1C2926),
-                                      height: 1.1,
+                                      height: 1.15,
                                     ),
                                   ),
                                   const SizedBox(height: 2.0),
                                   Text(
-                                    'Get help, fast.',
-                                    style: GoogleFonts.inter(
+                                    tr.getHelpFast,
+                                    style: tr.font(
                                       fontSize: 12.0,
                                       fontWeight: FontWeight.w400,
                                       color: const Color(0xFF566663),
-                                      height: 1.1,
+                                      height: 1.15,
                                     ),
                                   ),
                                 ],
@@ -317,8 +324,8 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                                 children: [
                                   // content: Emergency
                                   Text(
-                                    'Emergency',
-                                    style: GoogleFonts.inter(
+                                    tr.emergencyLabel,
+                                    style: tr.font(
                                       fontSize: 10.0,
                                       fontWeight: FontWeight.w400,
                                       color: const Color(0xFFFF6E05),
@@ -328,8 +335,8 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
 
                                   // content: Get Help Now
                                   Text(
-                                    'Get Help Now',
-                                    style: GoogleFonts.inter(
+                                    tr.getHelpNow,
+                                    style: tr.font(
                                       fontSize: 16.0,
                                       fontWeight: FontWeight.w500,
                                       color: const Color(0xFF1C2926),
@@ -339,12 +346,12 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
 
                                   // content: We’ll connect you with the nearest available emergency team.
                                   Text(
-                                    'We’ll connect you with the nearest\navailable emergency team.',
-                                    style: GoogleFonts.inter(
+                                    tr.emergencyCardSubtitle,
+                                    style: tr.font(
                                       fontSize: 12.0,
                                       fontWeight: FontWeight.w400,
                                       color: const Color(0xFF566663),
-                                      height: 1.15,
+                                      height: 1.25,
                                       letterSpacing: 0.0,
                                     ),
                                   ),
@@ -430,7 +437,7 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                                   ),
                                 ),
                               ),
-                              label: 'Verified Providers',
+                              label: tr.verifiedProvidersBadge,
                             ),
 
                             // Equal gap between badges
@@ -448,7 +455,7 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                                   ),
                                 ),
                               ),
-                              label: 'Quick Response',
+                              label: tr.quickResponseBadge,
                             ),
 
                             // Equal gap between badges
@@ -466,7 +473,7 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                                   ),
                                 ),
                               ),
-                              label: 'Live Tracking',
+                              label: tr.liveTrackingBadge,
                             ),
                           ],
                         ),
@@ -491,24 +498,24 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                           children: [
                             // content : Choose Your Services
                             Text(
-                              'Choose Your Services',
-                              style: GoogleFonts.inter(
+                              tr.chooseYourServices,
+                              style: tr.font(
                                 fontSize: 14.0,
                                 fontWeight: FontWeight.w500,
                                 color: const Color(0xFF1C2926),
-                                height: 1.0,
+                                height: 1.15,
                                 letterSpacing: 0.0,
                               ),
                             ),
                             const SizedBox(height: 6.0),
                             // content: Choose a service to get immediate help.
                             Text(
-                              'Choose a service to get immediate help.',
-                              style: GoogleFonts.inter(
+                              tr.chooseServiceImmediateHelp,
+                              style: tr.font(
                                 fontSize: 12.0,
                                 fontWeight: FontWeight.w400,
                                 color: const Color(0xFF566663),
-                                height: 1.0,
+                                height: 1.15,
                                 letterSpacing: 0.0,
                               ),
                             ),
@@ -523,8 +530,8 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
                           children: [
                             // 1. Ambulance Card:
                             _EmergencyCategoryCard(
-                              title: 'Ambulance',
-                              subtitle: 'Medical emergency',
+                              title: tr.ambulanceTitle,
+                              subtitle: tr.ambulanceSubtitle,
                               imagePath: 'assets/images/ambulance.png',
                               onTap: () {
                                 Navigator.of(context).push(
@@ -540,8 +547,8 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
 
                             // 2. Police Card:
                             _EmergencyCategoryCard(
-                              title: 'Police',
-                              subtitle: 'Crime & security',
+                              title: tr.policeTitle,
+                              subtitle: tr.policeSubtitle,
                               imagePath: 'assets/images/police.png',
                               onTap: () {
                                 Navigator.of(context).push(
@@ -557,8 +564,8 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
 
                             // 3. Fire Brigade Card:
                             _EmergencyCategoryCard(
-                              title: 'Fire Brigade',
-                              subtitle: 'Fire & rescue response',
+                              title: tr.fireBrigadeTitle,
+                              subtitle: tr.fireBrigadeSubtitle,
                               imagePath: 'assets/images/fire_brigade.png',
                               onTap: () {
                                 Navigator.of(context).push(
@@ -574,8 +581,8 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
 
                             // 4. Towing Card:
                             _EmergencyCategoryCard(
-                              title: 'Tow Truck',
-                              subtitle: 'Roadside vehicle breakdown',
+                              title: tr.towTruckTitle,
+                              subtitle: tr.towTruckSubtitle,
                               imagePath: 'assets/images/towing.png',
                               onTap: () {
                                 Navigator.of(context).push(
@@ -591,8 +598,8 @@ class _EmergencyServicesScreenState extends State<EmergencyServicesScreen> {
 
                             // 5. Hospital Card:
                             _EmergencyCategoryCard(
-                              title: 'Hospital',
-                              subtitle: 'Urgent medical center',
+                              title: tr.hospitalTitle,
+                              subtitle: tr.hospitalSubtitle,
                               imagePath: 'assets/images/hospital.png',
                               onTap: () {
                                 Navigator.of(context).push(
@@ -831,7 +838,7 @@ class OutlinedShieldPainter extends CustomPainter {
 ///   - title: 12px Inter Medium (500), #1C2926
 ///   - subtitle: 10px Inter Regular (400), #566663
 /// - right arrow vector >: width: 5; height: 10; color: #566663;
-class _EmergencyCategoryCard extends StatelessWidget {
+class _EmergencyCategoryCard extends ConsumerWidget {
   final String title;
   final String subtitle;
   final String imagePath;
@@ -845,13 +852,14 @@ class _EmergencyCategoryCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tr = ref.watch(translationsProvider);
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
         width: double.infinity,
-        height: 72.0,
+        constraints: const BoxConstraints(minHeight: 72.0),
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           color: const Color(0xFFFFFFFF),
@@ -890,55 +898,60 @@ class _EmergencyCategoryCard extends StatelessWidget {
             const SizedBox(width: 16.0),
 
             // content layout styling:
-            // width: 237; height: 28; justify-content: space-between;
             Expanded(
-              child: SizedBox(
-                height: 28.0,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // inner content styling:
-                    // width: 96; height: 28; gap: 12px;
-                    Column(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        // content: title (12px Inter Medium, #1C2926)
+                        // content: title
                         Text(
                           title,
-                          style: GoogleFonts.inter(
+                          style: tr.font(
                             fontSize: 12.0,
                             fontWeight: FontWeight.w500,
                             color: const Color(0xFF1C2926),
-                            height: 1.0,
+                            height: 1.15,
                             letterSpacing: 0.0,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                        const SizedBox(height: 2.0),
 
-                        // content: subtitle (10px Inter Regular, #566663)
+                        // content: subtitle
                         Text(
                           subtitle,
-                          style: GoogleFonts.inter(
+                          style: tr.font(
                             fontSize: 10.0,
                             fontWeight: FontWeight.w400,
                             color: const Color(0xFF566663),
-                            height: 1.0,
+                            height: 1.15,
                             letterSpacing: 0.0,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
+                  ),
 
-                    // vector > styling on right side:
-                    // width: 5; height: 10; border-width: 0.6px; border: 0.6px solid #566663;
-                    const Icon(
+                  const SizedBox(width: 8.0),
+
+                  // vector > styling on right side:
+                  Transform.scale(
+                    scaleX: tr.isArabic ? -1.0 : 1.0,
+                    child: const Icon(
                       Icons.chevron_right_rounded,
                       size: 18.0,
                       color: Color(0xFF566663),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],

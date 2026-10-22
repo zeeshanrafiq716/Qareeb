@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -61,7 +62,7 @@ class ProviderWhatsAppButton extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           height: designHeight,
           child: Material(
             color: ProviderColors.inputBackground, // background: #F2F5F4
@@ -87,7 +88,7 @@ class ProviderWhatsAppButton extends StatelessWidget {
 
                         // content: Continue with WhatsApp (Inter 500 Medium 14px #1C2926)
                         Text(
-                          'Continue with WhatsApp',
+                          context.l10n.continueWithWhatsApp,
                           style: ProviderTextStyles.whatsappButtonText,
                         ),
                       ],
@@ -217,14 +218,19 @@ class _RightChevronWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: const Size(5.0, 10.0),
-      painter: _RightChevronPainter(),
+    return Transform.flip(
+      flipX: Directionality.of(context) == TextDirection.rtl,
+      child: const CustomPaint(
+        size: Size(5.0, 10.0),
+        painter: _RightChevronPainter(),
+      ),
     );
   }
 }
 
 class _RightChevronPainter extends CustomPainter {
+  const _RightChevronPainter();
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()

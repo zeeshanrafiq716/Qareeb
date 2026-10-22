@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/localization/app_locale.dart';
 
-class LoadingIndicatorWidget extends StatelessWidget {
+class LoadingIndicatorWidget extends ConsumerWidget {
   final double progress;
   final String statusText;
 
@@ -12,7 +13,8 @@ class LoadingIndicatorWidget extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tr = ref.watch(translationsProvider);
     const double barWidth = 160.0;
     const double barHeight = 4.5;
 
@@ -29,7 +31,7 @@ class LoadingIndicatorWidget extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Align(
-            alignment: Alignment.centerLeft,
+            alignment: tr.isArabic ? Alignment.centerRight : Alignment.centerLeft,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutCubic,
@@ -58,7 +60,7 @@ class LoadingIndicatorWidget extends StatelessWidget {
             statusText,
             key: ValueKey<String>(statusText),
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: tr.font(
               fontSize: 13.5,
               fontWeight: FontWeight.w400,
               color: const Color(0xFF566663),

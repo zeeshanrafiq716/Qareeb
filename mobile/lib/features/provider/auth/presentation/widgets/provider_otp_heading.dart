@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider OTP Card Heading Widget
@@ -43,16 +44,16 @@ class ProviderOtpHeading extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Title: "One more step ahead." (Inter 600 SemiBold 20px line-height 24px #1C2926)
               SizedBox(
-                width: designWidth,
+                width: double.infinity,
                 child: Text(
-                  title ?? 'One more step ahead.',
+                  title ?? context.l10n.oneMoreStepAhead,
                   textAlign: TextAlign.center,
                   style: ProviderTextStyles.cardHeadingTitle.copyWith(height: 1.15),
                 ),
@@ -62,9 +63,9 @@ class ProviderOtpHeading extends StatelessWidget {
 
               // Subtitle: "We’ve sent a 4-digit code to your phone." (Inter 400 Regular 12px #566663)
               SizedBox(
-                width: designWidth,
+                width: double.infinity,
                 child: Text(
-                  subtitle ?? 'We’ve sent a 4-digit code to your phone.',
+                  subtitle ?? context.l10n.codeSentToPhone,
                   textAlign: TextAlign.center,
                   style: ProviderTextStyles.cardHeadingSubtitle,
                 ),

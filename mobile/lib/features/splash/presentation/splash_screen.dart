@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/localization/app_locale.dart';
 import '../../../providers/backend_provider.dart';
 import '../../home/presentation/home_screen.dart';
 import 'widgets/animated_route_widget.dart';
@@ -22,9 +23,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late AnimationController _loadingProgressController;
 
   Timer? _navTimer;
-
-  String _statusText = 'Loading your nearby services...';
-  bool _backendConnected = false;
 
   @override
   void initState() {
@@ -68,24 +66,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       // Check server health
       final health = await backend.checkHealth();
       if (health.isHealthy) {
-        _backendConnected = true;
         await backend.getCategories();
-      }
-
-      if (mounted) {
-        setState(() {
-          _statusText = _backendConnected
-              ? 'Loading your nearby services...'
-              : 'Loading your nearby services...';
-        });
       }
     } catch (_) {
       // Graceful fallback keeping exact design message
-      if (mounted) {
-        setState(() {
-          _statusText = 'Loading your nearby services...';
-        });
-      }
     }
   }
 
@@ -108,6 +92,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final tr = ref.watch(translationsProvider);
+
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -179,7 +165,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           final double progress = 0.35 + (_loadingProgressController.value * 0.60);
                           return LoadingIndicatorWidget(
                             progress: progress,
-                            statusText: _statusText,
+                            statusText: tr.loadingNearbyServices,
                           );
                         },
                       ),

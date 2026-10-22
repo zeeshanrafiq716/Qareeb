@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -44,38 +45,38 @@ class ProviderOrDivider extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // left-side horizontal line branding
-              Container(
-                width: lineWidth,
-                height: lineHeight,
-                decoration: BoxDecoration(
-                  color: ProviderColors.dividerLine, // #DEE0DF
-                  borderRadius: BorderRadius.circular(20.0),
+              // left-side horizontal line
+              Expanded(
+                child: Container(
+                  height: lineHeight,
+                  decoration: BoxDecoration(
+                    color: ProviderColors.dividerLine, // #DEE0DF
+                    borderRadius: BorderRadius.circular(20.0),
+                  ),
                 ),
               ),
 
-              const SizedBox(width: designGap), // gap: 12px
-
-              // content: or (Inter 400 Regular 14px line-height 22px #566663)
-              Text(
-                'or',
-                style: ProviderTextStyles.orDividerText,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: designGap),
+                child: Text(
+                  context.l10n.orDividerText,
+                  style: ProviderTextStyles.orDividerText,
+                ),
               ),
 
-              const SizedBox(width: designGap), // gap: 12px
-
-              // right-side horizontal branding
-              Container(
-                width: lineWidth,
-                height: lineHeight,
-                decoration: BoxDecoration(
-                  color: ProviderColors.dividerLine, // #DEE0DF
-                  borderRadius: BorderRadius.circular(20.0),
+              // right-side horizontal line
+              Expanded(
+                child: Container(
+                  height: lineHeight,
+                  decoration: BoxDecoration(
+                    color: ProviderColors.dividerLine, // #DEE0DF
+                    borderRadius: BorderRadius.circular(20.0),
+                  ),
                 ),
               ),
             ],

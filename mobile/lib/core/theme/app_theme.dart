@@ -22,7 +22,7 @@ class AppTheme {
         onSurface: AppColors.textWhite,
       ),
       textTheme: GoogleFonts.interTextTheme().apply(
-        fontFamilyFallback: const ['Inter', 'Roboto', 'Segoe UI', 'Arial', 'sans-serif'],
+        fontFamilyFallback: const ['Cairo', 'Tajawal', 'Inter', 'Roboto', 'Segoe UI', 'Arial', 'sans-serif'],
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/localization/app_locale.dart';
 
 class BrandingHeaderWidget extends StatelessWidget {
   const BrandingHeaderWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final tr = context.tr;
     final screenWidth = MediaQuery.of(context).size.width;
 
     // Scale font size dynamically while maintaining exact proportion
@@ -14,27 +16,38 @@ class BrandingHeaderWidget extends StatelessWidget {
     final double sloganFontSize = (screenWidth / 390.0 * 20.0).clamp(16.0, 20.0);
     final double dotSize = (screenWidth / 390.0 * 12.0).clamp(9.0, 13.0);
 
+    final bool isArabic = tr.isArabic;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // QAREEB + Brand Accent Dot
+        // Brand Name + Accent Dot
         Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
+          textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
           children: [
             Text(
-              'QAREEB',
-              style: GoogleFonts.inter(
-                fontSize: titleFontSize,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF1C2926),
-                letterSpacing: -0.5,
-                height: 1.0,
-              ),
+              isArabic ? 'قريب' : 'QAREEB',
+              style: isArabic
+                  ? tr.font(
+                      fontSize: titleFontSize,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1C2926),
+                      letterSpacing: 0.0,
+                      height: 1.0,
+                    )
+                  : GoogleFonts.inter(
+                      fontSize: titleFontSize,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1C2926),
+                      letterSpacing: -0.5,
+                      height: 1.0,
+                    ),
             ),
             const SizedBox(width: 4),
-            // Purple Accent Dot matching reference redesign
+            // Purple Accent Dot
             Padding(
               padding: EdgeInsets.only(top: titleFontSize * 0.12),
               child: Container(
@@ -58,17 +71,27 @@ class BrandingHeaderWidget extends StatelessWidget {
 
         const SizedBox(height: 12),
 
-        // Tagline: People. Services. Closer.
+        // Tagline
         Text(
-          'People. Services. Closer.',
+          isArabic
+              ? 'الناس. الخدمات. أقرب.'
+              : 'People. Services. Closer.',
           textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
-            fontSize: sloganFontSize,
-            fontWeight: FontWeight.w400,
-            color: const Color(0xFF566663),
-            letterSpacing: 0.1,
-            height: 1.1,
-          ),
+          style: isArabic
+              ? tr.font(
+                  fontSize: sloganFontSize,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF566663),
+                  letterSpacing: 0.0,
+                  height: 1.1,
+                )
+              : GoogleFonts.inter(
+                  fontSize: sloganFontSize,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF566663),
+                  letterSpacing: 0.1,
+                  height: 1.1,
+                ),
         ),
       ],
     );

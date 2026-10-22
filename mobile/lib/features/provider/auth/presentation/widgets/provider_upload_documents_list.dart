@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/provider_location_permission_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_continue_button.dart';
@@ -53,7 +54,9 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
             const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
             const SizedBox(width: 8),
             Text(
-              !current ? '$docName uploaded successfully' : '$docName removed',
+              context.isArabic
+                  ? (!current ? 'تم رفع $docName بنجاح' : 'تمت إزالة $docName')
+                  : (!current ? '$docName uploaded successfully' : '$docName removed'),
               style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
             ),
           ],
@@ -68,21 +71,22 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return SizedBox(
-      width: ProviderUploadDocumentsList.designWidth,
+      width: double.infinity,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // 1. Card 1: Iqama
           ProviderDocumentUploadCard(
-            title: 'Iqama',
-            subtitle: 'Upload a clear Iqama image.',
-            statusText: 'Valid and not expired',
+            title: l10n.iqamaDocTitle,
+            subtitle: l10n.iqamaDocSubtitle,
+            statusText: l10n.docValidNotExpired,
             imageAsset: 'assets/images/iqama_sample_card.jpg',
             isUploaded: _iqamaUploaded,
             onUpload: () => _handleUpload(
-              'Iqama',
+              l10n.iqamaDocTitle,
               (val) => _iqamaUploaded = val,
               _iqamaUploaded,
             ),
@@ -93,13 +97,13 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
 
           // 2. Card 2: Vehicle Registration
           ProviderDocumentUploadCard(
-            title: 'Vehicle Registration',
-            subtitle: 'Upload a clear Iqama image.',
-            statusText: 'Valid and not expired',
+            title: l10n.vehicleRegDocTitle,
+            subtitle: l10n.vehicleRegDocSubtitle,
+            statusText: l10n.docValidNotExpired,
             imageAsset: 'assets/images/vehicle_registration_sample_card.jpg',
             isUploaded: _registrationUploaded,
             onUpload: () => _handleUpload(
-              'Vehicle Registration',
+              l10n.vehicleRegDocTitle,
               (val) => _registrationUploaded = val,
               _registrationUploaded,
             ),
@@ -110,13 +114,13 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
 
           // 3. Card 3: Driving Licence
           ProviderDocumentUploadCard(
-            title: 'Driving Licence',
-            subtitle: 'Upload a clear licence image.',
-            statusText: 'Valid and not expired',
+            title: l10n.drivingLicenceDocTitle,
+            subtitle: l10n.drivingLicenceDocSubtitle,
+            statusText: l10n.docValidNotExpired,
             imageAsset: 'assets/images/driving_licence_sample_card.jpg',
             isUploaded: _licenceUploaded,
             onUpload: () => _handleUpload(
-              'Driving Licence',
+              l10n.drivingLicenceDocTitle,
               (val) => _licenceUploaded = val,
               _licenceUploaded,
             ),

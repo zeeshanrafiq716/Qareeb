@@ -14,6 +14,8 @@ import 'features/provider/auth/presentation/vehicle_service_details_screen.dart'
 import 'features/provider/home/presentation/provider_home_screen.dart';
 import 'features/provider/splash/presentation/provider_splash_screen.dart';
 import 'features/provider/theme/provider_colors.dart';
+import 'features/provider/theme/provider_text_styles.dart';
+import 'core/localization/app_locale.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,14 +59,27 @@ void main() {
 
 /// Standalone Provider App Entry Point
 /// Isolates provider navigation and themes completely from customer app.
-class QareebProviderApp extends StatelessWidget {
+class QareebProviderApp extends ConsumerWidget {
   const QareebProviderApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(appLocaleProvider);
+    final isArabic = locale.languageCode == 'ar';
+    ProviderTextStyles.isArabic = isArabic;
+
     return MaterialApp(
       title: 'QAREEB Partner',
       debugShowCheckedModeBanner: false,
+      locale: locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      builder: (context, child) {
+        return Directionality(
+          textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+          child: child ?? const SizedBox(),
+        );
+      },
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,

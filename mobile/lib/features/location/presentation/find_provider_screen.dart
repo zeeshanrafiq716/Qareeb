@@ -3,8 +3,8 @@ import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/localization/app_locale.dart';
 import '../../../models/provider_model.dart';
 import '../../../providers/backend_provider.dart';
 import '../../../services/location_service.dart';
@@ -115,6 +115,8 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
   final FocusNode _searchFocusNode = FocusNode();
   int _selectedProviderCount = 10;
 
+  AppTranslations get tr => ref.read(translationsProvider);
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -134,6 +136,8 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
       ),
     );
 
+    ref.watch(translationsProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
@@ -146,6 +150,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                 ? math.min(844.0, (constraints.maxHeight - 32.0).clamp(520.0, 844.0))
                 : constraints.maxHeight;
 
+            final tr = ref.watch(translationsProvider);
             final userLocAsync = ref.watch(userLocationProvider);
             final userLoc = userLocAsync.value ?? UserLocation.defaultLocation;
 
@@ -237,8 +242,8 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Detecting exact GPS coordinates...',
-                              style: GoogleFonts.inter(
+                              tr.gpsDetecting,
+                              style: tr.font(
                                 fontSize: 12.0,
                                 color: Colors.white,
                               ),
@@ -259,9 +264,13 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                           SnackBar(
                             content: Text(
                               freshLoc.isGpsDetected
-                                  ? 'GPS: ${freshLoc.coordinatesDisplay} (${freshLoc.cityName})'
-                                  : 'Location: ${freshLoc.cityName}',
-                              style: GoogleFonts.inter(
+                                  ? (tr.isArabic
+                                      ? 'تحديد تلقائي: ${freshLoc.coordinatesDisplay} (${freshLoc.cityName})'
+                                      : 'GPS: ${freshLoc.coordinatesDisplay} (${freshLoc.cityName})')
+                                  : (tr.isArabic
+                                      ? 'الموقع: ${freshLoc.cityName}'
+                                      : 'Location: ${freshLoc.cityName}'),
+                              style: tr.font(
                                 fontSize: 12.0,
                                 color: Colors.white,
                               ),
@@ -344,11 +353,14 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                                   ),
                                 ],
                               ),
-                              child: const Center(
-                                child: CustomPaint(
-                                  size: Size(6.0, 13.0),
-                                  painter: _BackChevronPainter(
-                                    color: Color(0xFF566663),
+                              child: Center(
+                                child: Transform.scale(
+                                  scaleX: tr.isArabic ? -1.0 : 1.0,
+                                  child: const CustomPaint(
+                                    size: Size(6.0, 13.0),
+                                    painter: _BackChevronPainter(
+                                      color: Color(0xFF566663),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -357,17 +369,16 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                           const SizedBox(width: 16.0),
                           Expanded(
                             child: Text(
-                              'Nearby Providers',
+                              tr.nearbyProviders,
                               textHeightBehavior: const TextHeightBehavior(
                                 applyHeightToFirstAscent: false,
                                 applyHeightToLastDescent: false,
                               ),
-                              style: GoogleFonts.inter(
+                              style: tr.font(
                                 fontSize: 16.0,
                                 fontWeight: FontWeight.w500,
                                 color: const Color(0xFF1C2926),
-                                height: 22.0 / 16.0,
-                                letterSpacing: 0.0,
+                                height: 1.15,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -434,11 +445,11 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                     top: 162.0,
                     left: 0.0,
                     width: containerWidth,
-                    height: 682.0,
+                    height: containerHeight > 162.0 ? (containerHeight - 162.0) : 520.0,
                     child: Container(
                       key: const Key('nearby_providers_card_layout'),
                       width: containerWidth,
-                      height: 682.0,
+                      height: containerHeight > 162.0 ? (containerHeight - 162.0) : 520.0,
                       decoration: const BoxDecoration(
                         color: Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.only(
@@ -566,14 +577,14 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                                 child: TextField(
                                   controller: _searchController,
                                   focusNode: _searchFocusNode,
-                                  style: GoogleFonts.inter(
+                                  style: tr.font(
                                     fontSize: 14.0,
                                     fontWeight: FontWeight.w400,
                                     color: const Color(0xFF1C2926),
                                   ),
                                   decoration: InputDecoration(
-                                    hintText: 'Search nearby providers...',
-                                    hintStyle: GoogleFonts.inter(
+                                    hintText: tr.isArabic ? 'ابحث عن مزودي الخدمة...' : 'Search nearby providers...',
+                                    hintStyle: tr.font(
                                       fontSize: 14.0,
                                       fontWeight: FontWeight.w400,
                                       color: const Color(0xFF8F9E9B),
@@ -697,17 +708,16 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                   children: [
                     // Content: Providers to show (16px, weight 500, line-height 22px, #1C2926)
                     Text(
-                      'Providers to show',
+                      tr.isArabic ? 'عدد المزودين المعروضين' : 'Providers to show',
                       textHeightBehavior: const TextHeightBehavior(
                         applyHeightToFirstAscent: false,
                         applyHeightToLastDescent: false,
                       ),
-                      style: GoogleFonts.inter(
+                      style: tr.font(
                         fontSize: 16.0,
                         fontWeight: FontWeight.w500,
                         color: const Color(0xFF1C2926),
                         height: 1.15,
-                        letterSpacing: 0.0,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -715,17 +725,16 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                     const SizedBox(height: 3.0),
                     // Content: Adjust the number of providers on the map. (12px, weight 400, line-height 22px, #566663)
                     Text(
-                      'Adjust the number of providers on the map.',
+                      tr.isArabic ? 'حدد عدد المزودين الظاهرين على الخريطة.' : 'Adjust the number of providers on the map.',
                       textHeightBehavior: const TextHeightBehavior(
                         applyHeightToFirstAscent: false,
                         applyHeightToLastDescent: false,
                       ),
-                      style: GoogleFonts.inter(
+                      style: tr.font(
                         fontSize: 12.0,
                         fontWeight: FontWeight.w400,
                         color: const Color(0xFF566663),
                         height: 1.15,
-                        letterSpacing: 0.0,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -782,7 +791,6 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
   Widget _buildTotalProvidersLayout(double cardWidth, [int? totalCount, UserLocation? userLoc]) {
     return SizedBox(
       width: cardWidth,
-      height: 42.0,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -797,17 +805,16 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                 // content: 18 Providers nearby
                 // width: 152; height: 12; font-family: Inter; font-weight: 500; font-size: 16px; leading-trim: CAP_HEIGHT; line-height: 22px; color: #1C2926;
                 Text(
-                  '${totalCount != null && totalCount > 0 ? totalCount : 18} Providers nearby',
+                  tr.providersNearbyCount(totalCount != null && totalCount > 0 ? totalCount : 18),
                   textHeightBehavior: const TextHeightBehavior(
                     applyHeightToFirstAscent: false,
                     applyHeightToLastDescent: false,
                   ),
-                  style: GoogleFonts.inter(
+                  style: tr.font(
                     fontSize: 16.0,
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF1C2926),
                     height: 1.15,
-                    letterSpacing: 0.0,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -816,18 +823,19 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                 // content: Within 1 km radius • locality
                 Text(
                   (userLoc != null && userLoc.cityName.isNotEmpty && userLoc.cityName != 'Detecting Location...')
-                      ? 'Within 1 km radius • ${userLoc.cityName}'
-                      : 'Within 1 km radius',
+                      ? (tr.isArabic
+                          ? 'ضمن نطاق 1 كم • ${userLoc.cityName == 'Karachi Pakistan' ? 'كراتشي، باكستان' : userLoc.cityName}'
+                          : 'Within 1 km radius • ${userLoc.cityName}')
+                      : tr.withinRadius,
                   textHeightBehavior: const TextHeightBehavior(
                     applyHeightToFirstAscent: false,
                     applyHeightToLastDescent: false,
                   ),
-                  style: GoogleFonts.inter(
+                  style: tr.font(
                     fontSize: 12.0,
                     fontWeight: FontWeight.w400,
                     color: const Color(0xFF566663),
                     height: 1.15,
-                    letterSpacing: 0.0,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -842,65 +850,55 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
             key: const Key('view_all_providers_chip'),
             onTap: () {
               HapticFeedback.lightImpact();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Viewing all providers nearby',
-                    style: GoogleFonts.inter(
-                      fontSize: 12.0,
-                      color: Colors.white,
-                    ),
-                  ),
-                  backgroundColor: const Color(0xFF8B53FE),
-                  duration: const Duration(seconds: 1),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
             },
             behavior: HitTestBehavior.opaque,
             child: Container(
-              width: 117.0,
-              height: 42.0,
+              constraints: const BoxConstraints(minHeight: 42.0, minWidth: 100.0),
               decoration: BoxDecoration(
-                color: const Color(0xFFF2F5F4),
+                color: const Color(0xFF8B53FE),
                 borderRadius: BorderRadius.circular(60.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x338B53FE),
+                    blurRadius: 6.0,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 14.0),
+              padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // vector arrow up and down branding: width: 12; height: 10; angle: 0 deg; opacity: 1; background: #1C2926;
+                  // vector arrow up and down branding
                   const CustomPaint(
                     size: Size(12.0, 10.0),
                     painter: _ArrowUpDownVectorPainter(
-                      color: Color(0xFF1C2926),
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(width: 8.0),
                   // content: View All
-                  // width: 45; height: 9; font-family: Inter; font-weight: 400; font-size: 12px; leading-trim: CAP_HEIGHT; line-height: 22px; color: #1C2926;
                   Text(
-                    'View All',
-                    textHeightBehavior: const TextHeightBehavior(
-                      applyHeightToFirstAscent: false,
-                      applyHeightToLastDescent: false,
-                    ),
-                    style: GoogleFonts.inter(
+                    tr.viewAll,
+                    style: tr.font(
                       fontSize: 12.0,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF1C2926),
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
                       height: 1.15,
-                      letterSpacing: 0.0,
                     ),
                     maxLines: 1,
                   ),
                   const SizedBox(width: 8.0),
-                  // vector > branding: width: 4; height: 8; angle: -180 deg; opacity: 1; border-width: 0.6px; border: 0.6px solid #1C2926;
-                  const CustomPaint(
-                    size: Size(4.0, 8.0),
-                    painter: _ChevronRightVectorPainter(
-                      color: Color(0xFF1C2926),
+                  // vector > branding
+                  Transform.scale(
+                    scaleX: tr.isArabic ? -1.0 : 1.0,
+                    child: const CustomPaint(
+                      size: Size(4.0, 8.0),
+                      painter: _ChevronRightVectorPainter(
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ],
@@ -972,28 +970,35 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
     final baseItem = _nearbyProviders[index % _nearbyProviders.length];
 
     // Card 0 is strictly Ahmad Raza from specs, subsequent cards vary realistically
-    final String providerName = liveItem?.name ??
-        (index == 0
-            ? 'Ahmad Raza'
+    final String providerName = liveItem != null
+        ? tr.formatProviderName(liveItem.name)
+        : (index == 0
+            ? (tr.isArabic ? 'أحمد رضا' : 'Ahmad Raza')
             : index == 1
-                ? 'Muhammad Bilal'
+                ? (tr.isArabic ? 'محمد بلال' : 'Muhammad Bilal')
                 : index == 2
-                    ? 'Usman Ali'
+                    ? (tr.isArabic ? 'عثمان علي' : 'Usman Ali')
                     : index == 3
-                        ? 'Hamza Sheikh'
-                        : 'Provider ${index + 1}');
+                        ? (tr.isArabic ? 'حمزة شيخ' : 'Hamza Sheikh')
+                        : (tr.isArabic ? 'مزود خدمة ${index + 1}' : 'Provider ${index + 1}'));
 
     final String imagePath = (liveItem?.categorySlug == 'pickup' || index % 3 == 2)
         ? 'assets/images/pickup.png'
         : 'assets/images/car_ride.png';
 
     final String vehicleType = liveItem != null
-        ? '${liveItem.categoryName} . AC'
-        : (index % 3 == 2 ? 'Pickup . AC' : 'Sedan . AC');
+        ? '${tr.categoryName(liveItem.categoryName)} • ${tr.isArabic ? 'مكيف' : 'AC'}'
+        : (index % 3 == 2
+            ? '${tr.isArabic ? 'شاحنة نقل' : 'Pickup'} • ${tr.isArabic ? 'مكيف' : 'AC'}'
+            : '${tr.isArabic ? 'سيدان' : 'Sedan'} • ${tr.isArabic ? 'مكيف' : 'AC'}');
 
     final double distanceKm = liveItem?.distanceKm ?? (0.3 + (index * 0.25));
-    final String etaStr = liveItem?.etaDisplay ?? ('${2 + (index * 2)} min away');
-    final String distanceStr = '${distanceKm.toStringAsFixed(1)} km';
+    final String etaStr = tr.isArabic
+        ? 'على بعد ${2 + (index * 2)} د'
+        : (liveItem?.etaDisplay ?? ('${2 + (index * 2)} min away'));
+    final String distanceStr = tr.isArabic
+        ? '${distanceKm.toStringAsFixed(1)} كم'
+        : '${distanceKm.toStringAsFixed(1)} km';
 
     final double rating = liveItem?.ratingAvg ??
         (index == 0
@@ -1015,7 +1020,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => ProviderDetailScreen(
-                serviceCategory: liveItem?.categoryName ?? widget.serviceCategory,
+                serviceCategory: tr.categoryName(liveItem?.categoryName ?? widget.serviceCategory),
                 providerName: providerName,
               ),
             ),
@@ -1024,8 +1029,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
         behavior: HitTestBehavior.opaque,
         child: Container(
           width: effectiveWidth,
-          height: 78.0,
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
           decoration: BoxDecoration(
             color: const Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(12.0),
@@ -1042,27 +1046,25 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Left side content layout: width: 195; height: 46; gap: 12px;
-              SizedBox(
-                width: 195.0,
-                height: 46.0,
+              // Left side content: Image + Details
+              Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Left side img branding: width: 60; height: 40; angle: -180 deg; opacity: 1;
+                    // Provider vehicle image
                     SizedBox(
-                      width: 60.0,
-                      height: 40.0,
+                      width: 54.0,
+                      height: 38.0,
                       child: Transform.flip(
                         flipX: true,
                         child: Image.asset(
                           imagePath,
-                          width: 60.0,
-                          height: 40.0,
+                          width: 54.0,
+                          height: 38.0,
                           fit: BoxFit.contain,
                           errorBuilder: (context, error, stackTrace) => Container(
-                            width: 60.0,
-                            height: 40.0,
+                            width: 54.0,
+                            height: 38.0,
                             decoration: BoxDecoration(
                               color: const Color(0xFFF0EAFE),
                               borderRadius: BorderRadius.circular(6.0),
@@ -1076,143 +1078,118 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12.0), // gap: 12px;
+                    const SizedBox(width: 10.0), // gap: 10px;
 
-                    // Content branding: width: 123; height: 46; gap: 12px;
-                    SizedBox(
-                      width: 123.0,
-                      height: 46.0,
+                    // Content details column
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Row 1 name branding:
-                          // width: 72; height: 9; gap: 8px; font-weight: 500; font-size: 12px; leading-trim: CAP_HEIGHT; line-height: 22px; color: #1C2926;
+                          // Provider Name
                           Text(
                             providerName,
                             textHeightBehavior: const TextHeightBehavior(
                               applyHeightToFirstAscent: false,
                               applyHeightToLastDescent: false,
                             ),
-                            style: GoogleFonts.inter(
+                            style: tr.font(
                               fontSize: 12.0,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
                               color: const Color(0xFF1C2926),
-                              height: 1.0,
-                              letterSpacing: 0.0,
+                              height: 1.15,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
+                          const SizedBox(height: 2.0),
 
-                          // Row 2 and 3 layout: width: 123; height: 25; gap: 24px;
-                          SizedBox(
-                            width: 123.0,
-                            height: 25.0,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                // Text layout: width: 57; height: 25; gap: 8px;
-                                SizedBox(
-                                  width: 57.0,
-                                  height: 25.0,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      // Content: Sedan . AC (10px, Regular 400, #566663)
-                                      Text(
-                                        vehicleType,
-                                        textHeightBehavior: const TextHeightBehavior(
-                                          applyHeightToFirstAscent: false,
-                                          applyHeightToLastDescent: false,
-                                        ),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 10.0,
-                                          fontWeight: FontWeight.w400,
-                                          color: const Color(0xFF566663),
-                                          height: 1.0,
-                                          letterSpacing: 0.0,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-
-                                      // Row 3 layout: width: 57; height: 10; gap: 4px;
-                                      // Star (10x10, #1D8070) + 4.9 (120)
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment: CrossAxisAlignment.center,
-                                        children: [
-                                          const Icon(
-                                            Icons.star_rounded,
-                                            size: 11.0,
-                                            color: Color(0xFF8B53FE),
-                                          ),
-                                          const SizedBox(width: 3.0),
-                                          RichText(
-                                            textHeightBehavior: const TextHeightBehavior(
-                                              applyHeightToFirstAscent: false,
-                                              applyHeightToLastDescent: false,
-                                            ),
-                                            text: TextSpan(
-                                              text: '${rating.toStringAsFixed(1)} ',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 10.0,
-                                                fontWeight: FontWeight.w400,
-                                                color: const Color(0xFF1C2926),
-                                                height: 1.0,
-                                                letterSpacing: 0.0,
-                                              ),
-                                              children: [
-                                                TextSpan(
-                                                  text: '($reviews)',
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 10.0,
-                                                    fontWeight: FontWeight.w400,
-                                                    color: const Color(0xFF566663),
-                                                    height: 1.0,
-                                                    letterSpacing: 0.0,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                          // Vehicle Type and Available badge row
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  vehicleType,
+                                  textHeightBehavior: const TextHeightBehavior(
+                                    applyHeightToFirstAscent: false,
+                                    applyHeightToLastDescent: false,
                                   ),
+                                  style: tr.font(
+                                    fontSize: 10.0,
+                                    fontWeight: FontWeight.w400,
+                                    color: const Color(0xFF566663),
+                                    height: 1.15,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-
-                                // Available badge layout:
-                                // width: 42; height: 14; border-radius: 60px; padding: 4px; background: #F0EAFE;
-                                Container(
-                                  width: 42.0,
-                                  height: 14.0,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF0EAFE),
-                                    borderRadius: BorderRadius.circular(60.0),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    'Available',
-                                    textHeightBehavior: const TextHeightBehavior(
-                                      applyHeightToFirstAscent: false,
-                                      applyHeightToLastDescent: false,
-                                    ),
-                                    style: GoogleFonts.inter(
-                                      fontSize: 8.0,
-                                      fontWeight: FontWeight.w400,
-                                      color: const Color(0xFF8B53FE),
-                                      height: 1.0,
-                                      letterSpacing: 0.0,
-                                    ),
-                                    maxLines: 1,
-                                  ),
+                              ),
+                              const SizedBox(width: 6.0),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF0EAFE),
+                                  borderRadius: BorderRadius.circular(60.0),
                                 ),
-                              ],
-                            ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  tr.isArabic ? 'متاح' : 'Available',
+                                  textHeightBehavior: const TextHeightBehavior(
+                                    applyHeightToFirstAscent: false,
+                                    applyHeightToLastDescent: false,
+                                  ),
+                                  style: tr.font(
+                                    fontSize: 8.0,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF8B53FE),
+                                    height: 1.15,
+                                  ),
+                                  maxLines: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2.0),
+
+                          // Rating and Reviews
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 11.0,
+                                color: Color(0xFF8B53FE),
+                              ),
+                              const SizedBox(width: 3.0),
+                              RichText(
+                                textHeightBehavior: const TextHeightBehavior(
+                                  applyHeightToFirstAscent: false,
+                                  applyHeightToLastDescent: false,
+                                ),
+                                text: TextSpan(
+                                  text: '${rating.toStringAsFixed(1)} ',
+                                  style: tr.font(
+                                    fontSize: 10.0,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF1C2926),
+                                    height: 1.15,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: '($reviews)',
+                                      style: tr.font(
+                                        fontSize: 10.0,
+                                        fontWeight: FontWeight.w400,
+                                        color: const Color(0xFF566663),
+                                        height: 1.15,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -1220,117 +1197,111 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                   ],
                 ),
               ),
+              const SizedBox(width: 8.0),
 
-              // Right side content layout:
-              // distance and timer layout: width: 54; height: 29; gap: 12px;
-              // call icon layout: width: 36; height: 36;
-              SizedBox(
-                height: 46.0,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Distance and timer layout: width: 54; height: 29; gap: 12px;
-                    SizedBox(
-                      width: 54.0,
-                      height: 29.0,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // Right side content: Distance, Timer & Call Icon
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Distance row
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // Distance row: width: 54; height: 10; gap: 4px;
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Transform.rotate(
-                                angle: -math.pi / 4.0,
-                                child: const Icon(
-                                  Icons.navigation,
-                                  size: 9.0,
-                                  color: Color(0xFF1C2926),
-                                ),
-                              ),
-                              const SizedBox(width: 4.0), // gap: 4px;
-                              Text(
-                                distanceStr,
-                                textHeightBehavior: const TextHeightBehavior(
-                                  applyHeightToFirstAscent: false,
-                                  applyHeightToLastDescent: false,
-                                ),
-                                style: GoogleFonts.inter(
-                                  fontSize: 12.0,
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF1C2926),
-                                  height: 1.0,
-                                  letterSpacing: 0.0,
-                                ),
-                                maxLines: 1,
-                              ),
-                            ],
+                          Transform.rotate(
+                            angle: -math.pi / 4.0,
+                            child: const Icon(
+                              Icons.navigation,
+                              size: 9.0,
+                              color: Color(0xFF1C2926),
+                            ),
                           ),
-
-                          // Timer: content: 2 min away; width: 54; height: 7; font-size: 10px; color: #566663;
+                          const SizedBox(width: 3.0),
                           Text(
-                            etaStr,
+                            distanceStr,
                             textHeightBehavior: const TextHeightBehavior(
                               applyHeightToFirstAscent: false,
                               applyHeightToLastDescent: false,
                             ),
-                            style: GoogleFonts.inter(
-                              fontSize: 10.0,
-                              fontWeight: FontWeight.w400,
-                              color: const Color(0xFF566663),
-                              height: 1.0,
-                              letterSpacing: 0.0,
+                            style: tr.font(
+                              fontSize: 11.0,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1C2926),
+                              height: 1.15,
                             ),
                             maxLines: 1,
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 12.0), // gap: 12px;
+                      const SizedBox(height: 2.0),
 
-                    // Call icon layout:
-                    // width: 36; height: 36; border-radius: 60px; border-width: 0.6px; background: #F5F7F7;
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              liveItem != null
-                                  ? 'Calling $providerName (GPS: ${liveItem.coordinatesDisplay})...'
-                                  : 'Calling $providerName (${baseItem.phone})...',
-                              style: GoogleFonts.inter(fontSize: 12.0, color: Colors.white),
-                            ),
-                            backgroundColor: const Color(0xFF8B53FE),
-                            duration: const Duration(seconds: 2),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        width: 36.0,
-                        height: 36.0,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5F7F7),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color(0xFFE2E8E6),
-                            width: 0.6,
-                          ),
+                      // ETA Timer
+                      Text(
+                        etaStr,
+                        textHeightBehavior: const TextHeightBehavior(
+                          applyHeightToFirstAscent: false,
+                          applyHeightToLastDescent: false,
                         ),
-                        alignment: Alignment.center,
-                        child: const Icon(
-                          Icons.phone,
-                          size: 13.0,
-                          color: Color(0xFF1C2926),
+                        style: tr.font(
+                          fontSize: 10.0,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF566663),
+                          height: 1.15,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 10.0), // gap: 10px;
+
+                  // Call icon
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            liveItem != null
+                                ? (tr.isArabic
+                                    ? 'جارٍ الاتصال بـ $providerName...'
+                                    : 'Calling $providerName (GPS: ${liveItem.coordinatesDisplay})...')
+                                : (tr.isArabic
+                                    ? 'جارٍ الاتصال بـ $providerName...'
+                                    : 'Calling $providerName (${baseItem.phone})...'),
+                            style: tr.font(fontSize: 12.0, color: Colors.white),
+                          ),
+                          backgroundColor: const Color(0xFF8B53FE),
+                          duration: const Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      width: 36.0,
+                      height: 36.0,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F7F7),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFFE2E8E6),
+                          width: 0.6,
                         ),
                       ),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.phone,
+                        size: 13.0,
+                        color: Color(0xFF1C2926),
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1382,12 +1353,11 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
             applyHeightToFirstAscent: false,
             applyHeightToLastDescent: false,
           ),
-          style: GoogleFonts.inter(
+          style: tr.font(
             fontSize: 15.0,
             fontWeight: FontWeight.w500,
             color: isSelected ? const Color(0xFFFFFFFF) : const Color(0xFF1C2926),
             height: 1.2,
-            letterSpacing: 0.0,
           ),
         ),
       ),

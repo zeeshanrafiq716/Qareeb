@@ -75,33 +75,14 @@ class ProviderPhoneVerifiedSuccessBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
+    return const Opacity(
       opacity: 1.0, // opacity: 1
-      child: Transform.rotate(
-        angle: 0.0, // angle: 0 deg
-        child: SizedBox(
-          width: designWidth,
-          height: designHeight,
-          child: Image.asset(
-            'assets/images/phone_verification_success_badge.png',
-            width: designWidth,
-            height: designHeight,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return Image.asset(
-                'assets/images/service_success_check.png',
-                width: designWidth,
-                height: designHeight,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return const CustomPaint(
-                    size: Size(designWidth, designHeight),
-                    painter: _PhoneVerifiedSuccessBadgePainter(),
-                  );
-                },
-              );
-            },
-          ),
+      child: SizedBox(
+        width: designWidth,
+        height: designHeight,
+        child: CustomPaint(
+          size: Size(designWidth, designHeight),
+          painter: _PhoneVerifiedSuccessBadgePainter(),
         ),
       ),
     );
@@ -117,14 +98,14 @@ class _PhoneVerifiedSuccessBadgePainter extends CustomPainter {
     final double cx = size.width / 2.0;
     final double cy = size.height / 2.0;
 
-    // 1. circle layout: width: 80; height: 80; border: 0.5px solid #E0FFEE;
+    // 1. circle layout: width: 80; height: 80; border: 0.5px solid #E9E0FE;
     final outerCircleFill = Paint()
       ..color = const Color(0xFFF0EAFE).withValues(alpha: 0.45)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(cx, cy), 40.0, outerCircleFill);
 
     final outerCircleBorder = Paint()
-      ..color = const Color(0xFFF0EAFE)
+      ..color = const Color(0xFFE9E0FE) // border: 0.5px solid #E9E0FE
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.5;
     canvas.drawCircle(Offset(cx, cy), 40.0, outerCircleBorder);
@@ -135,9 +116,9 @@ class _PhoneVerifiedSuccessBadgePainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(cx, cy), 31.30435, shadowCirclePaint);
 
-    // 3. circle layut: width: 48; height: 48; background: #1D8070;
+    // 3. inner branding: width: 48; height: 48; background: #8B53FE;
     final innerCirclePaint = Paint()
-      ..color = const Color(0xFF8B53FE)
+      ..color = const Color(0xFF8B53FE) // background: #8B53FE
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
     canvas.drawCircle(Offset(cx, cy), 24.0, innerCirclePaint);

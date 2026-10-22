@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Admin Approval Status Card Widget
 /// Implements exact Figma branding specifications:
@@ -25,18 +26,19 @@ class ProviderAdminApprovalStatusCard extends StatelessWidget {
 
   static const double designWidth = 350.0;
   static const double designHeight = 180.0;
-  static const double rowGap = 20.0;
+  static const double rowGap = 16.0;
   static const double cardPadding = 16.0;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Opacity(
       opacity: 1.0, // opacity: 1
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: Container(
-          width: designWidth,
-          height: designHeight,
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: designHeight),
           padding: const EdgeInsets.all(cardPadding),
           decoration: BoxDecoration(
             color: const Color(0xFFFFFFFF), // background: #FFFFFF
@@ -56,8 +58,8 @@ class ProviderAdminApprovalStatusCard extends StatelessWidget {
               // 1st row branding: Account Details (Completed)
               _buildRow(
                 leftIcon: const _FolderLeftIcon(),
-                title: 'Account Details',
-                subtitle: 'Your basic information has been submitted.',
+                title: l10n.accountDetailsItem,
+                subtitle: l10n.accountDetailsItemSubtitle,
                 statusBadge: const _CompletedStatusBadge(),
               ),
 
@@ -66,8 +68,8 @@ class ProviderAdminApprovalStatusCard extends StatelessWidget {
               // 2nd row branding: Document Verification (In Progress)
               _buildRow(
                 leftIcon: const _IdCardLeftIcon(),
-                title: 'Document Verification',
-                subtitle: 'We are reviewing your documents.',
+                title: l10n.documentVerificationItem,
+                subtitle: l10n.documentVerificationItemSubtitle,
                 statusBadge: const _InProgressStatusBadge(),
               ),
 
@@ -76,8 +78,8 @@ class ProviderAdminApprovalStatusCard extends StatelessWidget {
               // 3rd row branding: Admin Approval (Pending)
               _buildRow(
                 leftIcon: const _ApprovalCheckLeftIcon(),
-                title: 'Admin Approval',
-                subtitle: 'Final Approval from our team.',
+                title: l10n.adminApprovalItem,
+                subtitle: l10n.adminApprovalItemSubtitle,
                 statusBadge: const _PendingStatusBadge(),
               ),
             ],
@@ -94,8 +96,7 @@ class ProviderAdminApprovalStatusCard extends StatelessWidget {
     required Widget statusBadge,
   }) {
     return SizedBox(
-      width: 318.0, // width: 318; height: 36; justify-content: space-between;
-      height: 36.0,
+      width: 318.0,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -118,30 +119,18 @@ class ProviderAdminApprovalStatusCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Content: Title (Inter 500 Medium 12px #1C2926)
+                      // Content: Title (ProviderTextStyles.stepCardTitle)
                       Text(
                         title,
-                        style: GoogleFonts.inter(
-                          fontSize: 12.0,
-                          fontWeight: FontWeight.w500, // Medium 500
-                          color: const Color(0xFF1C2926),
-                          height: 1.25,
-                          letterSpacing: 0.0,
-                        ),
+                        style: ProviderTextStyles.stepCardTitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2.0),
-                      // Content: Subtitle (Inter 400 Regular 10px #566663)
+                      // Content: Subtitle (ProviderTextStyles.stepCardSubtitle)
                       Text(
                         subtitle,
-                        style: GoogleFonts.inter(
-                          fontSize: 10.0,
-                          fontWeight: FontWeight.w400, // Regular 400
-                          color: const Color(0xFF566663),
-                          height: 1.2,
-                          letterSpacing: 0.0,
-                        ),
+                        style: ProviderTextStyles.stepCardSubtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -187,6 +176,8 @@ class _FolderLeftIcon extends StatelessWidget {
 
 /// CustomPainter for the Folder + Document icon (#1D8070)
 class _FolderIconPainter extends CustomPainter {
+  const _FolderIconPainter();
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
@@ -248,6 +239,8 @@ class _IdCardLeftIcon extends StatelessWidget {
 
 /// CustomPainter for the ID Card icon (#1D8070)
 class _IdCardIconPainter extends CustomPainter {
+  const _IdCardIconPainter();
+
   @override
   void paint(Canvas canvas, Size size) {
     final fillPaint = Paint()
@@ -308,17 +301,31 @@ class _ApprovalCheckLeftIcon extends StatelessWidget {
       ),
       child: Center(
         child: Container(
-          width: 20.0,
-          height: 20.0,
-          decoration: const BoxDecoration(
-            color: Color(0xFF8B53FE),
+          width: 22.0,
+          height: 22.0,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0EAFE),
             shape: BoxShape.circle,
+            border: Border.all(
+              color: const Color(0xFFE9E0FE), // border: 0.5px solid #E9E0FE
+              width: 0.5,
+            ),
           ),
-          child: const Center(
-            child: Icon(
-              Icons.check_rounded,
-              size: 13.0,
-              color: Colors.white,
+          child: Center(
+            child: Container(
+              width: 15.0,
+              height: 15.0,
+              decoration: const BoxDecoration(
+                color: Color(0xFF8B53FE), // background: #8B53FE
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.check_rounded,
+                  size: 10.0,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
         ),
@@ -327,7 +334,7 @@ class _ApprovalCheckLeftIcon extends StatelessWidget {
   }
 }
 
-/// Row 1 Right Status Badge: Completed green checkmark
+/// Row 1 Right Status Badge: Completed purple checkmark
 class _CompletedStatusBadge extends StatelessWidget {
   const _CompletedStatusBadge();
 
@@ -336,22 +343,26 @@ class _CompletedStatusBadge extends StatelessWidget {
     return Container(
       width: 20.0,
       height: 20.0,
-      decoration: const BoxDecoration(
-        color: Color(0xFFF0EAFE),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0EAFE),
         shape: BoxShape.circle, // border-radius: 37.81px
+        border: Border.all(
+          color: const Color(0xFFE9E0FE), // border: 0.5px solid #E9E0FE
+          width: 0.5,
+        ),
       ),
       child: Center(
         child: Container(
-          width: 15.12, // width: 15.124969482421875
-          height: 15.12, // height: 15.124969482421875
+          width: 14.0,
+          height: 14.0,
           decoration: const BoxDecoration(
-            color: Color(0xFF8B53FE), // background: #1D8070
+            color: Color(0xFF8B53FE), // background: #8B53FE
             shape: BoxShape.circle,
           ),
           child: const Center(
             child: Icon(
               Icons.check_rounded,
-              size: 10.5,
+              size: 9.5,
               color: Colors.white,
             ),
           ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/vehicle_service_details_screen.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
@@ -24,7 +25,7 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 ///   border-width: 1.5px;
 ///   border: 1.5px solid #FFFFFF;
 class ProviderContinueButton extends StatelessWidget {
-  final String title;
+  final String? title;
   final VoidCallback? onTap;
   final Widget? icon;
   final double? width;
@@ -34,7 +35,7 @@ class ProviderContinueButton extends StatelessWidget {
 
   const ProviderContinueButton({
     super.key,
-    this.title = 'Continue',
+    this.title,
     this.onTap,
     this.icon,
     this.width = double.infinity,
@@ -95,9 +96,9 @@ class ProviderContinueButton extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // content: Continue (Inter 500 Medium 14px line-height 22px #FFFFFF)
+                      // content: Continue
                       Text(
-                        title,
+                        title ?? context.l10n.continueButtonText,
                         style: textStyle,
                       ),
 

@@ -50,24 +50,24 @@ class ProviderPhoneVerifiedContentLayout extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. 1st content part layout: width: 350; height: 151; gap: 20px;
+              // 1. 1st content part layout: Sunburst + Heading + Subtitle
               firstPart ?? const ProviderPhoneVerifiedFirstPart(),
 
               // Gap: 20px (Equal gap)
               const SizedBox(height: designGap),
 
-              // 2. Next widget layout (Step Cards List: width: 350, height: 228, gap: 12px)
+              // 2. Next widget layout (Step Cards List: 3 cards)
               stepCardsList ?? const ProviderStepCardsList(),
 
               // Gap: 20px (Equal gap following previous branding)
               const SizedBox(height: designGap),
 
-              // 3. Button Layout (Back to Home Button: width: 350, height: 52, background: #1D8070)
+              // 3. Button Layout (Back to Home Button: height: 52)
               backToHomeButton ?? const ProviderBackToHomeButton(),
 
               // Future content parts with 20px gap
@@ -76,10 +76,7 @@ class ProviderPhoneVerifiedContentLayout extends StatelessWidget {
                 ..._buildRemainingParts(),
               ],
 
-              // Flexible bottom indicator: scrolls naturally at the end of the content
-              const SizedBox(height: 24.0),
-              const ProviderCardBottomIndicator(),
-              const SizedBox(height: 12.0),
+              const SizedBox(height: 16.0),
             ],
           ),
         ),

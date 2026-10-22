@@ -1,6 +1,38 @@
-// ignore: avoid_web_libraries_in_flutter
+// ignore: avoid_web_libraries_in_flutter, deprecated_member_use
 import 'dart:html' as html;
+// ignore: avoid_web_libraries_in_flutter, deprecated_member_use
+import 'dart:js' as js;
 import 'dart:async';
+
+/// Helper to safely extract coordinates from Geoposition (native JS object)
+/// avoiding LegacyJavaScriptObject to Coordinates? type-cast error in DDC/dart2js.
+Map<String, double>? _extractCoordinates(dynamic pos) {
+  try {
+    if (pos == null) return null;
+    final jsPos = js.JsObject.fromBrowserObject(pos);
+    final dynamic coords = jsPos['coords'];
+    if (coords == null) return null;
+
+    final dynamic rawLat = coords['latitude'];
+    final dynamic rawLng = coords['longitude'];
+    final dynamic rawAcc = coords['accuracy'];
+
+    if (rawLat != null && rawLng != null) {
+      final lat = (rawLat as num).toDouble();
+      final lng = (rawLng as num).toDouble();
+      final acc = rawAcc != null ? (rawAcc as num).toDouble() : null;
+      final map = <String, double>{
+        'latitude': lat,
+        'longitude': lng,
+      };
+      if (acc != null) {
+        map['accuracy'] = acc;
+      }
+      return map;
+    }
+  } catch (_) {}
+  return null;
+}
 
 /// Requests fresh, exact real GPS coordinates from browser Geolocation API.
 /// Triggers browser permission dialog: "Allow location access".
@@ -12,19 +44,6 @@ Future<Map<String, double>?> getPlatformCoordinates() async {
   try {
     final geo = html.window.navigator.geolocation;
 
-    // Helper to extract coordinates from Geoposition
-    Map<String, double>? extract(html.Geoposition pos) {
-      final coords = pos.coords;
-      if (coords != null && coords.latitude != null && coords.longitude != null) {
-        return {
-          'latitude': coords.latitude!.toDouble(),
-          'longitude': coords.longitude!.toDouble(),
-          if (coords.accuracy != null) 'accuracy': coords.accuracy!.toDouble(),
-        };
-      }
-      return null;
-    }
-
     // 1. Try high accuracy first (5-second timeout)
     try {
       final pos = await geo.getCurrentPosition(
@@ -32,7 +51,7 @@ Future<Map<String, double>?> getPlatformCoordinates() async {
         timeout: const Duration(seconds: 5),
         maximumAge: Duration.zero,
       );
-      final res = extract(pos);
+      final res = _extractCoordinates(pos);
       if (res != null) return res;
     } catch (_) {
       // High accuracy failed or timed out on desktop PC, fallback below
@@ -45,7 +64,7 @@ Future<Map<String, double>?> getPlatformCoordinates() async {
         timeout: const Duration(seconds: 8),
         maximumAge: const Duration(minutes: 2),
       );
-      final res = extract(pos);
+      final res = _extractCoordinates(pos);
       if (res != null) return res;
     } catch (_) {
       // Standard accuracy failed or permission denied
@@ -72,13 +91,9 @@ Stream<Map<String, double>> watchPlatformCoordinates() {
         maximumAge: highAccuracy ? Duration.zero : const Duration(seconds: 15),
       ).listen(
         (pos) {
-          final coords = pos.coords;
-          if (coords != null && coords.latitude != null && coords.longitude != null) {
-            controller.add({
-              'latitude': coords.latitude!.toDouble(),
-              'longitude': coords.longitude!.toDouble(),
-              if (coords.accuracy != null) 'accuracy': coords.accuracy!.toDouble(),
-            });
+          final res = _extractCoordinates(pos);
+          if (res != null) {
+            controller.add(res);
           }
         },
         onError: (err) {

@@ -4,8 +4,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/localization/app_locale.dart';
 import 'provider_arrived_screen.dart';
+import 'widgets/top_down_car_widget.dart';
 
 /// Screen displayed automatically when provider accepts the request.
 /// Integrates the exact same header and map layer as SendRequestScreen.
@@ -29,6 +30,7 @@ class LiveTrackingScreen extends ConsumerStatefulWidget {
 
 class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
     with SingleTickerProviderStateMixin {
+  AppTranslations get tr => ref.read(translationsProvider);
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   Timer? _arrivalTimer;
@@ -75,6 +77,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(translationsProvider);
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -208,8 +211,6 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                             Positioned(
                               top: 258.0,
                               left: 241.0 + ((containerWidth - 390.0) / 2.0),
-                              width: 15.0,
-                              height: 24.0,
                               child: AnimatedBuilder(
                                 animation: _pulseAnimation,
                                 builder: (context, child) {
@@ -218,15 +219,15 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                     child: child,
                                   );
                                 },
-                                child: Transform.rotate(
-                                  angle: -60.0 * math.pi / 180.0,
-                                  alignment: Alignment.center,
-                                  child: const CustomPaint(
-                                    size: Size(18.0, 28.0),
-                                    painter: _CarGraphicPainter(
-                                      roofColor: Color(0xFFA67AFE),
-                                    ),
-                                  ),
+                                child: TopDownCarWidget(
+                                  width: 16.5,
+                                  height: 28.5,
+                                  angle: -60.0,
+                                  driverName: widget.providerName,
+                                  distanceKm: double.tryParse(widget.distance.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 1.8,
+                                  showBadge: true,
+                                  isSelected: true,
+                                  bodyColor: const Color(0xFFA67AFE),
                                 ),
                               ),
                             ),
@@ -238,7 +239,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                               left: (111.0 - 12.0) +
                                   ((containerWidth - 390.0) / 2.0),
                               width: 60.0,
-                              height: 60.0,
+                              height: 56.0,
                               child: Container(
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
@@ -293,7 +294,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                 child: Center(
                                   child: Container(
                                     width: 28.0,
-                                    height: 28.0,
+                                    constraints: const BoxConstraints(minHeight: 28.0),
                                     decoration: const BoxDecoration(
                                       color: Color(0xFF8B53FE),
                                       shape: BoxShape.circle,
@@ -332,13 +333,12 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                 child: Align(
                                   alignment: const Alignment(0.0, -0.45),
                                   child: Text(
-                                    widget.distance,
-                                    textHeightBehavior:
-                                        const TextHeightBehavior(
-                                      applyHeightToFirstAscent: false,
-                                      applyHeightToLastDescent: false,
-                                    ),
-                                    style: GoogleFonts.inter(
+                                    tr.isArabic
+                                        ? widget.distance
+                                            .replaceAll('km', 'كم')
+                                            .replaceAll('min', 'د')
+                                        : widget.distance,
+                                    style: tr.font(
                                       fontSize: 10.0,
                                       fontWeight: FontWeight.w400,
                                       color: const Color(0xFFFFFFFF),
@@ -401,11 +401,14 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                               ),
                                             ],
                                           ),
-                                          child: const Center(
-                                            child: CustomPaint(
-                                              size: Size(6.0, 13.0),
-                                              painter: _BackChevronPainter(
-                                                color: Color(0xFF566663),
+                                          child: Center(
+                                            child: Transform.scale(
+                                              scaleX: tr.isArabic ? -1.0 : 1.0,
+                                              child: const CustomPaint(
+                                                size: Size(6.0, 13.0),
+                                                painter: _BackChevronPainter(
+                                                  color: Color(0xFF566663),
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -417,13 +420,8 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                     // Title: Pickup & Delivery
                                     Expanded(
                                       child: Text(
-                                        widget.serviceCategory,
-                                        textHeightBehavior:
-                                            const TextHeightBehavior(
-                                          applyHeightToFirstAscent: false,
-                                          applyHeightToLastDescent: false,
-                                        ),
-                                        style: GoogleFonts.inter(
+                                        tr.categoryName(widget.serviceCategory),
+                                        style: tr.font(
                                           fontSize: 16.0,
                                           fontWeight: FontWeight.w500,
                                           color: const Color(0xFF1C2926),
@@ -463,8 +461,8 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                           ),
                                           const SizedBox(width: 5.0),
                                           Text(
-                                            'LIVE',
-                                            style: GoogleFonts.inter(
+                                            tr.liveBadge,
+                                            style: tr.font(
                                               fontSize: 10.0,
                                               fontWeight: FontWeight.w700,
                                               color: const Color(0xFF2E7D32),
@@ -599,10 +597,8 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                     ),
                                                     const SizedBox(width: 16.0), // gap: 16px;
 
-                                                    // content layout: width: 194; height: 38; gap: 12px;
-                                                    SizedBox(
-                                                      width: 194.0,
-                                                      height: 38.0,
+                                                    // content layout: Flexible responsive provider details
+                                                    Expanded(
                                                       child: Column(
                                                         crossAxisAlignment:
                                                             CrossAxisAlignment
@@ -611,28 +607,17 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                             MainAxisAlignment
                                                                 .spaceBetween,
                                                         children: [
-                                                          // content inner: width: 194; height: 19; gap: 10px;
-                                                          SizedBox(
-                                                            width: 194.0,
-                                                            height: 19.0,
-                                                            child: Row(
-                                                              crossAxisAlignment:
-                                                                  CrossAxisAlignment
-                                                                      .center,
-                                                              children: [
-                                                                // content: Ahmad Transport
-                                                                Text(
-                                                                  widget
-                                                                      .providerName,
-                                                                  textHeightBehavior:
-                                                                      const TextHeightBehavior(
-                                                                    applyHeightToFirstAscent:
-                                                                        false,
-                                                                    applyHeightToLastDescent:
-                                                                        false,
-                                                                  ),
-                                                                  style: GoogleFonts
-                                                                      .inter(
+                                                          // content inner: responsive row
+                                                          Row(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .center,
+                                                            children: [
+                                                              // content: Ahmad Transport
+                                                              Flexible(
+                                                                child: Text(
+                                                                  tr.formatProviderName(widget.providerName),
+                                                                  style: tr.font(
                                                                     fontSize:
                                                                         14.0,
                                                                     fontWeight:
@@ -640,7 +625,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                                             .w500,
                                                                     color: const Color(
                                                                         0xFF1C2926),
-                                                                    height: 1.0,
+                                                                    height: 1.2,
                                                                     letterSpacing:
                                                                         0.0,
                                                                   ),
@@ -649,85 +634,76 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                                       TextOverflow
                                                                           .ellipsis,
                                                                 ),
-                                                                const SizedBox(
-                                                                    width:
-                                                                        10.0), // gap: 10px;
+                                                              ),
+                                                              const SizedBox(
+                                                                  width: 8.0),
 
-                                                                // On the way badge
-                                                                Container(
-                                                                  padding:
-                                                                      const EdgeInsets
-                                                                          .symmetric(
-                                                                    horizontal:
-                                                                        8.0,
-                                                                    vertical:
-                                                                        3.0,
-                                                                  ),
-                                                                  decoration:
-                                                                      BoxDecoration(
+                                                              // On the way badge
+                                                              Container(
+                                                                padding:
+                                                                    const EdgeInsets
+                                                                        .symmetric(
+                                                                  horizontal:
+                                                                      8.0,
+                                                                  vertical:
+                                                                      3.0,
+                                                                ),
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  color: const Color(
+                                                                      0xFFF0EAFE),
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              60.0),
+                                                                ),
+                                                                alignment:
+                                                                    Alignment
+                                                                        .center,
+                                                                child: Text(
+                                                                  tr.onTheWay,
+                                                                  style: tr.font(
+                                                                    fontSize:
+                                                                        10.0,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w500,
                                                                     color: const Color(
-                                                                        0xFFF0EAFE),
-                                                                    borderRadius:
-                                                                        BorderRadius
-                                                                            .circular(
-                                                                                60.0),
-                                                                  ),
-                                                                  alignment:
-                                                                      Alignment
-                                                                          .center,
-                                                                  child: Text(
-                                                                    'On the way',
-                                                                    textHeightBehavior:
-                                                                        const TextHeightBehavior(
-                                                                      applyHeightToFirstAscent:
-                                                                          false,
-                                                                      applyHeightToLastDescent:
-                                                                          false,
-                                                                    ),
-                                                                    style: GoogleFonts
-                                                                        .inter(
-                                                                      fontSize:
-                                                                          10.0,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w500,
-                                                                      color: const Color(
-                                                                          0xFF8B53FE),
-                                                                      height:
-                                                                          1.0,
-                                                                      letterSpacing:
-                                                                          0.0,
-                                                                    ),
+                                                                        0xFF8B53FE),
+                                                                    height: 1.2,
+                                                                    letterSpacing:
+                                                                        0.0,
                                                                   ),
                                                                 ),
-                                                              ],
-                                                            ),
+                                                              ),
+                                                            ],
                                                           ),
+
+                                                          const SizedBox(height: 4.0),
 
                                                           // 2nd row: EAT 8 min
                                                           Text.rich(
                                                             TextSpan(
-                                                              text: 'EAT ',
+                                                              text: tr.eatEta,
                                                               style:
-                                                                  GoogleFonts
-                                                                      .inter(
+                                                                  tr.font(
                                                                 fontSize: 11.0,
                                                                 fontWeight:
                                                                     FontWeight
                                                                         .w500,
                                                                 color: const Color(
                                                                     0xFF566663),
-                                                                height: 1.0,
+                                                                height: 1.2,
                                                                 letterSpacing:
                                                                     0.0,
                                                               ),
                                                               children: [
                                                                 TextSpan(
-                                                                  text: widget
-                                                                      .duration,
+                                                                  text: tr.isArabic
+                                                                      ? widget.duration.replaceAll('min', 'دقيقة').replaceAll('m', 'د')
+                                                                      : widget.duration,
                                                                   style:
-                                                                      GoogleFonts
-                                                                          .inter(
+                                                                      tr.font(
                                                                     fontSize:
                                                                         11.0,
                                                                     fontWeight:
@@ -735,19 +711,12 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                                             .w500,
                                                                     color: const Color(
                                                                         0xFF8B53FE),
-                                                                    height: 1.0,
+                                                                    height: 1.2,
                                                                     letterSpacing:
                                                                         0.0,
                                                                   ),
                                                                 ),
                                                               ],
-                                                            ),
-                                                            textHeightBehavior:
-                                                                const TextHeightBehavior(
-                                                              applyHeightToFirstAscent:
-                                                                  false,
-                                                              applyHeightToLastDescent:
-                                                                  false,
                                                             ),
                                                           ),
                                                         ],
@@ -779,10 +748,12 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                           ScaffoldMessenger.of(
                                                                   context)
                                                               .showSnackBar(
-                                                            const SnackBar(
+                                                            SnackBar(
                                                               content: Text(
-                                                                  'Opening WhatsApp...'),
-                                                              duration: Duration(
+                                                                tr.openingWhatsApp,
+                                                                style: tr.font(color: Colors.white),
+                                                              ),
+                                                              duration: const Duration(
                                                                   seconds: 1),
                                                             ),
                                                           );
@@ -829,7 +800,12 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                               .showSnackBar(
                                                             SnackBar(
                                                               content: Text(
-                                                                  'Calling ${widget.providerName}...'),
+                                                                tr.callingProvider(
+                                                                    tr.formatProviderName(
+                                                                        widget.providerName)),
+                                                                style: tr.font(
+                                                                    color: Colors.white),
+                                                              ),
                                                               duration:
                                                                   const Duration(
                                                                       seconds:
@@ -914,15 +890,8 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                     children: [
                                                       // content: Toyota Hilux
                                                       Text(
-                                                        'Toyota Hilux',
-                                                        textHeightBehavior:
-                                                            const TextHeightBehavior(
-                                                          applyHeightToFirstAscent:
-                                                              false,
-                                                          applyHeightToLastDescent:
-                                                              false,
-                                                        ),
-                                                        style: GoogleFonts.inter(
+                                                        tr.formatVehicleName('Toyota Hilux'),
+                                                        style: tr.font(
                                                           fontSize: 12.0,
                                                           fontWeight:
                                                               FontWeight.w500,
@@ -936,15 +905,8 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
 
                                                       // content: Pickup & Delivery
                                                       Text(
-                                                        widget.serviceCategory,
-                                                        textHeightBehavior:
-                                                            const TextHeightBehavior(
-                                                          applyHeightToFirstAscent:
-                                                              false,
-                                                          applyHeightToLastDescent:
-                                                              false,
-                                                        ),
-                                                        style: GoogleFonts.inter(
+                                                        tr.categoryName(widget.serviceCategory),
+                                                        style: tr.font(
                                                           fontSize: 12.0,
                                                           fontWeight:
                                                               FontWeight.w400,
@@ -975,7 +937,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                               // 1st card branding: 3.8 km Distance Away
                                               Expanded(
                                                 child: Container(
-                                                  height: 64.0,
+                                                  constraints: const BoxConstraints(minHeight: 56.0),
                                                   padding:
                                                       const EdgeInsets.symmetric(
                                                     horizontal: 12.0,
@@ -1030,20 +992,12 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                             FittedBox(
                                                               fit: BoxFit
                                                                   .scaleDown,
-                                                              alignment: Alignment
-                                                                  .centerLeft,
+                                                              alignment: AlignmentDirectional
+                                                                  .centerStart,
                                                               child: Text(
-                                                                '3.8 km',
-                                                                textHeightBehavior:
-                                                                    const TextHeightBehavior(
-                                                                  applyHeightToFirstAscent:
-                                                                      false,
-                                                                  applyHeightToLastDescent:
-                                                                      false,
-                                                                ),
+                                                                tr.threePointEightKm,
                                                                 style:
-                                                                    GoogleFonts
-                                                                        .inter(
+                                                                    tr.font(
                                                                   fontSize:
                                                                       14.0,
                                                                   fontWeight:
@@ -1051,7 +1005,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                                           .w500,
                                                                   color: const Color(
                                                                       0xFF1C2926),
-                                                                  height: 1.1,
+                                                                  height: 1.2,
                                                                   letterSpacing:
                                                                       0.0,
                                                                 ),
@@ -1064,20 +1018,12 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                             FittedBox(
                                                               fit: BoxFit
                                                                   .scaleDown,
-                                                              alignment: Alignment
-                                                                  .centerLeft,
+                                                              alignment: AlignmentDirectional
+                                                                  .centerStart,
                                                               child: Text(
-                                                                'Distance Away',
-                                                                textHeightBehavior:
-                                                                    const TextHeightBehavior(
-                                                                  applyHeightToFirstAscent:
-                                                                      false,
-                                                                  applyHeightToLastDescent:
-                                                                      false,
-                                                                ),
+                                                                tr.distanceAway,
                                                                 style:
-                                                                    GoogleFonts
-                                                                        .inter(
+                                                                    tr.font(
                                                                   fontSize:
                                                                       10.0,
                                                                   fontWeight:
@@ -1085,7 +1031,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                                           .w400,
                                                                   color: const Color(
                                                                       0xFF566663),
-                                                                  height: 1.1,
+                                                                  height: 1.2,
                                                                   letterSpacing:
                                                                       0.0,
                                                                 ),
@@ -1103,7 +1049,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                               // 2nd card branding: 6 min Estimated time
                                               Expanded(
                                                 child: Container(
-                                                  height: 64.0,
+                                                  constraints: const BoxConstraints(minHeight: 56.0),
                                                   padding:
                                                       const EdgeInsets.symmetric(
                                                     horizontal: 12.0,
@@ -1161,20 +1107,12 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                             FittedBox(
                                                               fit: BoxFit
                                                                   .scaleDown,
-                                                              alignment: Alignment
-                                                                  .centerLeft,
+                                                              alignment: AlignmentDirectional
+                                                                  .centerStart,
                                                               child: Text(
-                                                                '6 min',
-                                                                textHeightBehavior:
-                                                                    const TextHeightBehavior(
-                                                                  applyHeightToFirstAscent:
-                                                                      false,
-                                                                  applyHeightToLastDescent:
-                                                                      false,
-                                                                ),
+                                                                tr.sixMin,
                                                                 style:
-                                                                    GoogleFonts
-                                                                        .inter(
+                                                                    tr.font(
                                                                   fontSize:
                                                                       14.0,
                                                                   fontWeight:
@@ -1182,7 +1120,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                                           .w500,
                                                                   color: const Color(
                                                                       0xFF1C2926),
-                                                                  height: 1.1,
+                                                                  height: 1.2,
                                                                   letterSpacing:
                                                                       0.0,
                                                                 ),
@@ -1195,20 +1133,12 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                             FittedBox(
                                                               fit: BoxFit
                                                                   .scaleDown,
-                                                              alignment: Alignment
-                                                                  .centerLeft,
+                                                              alignment: AlignmentDirectional
+                                                                  .centerStart,
                                                               child: Text(
-                                                                'Estimated time',
-                                                                textHeightBehavior:
-                                                                    const TextHeightBehavior(
-                                                                  applyHeightToFirstAscent:
-                                                                      false,
-                                                                  applyHeightToLastDescent:
-                                                                      false,
-                                                                ),
+                                                                tr.estimatedTime,
                                                                 style:
-                                                                    GoogleFonts
-                                                                        .inter(
+                                                                    tr.font(
                                                                   fontSize:
                                                                       10.0,
                                                                   fontWeight:
@@ -1216,7 +1146,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                                           .w400,
                                                                   color: const Color(
                                                                       0xFF566663),
-                                                                  height: 1.1,
+                                                                  height: 1.2,
                                                                   letterSpacing:
                                                                       0.0,
                                                                 ),
@@ -1300,17 +1230,9 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                       MainAxisSize.min,
                                                   children: [
                                                     // content: Driver location updating...
-                                                    // width: 274; height: 10; font-family: Inter; font-weight: 500; font-size: 14px; line-height: 22px; color: #1C2926;
                                                     Text(
-                                                      'Driver location updating...',
-                                                      textHeightBehavior:
-                                                          const TextHeightBehavior(
-                                                        applyHeightToFirstAscent:
-                                                            false,
-                                                        applyHeightToLastDescent:
-                                                            false,
-                                                      ),
-                                                      style: GoogleFonts.inter(
+                                                      tr.driverLocationUpdating,
+                                                      style: tr.font(
                                                         fontSize: 14.0,
                                                         fontWeight:
                                                             FontWeight.w500,
@@ -1326,17 +1248,9 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                     const SizedBox(height: 2.0),
 
                                                     // content: You’ll see live movement on the map
-                                                    // width: 274; height: 9; font-family: Inter; font-weight: 400; font-size: 12px; line-height: 22px; color: #566663;
                                                     Text(
-                                                      'You’ll see live movement on the map',
-                                                      textHeightBehavior:
-                                                          const TextHeightBehavior(
-                                                        applyHeightToFirstAscent:
-                                                            false,
-                                                        applyHeightToLastDescent:
-                                                            false,
-                                                      ),
-                                                      style: GoogleFonts.inter(
+                                                      tr.liveMovementOnMap,
+                                                      style: tr.font(
                                                         fontSize: 12.0,
                                                         fontWeight:
                                                             FontWeight.w400,

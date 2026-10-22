@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -113,7 +114,7 @@ class ProviderStepCard extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: Container(
-          width: designWidth,
+          width: double.infinity,
           constraints: const BoxConstraints(minHeight: designHeight),
           decoration: BoxDecoration(
             color: ProviderColors.inputBackground, // background: #F2F5F4
@@ -159,9 +160,9 @@ class ProviderStepCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // content: Complete  Your Profile (Inter 500 14px line-height 22px #1C2926)
+                        // content: Complete Your Profile (Inter 500 14px line-height 22px #1C2926)
                         Text(
-                          title,
+                          context.isArabic ? context.auto(title) : title,
                           style: ProviderTextStyles.stepCardTitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -171,7 +172,7 @@ class ProviderStepCard extends StatelessWidget {
 
                         // content: Add your business details, services, and location. (Inter 400 10px #566663)
                         Text(
-                          subtitle,
+                          context.isArabic ? context.auto(subtitle) : subtitle,
                           style: ProviderTextStyles.stepCardSubtitle,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,

@@ -4,8 +4,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/localization/app_locale.dart';
 import 'service_in_progress_screen.dart';
+import 'widgets/top_down_car_widget.dart';
 
 /// Screen displayed automatically when provider reaches the location.
 /// Follows the exact same layout and branding as LiveTrackingScreen,
@@ -29,6 +30,7 @@ class ProviderArrivedScreen extends ConsumerStatefulWidget {
 
 class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
     with SingleTickerProviderStateMixin {
+  AppTranslations get tr => ref.read(translationsProvider);
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   Timer? _completeTimer;
@@ -81,6 +83,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(translationsProvider);
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
@@ -187,8 +190,6 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                             Positioned(
                               top: 160.0,
                               left: 155.0 + ((containerWidth - 390.0) / 2.0),
-                              width: 18.0,
-                              height: 28.0,
                               child: AnimatedBuilder(
                                 animation: _pulseAnimation,
                                 builder: (context, child) {
@@ -197,15 +198,14 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                     child: child,
                                   );
                                 },
-                                child: Transform.rotate(
-                                  angle: -30.0 * math.pi / 180.0,
-                                  alignment: Alignment.center,
-                                  child: const CustomPaint(
-                                    size: Size(18.0, 28.0),
-                                    painter: _CarGraphicPainter(
-                                      roofColor: Color(0xFFA67AFE),
-                                    ),
-                                  ),
+                                child: TopDownCarWidget(
+                                  width: 16.5,
+                                  height: 28.5,
+                                  angle: -30.0,
+                                  driverName: widget.providerName,
+                                  showBadge: true,
+                                  isSelected: true,
+                                  bodyColor: const Color(0xFFA67AFE),
                                 ),
                               ),
                             ),
@@ -216,7 +216,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                               left: (111.0 - 12.0) +
                                   ((containerWidth - 390.0) / 2.0),
                               width: 60.0,
-                              height: 60.0,
+                              height: 56.0,
                               child: Container(
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
@@ -269,7 +269,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                 child: Center(
                                   child: Container(
                                     width: 28.0,
-                                    height: 28.0,
+                                    constraints: const BoxConstraints(minHeight: 28.0),
                                     decoration: const BoxDecoration(
                                       color: Color(0xFF8B53FE),
                                       shape: BoxShape.circle,
@@ -305,13 +305,8 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                 child: Align(
                                   alignment: const Alignment(0.0, -0.45),
                                   child: Text(
-                                    '0 km',
-                                    textHeightBehavior:
-                                        const TextHeightBehavior(
-                                      applyHeightToFirstAscent: false,
-                                      applyHeightToLastDescent: false,
-                                    ),
-                                    style: GoogleFonts.inter(
+                                    tr.zeroKm,
+                                    style: tr.font(
                                       fontSize: 10.0,
                                       fontWeight: FontWeight.w400,
                                       color: const Color(0xFFFFFFFF),
@@ -373,11 +368,14 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                               ),
                                             ],
                                           ),
-                                          child: const Center(
-                                            child: CustomPaint(
-                                              size: Size(6.0, 13.0),
-                                              painter: _BackChevronPainter(
-                                                color: Color(0xFF566663),
+                                          child: Center(
+                                            child: Transform.scale(
+                                              scaleX: tr.isArabic ? -1.0 : 1.0,
+                                              child: const CustomPaint(
+                                                size: Size(6.0, 13.0),
+                                                painter: _BackChevronPainter(
+                                                  color: Color(0xFF566663),
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -389,13 +387,8 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                     // Title
                                     Expanded(
                                       child: Text(
-                                        widget.serviceCategory,
-                                        textHeightBehavior:
-                                            const TextHeightBehavior(
-                                          applyHeightToFirstAscent: false,
-                                          applyHeightToLastDescent: false,
-                                        ),
-                                        style: GoogleFonts.inter(
+                                        tr.categoryName(widget.serviceCategory),
+                                        style: tr.font(
                                           fontSize: 16.0,
                                           fontWeight: FontWeight.w500,
                                           color: const Color(0xFF1C2926),
@@ -435,8 +428,8 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                           ),
                                           const SizedBox(width: 5.0),
                                           Text(
-                                            'ARRIVED',
-                                            style: GoogleFonts.inter(
+                                            tr.arrivedBadge,
+                                            style: tr.font(
                                               fontSize: 10.0,
                                               fontWeight: FontWeight.w700,
                                               color: const Color(0xFF2E7D32),
@@ -569,10 +562,8 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                     ),
                                                     const SizedBox(width: 16.0),
 
-                                                    // content layout: width: 194; height: 38; gap: 12px;
-                                                    SizedBox(
-                                                      width: 194.0,
-                                                      height: 38.0,
+                                                    // content layout: Flexible responsive provider details
+                                                    Expanded(
                                                       child: Column(
                                                         crossAxisAlignment:
                                                             CrossAxisAlignment
@@ -581,27 +572,16 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                             MainAxisAlignment
                                                                 .spaceBetween,
                                                         children: [
-                                                          // content inner: width: 194; height: 19; gap: 10px;
-                                                          SizedBox(
-                                                            width: 194.0,
-                                                            height: 19.0,
-                                                            child: Row(
-                                                              crossAxisAlignment:
-                                                                  CrossAxisAlignment
-                                                                      .center,
-                                                              children: [
-                                                                Text(
-                                                                  widget
-                                                                      .providerName,
-                                                                  textHeightBehavior:
-                                                                      const TextHeightBehavior(
-                                                                    applyHeightToFirstAscent:
-                                                                        false,
-                                                                    applyHeightToLastDescent:
-                                                                        false,
-                                                                  ),
-                                                                  style: GoogleFonts
-                                                                      .inter(
+                                                          // content inner: responsive row
+                                                          Row(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .center,
+                                                            children: [
+                                                              Flexible(
+                                                                child: Text(
+                                                                  tr.formatProviderName(widget.providerName),
+                                                                  style: tr.font(
                                                                     fontSize:
                                                                         14.0,
                                                                     fontWeight:
@@ -609,7 +589,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                                             .w500,
                                                                     color: const Color(
                                                                         0xFF1C2926),
-                                                                    height: 1.0,
+                                                                    height: 1.2,
                                                                     letterSpacing:
                                                                         0.0,
                                                                   ),
@@ -618,83 +598,75 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                                       TextOverflow
                                                                           .ellipsis,
                                                                 ),
-                                                                const SizedBox(
-                                                                    width: 10.0),
+                                                              ),
+                                                              const SizedBox(
+                                                                  width: 8.0),
 
-                                                                // Arrived badge
-                                                                Container(
-                                                                  padding:
-                                                                      const EdgeInsets
-                                                                          .symmetric(
-                                                                    horizontal:
-                                                                        8.0,
-                                                                    vertical:
-                                                                        3.0,
-                                                                  ),
-                                                                  decoration:
-                                                                      BoxDecoration(
+                                                              // Arrived badge
+                                                              Container(
+                                                                padding:
+                                                                    const EdgeInsets
+                                                                        .symmetric(
+                                                                  horizontal:
+                                                                      8.0,
+                                                                  vertical:
+                                                                      3.0,
+                                                                ),
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  color: const Color(
+                                                                      0xFFF0EAFE),
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              60.0),
+                                                                ),
+                                                                alignment:
+                                                                    Alignment
+                                                                        .center,
+                                                                child: Text(
+                                                                  tr.arrivedBadge,
+                                                                  style: tr.font(
+                                                                    fontSize:
+                                                                        10.0,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w500,
                                                                     color: const Color(
-                                                                        0xFFF0EAFE),
-                                                                    borderRadius:
-                                                                        BorderRadius
-                                                                            .circular(
-                                                                                60.0),
-                                                                  ),
-                                                                  alignment:
-                                                                      Alignment
-                                                                          .center,
-                                                                  child: Text(
-                                                                    'Arrived',
-                                                                    textHeightBehavior:
-                                                                        const TextHeightBehavior(
-                                                                      applyHeightToFirstAscent:
-                                                                          false,
-                                                                      applyHeightToLastDescent:
-                                                                          false,
-                                                                    ),
-                                                                    style: GoogleFonts
-                                                                        .inter(
-                                                                      fontSize:
-                                                                          10.0,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w500,
-                                                                      color: const Color(
-                                                                          0xFF8B53FE),
-                                                                      height:
-                                                                          1.0,
-                                                                      letterSpacing:
-                                                                          0.0,
-                                                                    ),
+                                                                        0xFF8B53FE),
+                                                                    height:
+                                                                        1.2,
+                                                                    letterSpacing:
+                                                                        0.0,
                                                                   ),
                                                                 ),
-                                                              ],
-                                                            ),
+                                                              ),
+                                                            ],
                                                           ),
+
+                                                          const SizedBox(height: 4.0),
 
                                                           // 2nd row: EAT Arrived
                                                           Text.rich(
                                                             TextSpan(
-                                                              text: 'Status: ',
+                                                              text: tr.statusLabel,
                                                               style:
-                                                                  GoogleFonts
-                                                                      .inter(
+                                                                  tr.font(
                                                                 fontSize: 11.0,
                                                                 fontWeight:
                                                                     FontWeight
                                                                         .w500,
                                                                 color: const Color(
                                                                     0xFF566663),
-                                                                height: 1.0,
+                                                                height: 1.2,
                                                                 letterSpacing:
                                                                     0.0,
                                                               ),
                                                               children: [
                                                                 TextSpan(
-                                                                  text: 'At your location',
+                                                                  text: tr.atYourLocation,
                                                                   style:
-                                                                      GoogleFonts
-                                                                          .inter(
+                                                                      tr.font(
                                                                     fontSize:
                                                                         11.0,
                                                                     fontWeight:
@@ -702,19 +674,12 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                                             .w500,
                                                                     color: const Color(
                                                                         0xFF8B53FE),
-                                                                    height: 1.0,
+                                                                    height: 1.2,
                                                                     letterSpacing:
                                                                         0.0,
                                                                   ),
                                                                 ),
                                                               ],
-                                                            ),
-                                                            textHeightBehavior:
-                                                                const TextHeightBehavior(
-                                                              applyHeightToFirstAscent:
-                                                                  false,
-                                                              applyHeightToLastDescent:
-                                                                  false,
                                                             ),
                                                           ),
                                                         ],
@@ -745,10 +710,9 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                           ScaffoldMessenger.of(
                                                                   context)
                                                               .showSnackBar(
-                                                            const SnackBar(
-                                                              content: Text(
-                                                                  'Opening WhatsApp...'),
-                                                              duration: Duration(
+                                                            SnackBar(
+                                                              content: Text(tr.openingWhatsApp, style: tr.font(color: Colors.white)),
+                                                              duration: const Duration(
                                                                   seconds: 1),
                                                             ),
                                                           );
@@ -793,8 +757,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                                   context)
                                                               .showSnackBar(
                                                             SnackBar(
-                                                              content: Text(
-                                                                  'Calling ${widget.providerName}...'),
+                                                              content: Text(tr.callingProvider(tr.formatProviderName(widget.providerName)), style: tr.font(color: Colors.white)),
                                                               duration:
                                                                   const Duration(
                                                                       seconds:
@@ -875,15 +838,8 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                         CrossAxisAlignment.center,
                                                     children: [
                                                       Text(
-                                                        'Toyota Hilux',
-                                                        textHeightBehavior:
-                                                            const TextHeightBehavior(
-                                                          applyHeightToFirstAscent:
-                                                              false,
-                                                          applyHeightToLastDescent:
-                                                              false,
-                                                        ),
-                                                        style: GoogleFonts.inter(
+                                                        tr.formatVehicleName('Toyota Hilux'),
+                                                        style: tr.font(
                                                           fontSize: 12.0,
                                                           fontWeight:
                                                               FontWeight.w500,
@@ -896,15 +852,8 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                       const SizedBox(width: 12.0),
 
                                                       Text(
-                                                        widget.serviceCategory,
-                                                        textHeightBehavior:
-                                                            const TextHeightBehavior(
-                                                          applyHeightToFirstAscent:
-                                                              false,
-                                                          applyHeightToLastDescent:
-                                                              false,
-                                                        ),
-                                                        style: GoogleFonts.inter(
+                                                        tr.categoryName(widget.serviceCategory),
+                                                        style: tr.font(
                                                           fontSize: 12.0,
                                                           fontWeight:
                                                               FontWeight.w400,
@@ -934,7 +883,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                               // 1st card branding: 0 km Distance Away
                                               Expanded(
                                                 child: Container(
-                                                  height: 64.0,
+                                                  constraints: const BoxConstraints(minHeight: 56.0),
                                                   padding:
                                                       const EdgeInsets.symmetric(
                                                     horizontal: 12.0,
@@ -988,20 +937,12 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                             FittedBox(
                                                               fit: BoxFit
                                                                   .scaleDown,
-                                                              alignment: Alignment
-                                                                  .centerLeft,
+                                                              alignment: AlignmentDirectional
+                                                                  .centerStart,
                                                               child: Text(
-                                                                '0 km',
-                                                                textHeightBehavior:
-                                                                    const TextHeightBehavior(
-                                                                  applyHeightToFirstAscent:
-                                                                      false,
-                                                                  applyHeightToLastDescent:
-                                                                      false,
-                                                                ),
+                                                                tr.zeroKm,
                                                                 style:
-                                                                    GoogleFonts
-                                                                        .inter(
+                                                                    tr.font(
                                                                   fontSize:
                                                                       14.0,
                                                                   fontWeight:
@@ -1009,7 +950,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                                           .w500,
                                                                   color: const Color(
                                                                       0xFF1C2926),
-                                                                  height: 1.1,
+                                                                  height: 1.2,
                                                                   letterSpacing:
                                                                       0.0,
                                                                 ),
@@ -1022,20 +963,12 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                             FittedBox(
                                                               fit: BoxFit
                                                                   .scaleDown,
-                                                              alignment: Alignment
-                                                                  .centerLeft,
+                                                              alignment: AlignmentDirectional
+                                                                  .centerStart,
                                                               child: Text(
-                                                                'Distance Away',
-                                                                textHeightBehavior:
-                                                                    const TextHeightBehavior(
-                                                                  applyHeightToFirstAscent:
-                                                                      false,
-                                                                  applyHeightToLastDescent:
-                                                                      false,
-                                                                ),
+                                                                tr.distanceAway,
                                                                 style:
-                                                                    GoogleFonts
-                                                                        .inter(
+                                                                    tr.font(
                                                                   fontSize:
                                                                       10.0,
                                                                   fontWeight:
@@ -1043,7 +976,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                                           .w400,
                                                                   color: const Color(
                                                                       0xFF566663),
-                                                                  height: 1.1,
+                                                                  height: 1.2,
                                                                   letterSpacing:
                                                                       0.0,
                                                                 ),
@@ -1061,7 +994,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                               // 2nd card branding: Arrived 9:40 PM
                                               Expanded(
                                                 child: Container(
-                                                  height: 64.0,
+                                                  constraints: const BoxConstraints(minHeight: 56.0),
                                                   padding:
                                                       const EdgeInsets.symmetric(
                                                     horizontal: 12.0,
@@ -1118,20 +1051,12 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                             FittedBox(
                                                               fit: BoxFit
                                                                   .scaleDown,
-                                                              alignment: Alignment
-                                                                  .centerLeft,
+                                                              alignment: AlignmentDirectional
+                                                                  .centerStart,
                                                               child: Text(
-                                                                'Arrived',
-                                                                textHeightBehavior:
-                                                                    const TextHeightBehavior(
-                                                                  applyHeightToFirstAscent:
-                                                                      false,
-                                                                  applyHeightToLastDescent:
-                                                                      false,
-                                                                ),
+                                                                tr.arrivedBadge,
                                                                 style:
-                                                                    GoogleFonts
-                                                                        .inter(
+                                                                    tr.font(
                                                                   fontSize:
                                                                       14.0,
                                                                   fontWeight:
@@ -1139,7 +1064,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                                           .w500,
                                                                   color: const Color(
                                                                       0xFF1C2926),
-                                                                  height: 1.1,
+                                                                  height: 1.2,
                                                                   letterSpacing:
                                                                       0.0,
                                                                 ),
@@ -1152,20 +1077,12 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                             FittedBox(
                                                               fit: BoxFit
                                                                   .scaleDown,
-                                                              alignment: Alignment
-                                                                  .centerLeft,
+                                                              alignment: AlignmentDirectional
+                                                                  .centerStart,
                                                               child: Text(
-                                                                widget.arrivalTime,
-                                                                textHeightBehavior:
-                                                                    const TextHeightBehavior(
-                                                                  applyHeightToFirstAscent:
-                                                                      false,
-                                                                  applyHeightToLastDescent:
-                                                                      false,
-                                                                ),
+                                                                tr.formatDateTimeString(widget.arrivalTime),
                                                                 style:
-                                                                    GoogleFonts
-                                                                        .inter(
+                                                                    tr.font(
                                                                   fontSize:
                                                                       10.0,
                                                                   fontWeight:
@@ -1173,7 +1090,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                                           .w400,
                                                                   color: const Color(
                                                                       0xFF566663),
-                                                                  height: 1.1,
+                                                                  height: 1.2,
                                                                   letterSpacing:
                                                                       0.0,
                                                                 ),
@@ -1265,15 +1182,8 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                       children: [
                                                         // content: Your Provider has arrived!
                                                         Text(
-                                                          'Your Provider has arrived!',
-                                                          textHeightBehavior:
-                                                              const TextHeightBehavior(
-                                                            applyHeightToFirstAscent:
-                                                                false,
-                                                            applyHeightToLastDescent:
-                                                                false,
-                                                          ),
-                                                          style: GoogleFonts.inter(
+                                                          tr.providerHasArrived,
+                                                          style: tr.font(
                                                             fontSize: 14.0,
                                                             fontWeight:
                                                                 FontWeight.w500,
@@ -1290,15 +1200,8 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
 
                                                         // content: Provider has arrived. Start service now.
                                                         Text(
-                                                          'Provider has arrived. Start service now.',
-                                                          textHeightBehavior:
-                                                              const TextHeightBehavior(
-                                                            applyHeightToFirstAscent:
-                                                                false,
-                                                            applyHeightToLastDescent:
-                                                                false,
-                                                          ),
-                                                          style: GoogleFonts.inter(
+                                                          tr.providerArrivedStartService,
+                                                          style: tr.font(
                                                             fontSize: 12.0,
                                                             fontWeight:
                                                                 FontWeight.w400,

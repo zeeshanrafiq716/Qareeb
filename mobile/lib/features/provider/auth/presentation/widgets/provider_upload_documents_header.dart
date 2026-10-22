@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_header_back_button.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -20,23 +22,22 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 ///   - Title: "Upload Documents" (Inter 600 SemiBold 16px line-height 22px #1C2926)
 ///   - Subtitle: "Upload the required documents for verification." (Inter 400 Regular 12px line-height 16px #566663)
 class ProviderUploadDocumentsHeader extends StatelessWidget {
-  final String title;
-  final String subtitle;
+  final String? title;
+  final String? subtitle;
   final VoidCallback? onBack;
 
   const ProviderUploadDocumentsHeader({
     super.key,
-    this.title = 'Upload Documents',
-    this.subtitle = 'Upload the required documents for verification.',
+    this.title,
+    this.subtitle,
     this.onBack,
   });
 
   static const double designWidth = 350.0;
-  static const double designHeight = 36.0;
+  static const double designHeight = 44.0;
   static const double designTop = 56.0;
   static const double designLeft = 20.0;
-  static const double designGap = 16.0;
-  static const double contentWidth = 298.0;
+  static const double designGap = 12.0;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +46,7 @@ class ProviderUploadDocumentsHeader extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -54,35 +55,40 @@ class ProviderUploadDocumentsHeader extends StatelessWidget {
                 onTap: onBack ?? () => Navigator.of(context).maybePop(),
               ),
 
-              // gap: 16px;
+              // gap: 12px;
               const SizedBox(width: designGap),
 
               // 2. Content: Title + Subtitle
               Expanded(
-                child: SizedBox(
-                  width: contentWidth,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        title,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Text(
+                        title != null ? (context.isArabic ? context.auto(title) : title!) : context.l10n.uploadDocumentsTitle,
                         style: ProviderTextStyles.profileDetailsHeaderTitle,
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2.0),
-                      Text(
-                        subtitle,
-                        style: ProviderTextStyles.profileDetailsHeaderSubtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 2.0),
+                    Text(
+                      subtitle != null ? (context.isArabic ? context.auto(subtitle) : subtitle!) : context.l10n.uploadDocumentsSubtitle,
+                      style: ProviderTextStyles.profileDetailsHeaderSubtitle,
+                      maxLines: 2,
+                      softWrap: true,
+                    ),
+                  ],
                 ),
               ),
+
+              const SizedBox(width: 12.0),
+
+              // 3. Animated Language Toggle in header
+              const ProviderAnimatedLanguageToggle.compact(),
             ],
           ),
         ),

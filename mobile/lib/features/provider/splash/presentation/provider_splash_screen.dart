@@ -3,10 +3,12 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile/features/provider/auth/presentation/phone_verification_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_bottom_content.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_branding_header.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_indicator_bar.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
+import 'package:mobile/features/provider/splash/presentation/widgets/provider_splash_background.dart';
 
 /// Provider Splash Screen
 /// Implemented strictly according to manual branding specifications:
@@ -46,7 +48,7 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
     super.didChangeDependencies();
     if (!_precached) {
       _precached = true;
-      precacheImage(const AssetImage('assets/images/black.png'), context);
+      precacheImage(const AssetImage('assets/images/truk.png'), context);
     }
   }
 
@@ -97,26 +99,15 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
 
             final double bottomSafeArea = MediaQuery.of(context).padding.bottom;
             final double topSafeArea = MediaQuery.of(context).padding.top;
-
-            // Proportional scaling for mobile screens based on design frame (390 x 844)
-            final double scaleX = containerWidth / designWidth;
-            final double scaleY = containerHeight / designHeight;
-
-            // Exact img alignment branding specifications:
-            // width: 349; height: 473; angle: 0 deg; opacity: 1; top: 150px; left: 41px;
-            final double imgLeft = isDesktopWeb ? 41.0 : (41.0 * scaleX);
-            final double imgTop = isDesktopWeb ? 150.0 : (150.0 * scaleY);
-            final double imgWidth = isDesktopWeb ? 349.0 : (349.0 * scaleX);
-            final double imgHeight = isDesktopWeb ? 473.0 : (473.0 * scaleY);
-
+            final double toggleTop = topSafeArea > 0 ? (topSafeArea + 16.0) : 48.0;
             final double headerTop = isDesktopWeb
-                ? 130.0
-                : (topSafeArea + 36.0).clamp(44.0, 130.0);
+                ? 120.0
+                : (toggleTop + 36.0 + 16.0).clamp(90.0, 140.0);
 
-            // Bottom content layout top at 571px in 844h design frame
+            // Bottom content layout: starts below the truck fade around 560px in 844h frame
             final double bottomContentTop = isDesktopWeb
-                ? 571.0
-                : (imgTop + imgHeight - (55.0 * scaleY)).clamp(headerTop + 240.0, containerHeight - 220.0);
+                ? 560.0
+                : (containerHeight * (560.0 / designHeight)).clamp(headerTop + 320.0, containerHeight - 215.0);
 
             final Widget screenContent = GestureDetector(
               behavior: HitTestBehavior.opaque,
@@ -132,87 +123,31 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
                       child: Container(color: Colors.white),
                     ),
 
-                    // 2. Soft Purple/Lavender Top Gradient Glow
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: containerHeight * 0.42,
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            stops: [0.0, 0.40, 0.75, 1.0],
-                            colors: [
-                              Color(0xFFDECFFC), // soft lavender glow
-                              Color(0xFFEADBFE), // mid lavender glow
-                              Color(0x66F5EFFF), // subtle fade
-                              Color(0x00FFFFFF), // blends seamlessly into white
-                            ],
-                          ),
-                        ),
+                    // 2. Full-bleed Exact Artwork (truk.png)
+                    //    Contains top purple gradient glow, recovery flatbed truck, and bottom white fade
+                    Positioned.fill(
+                      child: Image.asset(
+                        'assets/images/truk.png',
+                        width: containerWidth,
+                        height: containerHeight,
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
+                        gaplessPlayback: true,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const CustomPaint(
+                            painter: ProviderSplashBrandingPainter(),
+                          );
+                        },
                       ),
                     ),
 
-                    // 3. Exact user specification:
-                    //    background: #FFFFFF1A;
-                    //    backdrop-filter: blur(200.5124053955078px)
+                    // 3. Top Centered Animated Language Toggle
                     Positioned(
-                      top: 0,
+                      top: toggleTop,
                       left: 0,
                       right: 0,
-                      height: containerHeight * 0.45,
-                      child: ClipRect(
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(
-                            sigmaX: 200.5124053955078,
-                            sigmaY: 200.5124053955078,
-                          ),
-                          child: Container(
-                            color: const Color(0x1AFFFFFF), // background: #FFFFFF1A
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // 4. Middle Car Image (black.png)
-                    //    img alignment:
-                    //    width: 349; height: 473; angle: 0 deg; opacity: 1; top: 150px; left: 41px;
-                    Positioned(
-                      top: imgTop,
-                      left: imgLeft,
-                      width: imgWidth,
-                      height: imgHeight,
-                      child: Opacity(
-                        opacity: 1.0, // opacity: 1
-                        child: Transform.rotate(
-                          angle: 0.0, // angle: 0 deg
-                          child: ShaderMask(
-                            shaderCallback: (Rect bounds) {
-                              return const LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                stops: [0.0, 0.65, 0.88, 1.0],
-                                colors: [
-                                  Colors.white,
-                                  Colors.white,
-                                  Colors.white54,
-                                  Colors.transparent,
-                                ],
-                              ).createShader(bounds);
-                            },
-                            blendMode: BlendMode.dstIn,
-                            child: Image.asset(
-                              'assets/images/black.png',
-                              width: imgWidth,
-                              height: imgHeight,
-                              fit: BoxFit.contain,
-                              alignment: Alignment.center,
-                              gaplessPlayback: true,
-                            ),
-                          ),
-                        ),
+                      child: const Center(
+                        child: ProviderAnimatedLanguageToggle(),
                       ),
                     ),
 

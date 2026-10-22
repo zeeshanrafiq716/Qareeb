@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Splash Screen Inner Content Layout Branding
@@ -33,16 +34,24 @@ class ProviderBottomContent extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Headline: Ready to respond\nBuilt to deliver
+        // Headline: Ready to respond\nBuilt to deliver (Arabic: جاهز للاستجابة\nمصمم للخدمة)
         Text(
-          'Ready to respond\nBuilt to deliver',
+          context.l10n.providerSplashHeadline,
           style: ProviderTextStyles.bottomHeadline,
+          textHeightBehavior: const TextHeightBehavior(
+            applyHeightToFirstAscent: false,
+            applyHeightToLastDescent: false,
+          ),
         ),
         const SizedBox(height: 12.0),
-        // Subtext: Manage service requests reach customers \nand stay connected in real time.
+        // Subtext: Manage service requests reach customers (Arabic: أدر طلبات الخدمة...)
         Text(
-          'Manage service requests reach customers \nand stay connected in real time.',
+          context.l10n.providerSplashSubtitle,
           style: ProviderTextStyles.bottomSubtitle,
+          textHeightBehavior: const TextHeightBehavior(
+            applyHeightToFirstAscent: false,
+            applyHeightToLastDescent: false,
+          ),
         ),
       ],
     );

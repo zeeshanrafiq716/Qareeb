@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/localization/app_locale.dart';
 
 /// Screen displayed automatically after provider arrives.
 /// Contains the standard branding header and the success status layout,
@@ -28,6 +28,7 @@ class ServiceInProgressScreen extends ConsumerStatefulWidget {
 class _ServiceInProgressScreenState
     extends ConsumerState<ServiceInProgressScreen>
     with SingleTickerProviderStateMixin {
+  AppTranslations get tr => ref.read(translationsProvider);
   late AnimationController _animController;
   late Animation<double> _scaleAnimation;
   int _userRating = 0;
@@ -54,6 +55,7 @@ class _ServiceInProgressScreenState
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(translationsProvider);
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -150,11 +152,14 @@ class _ServiceInProgressScreenState
                                       ),
                                     ],
                                   ),
-                                  child: const Center(
-                                    child: CustomPaint(
-                                      size: Size(6.0, 13.0),
-                                      painter: _BackChevronPainter(
-                                        color: Color(0xFF566663),
+                                  child: Center(
+                                    child: Transform.scale(
+                                      scaleX: tr.isArabic ? -1.0 : 1.0,
+                                      child: const CustomPaint(
+                                        size: Size(6.0, 13.0),
+                                        painter: _BackChevronPainter(
+                                          color: Color(0xFF566663),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -166,12 +171,10 @@ class _ServiceInProgressScreenState
                             // Header Heading: Service Complete
                             Expanded(
                               child: Text(
-                                widget.headerHeading,
-                                textHeightBehavior: const TextHeightBehavior(
-                                  applyHeightToFirstAscent: false,
-                                  applyHeightToLastDescent: false,
-                                ),
-                                style: GoogleFonts.inter(
+                                widget.headerHeading == 'Service Complete'
+                                    ? tr.serviceCompleteHeader
+                                    : widget.headerHeading,
+                                style: tr.font(
                                   fontSize: 16.0,
                                   fontWeight: FontWeight.w500,
                                   color: const Color(0xFF1C2926),
@@ -220,13 +223,9 @@ class _ServiceInProgressScreenState
                                 // width: 350; height: 15; font-family: Inter; font-weight: 600; font-size: 20px;
                                 // leading-trim: CAP_HEIGHT; line-height: 24px; color: #1C2926; text-align: center;
                                 Text(
-                                  'Service Completed!',
+                                  tr.serviceCompleted,
                                   textAlign: TextAlign.center,
-                                  textHeightBehavior: const TextHeightBehavior(
-                                    applyHeightToFirstAscent: false,
-                                    applyHeightToLastDescent: false,
-                                  ),
-                                  style: GoogleFonts.inter(
+                                  style: tr.font(
                                     fontSize: 20.0,
                                     fontWeight: FontWeight.w600,
                                     color: const Color(0xFF1C2926),
@@ -238,20 +237,14 @@ class _ServiceInProgressScreenState
                                 const SizedBox(height: 12.0), // gap: 12px;
 
                                 // content: Your request has been completed successfully
-                                // width: 350; height: 27; font-family: Inter; font-weight: 400; font-size: 14px;
-                                // line-height: 100%; color: #566663; text-align: center;
                                 Text(
-                                  'Your request has been completed\nsuccessfully',
+                                  tr.requestCompletedSuccess,
                                   textAlign: TextAlign.center,
-                                  textHeightBehavior: const TextHeightBehavior(
-                                    applyHeightToFirstAscent: false,
-                                    applyHeightToLastDescent: false,
-                                  ),
-                                  style: GoogleFonts.inter(
+                                  style: tr.font(
                                     fontSize: 14.0,
                                     fontWeight: FontWeight.w400,
                                     color: const Color(0xFF566663),
-                                    height: 1.25,
+                                    height: 1.35,
                                     letterSpacing: 0.0,
                                   ),
                                 ),
@@ -317,16 +310,9 @@ class _ServiceInProgressScreenState
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       // 1st row text branding: content: Ahmad Transport
-                                      // width: 117; height: 10; font-family: Inter; font-weight: 500; font-size: 14px;
-                                      // line-height: 22px; color: #1C2926;
                                       Text(
-                                        widget.providerName,
-                                        textHeightBehavior:
-                                            const TextHeightBehavior(
-                                          applyHeightToFirstAscent: false,
-                                          applyHeightToLastDescent: false,
-                                        ),
-                                        style: GoogleFonts.inter(
+                                        tr.formatProviderName(widget.providerName),
+                                        style: tr.font(
                                           fontSize: 14.0,
                                           fontWeight: FontWeight.w500,
                                           color: const Color(0xFF1C2926),
@@ -339,16 +325,9 @@ class _ServiceInProgressScreenState
                                       const SizedBox(height: 3.0),
 
                                       // content: Pickup & Delivery
-                                      // width: 83; height: 7; font-family: Inter; font-weight: 400; font-size: 10px;
-                                      // line-height: 22px; color: #566663;
                                       Text(
-                                        widget.serviceCategory,
-                                        textHeightBehavior:
-                                            const TextHeightBehavior(
-                                          applyHeightToFirstAscent: false,
-                                          applyHeightToLastDescent: false,
-                                        ),
-                                        style: GoogleFonts.inter(
+                                        tr.categoryName(widget.serviceCategory),
+                                        style: tr.font(
                                           fontSize: 10.0,
                                           fontWeight: FontWeight.w400,
                                           color: const Color(0xFF566663),
@@ -380,7 +359,7 @@ class _ServiceInProgressScreenState
                                               children: [
                                                 TextSpan(
                                                   text: '4.9 ',
-                                                  style: GoogleFonts.inter(
+                                                  style: tr.font(
                                                     fontSize: 10.0,
                                                     fontWeight: FontWeight.w500,
                                                     color: const Color(0xFF1C2926),
@@ -389,8 +368,8 @@ class _ServiceInProgressScreenState
                                                   ),
                                                 ),
                                                 TextSpan(
-                                                  text: '(120 reviews)',
-                                                  style: GoogleFonts.inter(
+                                                  text: tr.reviewsCount(120),
+                                                  style: tr.font(
                                                     fontSize: 10.0,
                                                     fontWeight: FontWeight.w400,
                                                     color: const Color(0xFF566663),
@@ -422,7 +401,7 @@ class _ServiceInProgressScreenState
                           // border-radius: 12px; padding: 16px; background: #F2F5F4;
                           Container(
                             width: cardWidth,
-                            height: 72.0,
+                            constraints: const BoxConstraints(minHeight: 72.0),
                             padding: const EdgeInsets.all(16.0),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF2F5F4),
@@ -461,16 +440,9 @@ class _ServiceInProgressScreenState
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       // content: Toyota Hilux
-                                      // font-family: Inter; font-weight: 500; font-style: Medium; font-size: 14px;
-                                      // leading-trim: CAP_HEIGHT; line-height: 22px; letter-spacing: 0px; color: #1C2926;
                                       Text(
-                                        'Toyota Hilux',
-                                        textHeightBehavior:
-                                            const TextHeightBehavior(
-                                          applyHeightToFirstAscent: false,
-                                          applyHeightToLastDescent: false,
-                                        ),
-                                        style: GoogleFonts.inter(
+                                        tr.formatVehicleName('Toyota Hilux'),
+                                        style: tr.font(
                                           fontSize: 14.0,
                                           fontWeight: FontWeight.w500,
                                           color: const Color(0xFF1C2926),
@@ -485,12 +457,7 @@ class _ServiceInProgressScreenState
                                       // content: ABC-123
                                       Text(
                                         'ABC-123',
-                                        textHeightBehavior:
-                                            const TextHeightBehavior(
-                                          applyHeightToFirstAscent: false,
-                                          applyHeightToLastDescent: false,
-                                        ),
-                                        style: GoogleFonts.inter(
+                                        style: tr.font(
                                           fontSize: 10.0,
                                           fontWeight: FontWeight.w400,
                                           color: const Color(0xFF566663),
@@ -551,16 +518,9 @@ class _ServiceInProgressScreenState
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     // content: Completed on
-                                    // width: 147; height: 7; font-family: Inter; font-weight: 400; font-size: 10px;
-                                    // line-height: 22px; color: #566663;
                                     Text(
-                                      'Completed on',
-                                      textHeightBehavior:
-                                          const TextHeightBehavior(
-                                        applyHeightToFirstAscent: false,
-                                        applyHeightToLastDescent: false,
-                                      ),
-                                      style: GoogleFonts.inter(
+                                      tr.completedOn,
+                                      style: tr.font(
                                         fontSize: 10.0,
                                         fontWeight: FontWeight.w400,
                                         color: const Color(0xFF566663),
@@ -571,16 +531,9 @@ class _ServiceInProgressScreenState
                                     const SizedBox(height: 2.0),
 
                                     // content: 12 Sep 2026, 9:58 PM
-                                    // width: 147; height: 10; font-family: Inter; font-weight: 500; font-size: 14px;
-                                    // line-height: 22px; color: #1C2926;
                                     Text(
-                                      '12 Sep 2026, 9:58 PM',
-                                      textHeightBehavior:
-                                          const TextHeightBehavior(
-                                        applyHeightToFirstAscent: false,
-                                        applyHeightToLastDescent: false,
-                                      ),
-                                      style: GoogleFonts.inter(
+                                      tr.sampleCompletedDateTime,
+                                      style: tr.font(
                                         fontSize: 14.0,
                                         fontWeight: FontWeight.w500,
                                         color: const Color(0xFF1C2926),
@@ -639,16 +592,9 @@ class _ServiceInProgressScreenState
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       // content: Thank you!
-                                      // width: 274; height: 10; font-family: Inter; font-weight: 500; font-size: 14px;
-                                      // line-height: 22px; color: #1D8070;
                                       Text(
-                                        'Thank you!',
-                                        textHeightBehavior:
-                                            const TextHeightBehavior(
-                                          applyHeightToFirstAscent: false,
-                                          applyHeightToLastDescent: false,
-                                        ),
-                                        style: GoogleFonts.inter(
+                                        tr.thankYou,
+                                        style: tr.font(
                                           fontSize: 14.0,
                                           fontWeight: FontWeight.w500,
                                           color: const Color(0xFF8B53FE),
@@ -659,16 +605,9 @@ class _ServiceInProgressScreenState
                                       const SizedBox(height: 2.0),
 
                                       // content: We hope you had a great experience.
-                                      // width: 274; height: 9; font-family: Inter; font-weight: 400; font-size: 12px;
-                                      // line-height: 14px; color: #1D8070;
                                       Text(
-                                        'We hope you had a great experience.',
-                                        textHeightBehavior:
-                                            const TextHeightBehavior(
-                                          applyHeightToFirstAscent: false,
-                                          applyHeightToLastDescent: false,
-                                        ),
-                                        style: GoogleFonts.inter(
+                                        tr.hopeGreatExperience,
+                                        style: tr.font(
                                           fontSize: 12.0,
                                           fontWeight: FontWeight.w400,
                                           color: const Color(0xFF8B53FE),
@@ -710,8 +649,8 @@ class _ServiceInProgressScreenState
                                   TextSpan(
                                     children: [
                                       TextSpan(
-                                        text: 'Rate your experience ',
-                                        style: GoogleFonts.inter(
+                                        text: tr.rateYourExperience,
+                                        style: tr.font(
                                           fontSize: 10.0,
                                           fontWeight: FontWeight.w500,
                                           color: const Color(0xFF1C2926),
@@ -720,8 +659,8 @@ class _ServiceInProgressScreenState
                                         ),
                                       ),
                                       TextSpan(
-                                        text: '(optional)',
-                                        style: GoogleFonts.inter(
+                                        text: tr.optional,
+                                        style: tr.font(
                                           fontSize: 10.0,
                                           fontWeight: FontWeight.w400,
                                           color: const Color(0xFF566663),
@@ -732,11 +671,6 @@ class _ServiceInProgressScreenState
                                     ],
                                   ),
                                   textAlign: TextAlign.center,
-                                  textHeightBehavior:
-                                      const TextHeightBehavior(
-                                    applyHeightToFirstAscent: false,
-                                    applyHeightToLastDescent: false,
-                                  ),
                                 ),
                                 const SizedBox(height: 10.0), // gap: 10px;
 
@@ -818,12 +752,8 @@ class _ServiceInProgressScreenState
                                 ),
                                 child: Center(
                                   child: Text(
-                                    'Done',
-                                    textHeightBehavior: const TextHeightBehavior(
-                                      applyHeightToFirstAscent: false,
-                                      applyHeightToLastDescent: false,
-                                    ),
-                                    style: GoogleFonts.inter(
+                                    tr.done,
+                                    style: tr.font(
                                       fontSize: 14.0,
                                       fontWeight: FontWeight.w500,
                                       color: Colors.white,
@@ -849,8 +779,8 @@ class _ServiceInProgressScreenState
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      'Trip details for ${widget.providerName} - ${widget.serviceCategory}',
-                                      style: GoogleFonts.inter(
+                                      tr.tripDetails(tr.formatProviderName(widget.providerName), tr.categoryName(widget.serviceCategory)),
+                                      style: tr.font(
                                         color: Colors.white,
                                         fontSize: 13.0,
                                       ),
@@ -870,13 +800,9 @@ class _ServiceInProgressScreenState
                                 height: 26.0,
                                 child: Center(
                                   child: Text(
-                                    'View Details',
+                                    tr.viewDetails,
                                     textAlign: TextAlign.center,
-                                    textHeightBehavior: const TextHeightBehavior(
-                                      applyHeightToFirstAscent: false,
-                                      applyHeightToLastDescent: false,
-                                    ),
-                                    style: GoogleFonts.inter(
+                                    style: tr.font(
                                       fontSize: 14.0,
                                       fontWeight: FontWeight.w500,
                                       color: const Color(0xFF8B53FE),

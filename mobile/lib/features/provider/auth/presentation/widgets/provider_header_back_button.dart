@@ -61,12 +61,15 @@ class ProviderHeaderBackButton extends StatelessWidget {
             child: InkWell(
               onTap: onTap ?? () => Navigator.of(context).maybePop(),
               customBorder: const CircleBorder(),
-              child: const Center(
-                child: SizedBox(
-                  width: chevronWidth,
-                  height: chevronHeight,
-                  child: CustomPaint(
-                    painter: _HeaderChevronPainter(),
+              child: Center(
+                child: Transform.flip(
+                  flipX: Directionality.of(context) == TextDirection.rtl,
+                  child: const SizedBox(
+                    width: chevronWidth,
+                    height: chevronHeight,
+                    child: CustomPaint(
+                      painter: _HeaderChevronPainter(),
+                    ),
                   ),
                 ),
               ),

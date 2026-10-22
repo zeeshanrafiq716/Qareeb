@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Splash Screen Branding Header Widget
@@ -32,36 +33,41 @@ class ProviderBrandingHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isArabic = context.isArabic || ProviderTextStyles.isArabic;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // QAREEB + Purple Dot
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              'QAREEB',
-              style: ProviderTextStyles.brandTitle,
-            ),
-            const SizedBox(width: 6.0),
-            // Accent Dot: 10 x 10, #8B53FE
-            Container(
-              width: 10.0,
-              height: 10.0,
-              margin: const EdgeInsets.only(top: 2.0),
-              decoration: const BoxDecoration(
-                color: Color(0xFF8B53FE),
-                shape: BoxShape.circle,
+        // Brand Name (قريب / QAREEB) + Purple Dot
+        Directionality(
+          textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                isArabic ? 'قريب' : 'QAREEB',
+                style: ProviderTextStyles.brandTitle,
               ),
-            ),
-          ],
+              const SizedBox(width: 6.0),
+              // Accent Dot: 10 x 10, #8B53FE
+              Container(
+                width: 10.0,
+                height: 10.0,
+                margin: EdgeInsets.only(top: isArabic ? 4.0 : 2.0),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF8B53FE),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 8.0),
-        // Subtitle: Service always near you
+        // Subtitle: Service always near you (Arabic: الخدمة دائماً بقربك)
         Text(
-          'Service always near you',
+          context.l10n.serviceAlwaysNearYou,
           textAlign: TextAlign.center,
           style: ProviderTextStyles.slogan,
         ),

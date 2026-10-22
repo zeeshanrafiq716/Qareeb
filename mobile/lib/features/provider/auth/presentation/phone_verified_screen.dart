@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_scroll_behavior.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_phone_verified_content_layout.dart';
@@ -77,6 +78,7 @@ class PhoneVerifiedScreen extends StatelessWidget {
             final double containerHeight = isDesktopWeb ? designHeight : constraints.maxHeight;
 
             final double topSafeArea = MediaQuery.of(context).padding.top;
+            final double bottomSafeArea = MediaQuery.of(context).padding.bottom;
             final double headerTop = isDesktopWeb
                 ? ProviderScreenHeader.designTop
                 : (topSafeArea > 0
@@ -100,36 +102,44 @@ class PhoneVerifiedScreen extends StatelessWidget {
                   child: Stack(
                     children: [
                       // 1. Header Branding Layout
-                      //    width: 348; height: 36; top: 56px; left: 20px; gap: 14px;
+                      //    width: double.infinity; height: 36; top: 56px; left: 20px; right: 20px;
                       Positioned(
                         top: headerTop,
-                        left: ProviderScreenHeader.designLeft, // 20.0px
-                        child: const ProviderScreenHeader(
-                          title: 'Phone Verification',
+                        left: 20.0,
+                        right: 20.0,
+                        child: ProviderScreenHeader(
+                          title: context.l10n.phoneVerificationTitle,
                         ),
                       ),
 
-                      // 2. Next Widget Layout (Body Content Area: 350x471, top: 187px, left: 20px, gap: 20px)
+                      // 2. Body Content Slot (Fixed on normal screens with equal 20px horizontal padding)
                       Positioned.fill(
-                        top: headerTop + ProviderScreenHeader.designHeight,
+                        top: headerTop + ProviderScreenHeader.designHeight + 12.0,
                         bottom: 0.0,
                         child: ScrollConfiguration(
                           behavior: const ProviderCardScrollBehavior(),
                           child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(
-                              parent: BouncingScrollPhysics(),
-                            ),
+                            physics: isDesktopWeb || containerHeight >= 600.0
+                                ? const NeverScrollableScrollPhysics()
+                                : const ClampingScrollPhysics(),
                             padding: EdgeInsets.only(
-                              top: (contentTop - (headerTop + ProviderScreenHeader.designHeight)).clamp(16.0, 95.0),
-                              bottom: 24.0,
+                              left: 20.0,
+                              right: 20.0,
+                              top: 8.0,
+                              bottom: bottomSafeArea > 0 ? (bottomSafeArea + 24.0) : 26.0,
                             ),
-                            child: Center(
-                              child: SizedBox(
-                                width: ProviderPhoneVerifiedContentLayout.designWidth,
-                                child: body ?? const ProviderPhoneVerifiedContentLayout(),
-                              ),
-                            ),
+                            child: body ?? const ProviderPhoneVerifiedContentLayout(),
                           ),
+                        ),
+                      ),
+
+                      // 3. Pinned Bottom Home Indicator Bar (Fixed at bottom)
+                      Positioned(
+                        bottom: bottomSafeArea > 0 ? (bottomSafeArea + 8.0) : 14.0,
+                        left: 0,
+                        right: 0,
+                        child: const IgnorePointer(
+                          child: ProviderCardBottomIndicator(),
                         ),
                       ),
                     ],

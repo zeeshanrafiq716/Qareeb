@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_profile_input_field.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_profile_input_icons.dart';
 
@@ -73,49 +74,55 @@ class _ProviderProfilePersonalInfoPart1State
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: ProviderProfilePersonalInfoPart1.designWidth,
+          width: double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Row 1: Full Name (as per Iqama) - width: 350; height: 69;
+              // 1. Row 1: Full Name (as per Iqama) - width: double.infinity; height: 69;
               ProviderProfileInputField(
-                label: 'Full Name',
-                labelSpan: '(as per Iqama)',
-                placeholder: 'Hassan Raza',
+                label: context.l10n.fullNameLabel,
+                labelSpan: context.l10n.asPerIqama,
+                placeholder: context.l10n.fullNamePlaceholder,
                 controller: _nameCtrl,
-                width: 350.0,
+                width: double.infinity,
                 icon: const PersonOutlineIconWidget(),
               ),
 
               // Gap: 20px
               const SizedBox(height: ProviderProfilePersonalInfoPart1.designGap),
 
-              // 2. Row 2: width: 350; height: 69; gap: 16px;
+              // 2. Row 2: Adaptive Iqama Number + Expiry Date without overflow
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 2nd row 1st card: Iqama Number (width: 183; height: 69)
-                  ProviderProfileInputField(
-                    label: 'Iqama Number',
-                    placeholder: '2487654321',
-                    controller: _iqamaCtrl,
-                    width: 183.0,
-                    keyboardType: TextInputType.number,
-                    icon: const IdCardOutlineIconWidget(),
+                  // 2nd row 1st card: Iqama Number (proportional flex: 54)
+                  Expanded(
+                    flex: 54,
+                    child: ProviderProfileInputField(
+                      label: context.l10n.iqamaNumberLabel,
+                      placeholder: '2487654321',
+                      controller: _iqamaCtrl,
+                      width: double.infinity,
+                      keyboardType: TextInputType.number,
+                      icon: const IdCardOutlineIconWidget(),
+                    ),
                   ),
 
-                  // gap: 16px
-                  const SizedBox(width: 16.0),
+                  // gap: 12px
+                  const SizedBox(width: 12.0),
 
-                  // 2nd row 2nd card: Iqama Expiry Date (width: 151; height: 69)
-                  ProviderProfileInputField(
-                    label: 'Iqama Expiry Date',
-                    placeholder: 'DD/MM/YYY',
-                    controller: _expiryCtrl,
-                    width: 151.0,
-                    keyboardType: TextInputType.datetime,
-                    icon: const CalendarOutlineIconWidget(),
+                  // 2nd row 2nd card: Iqama Expiry Date (proportional flex: 46)
+                  Expanded(
+                    flex: 46,
+                    child: ProviderProfileInputField(
+                      label: context.l10n.iqamaExpiryDateLabel,
+                      placeholder: context.isArabic ? 'يوم/شهر/سنة' : 'DD/MM/YYYY',
+                      controller: _expiryCtrl,
+                      width: double.infinity,
+                      keyboardType: TextInputType.datetime,
+                      icon: const CalendarOutlineIconWidget(),
+                    ),
                   ),
                 ],
               ),

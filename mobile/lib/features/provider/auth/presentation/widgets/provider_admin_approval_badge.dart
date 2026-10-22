@@ -71,19 +71,13 @@ class ProviderAdminApprovalBadge extends StatelessWidget {
         child: SizedBox(
           width: designWidth,
           height: designHeight,
-          child: Image.asset(
-            'assets/images/admin_approval_badge.png',
-            width: designWidth,
-            height: designHeight,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) => _buildPureFlutterBadge(),
-          ),
+          child: _buildPureFlutterBadge(),
         ),
       ),
     );
   }
 
-  /// Pure Flutter fallback implementing the exact Figma specs
+  /// Pure Flutter widget implementing exact Figma branding specifications
   Widget _buildPureFlutterBadge() {
     return Container(
       width: designWidth,
@@ -92,12 +86,12 @@ class ProviderAdminApprovalBadge extends StatelessWidget {
         color: const Color(0xFFF0EAFE),
         shape: BoxShape.circle, // border-radius: 620px
         border: Border.all(
-          color: const Color(0x408B53FE), // #9FFFCB99
-          width: 1.0,
+          color: const Color(0xFFE9E0FE), // border: 0.5px solid #E9E0FE
+          width: 0.5,
         ),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x408B53FE), // box-shadow: 0px 0px 4.13px 0px #9FFFCB99 inset
+            color: Color(0x40E9E0FE), // box-shadow: 0px 0px 4.13px 0px #E9E0FE inset
             blurRadius: 4.13,
             spreadRadius: 0.0,
           ),
@@ -214,6 +208,8 @@ class ProviderAdminApprovalBadge extends StatelessWidget {
 
 /// CustomPainter for the front folder wave flap (#1D8070)
 class _FolderFrontWavePainter extends CustomPainter {
+  const _FolderFrontWavePainter();
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()

@@ -1,0 +1,307 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "QAREEB",
+  "@appTitle": {
+    "description": "Application title"
+  },
+
+  "profileTitle": "Profile",
+  "profileSubtitle": "Manage your account and preferences.",
+  "verifiedUser": "Verified User",
+  "totalRequests": "Total Requests",
+  "averageRating": "Average Rating",
+  "personalInfo": "Personal Information",
+  "personalInfoSubtitle": "Name, phone number and more",
+  "notifications": "Notifications",
+  "notificationsSubtitle": "Manage your alerts and updates",
+  "language": "Language",
+  "currentLanguageDisplay": "English (US)",
+  "selectLanguageTitle": "Select Language",
+  "arabic": "Arabic",
+  "english": "English",
+  "savedLocations": "Saved Locations",
+  "savedLocationsSubtitle": "Home, Work, and other places",
+  "paymentMethods": "Payment Methods",
+  "paymentMethodsSubtitle": "Manage your payment options",
+  "privacySecurity": "Privacy & Security",
+  "privacySecuritySubtitle": "Manage your data and security",
+  "helpSupport": "Help & Support",
+  "helpSupportSubtitle": "Find help or contact us",
+  "logOut": "Log Out",
+  "logout": "Logout",
+
+  "greeting": "Hello, {name}",
+  "@greeting": {
+    "description": "Greeting on home screen",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Ali"
+      }
+    }
+  },
+
+  "exploreSomething": "Explore Something",
+  "currentLocation": "Current location",
+  "realGps": "Real GPS",
+  "gpsDetecting": "Detecting GPS...",
+  "urgentAssistance": "Need urgent assistance?",
+  "getHelpNow": "Get Help Now",
+  "chooseYourRide": "Choose Your Ride",
+  "chooseRideSubtitle": "Choose a service and see available options.",
+  "cancel": "Cancel",
+  "done": "Done",
+  "back": "Back",
+  "next": "Next",
+  "save": "Save",
+  "edit": "Edit",
+  "delete": "Delete",
+  "submit": "Submit",
+
+  "navHome": "Home",
+  "navRequests": "Requests",
+  "navProfile": "Profile",
+
+  "requestsTitle": "Requests",
+  "requestsSubtitle": "Track and manage your service requests",
+  "activeFilter": "Active",
+  "historyFilter": "History",
+  "searchRequests": "Search requests...",
+  "noRequestsFound": "No requests found",
+  "trySearchingDifferent": "Try searching with a different term",
+  "providerOnTheWay": "Your provider is on the way",
+  "providerArrivingSoon": "Almost there! Your provider will arrive soon.",
+  "eightMinAway": "8 min away",
+  "youBadge": "You",
+  "distanceAway": "Distance Away",
+  "estimatedTime": "Estimated time",
+  "requestSent": "Request Sent",
+  "accepted": "Accepted",
+  "onTheWay": "On the way",
+  "arrived": "Arrived",
+  "completed": "Completed",
+  "cancelled": "Cancelled",
+
+  "pickupDelivery": "Pickup & Delivery",
+  "nearbyProviders": "Nearby Providers",
+  "providersNearbyCount": "{count, plural, =1{1 Provider nearby} other{{count} Providers nearby}}",
+  "@providersNearbyCount": {
+    "description": "Count of nearby providers",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+
+  "withinRadius": "Within 2 km radius",
+  "viewAll": "View all",
+  "confirm": "Confirm",
+  "confirmDriver": "Confirm {name}",
+  "@confirmDriver": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Ahmad"
+      }
+    }
+  },
+
+  "dragMapHint": "Drag map to explore",
+  "driversNearbyHint": "{count} Drivers nearby • Drag map to explore",
+  "@driversNearbyHint": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "4"
+      }
+    }
+  },
+
+  "yourLocation": "Your Location",
+  "detectingLocation": "Detecting Location...",
+  "online": "ONLINE",
+  "kmAway": "{dist} km away",
+  "@kmAway": {
+    "placeholders": {
+      "dist": {
+        "type": "Object",
+        "example": "1.8"
+      }
+    }
+  },
+
+  "verified": "Verified",
+  "providersLabel": "Providers",
+  "deliveriesLabel": "Deliveries",
+  "onTime": "On time",
+  "sendMyLocation": "Send My Location",
+  "sendRequest": "Send Request",
+  "sixMin": "6 min",
+  "onePointEightKm": "1.8 km",
+  "threePointEightKm": "3.8 km",
+
+  "shareYourLocation": "Share your location?",
+  "tapOrSwipeToView": "Tap or swipe up to view options",
+  "shareLiveLocationWith": "Share your live location with {name} for faster pickup",
+  "@shareLiveLocationWith": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Ahmad"
+      }
+    }
+  },
+
+  "endToEndEncrypted": "End-to-end encrypted • Live tracking active",
+  "shareVia": "Share via",
+  "whatsApp": "WhatsApp",
+  "chatAndShare": "Chat & Share",
+  "copyLink": "Copy Link",
+  "copyToShare": "Copy to share",
+  "instagram": "Instagram",
+  "shareInDm": "Share in Dm",
+  "locationDetails": "Location Details",
+  "sampleAddress": "King Fahd Road, Al Olaya Riyadh, Saudi Arabia",
+  "sendLocation": "Send Location",
+  "locationSentSuccess": "Location sent successfully to {provider}!",
+  "@locationSentSuccess": {
+    "placeholders": {
+      "provider": {
+        "type": "String",
+        "example": "Ahmad"
+      }
+    }
+  },
+
+  "linkCopied": "Location link copied to clipboard!",
+  "openingWhatsApp": "Opening WhatsApp...",
+  "openingInstagram": "Opening Instagram to share in DM...",
+  "callingProvider": "Calling {name}...",
+  "@callingProvider": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Ahmad"
+      }
+    }
+  },
+
+  "waitingForResponse": "Waiting for response",
+  "available": "Available",
+  "requestAccepted": "Request Accepted!",
+  "providerAcceptedStartingLive": "Provider accepted. Starting live tracking...",
+  "waitingForProviderAccept": "Waiting for provider to accept your request.",
+  "justNow": "Just now",
+  "providerAccepted": "Provider accepted",
+  "cancelRequest": "Cancel Request",
+  "cancelRequestTitle": "Cancel Request?",
+  "cancelRequestConfirm": "Are you sure you want to cancel your request to {name}?",
+  "@cancelRequestConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Ahmad"
+      }
+    }
+  },
+
+  "noKeep": "No, Keep",
+  "yesCancel": "Yes, Cancel",
+  "requestCancelled": "Request cancelled",
+  "liveBadge": "LIVE",
+  "eatEta": "ETA: ",
+  "driverLocationUpdating": "Driver location updating...",
+  "liveMovementOnMap": "You'll see live movement on the map",
+  "zeroKm": "0 km",
+  "statusLabel": "Status: ",
+  "atYourLocation": "At your location",
+  "arrivedBadge": "Arrived",
+  "providerHasArrived": "Your Provider has arrived!",
+  "providerArrivedStartService": "Provider has arrived. Start service now.",
+  "tripDetails": "Trip details for {name} - {category}",
+  "@tripDetails": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Ahmad"
+      },
+      "category": {
+        "type": "String",
+        "example": "Pickup"
+      }
+    }
+  },
+
+  "serviceCompleteHeader": "Service Complete",
+  "serviceCompleted": "Service Completed!",
+  "requestCompletedSuccess": "Your request has been completed\nsuccessfully",
+  "reviewsCount": "({count} reviews)",
+  "@reviewsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "120"
+      }
+    }
+  },
+
+  "completedOn": "Completed on",
+  "sampleCompletedDateTime": "12 Sep 2026, 9:58 PM",
+  "thankYou": "Thank you!",
+  "hopeGreatExperience": "We hope you had a great experience.",
+  "rateYourExperience": "Rate your experience ",
+  "optional": "(optional)",
+  "viewDetails": "View Details",
+  "rateExperience": "Rate your experience (optional)",
+
+  "nearbyProvidersBadge": "Nearby\nProviders",
+  "fastDeliveryBadge": "Fast\nDelivery",
+  "realTimeTrackingBadge": "Real-time\nTracking",
+  "findProvidersNearYou": "Find Providers near you",
+  "needLocationPermissionFor": "We need your location to show nearby\nproviders for {service}.",
+  "@needLocationPermissionFor": {
+    "placeholders": {
+      "service": {
+        "type": "String",
+        "example": "Pickup & Delivery"
+      }
+    }
+  },
+
+  "seeNearbyProviders": "See nearby providers",
+  "findAvailableTeamsAround": "Find available pickup & delivery teams around you.",
+  "fastService": "Fast service",
+  "getQuickerAccurateResults": "Get quicker and more accurate results.",
+  "yourPrivacyMatters": "Your privacy matters",
+  "privacyLocationOnlyService": "Your location is only used for this service and can be changed anytime.",
+  "allowLocation": "Allow Location",
+  "youCanChangeLaterIn": "You can change this later in ",
+  "settingsLabel": "Settings",
+  "openingLocationSettings": "Opening Location Settings...",
+
+  "emergencyServices": "Emergency Services",
+  "getHelpFast": "Get help, fast.",
+  "emergencyLabel": "Emergency",
+  "emergencyCardSubtitle": "We'll connect you with the nearest\navailable emergency team.",
+  "verifiedProvidersBadge": "Verified Providers",
+  "quickResponseBadge": "Quick Response",
+  "liveTrackingBadge": "Live Tracking",
+  "chooseYourServices": "Choose Your Services",
+  "chooseServiceImmediateHelp": "Choose a service to get immediate help.",
+  "ambulanceTitle": "Ambulance",
+  "ambulanceSubtitle": "Medical emergency",
+  "policeTitle": "Police",
+  "policeSubtitle": "Crime & security",
+  "fireBrigadeTitle": "Fire Brigade",
+  "fireBrigadeSubtitle": "Fire & rescue response",
+  "towTruckTitle": "Tow Truck",
+  "towTruckSubtitle": "Roadside vehicle breakdown",
+  "hospitalTitle": "Hospital",
+  "hospitalSubtitle": "Urgent medical center",
+
+  "call": "Call",
+  "message": "Message"
+}

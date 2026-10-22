@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_or_divider.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_phone_input_widget.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_security_notice_row.dart';
@@ -42,49 +43,49 @@ class ProviderAuthFormLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isArabic = context.isArabic;
     return Opacity(
       opacity: 1.0, // opacity: 1
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Label: "Phone Number" (14px, Medium 500, #1C2926)
+              // 1. Label: "Phone Number" / "رقم الهاتف" (14px, Medium 500, #1C2926)
               SizedBox(
-                width: designWidth,
+                width: double.infinity,
                 child: Text(
-                  'Phone Number',
+                  context.l10n.phoneNumberLabel,
+                  textAlign: isArabic ? TextAlign.right : TextAlign.left,
                   style: ProviderTextStyles.phoneInputLabel,
                 ),
               ),
 
-              // Gap: 20px
-              const SizedBox(height: designGap),
+              // Gap: 12px
+              const SizedBox(height: 12.0),
 
               // 2. Phone Number Widget Layout (1st row cards + 16px gap + Continue button)
               phoneInputSlot ?? const ProviderPhoneInputWidget(),
 
-              // Gap: 20px
-              const SizedBox(height: designGap),
+              // Gap: 16px
+              const SizedBox(height: 16.0),
 
-              // 3. Or Divider layout (width: 300; height: 10; gap: 12px; lines: 131x1.2 #DEE0DF; "or" #566663)
-              const Center(
-                child: ProviderOrDivider(),
-              ),
+              // 3. Or Divider layout (lines on left and right + "or" centered)
+              const ProviderOrDivider(),
 
-              // Gap: 20px
-              const SizedBox(height: designGap),
+              // Gap: 16px
+              const SizedBox(height: 16.0),
 
-              // 4. WhatsApp Button layout (width: 350; height: 52; #F2F5F4; "Continue with WhatsApp" + > chevron)
+              // 4. WhatsApp Button layout (width: double.infinity; height: 52; #F2F5F4)
               actionButtonSlot ?? ProviderWhatsAppButton(onTap: onWhatsAppTap),
 
-              // Gap: 20px
-              const SizedBox(height: designGap),
+              // Gap: 16px
+              const SizedBox(height: 16.0),
 
-              // 5. Security Notice Row (width: 186.8; height: 16; gap: 12px; lock icon + "Your Number is safe with us.")
+              // 5. Security Notice Row (lock icon + "Your Number is safe with us.")
               const Center(
                 child: ProviderSecurityNoticeRow(),
               ),

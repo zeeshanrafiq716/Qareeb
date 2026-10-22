@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider What's Next Card Widget
 /// Implements exact Figma branding specifications:
@@ -38,7 +39,7 @@ import 'package:google_fonts/google_fonts.dart';
 ///   angle: 0 deg;
 ///   opacity: 1;
 ///
-/// content: What’s Next?
+/// content: What's Next?
 ///   width: 270;
 ///   height: 10;
 ///   font-family: Inter;
@@ -50,7 +51,7 @@ import 'package:google_fonts/google_fonts.dart';
 ///   letter-spacing: 0px;
 ///   background: #1C2926;
 ///
-/// content: You’ll be notified once approved usually \nwithin 1–24 hours.
+/// content: You'll be notified once approved usually \nwithin 1–24 hours.
 ///   width: 270;
 ///   height: 23;
 ///   font-family: Inter;
@@ -62,13 +63,13 @@ import 'package:google_fonts/google_fonts.dart';
 ///   letter-spacing: 0px;
 ///   background: #566663;
 class ProviderWhatsNextCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
+  final String? title;
+  final String? subtitle;
 
   const ProviderWhatsNextCard({
     super.key,
-    this.title = 'What’s Next?',
-    this.subtitle = 'You’ll be notified once approved usually \nwithin 1–24 hours.',
+    this.title,
+    this.subtitle,
   });
 
   static const double designWidth = 350.0;
@@ -83,8 +84,8 @@ class ProviderWhatsNextCard extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: Container(
-          width: designWidth,
-          height: designHeight,
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: designHeight),
           padding: const EdgeInsets.symmetric(
             horizontal: cardPadding,
             vertical: 14.0,
@@ -138,31 +139,19 @@ class ProviderWhatsNextCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Content: What’s Next? (Inter 500 Medium 14px line-height 22px #1C2926)
+                    // Content: What's Next? (Inter 500 Medium 14px line-height 22px #1C2926)
                     Text(
-                      title,
-                      style: GoogleFonts.inter(
-                        fontSize: 14.0,
-                        fontWeight: FontWeight.w500, // Medium 500
-                        color: const Color(0xFF1C2926),
-                        height: 1.25,
-                        letterSpacing: 0.0,
-                      ),
-                      maxLines: 1,
+                      title ?? context.l10n.whatsNext,
+                      style: ProviderTextStyles.whatsNextTitle,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2.0),
-                    // Content: You’ll be notified once approved usually \nwithin 1–24 hours. (Inter 400 Regular 12px line-height 14px #566663)
+                    // Content: You'll be notified once approved usually \nwithin 1–24 hours.
                     Text(
-                      subtitle,
-                      style: GoogleFonts.inter(
-                        fontSize: 12.0,
-                        fontWeight: FontWeight.w400, // Regular 400
-                        color: const Color(0xFF566663),
-                        height: 14.0 / 12.0,
-                        letterSpacing: 0.0,
-                      ),
-                      maxLines: 2,
+                      subtitle ?? context.l10n.whatsNextSubtitle,
+                      style: ProviderTextStyles.whatsNextSubtitle,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],

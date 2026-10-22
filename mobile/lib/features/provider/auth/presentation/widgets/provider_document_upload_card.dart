@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
+import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Document Upload Card Widget
 /// Implements exact Figma branding specifications:
@@ -75,7 +76,7 @@ class ProviderDocumentUploadCard extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: Container(
-          width: designWidth,
+          width: double.infinity,
           height: designHeight,
           padding: const EdgeInsets.all(16.0), // padding: 16px
           decoration: BoxDecoration(
@@ -94,10 +95,8 @@ class ProviderDocumentUploadCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween, // justify-content: space-between
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Left Content Layout: width: 234; height: 56; gap: 12px;
-              SizedBox(
-                width: 234.0,
-                height: 56.0,
+              // Left Content Layout: takes available width
+              Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -122,53 +121,35 @@ class ProviderDocumentUploadCard extends StatelessWidget {
                     // gap: 12px
                     const SizedBox(width: 12.0),
 
-                    // Text Content Layout: width: 134; height: 50;
+                    // Text Content Layout
                     Expanded(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Title: Inter 500 Medium 12px line-height 22px #1C2926
+                          // Title: ProviderTextStyles.stepCardTitle
                           Text(
-                            title,
-                            style: GoogleFonts.inter(
-                              fontSize: 12.0,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF1C2926),
-                              height: 1.15,
-                            ),
+                            context.isArabic ? context.auto(title) : title,
+                            style: ProviderTextStyles.stepCardTitle,
                             maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
 
                           const SizedBox(height: 3.0),
 
-                          // Subtitle 1: Inter 400 Regular 10px line-height 22px #566663
+                          // Subtitle 1: ProviderTextStyles.stepCardSubtitle
                           Text(
-                            subtitle,
-                            style: GoogleFonts.inter(
-                              fontSize: 10.0,
-                              fontWeight: FontWeight.w400,
-                              color: const Color(0xFF566663),
-                              height: 1.15,
-                            ),
+                            context.isArabic ? context.auto(subtitle) : subtitle,
+                            style: ProviderTextStyles.stepCardSubtitle,
                             maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
 
                           const SizedBox(height: 2.0),
 
-                          // Subtitle 2: Valid and not expired (Inter 400 Regular 10px line-height 22px #566663)
+                          // Subtitle 2: statusText (ProviderTextStyles.stepCardSubtitle)
                           Text(
-                            statusText,
-                            style: GoogleFonts.inter(
-                              fontSize: 10.0,
-                              fontWeight: FontWeight.w400,
-                              color: const Color(0xFF566663),
-                              height: 1.15,
-                            ),
+                            context.isArabic ? context.auto(statusText) : statusText,
+                            style: ProviderTextStyles.stepCardSubtitle,
                             maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -176,6 +157,8 @@ class ProviderDocumentUploadCard extends StatelessWidget {
                   ],
                 ),
               ),
+
+              const SizedBox(width: 8.0),
 
               // Right Side Upload Box:
               // width: 72; height: 61.29783630371094; border-radius: 8px;
@@ -238,19 +221,40 @@ class _UploadBoxWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (isUploaded) ...[
-                  const Icon(
-                    Icons.check_circle,
-                    size: 14.0,
-                    color: ProviderColors.primaryButton,
+                  Container(
+                    width: 18.0,
+                    height: 18.0,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0EAFE),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFFE9E0FE), // border: 0.5px solid #E9E0FE
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 12.0,
+                        height: 12.0,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF8B53FE), // background: #8B53FE
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check_rounded,
+                          size: 8.0,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 2.0),
                   Text(
-                    'Uploaded',
-                    style: GoogleFonts.inter(
+                    context.l10n.uploaded,
+                    style: ProviderTextStyles.stepCardSubtitle.copyWith(
                       fontSize: 9.0,
                       fontWeight: FontWeight.w600,
                       color: ProviderColors.primaryButton,
-                      height: 1.2,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -268,27 +272,24 @@ class _UploadBoxWidget extends StatelessWidget {
 
                   const SizedBox(height: 3.0),
 
-                  // Content: Upload (Inter 500 Medium 10px #1C2926)
+                  // Content: Upload
                   Text(
-                    'Upload',
-                    style: GoogleFonts.inter(
+                    context.l10n.uploadButtonText,
+                    style: ProviderTextStyles.stepCardSubtitle.copyWith(
                       fontSize: 10.0,
                       fontWeight: FontWeight.w500,
                       color: const Color(0xFF1C2926),
-                      height: 1.2,
                     ),
                     textAlign: TextAlign.center,
                   ),
 
                   const SizedBox(height: 1.0),
 
-                  // Content: JPG, PNG (Inter 400 Regular 8px #566663)
+                  // Content: JPG, PNG
                   Text(
                     'JPG, PNG',
-                    style: GoogleFonts.inter(
+                    style: ProviderTextStyles.stepCardSubtitle.copyWith(
                       fontSize: 8.0,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF566663),
                       height: 1.0,
                     ),
                     textAlign: TextAlign.center,

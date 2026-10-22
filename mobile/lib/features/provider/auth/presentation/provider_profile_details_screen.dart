@@ -69,35 +69,29 @@ class ProviderProfileDetailsScreen extends StatelessWidget {
                   child: Stack(
                     children: [
                       // 1. Header Layout
-                      //    width: 350; height: 36; top: 56px; left: 20px; gap: 16px;
+                      //    width: double.infinity; height: 36; top: 56px; left: 20px; right: 20px;
                       Positioned(
                         top: headerTop,
-                        left: ProviderProfileDetailsHeader.designLeft, // 20.0px
+                        left: 20.0,
+                        right: 20.0,
                         child: const ProviderProfileDetailsHeader(),
                       ),
 
-                      // 2. Body Content Slot (Scrollable full height)
+                      // 2. Body Content Slot (Scrolls only when necessary, equal 20px margins)
                       Positioned.fill(
-                        top: headerTop + ProviderProfileDetailsHeader.designHeight,
+                        top: headerTop + ProviderProfileDetailsHeader.designHeight + 24.0,
                         bottom: 0.0,
                         child: ScrollConfiguration(
                           behavior: const ProviderCardScrollBehavior(),
                           child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(
-                              parent: BouncingScrollPhysics(),
-                            ),
-                            padding: EdgeInsets.only(
-                              top: (ProviderProfileDetailsContentLayout.designTop -
-                                      (headerTop + ProviderProfileDetailsHeader.designHeight))
-                                  .clamp(16.0, 100.0),
+                            physics: const ClampingScrollPhysics(),
+                            padding: const EdgeInsets.only(
+                              left: 20.0,
+                              right: 20.0,
+                              top: 12.0,
                               bottom: 24.0,
                             ),
-                            child: Center(
-                              child: SizedBox(
-                                width: ProviderProfileDetailsContentLayout.designWidth,
-                                child: body ?? const ProviderProfileDetailsContentLayout(),
-                              ),
-                            ),
+                            child: body ?? const ProviderProfileDetailsContentLayout(),
                           ),
                         ),
                       ),

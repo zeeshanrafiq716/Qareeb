@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../models/category_model.dart';
 import '../../../../providers/backend_provider.dart';
 import 'category_card_widget.dart';
@@ -109,6 +110,14 @@ class ServicesSectionWidget extends ConsumerWidget {
       );
     }
 
+    final tr = ref.watch(translationsProvider);
+    final String effectiveHeading =
+        (heading == 'Choose Your Ride') ? tr.chooseYourRide : heading;
+    final String effectiveSubtitle =
+        (subtitle == 'Choose a service and see available options.')
+            ? tr.chooseRideSubtitle
+            : subtitle;
+
     return Container(
       width: double.infinity,
       color: Colors.transparent,
@@ -123,30 +132,28 @@ class ServicesSectionWidget extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Heading: Choose Your Ride (14px Inter Medium, #1C2926)
+                // Heading: Choose Your Ride
                 Text(
-                  heading,
-                  style: GoogleFonts.inter(
+                  effectiveHeading,
+                  style: tr.font(
                     fontSize: 14.0,
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF1C2926),
                     height: 1.1,
-                    letterSpacing: 0.0,
                   ),
                 ),
 
                 // gap: 12px
                 const SizedBox(height: 12.0),
 
-                // Text: Choose a service and see available options. (12px Inter Regular, #566663)
+                // Text: Choose a service and see available options.
                 Text(
-                  subtitle,
-                  style: GoogleFonts.inter(
+                  effectiveSubtitle,
+                  style: tr.font(
                     fontSize: 12.0,
                     fontWeight: FontWeight.w400,
                     color: const Color(0xFF566663),
                     height: 1.1,
-                    letterSpacing: 0.0,
                   ),
                 ),
               ],
@@ -159,7 +166,7 @@ class ServicesSectionWidget extends ConsumerWidget {
           // 2. Dynamic Categories Section (width: 350, left: 20px, gap: 12px)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: _buildCategoryGrid(activeCategories),
+            child: _buildCategoryGrid(activeCategories, tr),
           ),
         ],
       ),
@@ -168,7 +175,7 @@ class ServicesSectionWidget extends ConsumerWidget {
 
   /// Builds pairs of category cards with 12px vertical gap between rows
   /// and 12px horizontal gap between cards.
-  Widget _buildCategoryGrid(List<CategoryModel> items) {
+  Widget _buildCategoryGrid(List<CategoryModel> items, AppTranslations tr) {
     final List<Widget> rows = [];
 
     for (int i = 0; i < items.length; i += 2) {
@@ -199,6 +206,9 @@ class ServicesSectionWidget extends ConsumerWidget {
             Expanded(
               child: CategoryCardWidget.fromModel(
                 firstCategory,
+                titleOverride: tr.categoryName(firstCategory.slug, firstCategory.name),
+                subtitleOverride: tr.categorySubtitle(firstCategory.slug, firstCategory.displaySubtitle),
+                tr: tr,
                 onTap: tapFirst,
                 customContent: customFirst,
               ),
@@ -212,6 +222,9 @@ class ServicesSectionWidget extends ConsumerWidget {
               child: secondCategory != null
                   ? CategoryCardWidget.fromModel(
                       secondCategory,
+                      titleOverride: tr.categoryName(secondCategory.slug, secondCategory.name),
+                      subtitleOverride: tr.categorySubtitle(secondCategory.slug, secondCategory.displaySubtitle),
+                      tr: tr,
                       onTap: tapSecond,
                       customContent: customSecond,
                     )

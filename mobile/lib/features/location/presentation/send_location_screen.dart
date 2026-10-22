@@ -3,7 +3,9 @@ import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../../../core/localization/app_locale.dart';
+import 'widgets/top_down_car_widget.dart';
 
 /// Screen displayed when user clicks 'Send My Location' on the Provider Detail screen.
 /// Implements the pickup & delivery header and map navigation with identical branding.
@@ -26,6 +28,8 @@ class SendLocationScreen extends ConsumerStatefulWidget {
 class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
   int _selectedShareIndex = 0;
   bool _isCardExpanded = true;
+
+  AppTranslations get tr => ref.read(translationsProvider);
 
   @override
   Widget build(BuildContext context) {
@@ -157,17 +161,14 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                       Positioned(
                         top: 250.0,
                         left: 236.0 + ((containerWidth - 390.0) / 2.0),
-                        width: 18.0,
-                        height: 28.0,
-                        child: Transform.rotate(
-                          angle: -60.0 * math.pi / 180.0,
-                          alignment: Alignment.center,
-                          child: const CustomPaint(
-                            size: Size(18.0, 28.0),
-                            painter: _CarGraphicPainter(
-                              roofColor: Color(0xFFA67AFE),
-                            ),
-                          ),
+                        child: TopDownCarWidget(
+                          width: 16.5,
+                          height: 28.5,
+                          angle: -60.0,
+                          driverName: widget.providerName,
+                          distanceKm: 1.8,
+                          showBadge: true,
+                          bodyColor: const Color(0xFFA67AFE),
                         ),
                       ),
 
@@ -266,12 +267,12 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                           child: Align(
                             alignment: const Alignment(0.0, -0.45),
                             child: Text(
-                              widget.distance,
+                              tr.isArabic ? widget.distance.replaceAll('km', 'كم').replaceAll('min', 'د') : widget.distance,
                               textHeightBehavior: const TextHeightBehavior(
                                 applyHeightToFirstAscent: false,
                                 applyHeightToLastDescent: false,
                               ),
-                              style: GoogleFonts.inter(
+                              style: tr.font(
                                 fontSize: 10.0,
                                 fontWeight: FontWeight.w400,
                                 color: const Color(0xFFFFFFFF),
@@ -347,12 +348,12 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                               // Title: Pickup & Delivery
                               Expanded(
                                 child: Text(
-                                  widget.serviceCategory,
+                                  tr.categoryName(widget.serviceCategory),
                                   textHeightBehavior: const TextHeightBehavior(
                                     applyHeightToFirstAscent: false,
                                     applyHeightToLastDescent: false,
                                   ),
-                                  style: GoogleFonts.inter(
+                                  style: tr.font(
                                     fontSize: 16.0,
                                     fontWeight: FontWeight.w500,
                                     color: const Color(0xFF1C2926),
@@ -377,7 +378,9 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                       // Reduced border radius from corners (16px / 12px) for sleek, refined modern look
                       Container(
                         width: containerWidth >= 390 ? 390.0 : containerWidth,
-                        height: _isCardExpanded ? 561.0 : null,
+                        constraints: _isCardExpanded
+                            ? const BoxConstraints(minHeight: 561.0)
+                            : null,
                         decoration: const BoxDecoration(
                           color: Color(0xFFFFFFFF),
                           borderRadius: BorderRadius.only(
@@ -540,8 +543,8 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Share your location?',
-                          style: GoogleFonts.inter(
+                          tr.shareYourLocation,
+                          style: tr.font(
                             fontSize: 14.0,
                             fontWeight: FontWeight.w600,
                             color: const Color(0xFF1C2926),
@@ -549,8 +552,8 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                         ),
                         const SizedBox(height: 2.0),
                         Text(
-                          'Tap or swipe up to view options',
-                          style: GoogleFonts.inter(
+                          tr.tapOrSwipeToView,
+                          style: tr.font(
                             fontSize: 11.0,
                             fontWeight: FontWeight.w400,
                             color: const Color(0xFF566663),
@@ -570,8 +573,8 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                       borderRadius: BorderRadius.circular(6.0),
                     ),
                     child: Text(
-                      widget.distance,
-                      style: GoogleFonts.inter(
+                      tr.isArabic ? widget.distance.replaceAll('km', 'كم').replaceAll('min', 'د') : widget.distance,
+                      style: tr.font(
                         fontSize: 11.0,
                         fontWeight: FontWeight.w500,
                         color: Colors.white,
@@ -639,9 +642,9 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
 
           // 2. Heading
           Text(
-            'Share your location?',
+            tr.shareYourLocation,
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: tr.font(
               fontSize: 18.0,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF1C2926),
@@ -652,9 +655,9 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
 
           // 3. Subtitle
           Text(
-            'Share your live location with ${widget.providerName} for faster pickup',
+            tr.shareLiveLocationWith(tr.formatProviderName(widget.providerName)),
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: tr.font(
               fontSize: 12.0,
               fontWeight: FontWeight.w400,
               color: const Color(0xFF566663),
@@ -686,8 +689,8 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                 ),
                 const SizedBox(width: 6.0),
                 Text(
-                  'End-to-end encrypted • Live tracking active',
-                  style: GoogleFonts.inter(
+                  tr.endToEndEncrypted,
+                  style: tr.font(
                     fontSize: 11.0,
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF8B53FE),
@@ -700,10 +703,10 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
 
           // 5. "Share via" section title
           Align(
-            alignment: Alignment.centerLeft,
+            alignment: tr.isArabic ? Alignment.centerRight : Alignment.centerLeft,
             child: Text(
-              'Share via',
-              style: GoogleFonts.inter(
+              tr.shareVia,
+              style: tr.font(
                 fontSize: 14.0,
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFF1C2926),
@@ -739,13 +742,9 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
   /// Row of 3 share options: WhatsApp, Copy Link, Instagram
   /// width: 350; height: 97.5999984741211; gap: 12px;
   Widget _buildShareCardsRow(double containerWidth) {
-    return SizedBox(
-      width: (containerWidth >= 390)
-          ? 350.0
-          : (containerWidth - 40.0).clamp(280.0, 350.0),
-      height: 97.6,
+    return IntrinsicHeight(
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // 1st card layout: WhatsApp
           // width: 108.66666412353516; height: 97.5999984741211; gap: 12px;
@@ -765,8 +764,8 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                 ),
               ),
             ),
-            title: 'WhatsApp',
-            subtitle: 'Chat & Share',
+            title: tr.whatsApp,
+            subtitle: tr.chatAndShare,
           ),
           const SizedBox(width: 12.0), // gap: 12px;
 
@@ -784,8 +783,8 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                 ),
               ),
             ),
-            title: 'Copy Link',
-            subtitle: 'Copy to share',
+            title: tr.copyLink,
+            subtitle: tr.copyToShare,
           ),
           const SizedBox(width: 12.0), // gap: 12px;
 
@@ -816,8 +815,8 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                 ),
               ),
             ),
-            title: 'Instagram',
-            subtitle: 'Share in Dm',
+            title: tr.instagram,
+            subtitle: tr.shareInDm,
           ),
         ],
       ),
@@ -843,9 +842,9 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
             });
             if (index == 0) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Opening WhatsApp to share location...'),
-                  duration: Duration(seconds: 1),
+                SnackBar(
+                  content: Text(tr.openingWhatsApp),
+                  duration: const Duration(seconds: 1),
                 ),
               );
             } else if (index == 1) {
@@ -853,23 +852,23 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                 const ClipboardData(text: 'https://qareeb.app/location/live/track-8492'),
               );
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Location link copied to clipboard!'),
-                  duration: Duration(seconds: 1),
+                SnackBar(
+                  content: Text(tr.linkCopied),
+                  duration: const Duration(seconds: 1),
                 ),
               );
             } else if (index == 2) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Opening Instagram to share in DM...'),
-                  duration: Duration(seconds: 1),
+                SnackBar(
+                  content: Text(tr.openingInstagram),
+                  duration: const Duration(seconds: 1),
                 ),
               );
             }
           },
           behavior: HitTestBehavior.opaque,
           child: Container(
-            height: 97.6,
+            constraints: const BoxConstraints(minHeight: 106.0),
             decoration: BoxDecoration(
               color: isSelected ? const Color(0xFFF0EAFE) : const Color(0xFFF2F5F4),
               borderRadius: BorderRadius.circular(12.0),
@@ -878,8 +877,9 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                 width: 0.8,
               ),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 12.0),
+            padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -889,19 +889,20 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                   height: 28.0,
                   child: Center(child: iconWidget),
                 ),
-                const SizedBox(height: 8.0), // gap: 8px;
+                const SizedBox(height: 4.0), // gap
 
-                // content title: width: 62; height: 9; Inter 12px Medium #1C2926; line-height: 22px;
+                // content title
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
                     title,
+                    maxLines: 1,
                     textAlign: TextAlign.center,
                     textHeightBehavior: const TextHeightBehavior(
                       applyHeightToFirstAscent: false,
                       applyHeightToLastDescent: false,
                     ),
-                    style: GoogleFonts.inter(
+                    style: tr.font(
                       fontSize: 12.0,
                       fontWeight: FontWeight.w500,
                       color: const Color(0xFF1C2926),
@@ -912,17 +913,18 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                 ),
                 const SizedBox(height: 2.0),
 
-                // content subtitle: width: 62; height: 7; Inter 10px Regular #566663; line-height: 22px;
+                // content subtitle
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
                     subtitle,
+                    maxLines: 1,
                     textAlign: TextAlign.center,
                     textHeightBehavior: const TextHeightBehavior(
                       applyHeightToFirstAscent: false,
                       applyHeightToLastDescent: false,
                     ),
-                    style: GoogleFonts.inter(
+                    style: tr.font(
                       fontSize: 10.0,
                       fontWeight: FontWeight.w400,
                       color: const Color(0xFF566663),
@@ -1001,17 +1003,16 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // content: Location Details
-                      // width: 282; height: 9; font-family: Inter; font-weight: 500; font-size: 12px; line-height: 100%; color: #1C2926;
                       Flexible(
                         child: Text(
-                          'Location Details',
+                          tr.locationDetails,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textHeightBehavior: const TextHeightBehavior(
                             applyHeightToFirstAscent: false,
                             applyHeightToLastDescent: false,
                           ),
-                          style: GoogleFonts.inter(
+                          style: tr.font(
                             fontSize: 12.0,
                             fontWeight: FontWeight.w500,
                             color: const Color(0xFF1C2926),
@@ -1023,17 +1024,16 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                       const SizedBox(height: 2.0),
 
                       // content: King Fahd Road, Al Olaya Riyadh, Saudi Arabia
-                      // width: 282; height: 7; font-family: Inter; font-weight: 400; font-size: 10px; line-height: 100%; color: #566663;
                       Flexible(
                         child: Text(
-                          'King Fahd Road, Al Olaya Riyadh, Saudi Arabia',
+                          tr.sampleAddress,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textHeightBehavior: const TextHeightBehavior(
                             applyHeightToFirstAscent: false,
                             applyHeightToLastDescent: false,
                           ),
-                          style: GoogleFonts.inter(
+                          style: tr.font(
                             fontSize: 10.0,
                             fontWeight: FontWeight.w400,
                             color: const Color(0xFF566663),
@@ -1059,7 +1059,6 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
             child: Row(
               children: [
                 // 1st button branding: Cancel
-                // width: 169; height: 52; gap: 10px; border-radius: 12px; padding: 16px 53px; background: #F2F5F4;
                 Expanded(
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
@@ -1077,15 +1076,13 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                           borderRadius: BorderRadius.circular(12.0),
                         ),
                         child: Center(
-                          // content: Cancel
-                          // width: 47; height: 10; font-family: Inter; font-weight: 500; font-size: 14px; line-height: 22px; color: #1C2926;
                           child: Text(
-                            'Cancel',
+                            tr.cancel,
                             textHeightBehavior: const TextHeightBehavior(
                               applyHeightToFirstAscent: false,
                               applyHeightToLastDescent: false,
                             ),
-                            style: GoogleFonts.inter(
+                            style: tr.font(
                               fontSize: 14.0,
                               fontWeight: FontWeight.w500,
                               color: const Color(0xFF1C2926),
@@ -1101,7 +1098,6 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                 const SizedBox(width: 12.0), // gap: 12px;
 
                 // 2nd button branding: Send Location
-                // width: 169; height: 52; border-radius: 12px; padding: 16px; background: #1D8070;
                 Expanded(
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
@@ -1123,7 +1119,6 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // icon branding: width: 16; height: 16; background: #FFFFFF;
                             const Icon(
                               Icons.near_me_rounded,
                               size: 16.0,
@@ -1131,18 +1126,16 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                             ),
                             const SizedBox(width: 8.0),
 
-                            // content: Send Location
-                            // width: 96; height: 10; font-family: Inter; font-weight: 500; font-size: 14px; line-height: 22px; color: #FFFFFF;
                             Flexible(
                               child: Text(
-                                'Send Location',
+                                tr.sendLocation,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 textHeightBehavior: const TextHeightBehavior(
                                   applyHeightToFirstAscent: false,
                                   applyHeightToLastDescent: false,
                                 ),
-                                style: GoogleFonts.inter(
+                                style: tr.font(
                                   fontSize: 14.0,
                                   fontWeight: FontWeight.w500,
                                   color: const Color(0xFFFFFFFF),
@@ -1167,7 +1160,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
 
   void _handleSendLocation() {
     final String provider =
-        widget.providerName.isNotEmpty ? widget.providerName : 'Ahamd Transport';
+        widget.providerName.isNotEmpty ? widget.providerName : 'Ahmad Transport';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -1176,8 +1169,8 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Location sent successfully to $provider!',
-                style: GoogleFonts.inter(
+                tr.locationSentSuccess(tr.formatProviderName(provider)),
+                style: tr.font(
                   fontSize: 13.0,
                   fontWeight: FontWeight.w500,
                   color: Colors.white,

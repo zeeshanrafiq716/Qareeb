@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_continue_button.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_profile_input_field.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_profile_input_icons.dart';
@@ -58,15 +59,15 @@ class ProviderProfileContactInfoPart2 extends StatelessWidget {
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
-          width: designWidth,
+          width: double.infinity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Heading with same branding of contact information
               heading ??
-                  const ProviderProfileSectionHeading(
-                    title: 'Contact Information',
+                  ProviderProfileSectionHeading(
+                    title: context.l10n.contactInformationHeading,
                   ),
 
               // gap: 20px
@@ -80,7 +81,7 @@ class ProviderProfileContactInfoPart2 extends StatelessWidget {
               else ...[
                 // 1. Phone Number Input (width: 100%, height: 48, icon: Phone receiver outline)
                 ProviderProfileInputField(
-                  label: 'Phone Number',
+                  label: context.l10n.phoneNumberLabel,
                   placeholder: '+966 48 125 5637',
                   controller: phoneController,
                   width: double.infinity,
@@ -93,8 +94,8 @@ class ProviderProfileContactInfoPart2 extends StatelessWidget {
 
                 // 2. WhatsApp number (Optional) Input (width: 100%, height: 48, icon: WhatsApp outline)
                 ProviderProfileInputField(
-                  label: 'WhatsApp number',
-                  labelSpan: '(Optional)',
+                  label: context.l10n.whatsappNumberLabel,
+                  labelSpan: context.l10n.optionalLabel,
                   placeholder: '+966 50 123 4567',
                   controller: whatsappController,
                   width: double.infinity,
