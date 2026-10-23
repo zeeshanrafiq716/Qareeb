@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_scroll_behavior.dart';
+import 'package:mobile/features/provider/dashboard/presentation/widgets/provider_contacts_received_card.dart';
 import 'package:mobile/features/provider/dashboard/presentation/widgets/provider_dashboard_header.dart';
 import 'package:mobile/features/provider/dashboard/presentation/widgets/provider_profile_views_card.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
@@ -11,10 +13,12 @@ import 'package:mobile/features/provider/theme/provider_colors.dart';
 /// Implements exact previous screens branding with back button, title, subtitle, and language toggle.
 class ProviderDashboardScreen extends StatefulWidget {
   final int initialTabIndex;
+  final int initialCardIndex; // 0: Profile Views, 1: Contacts Received
 
   const ProviderDashboardScreen({
     super.key,
     this.initialTabIndex = 0,
+    this.initialCardIndex = 0,
   });
 
   static const double designWidth = 392.0;
@@ -25,6 +29,30 @@ class ProviderDashboardScreen extends StatefulWidget {
 }
 
 class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialCardIndex == 1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            389.0, // Scroll to Contacts Received card (377 height + 12 gap)
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
@@ -104,6 +132,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                       child: ScrollConfiguration(
                         behavior: const ProviderCardScrollBehavior(),
                         child: SingleChildScrollView(
+                          controller: _scrollController,
                           physics: const BouncingScrollPhysics(),
                           padding: EdgeInsets.only(
                             left: 20.0,
@@ -114,8 +143,18 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: const [
-                              // Profile Views Card (350x377) matching exact branding
+                              // 1. Profile Views Card (350x377) matching exact branding
                               ProviderProfileViewsCard(),
+
+                              SizedBox(height: 12.0), // gap: 12px
+
+                              // 2. Contacts Received Card (350x461) containing dayz tabs, call & whatsapp cards, and chart
+                              ProviderContactsReceivedCard(),
+
+                              SizedBox(height: 16.0), // gap: 16px
+
+                              // 3. Bottom Indicator Bar (not fixed, appears at the end of screen scroll)
+                              ProviderCardBottomIndicator(),
                             ],
                           ),
                         ),

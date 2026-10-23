@@ -141,7 +141,16 @@ class ProviderStatsCards extends StatelessWidget {
                   icon: Icons.phone_rounded,
                   value: '$contactsToday',
                   label: contactsLabel,
-                  onTap: onContactsTap,
+                  onTap: onContactsTap ??
+                      () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ProviderDashboardScreen(
+                              initialCardIndex: 1,
+                            ),
+                          ),
+                        );
+                      },
                 ),
               ),
             ],

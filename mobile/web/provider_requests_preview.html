@@ -1,0 +1,2669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Provider Requests Screen - Qareeb</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #141C1A;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #e0e0e0;
+    }
+    .header-info {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .header-info h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #8B53FE;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+    .header-info p {
+      font-size: 13px;
+      color: #8b9c97;
+    }
+
+    /* Screen layout: width: 392; height: 844; */
+    .screen-container {
+      width: 392px;
+      height: 844px;
+      border-radius: 40px;
+      border: 2px solid rgba(139, 83, 254, 0.25);
+      background: #FFFFFF;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(139, 83, 254, 0.15);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Purple Glow Gradient */
+    .top-glow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 236px;
+      background: linear-gradient(180deg, rgba(139, 83, 254, 0.37) 0%, rgba(139, 83, 254, 0) 100%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Header: top: 56px, left: 20px, right: 20px, height: 46px */
+    .requests-header {
+      position: absolute;
+      top: 56px;
+      left: 20px;
+      right: 20px;
+      height: 46px;
+      display: flex;
+      align-items: center;
+      z-index: 10;
+    }
+    .back-btn {
+      width: 36px;
+      height: 36px;
+      background: #FFFFFF;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0px 1px 8px rgba(0, 0, 0, 0.08);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.15s ease;
+    }
+    .back-btn:hover {
+      transform: scale(1.05);
+    }
+    .back-btn svg {
+      width: 7px;
+      height: 13px;
+      stroke: #1C2926;
+      stroke-width: 1.5;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .header-titles {
+      margin-left: 12px;
+      margin-right: 12px;
+      flex: 1;
+      min-width: 0;
+    }
+    .header-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1C2926;
+      line-height: 22px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .header-subtitle {
+      font-size: 12px;
+      font-weight: 400;
+      color: #566663;
+      line-height: 16px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Language Toggle */
+    .lang-toggle {
+      width: 96px;
+      height: 30px;
+      background: #FFFFFF;
+      border: 1.2px solid rgba(139, 83, 254, 0.28);
+      border-radius: 15px;
+      box-shadow: 0 3px 12px rgba(139, 83, 254, 0.16);
+      display: flex;
+      align-items: center;
+      padding: 2.5px;
+      position: relative;
+      cursor: pointer;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .toggle-slider {
+      position: absolute;
+      top: 2.5px;
+      left: 2.5px;
+      width: 44px;
+      height: 23px;
+      background: linear-gradient(135deg, #8B53FE, #A67AFE);
+      border-radius: 12px;
+      transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 2px 8px rgba(139, 83, 254, 0.4);
+    }
+    .lang-toggle.en .toggle-slider {
+      transform: translateX(47px);
+    }
+    .toggle-btn {
+      flex: 1;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      z-index: 2;
+      transition: color 0.2s;
+    }
+    .lang-toggle.ar .ar-btn { color: #FFFFFF; font-weight: 700; font-family: 'Cairo'; }
+    .lang-toggle.ar .en-btn { color: #566663; }
+    .lang-toggle.en .ar-btn { color: #566663; font-family: 'Cairo'; }
+    .lang-toggle.en .en-btn { color: #FFFFFF; font-weight: 700; }
+
+    /* Exact Figma Row Layout: width: 350; height: 45; border-radius: 12px; top: 108px; left: 20px; padding: 4px; background: #F3F2F5; */
+    .filter-tabs-row {
+      position: absolute;
+      top: 108px;
+      left: 20px;
+      width: 350px;
+      height: 45px;
+      background: #F3F2F5;
+      border-radius: 12px;
+      padding: 4px;
+      display: flex;
+      z-index: 10;
+    }
+    .tab-pill {
+      height: 37px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 400;
+      color: #616166;
+      transition: all 0.18s ease;
+      user-select: none;
+    }
+    .tab-pill.tab-new {
+      width: 96px;
+      flex-shrink: 0;
+    }
+    .tab-pill.tab-other {
+      width: 82px;
+      flex-shrink: 0;
+    }
+    .tab-pill.active {
+      background: #8B53FE;
+      color: #FFFFFF;
+      font-weight: 500;
+    }
+
+    /* Next Widget Layout: width: 350; height: 530; top: 169px; left: 22px; gap: 12px; */
+    .cards-scroll-container {
+      position: absolute;
+      top: 169px;
+      left: 21px;
+      width: 350px;
+      bottom: 84px;
+      overflow-y: auto;
+      z-index: 5;
+    }
+    .cards-scroll-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .cards-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px; /* equal gap: 12px */
+      padding-bottom: 24px;
+    }
+
+    /* Selected Card: background: #F4EFFE; border: 1px solid #8B53FE; height: 98px; */
+    .request-card.selected {
+      width: 350px;
+      height: 98px;
+      background: #F4EFFE;
+      border: 1px solid #8B53FE;
+      box-shadow: none;
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      user-select: none;
+    }
+
+    /* Remaining (unselected) Cards: background: #FFFFFF; box-shadow: 0px 1px 12px 0px #0000001A; border will not purple; height: 96px; */
+    .request-card:not(.selected) {
+      width: 350px;
+      height: 96px;
+      background: #FFFFFF;
+      border: none;
+      box-shadow: 0px 1px 12px 0px rgba(0, 0, 0, 0.10); /* #0000001A */
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      user-select: none;
+    }
+    .request-card:hover {
+      transform: translateY(-2px);
+    }
+
+    /* Left Side Image: width: 64; height: 64; border-radius: 12px; */
+    .left-img {
+      width: 64px;
+      height: 64px;
+      border-radius: 12px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    /* Content Layout: width: 236; height: 64; gap: 12px; */
+    .card-content {
+      width: 236px;
+      height: 64px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* 1st Row: width: 236; height: 23; justify-content: space-between; */
+    .card-row-1 {
+      height: 23px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Badge Layout: height: 23; border-radius: 20px; padding: 8px; background: #EAE0FE; */
+    .badge-wrap {
+      height: 23px;
+      background: #EAE0FE;
+      border-radius: 20px;
+      padding: 4px 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 400;
+      color: #8B53FE;
+      line-height: 1;
+    }
+
+    .time-txt {
+      font-size: 10px;
+      font-weight: 400;
+      color: #616166;
+      line-height: 1;
+    }
+
+    /* 2nd & 3rd Row Layout: width: 236; height: 29; justify-content: space-between; */
+    .card-row-2-3 {
+      height: 29px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-text-block {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+      flex: 1;
+    }
+
+    /* Title: (Inter 500 14px line-height 24px #252527) */
+    .card-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #252527;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 3rd Row: Location • Distance */
+    .card-subtitle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px; /* gap: 8px */
+      margin-top: 2px;
+      font-size: 10px;
+      font-weight: 400;
+      color: #616166;
+      line-height: 1;
+    }
+
+    .loc-txt {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Ellipse Dot: width: 4; height: 4; background: #616166; */
+    .dot-ellipse {
+      width: 4px;
+      height: 4px;
+      background: #616166;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dist-txt {
+      flex-shrink: 0;
+    }
+
+    /* Chevron > Branding: width: 6.06; height: 12.87; border: 1px solid #616166 */
+    .chevron-icon {
+      width: 7px;
+      height: 13px;
+      stroke: #616166;
+      stroke-width: 1.3;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+
+    /* Floating Bottom Nav Bar */
+    .bottom-nav {
+      position: absolute;
+      bottom: 20px;
+      left: 50px;
+      width: 292px;
+      height: 60px;
+      background: #FFFFFF;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+      border: 1px solid rgba(220, 220, 220, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 12px;
+      z-index: 20;
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: #8b9c97;
+      font-size: 10px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .nav-item.active {
+      color: #8B53FE;
+      font-weight: 600;
+    }
+    .nav-item svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+    }
+    .nav-item.active svg {
+      stroke: #8B53FE;
+    }
+
+    /* RTL Support */
+    body.rtl .screen-container {
+      direction: rtl;
+      font-family: 'Cairo', sans-serif;
+    }
+    body.rtl .back-btn svg {
+      transform: scaleX(-1);
+    }
+    body.rtl .chevron-icon {
+      transform: scaleX(-1);
+      margin-left: 0;
+      margin-right: 8px;
+    }
+
+    /* Request Details Screen Overlay (Exact Figma Specification) */
+    .details-screen-overlay {
+      position: absolute;
+      top: 1px;
+      left: 0;
+      width: 390px;
+      height: 843px;
+      background: linear-gradient(180deg, #FFFFFF 2.14%, rgba(255, 255, 255, 0.839534) 17.05%, rgba(255, 255, 255, 0) 26.93%);
+      z-index: 50;
+      transform: translateY(100%);
+      transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 44px;
+    }
+    .details-screen-overlay.active {
+      transform: translateY(0);
+    }
+    .details-header {
+      position: absolute;
+      top: 52px;
+      left: 20px;
+      right: 20px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 20;
+    }
+    .details-back-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      border: 1px solid #566663;
+      box-shadow: 0px 1px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .details-back-btn svg {
+      width: 7px;
+      height: 13px;
+      stroke: #566663;
+      stroke-width: 2;
+      fill: none;
+    }
+    .details-title-txt {
+      flex: 1;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1C2926;
+      line-height: 22px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .details-map-area {
+      position: absolute;
+      top: 1px;
+      left: 0;
+      width: 100%;
+      height: 520px;
+      overflow: hidden;
+    }
+    .details-map-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 540px;
+      object-fit: cover;
+    }
+    .details-map-gradient {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 520px;
+      background: linear-gradient(180deg, #FFFFFF 2.14%, rgba(255, 255, 255, 0.839534) 17.05%, rgba(255, 255, 255, 0) 26.93%, rgba(255, 255, 255, 0) 100%);
+      pointer-events: none;
+    }
+    .details-pin-halo {
+      position: absolute;
+      top: 132px;
+      left: 104px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(139, 83, 254, 0.16);
+      border: 1.5px solid rgba(139, 83, 254, 0.28);
+    }
+    .details-pin-circle {
+      position: absolute;
+      top: 138px;
+      left: 110px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #8B53FE;
+      box-shadow: 0 2px 8px rgba(139, 83, 254, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .details-dist-tooltip {
+      position: absolute;
+      top: 104px;
+      left: 128px;
+      transform: translateX(-50%);
+      background: #8B53FE;
+      color: #FFFFFF;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(139, 83, 254, 0.35);
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+    }
+    .details-dist-tooltip::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 6px 4px 0 4px;
+      border-style: solid;
+      border-color: #8B53FE transparent transparent transparent;
+    }
+    .details-route-svg {
+      position: absolute;
+      top: 154px;
+      left: 110px;
+      width: 75px;
+      height: 72px;
+    }
+    .details-car-wrap {
+      position: absolute;
+      top: 215px;
+      left: 172px;
+      width: 17px;
+      height: 29px;
+      transform: rotate(-48deg);
+    }
+    .details-you-bubble {
+      position: absolute;
+      top: 179px;
+      left: 162px;
+      background: #FFFFFF;
+      color: #1C2926;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      white-space: nowrap;
+    }
+    .details-you-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 6px 4px 0 4px;
+      border-style: solid;
+      border-color: #FFFFFF transparent transparent transparent;
+    }
+    .details-landmark {
+      position: absolute;
+      top: 210px;
+      left: 75px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .details-gps-btn {
+      position: absolute;
+      top: 232px;
+      right: 20px;
+      width: 42px;
+      height: 42px;
+      background: #FFFFFF;
+      border-radius: 12px;
+      border: 1px solid #E5E7EB;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+    }
+
+    /* Card Layout: width: 390; height: 553; top: 291px; border-radius: 28px 28px 28px 20px; box-shadow: 0px -2px 12px 0px #00000014; */
+    .details-bottom-card {
+      position: absolute;
+      top: 291px;
+      left: 0;
+      width: 390px;
+      height: 553px;
+      background: #FFFFFF;
+      border-top-left-radius: 28px;
+      border-top-right-radius: 28px;
+      border-bottom-right-radius: 28px;
+      border-bottom-left-radius: 20px;
+      box-shadow: 0px -2px 12px 0px rgba(0, 0, 0, 0.078);
+      padding: 0;
+      z-index: 20;
+      box-sizing: border-box;
+    }
+
+    /* Row 1 branding: width: 350; height: 52; top: 32px; left: 20px; gap: 16px; border-radius: 16px; */
+    .details-card-row1 {
+      position: absolute;
+      top: 32px;
+      left: 20px;
+      width: 350px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-radius: 16px;
+      box-sizing: border-box;
+    }
+    .details-card-img {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .details-card-content {
+      width: 282px;
+      height: 33px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex: 1;
+    }
+    .details-content-row1 {
+      width: 282px;
+      height: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .details-service-title {
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 14px;
+      line-height: 24px;
+      letter-spacing: 0px;
+      color: #252527;
+      white-space: nowrap;
+    }
+    .details-content-row2 {
+      width: 235px;
+      height: 7px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .details-client-from {
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 10px;
+      line-height: 100%;
+      letter-spacing: 0px;
+      color: #616166;
+      white-space: nowrap;
+    }
+    .details-dot-ellipse {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #616166;
+      flex-shrink: 0;
+    }
+    .details-location-txt {
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 10px;
+      line-height: 100%;
+      letter-spacing: 0px;
+      color: #616166;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* content layout : width: 350; height: 324; top: 100px; left: 20px; gap: 12px; */
+    .details-content-layout {
+      position: absolute;
+      top: 100px;
+      left: 20px;
+      width: 350px;
+      height: 324px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-sizing: border-box;
+      padding-bottom: 0px;
+      scrollbar-width: none;
+    }
+    .details-content-layout::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* 1st row card layout: width: 350; height: 68; gap: 12px; border-radius: 12px; padding: 16px; background: #F3F2F5; */
+    .details-loc-card {
+      width: 350px;
+      height: 68px;
+      border-radius: 12px;
+      padding: 16px;
+      background: #F3F2F5;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-sizing: border-box;
+      flex-shrink: 0;
+    }
+
+    /* inner branding: icon layout: width: 36; height: 36; border-radius: 8px; background: #E7E6EB; */
+    .details-loc-icon-box {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: #E7E6EB;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* content branding: width: 144; height: 26; gap: 10px; */
+    .details-loc-content {
+      width: 144px;
+      height: 26px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .details-loc-label {
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 10px;
+      line-height: 100%;
+      letter-spacing: 0px;
+      color: #616166;
+      white-space: nowrap;
+    }
+    .details-loc-value {
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 12px;
+      line-height: 24px;
+      letter-spacing: 0px;
+      color: #252527;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* next row layout: width: 350; height: 64; gap: 12px; */
+    .details-twin-row {
+      width: 350px;
+      height: 64px;
+      display: flex;
+      gap: 12px;
+      box-sizing: border-box;
+      flex-shrink: 0;
+    }
+
+    /* 1st card & 2nd card branding: width: 169; height: 64; gap: 12px; border-radius: 12px; padding: 16px; background: #F3F2F5; */
+    .details-twin-card {
+      flex: 1;
+      width: 169px;
+      height: 64px;
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: #F3F2F5;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-sizing: border-box;
+    }
+    .details-twin-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #E7E6EB;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #252527;
+    }
+    .details-twin-col {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+    }
+    .details-twin-val {
+      font-family: 'Inter', sans-serif;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #252527;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+    .details-twin-lbl {
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 400;
+      color: #616166;
+      line-height: 1.1;
+      margin-top: 2px;
+      white-space: nowrap;
+    }
+
+    /* Customer Card branding matching user screenshot */
+    .details-customer-card {
+      width: 350px;
+      background: #F3F2F5;
+      border-radius: 16px;
+      padding: 16px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .details-customer-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .details-customer-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .details-customer-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .details-customer-names {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .details-customer-lbl {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 400;
+      color: #75757A;
+      line-height: 1.1;
+    }
+    .details-customer-name {
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: #1C1C1E;
+      line-height: 1.1;
+    }
+    .details-customer-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .details-wa-circle {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #25D366;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .details-call-circle {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #252527;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .details-vehicle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #252527;
+      padding-top: 2px;
+    }
+    .details-vehicle-model {
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 13px;
+      color: #252527;
+    }
+    .details-vehicle-divider {
+      width: 1px;
+      height: 14px;
+      background: #E0DFE4;
+      margin: 0 4px;
+    }
+    .details-plate-badge {
+      border: 1px solid #9E9EA4;
+      border-radius: 3.5px;
+      padding: 2px 4.5px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      line-height: 1;
+    }
+    .details-plate-badge span {
+      width: 1px;
+      height: 7.5px;
+      background: #75757A;
+    }
+    .details-plate-num {
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      color: #5E5E63;
+      margin-left: 2px;
+    }
+
+    /* Customer Note Card branding matching user screenshot & exact Figma specs */
+    .details-note-card {
+      width: 350px;
+      background: #F3F2F5;
+      border-radius: 12px;
+      padding: 15px 16px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+    .details-note-icon-box {
+      width: 24px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    /* last card content layout: width: 283; height: 26; gap: 10px; */
+    .details-note-col {
+      width: 283px;
+      height: 26px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    .details-note-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      color: #252527;
+      line-height: 1;
+      letter-spacing: 0px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* Battery is dead and the car won’t start. Need a jump start. */
+    .details-note-body {
+      width: 283px;
+      height: 7px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 10px;
+      line-height: 22px;
+      letter-spacing: 0px;
+      color: #616166;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+    }
+
+    body.rtl .details-twin-val,
+    body.rtl .details-twin-lbl,
+    body.rtl .details-customer-lbl,
+    body.rtl .details-customer-name,
+    body.rtl .details-vehicle-model,
+    body.rtl .details-note-title,
+    body.rtl .details-note-body {
+      font-family: 'Cairo', sans-serif;
+    }
+
+
+
+    .details-client-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .details-client-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .details-client-avatar-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #F3F2F5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #8B53FE;
+    }
+    .details-client-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1C2926;
+    }
+    .details-client-rating {
+      font-size: 11px;
+      color: #616166;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .details-contact-btns {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .details-circle-action {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .details-wa-btn {
+      background: #25D366;
+      color: #FFFFFF;
+    }
+    .details-ph-btn {
+      background: #8B53FE;
+      color: #FFFFFF;
+    }
+    .details-service-strip {
+      background: #F9FAFB;
+      border: 1px solid #F3F4F6;
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+    }
+    .details-strip-row1 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .details-service-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1C2926;
+    }
+    .details-fare-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #8B53FE;
+    }
+    .details-strip-row2 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+    }
+    .details-strip-meta {
+      color: #6B7280;
+    }
+    .details-strip-dist {
+      color: #8B53FE;
+      font-weight: 500;
+    }
+    /* buttons layout branding: width: 350; height: 52; top: 451px; left: 20px; gap: 12px; */
+    .details-buttons-layout {
+      position: absolute;
+      top: 451px;
+      left: 20px;
+      width: 350px;
+      height: 52px;
+      display: flex;
+      gap: 12px;
+      box-sizing: border-box;
+      z-index: 10;
+    }
+    /* decline button layout: width: 169; height: 52; gap: 10px; border-radius: 12px; padding: 16px 53px; background: #FFEBEB; */
+    .btn-decline-box {
+      width: 169px;
+      height: 52px;
+      border-radius: 12px;
+      background: #FFEBEB;
+      padding: 16px 53px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      cursor: pointer;
+      color: #FF383C;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 14px;
+      line-height: 22px;
+      letter-spacing: 0px;
+      white-space: nowrap;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+    .btn-decline-box:hover {
+      background: #ffd6d6;
+    }
+    .btn-decline-box:active {
+      transform: scale(0.98);
+    }
+    /* accept button layout: width: 169; height: 52; border-radius: 12px; padding: 16px; background: #8B53FE; */
+    .btn-accept-box {
+      width: 169px;
+      height: 52px;
+      border-radius: 12px;
+      background: #8B53FE;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      cursor: pointer;
+      color: #FFFFFF;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 14px;
+      line-height: 22px;
+      letter-spacing: 0px;
+      white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(139, 83, 254, 0.25);
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+    .btn-accept-box:hover {
+      background: #7a42ec;
+    }
+    .btn-accept-box:active {
+      transform: scale(0.98);
+    }
+    /* bottom indicator bar: width: 134; height: 5; border-radius: 100px; background: #1C1C1E; */
+    .bottom-home-indicator {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 134px;
+      height: 5px;
+      border-radius: 100px;
+      background: #1C1C1E;
+      pointer-events: none;
+    }
+    body.rtl .btn-decline-box,
+    body.rtl .btn-accept-box {
+      font-family: 'Cairo', sans-serif;
+    }
+    body.rtl .details-back-btn svg {
+      transform: scaleX(-1);
+    }
+
+    /* ================= ACTIVE REQUEST SCREEN OVERLAY ================= */
+    .active-screen-overlay {
+      position: absolute;
+      top: 1px;
+      left: 0;
+      width: 390px;
+      height: 843px;
+      background: #FFFFFF;
+      z-index: 60;
+      transform: translateY(100%);
+      transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 44px;
+    }
+    .active-screen-overlay.active {
+      transform: translateY(0);
+    }
+    .active-header {
+      position: absolute;
+      top: 52px;
+      left: 16px;
+      right: 16px;
+      height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      z-index: 30;
+    }
+    .active-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .active-back-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      border: 1px solid #566663;
+      box-shadow: 0px 1px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .active-back-btn svg {
+      width: 7px;
+      height: 13px;
+      stroke: #566663;
+      stroke-width: 2;
+      fill: none;
+    }
+    .active-title-txt {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1C2926;
+      white-space: nowrap;
+    }
+    .active-status-card {
+      background: #FFFFFF;
+      border-radius: 12px;
+      border: 0.8px solid #E5E7EB;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      padding: 4px 7px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .active-status-icon-box {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #8B53FE;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .active-status-col {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.1;
+    }
+    .active-status-title {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #8B53FE;
+    }
+    .active-status-meta {
+      font-size: 8px;
+      font-weight: 400;
+      color: #616166;
+      margin-top: 1px;
+    }
+    .active-bottom-card {
+      position: absolute;
+      top: 258px;
+      left: 0;
+      width: 390px;
+      bottom: 0;
+      background: #FFFFFF;
+      border-top-left-radius: 28px;
+      border-top-right-radius: 28px;
+      box-shadow: 0px -2px 16px 0px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+      transition: top 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .active-bottom-card.expanded {
+      top: 88px;
+    }
+    .active-card-handle-wrap {
+      width: 100%;
+      padding: 10px 0 6px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .active-card-handle {
+      width: 44px;
+      height: 4px;
+      border-radius: 100px;
+      background: #E0DFE4;
+      transition: background 0.2s ease, width 0.2s ease;
+    }
+    .active-card-handle-wrap:hover .active-card-handle {
+      background: #C7C6CD;
+      width: 52px;
+    }
+    .active-card-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 20px 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+      overscroll-behavior: contain;
+    }
+    .active-card-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .active-card-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .active-card-scroll::-webkit-scrollbar-thumb {
+      background: #E0DFE4;
+      border-radius: 4px;
+    }
+    .active-card-scroll::-webkit-scrollbar-thumb:hover {
+      background: #C7C6CD;
+    }
+    .active-service-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .active-service-img {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .active-service-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .active-service-title {
+      font-size: 14.5px;
+      font-weight: 600;
+      color: #252527;
+      line-height: 1.1;
+    }
+    .active-service-subtitle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      font-weight: 400;
+      color: #616166;
+    }
+    .active-dot-sep {
+      width: 3.5px;
+      height: 3.5px;
+      border-radius: 50%;
+      background: #616166;
+    }
+    /* Stepper styles */
+    .active-stepper-wrap {
+      width: 100%;
+      padding: 0;
+    }
+    .active-stepper-track {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 26px;
+      position: relative;
+    }
+    .active-step-node {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #FFFFFF;
+      border: 1.5px solid #E5E7EB;
+      box-sizing: border-box;
+      z-index: 2;
+      transition: all 0.2s ease;
+    }
+    .active-step-node.done {
+      width: 24px;
+      height: 24px;
+      background: #8B53FE;
+      border: none;
+      color: #FFFFFF;
+    }
+    .active-step-node.current {
+      width: 26px;
+      height: 26px;
+      background: #FFFFFF;
+      border: 2.2px solid #8B53FE;
+      box-shadow: 0 1px 6px rgba(139, 83, 254, 0.25);
+    }
+    .active-step-node.current .current-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #8B53FE;
+    }
+    .active-step-line {
+      flex: 1;
+      height: 2px;
+      background: #E5E7EB;
+      margin: 0 4px;
+      z-index: 1;
+    }
+    .active-step-line.done {
+      background: #8B53FE;
+    }
+    .active-stepper-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+    }
+    .active-step-label {
+      width: 60px;
+      text-align: center;
+      font-size: 9.5px;
+      line-height: 1.1;
+      color: #8E8E93;
+      white-space: nowrap;
+    }
+    .active-step-label.done {
+      color: #252527;
+      font-weight: 500;
+    }
+    .active-step-label.current {
+      color: #8B53FE;
+      font-weight: 600;
+    }
+    /* Action button matching previous screen branding */
+    .active-action-btn {
+      width: 100%;
+      height: 52px;
+      border-radius: 12px;
+      padding: 16px;
+      background: #8B53FE;
+      box-shadow: 0px 4px 10px 0px rgba(139, 83, 254, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      color: #FFFFFF;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 22px;
+      letter-spacing: 0px;
+      box-sizing: border-box;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+    .active-action-btn:hover {
+      background: #7a42ec;
+    }
+    .active-action-btn:active {
+      transform: scale(0.98);
+    }
+    .active-bottom-pinned {
+      padding: 12px 20px 10px 20px;
+      background: #FFFFFF;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
+      z-index: 5;
+    }
+    .bottom-home-indicator-pinned {
+      width: 134px;
+      height: 5px;
+      border-radius: 100px;
+      background: #1C1C1E;
+      margin: 0 auto;
+      flex-shrink: 0;
+    }
+    body.rtl .active-header-left {
+      margin-left: 0;
+      margin-right: 0;
+    }
+    body.rtl .active-back-btn svg {
+      transform: scaleX(-1);
+    }
+    body.rtl .active-action-btn {
+      font-family: 'Cairo', sans-serif;
+      font-weight: 500;
+    }
+    body.rtl .active-action-btn svg {
+      transform: scaleX(-1);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-info">
+    <h1>Qareeb Provider - Requests Screen</h1>
+    <p>Selected: #F4EFFE & Purple Border | Remaining: #FFFFFF, Shadow & No Purple Border</p>
+  </div>
+
+  <div class="screen-container">
+    <!-- Top Purple Glow Gradient -->
+    <div class="top-glow"></div>
+
+    <!-- Pinned Header -->
+    <div class="requests-header">
+      <!-- Chevron Back Button -->
+      <div class="back-btn" title="Back to Home">
+        <svg viewBox="0 0 7 13">
+          <polyline points="6 1 1 6.5 6 12"></polyline>
+        </svg>
+      </div>
+
+      <!-- Title & Subtitle -->
+      <div class="header-titles">
+        <div class="header-title" id="txt-title">Requests</div>
+        <div class="header-subtitle" id="txt-subtitle">Manage and track incoming service requests</div>
+      </div>
+
+      <!-- Right-Aligned Language Toggle -->
+      <div class="lang-toggle en" id="lang-toggle" onclick="toggleLanguage()">
+        <div class="toggle-slider"></div>
+        <div class="toggle-btn ar-btn">عربي</div>
+        <div class="toggle-btn en-btn">EN</div>
+      </div>
+    </div>
+
+    <!-- Exact Figma Row Layout: width: 350; height: 45; border-radius: 12px; top: 108px; left: 20px; padding: 4px; background: #F3F2F5; -->
+    <div class="filter-tabs-row">
+      <div class="tab-pill tab-new active" onclick="switchTab(0, this)">
+        <span id="tab-0-txt">New (10)</span>
+      </div>
+      <div class="tab-pill tab-other" onclick="switchTab(1, this)">
+        <span id="tab-1-txt">Active (2)</span>
+      </div>
+      <div class="tab-pill tab-other" onclick="switchTab(2, this)">
+        <span id="tab-2-txt">Completed</span>
+      </div>
+      <div class="tab-pill tab-other" onclick="switchTab(3, this)">
+        <span id="tab-3-txt">Cancelled</span>
+      </div>
+    </div>
+
+    <!-- Next Widget Layout: width: 350; height: 530; top: 169px; left: 22px; gap: 12px; -->
+    <div class="cards-scroll-container">
+      <div class="cards-list" id="cards-container">
+        <!-- Card 1: Selected by default (#F4EFFE + purple border) -->
+        <div class="request-card selected" onclick="selectCard(0, this)">
+          <img class="left-img" src="../assets/images/img.png" alt="Mechanic" onerror="this.src='https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=150&auto=format&fit=crop&q=80'">
+          <div class="card-content">
+            <div class="card-row-1">
+              <div class="badge-wrap badge-1">New Request</div>
+              <div class="time-txt time-1">Just now</div>
+            </div>
+            <div class="card-row-2-3">
+              <div class="card-text-block">
+                <div class="card-title title-1">Battery Jump Start</div>
+                <div class="card-subtitle-row">
+                  <span class="loc-txt loc-1">King Abdullah Rd, Riyadh</span>
+                  <span class="dot-ellipse"></span>
+                  <span class="dist-txt dist-1">4.1 km away</span>
+                </div>
+              </div>
+              <svg class="chevron-icon" viewBox="0 0 7 13">
+                <polyline points="1 1 6 6.5 1 12"></polyline>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Remaining (#FFFFFF, shadow, no purple border) - Tyre Repair (5 min ago) -->
+        <div class="request-card" onclick="selectCard(1, this)">
+          <img class="left-img" src="../assets/images/img.png" alt="Service" onerror="this.src='https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=150&auto=format&fit=crop&q=80'">
+          <div class="card-content">
+            <div class="card-row-1">
+              <div class="badge-wrap badge-2">New Request</div>
+              <div class="time-txt time-2">5 min ago</div>
+            </div>
+            <div class="card-row-2-3">
+              <div class="card-text-block">
+                <div class="card-title title-2">Tyre Repair</div>
+                <div class="card-subtitle-row">
+                  <span class="loc-txt loc-2">Al Malaz, Riyadh</span>
+                  <span class="dot-ellipse"></span>
+                  <span class="dist-txt dist-2">3.2 km away</span>
+                </div>
+              </div>
+              <svg class="chevron-icon" viewBox="0 0 7 13">
+                <polyline points="1 1 6 6.5 1 12"></polyline>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Remaining (#FFFFFF, shadow, no purple border) -->
+        <div class="request-card" onclick="selectCard(2, this)">
+          <img class="left-img" src="../assets/images/img.png" alt="Service" onerror="this.src='https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=150&auto=format&fit=crop&q=80'">
+          <div class="card-content">
+            <div class="card-row-1">
+              <div class="badge-wrap badge-3">New Request</div>
+              <div class="time-txt time-3">12 min ago</div>
+            </div>
+            <div class="card-row-2-3">
+              <div class="card-text-block">
+                <div class="card-title title-3">Vehicle Towing</div>
+                <div class="card-subtitle-row">
+                  <span class="loc-txt loc-3">King Fahd Rd, Riyadh</span>
+                  <span class="dot-ellipse"></span>
+                  <span class="dist-txt dist-3">2.4 km away</span>
+                </div>
+              </div>
+              <svg class="chevron-icon" viewBox="0 0 7 13">
+                <polyline points="1 1 6 6.5 1 12"></polyline>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Remaining (#FFFFFF, shadow, no purple border) -->
+        <div class="request-card" onclick="selectCard(3, this)">
+          <img class="left-img" src="../assets/images/img.png" alt="Service" onerror="this.src='https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=150&auto=format&fit=crop&q=80'">
+          <div class="card-content">
+            <div class="card-row-1">
+              <div class="badge-wrap badge-4">New Request</div>
+              <div class="time-txt time-4">18 min ago</div>
+            </div>
+            <div class="card-row-2-3">
+              <div class="card-text-block">
+                <div class="card-title title-4">Emergency Fuel Delivery</div>
+                <div class="card-subtitle-row">
+                  <span class="loc-txt loc-4">Al Olaya, Riyadh</span>
+                  <span class="dot-ellipse"></span>
+                  <span class="dist-txt dist-4">5.0 km away</span>
+                </div>
+              </div>
+              <svg class="chevron-icon" viewBox="0 0 7 13">
+                <polyline points="1 1 6 6.5 1 12"></polyline>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 5: Remaining (#FFFFFF, shadow, no purple border) -->
+        <div class="request-card" onclick="selectCard(4, this)">
+          <img class="left-img" src="../assets/images/img.png" alt="Service" onerror="this.src='https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=150&auto=format&fit=crop&q=80'">
+          <div class="card-content">
+            <div class="card-row-1">
+              <div class="badge-wrap badge-5">New Request</div>
+              <div class="time-txt time-5">25 min ago</div>
+            </div>
+            <div class="card-row-2-3">
+              <div class="card-text-block">
+                <div class="card-title title-5">Car Lockout Assistance</div>
+                <div class="card-subtitle-row">
+                  <span class="loc-txt loc-5">Al Nakheel, Riyadh</span>
+                  <span class="dot-ellipse"></span>
+                  <span class="dist-txt dist-5">6.8 km away</span>
+                </div>
+              </div>
+              <svg class="chevron-icon" viewBox="0 0 7 13">
+                <polyline points="1 1 6 6.5 1 12"></polyline>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Bottom Navigation Bar (Centered, 292px) -->
+    <div class="bottom-nav">
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <span class="nav-home">Home</span>
+      </div>
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <span class="nav-requests">Requests</span>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span class="nav-profile">Profile</span>
+      </div>
+    </div>
+
+    <!-- Request Details Screen Overlay (Exact Figma Specification) -->
+    <div class="details-screen-overlay" id="details-screen-modal">
+      <!-- 1. Header with Chevron, Title, and Language Toggle on Right -->
+      <div class="details-header">
+        <div class="details-back-btn" onclick="closeRequestDetails()" title="Back to Requests">
+          <svg viewBox="0 0 7 13">
+            <polyline points="6 1 1 6.5 6 12"></polyline>
+          </svg>
+        </div>
+        <div class="details-title-txt" id="details-header-title">Request Details</div>
+        <!-- Right-Aligned Language Toggle -->
+        <div class="lang-toggle en" id="details-lang-toggle" onclick="toggleLanguage()">
+          <div class="toggle-slider"></div>
+          <div class="toggle-btn ar-btn">عربي</div>
+          <div class="toggle-btn en-btn">EN</div>
+        </div>
+      </div>
+
+      <!-- 2. Map Section Background with Customer Side Layout & Branding -->
+      <div class="details-map-area">
+        <img class="details-map-bg" src="../assets/images/img.png" alt="Map" onerror="this.src='https://images.unsplash.com/photo-1524661135-423995f22d0b?w=600&auto=format&fit=crop&q=80'">
+        <div class="details-map-gradient"></div>
+
+        <!-- 2a. Purple Distance Tooltip Badge: "2.4 km" pointing down to pin -->
+        <div class="details-dist-tooltip" id="details-map-dist">2.4 km</div>
+
+        <!-- 2b. Location Pin with Purple Halo Rings -->
+        <div class="details-pin-halo"></div>
+        <div class="details-pin-circle">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+        </div>
+
+        <!-- 2c. Purple Route Line Connecting Pin to Car -->
+        <svg class="details-route-svg" viewBox="0 0 75 72" fill="none">
+          <path d="M18 0 L6 38 Q2 48 16 56 L75 72" stroke="#8B53FE" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+
+        <!-- 2d. Vehicle Angled Along Street -->
+        <div class="details-car-wrap">
+          <svg width="22" height="32" viewBox="0 0 24 24" fill="#8B53FE">
+            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+          </svg>
+        </div>
+
+        <!-- 2e. White Speech Bubble Tooltip Above Car: "You" (as in screenshot) -->
+        <div class="details-you-bubble" id="details-you-badge">You</div>
+
+        <!-- 2f. Landmark: "Al Nakheel Mall / النخيل مول" -->
+        <div class="details-landmark">
+          <div style="width: 22px; height: 22px; border-radius: 50%; background: rgba(86, 102, 99, 0.15); display: flex; align-items: center; justify-content: center;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#566663" stroke-width="2">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+          </div>
+          <div>
+            <div style="font-size: 10px; font-weight: 600; color: #566663; line-height: 1.1;" id="details-landmark-ar">النخيل مول</div>
+            <div style="font-size: 8.5px; font-weight: 500; color: #6B7280; line-height: 1.1;" id="details-landmark-en">Al Nakheel Mall</div>
+          </div>
+        </div>
+
+        <!-- 2g. Floating GPS / Location Re-Center Target Button -->
+        <div class="details-gps-btn" onclick="alert('Centering to current location...')" title="Re-center">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1C2926" stroke-width="2">
+            <circle cx="12" cy="12" r="7"></circle>
+            <circle cx="12" cy="12" r="3" fill="#1C2926"></circle>
+            <line x1="12" y1="1" x2="12" y2="4"></line>
+            <line x1="12" y1="20" x2="12" y2="23"></line>
+            <line x1="1" y1="12" x2="4" y2="12"></line>
+            <line x1="20" y1="12" x2="23" y2="12"></line>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 3. Exact Figma Card Layout: width: 390; height: 553; top: 291px; border-radius: 28px 28px 28px 20px; -->
+      <div class="details-bottom-card">
+        <!-- row 1 branding: width: 350; height: 52; top: 32px; left: 20px; gap: 16px; border-radius: 16px; -->
+        <div class="details-card-row1">
+          <!-- img layout: width: 52; height: 52; border-radius: 12px; -->
+          <img class="details-card-img" src="../assets/images/img.png" alt="Service" onerror="this.src='https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=150&auto=format&fit=crop&q=80'">
+
+          <!-- content layout: width: 282; height: 33; gap: 16px; -->
+          <div class="details-card-content">
+            <!-- content 1st row: width: 282; height: 10; justify-content: space-between; -->
+            <div class="details-content-row1">
+              <span class="details-service-title" id="details-row1-title">Battery Jump Start</span>
+            </div>
+
+            <!-- 2nd row of content layout: width: 235; height: 7; gap: 8px; -->
+            <div class="details-content-row2">
+              <span class="details-client-from" id="details-row1-client">From Faisal Al-Harbi</span>
+              <span class="details-dot-ellipse"></span>
+              <span class="details-location-txt" id="details-row1-loc">King Abdullah Rd, Riyadh</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- content layout : width: 350; height: 324; top: 100px; left: 20px; gap: 12px; -->
+        <div class="details-content-layout">
+          <!-- 1st row card layout: width: 350; height: 68; gap: 12px; border-radius: 12px; padding: 16px; background: #F3F2F5; -->
+          <div class="details-loc-card">
+            <!-- inner branding: icon layout: width: 36; height: 36; border-radius: 8px; background: #E7E6EB; -->
+            <div class="details-loc-icon-box">
+              <svg width="16" height="18" viewBox="0 0 16 18" fill="none">
+                <path d="M8 0C3.58 0 0 3.58 0 8C0 13.25 8 18 8 18S16 13.25 16 8C16 3.58 12.42 0 8 0ZM8 10.5C6.62 10.5 5.5 9.38 5.5 8C5.5 6.62 6.62 5.5 8 5.5C9.38 5.5 10.5 6.62 10.5 8C10.5 9.38 9.38 10.5 8 10.5Z" fill="#252527"/>
+              </svg>
+            </div>
+
+            <!-- content branding: width: 144; height: 26; gap: 10px; -->
+            <div class="details-loc-content">
+              <!-- Customer Location: width: 144; height: 7; font-size: 10px; Inter 400; color: #616166; -->
+              <div class="details-loc-label" id="details-loc-label">Customer Location</div>
+              <!-- King Abdullah Rd, Riyadh: width: 144; height: 9; font-size: 12px; Inter 500; line-height: 24px; color: #252527; -->
+              <div class="details-loc-value" id="details-loc-val">King Abdullah Rd, Riyadh</div>
+            </div>
+          </div>
+
+          <!-- next row layout: width: 350; height: 64; gap: 12px; -->
+          <div class="details-twin-row">
+            <!-- 1st card branding: width: 169; height: 64; gap: 12px; border-radius: 12px; padding: 16px; background: #F3F2F5; -->
+            <div class="details-twin-card">
+              <div class="details-twin-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+              </div>
+              <div class="details-twin-col">
+                <span class="details-twin-val" id="details-twin-dist">2.4 km</span>
+                <span class="details-twin-lbl" id="details-twin-dist-lbl">Distance Away</span>
+              </div>
+            </div>
+
+            <!-- 2nd card branding: width: 169; height: 64; gap: 12px; border-radius: 12px; padding: 16px; background: #F3F2F5; -->
+            <div class="details-twin-card">
+              <div class="details-twin-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/>
+                </svg>
+              </div>
+              <div class="details-twin-col">
+                <span class="details-twin-val" id="details-twin-time">8 min</span>
+                <span class="details-twin-lbl" id="details-twin-time-lbl">Estimated time</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Customer Card (matching user screenshot) -->
+          <div class="details-customer-card">
+            <div class="details-customer-top">
+              <div class="details-customer-info">
+                <img class="details-customer-avatar" src="../assets/images/ahmed_khan.jpg" alt="Ahmed Khan" onerror="this.src='assets/images/ahmed_khan.jpg'">
+                <div class="details-customer-names">
+                  <span class="details-customer-lbl" id="details-customer-lbl">Customer</span>
+                  <span class="details-customer-name" id="details-customer-name">Ahmed Khan</span>
+                </div>
+              </div>
+              <div class="details-customer-actions">
+                <div class="details-wa-circle" onclick="alert('Opening WhatsApp...')" title="WhatsApp">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M12.04 2.0C6.58 2.0 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22.0l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.92 0-2.65-1.03-5.14-2.9-7.01C17.18 3.03 14.69 2.0 12.04 2.0zm.01 1.67c2.2 0 4.26.86 5.82 2.42 1.55 1.56 2.41 3.63 2.41 5.83 0 4.54-3.7 8.24-8.24 8.24-1.38 0-2.74-.36-3.94-1.05l-.29-.17-3.11.82.83-3.03-.19-.3C4.56 15.19 4.15 13.57 4.15 11.91c0-4.54 3.7-8.24 8.25-8.24zm-3.52 3.66c-.16 0-.43.06-.66.31-.22.25-.85.84-.85 2.07 0 1.22.89 2.4 1.01 2.56.13.17 1.72 2.61 4.16 3.66 2.03.88 2.44.7 2.89.66.45-.04 1.45-.59 1.66-1.17.21-.58.21-1.08.15-1.18-.07-.11-.23-.17-.48-.29-.25-.13-1.47-.73-1.7-.81-.22-.08-.39-.13-.55.12-.17.25-.64.81-.79.98-.14.16-.29.18-.54.06-.25-.13-1.05-.39-2-.84-.74-.66-1.24-1.47-1.36-1.72-.13-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.13-.15.17-.25.25-.42.08-.16.04-.31-.02-.43-.06-.12-.55-1.33-.76-1.82-.2-.49-.4-.42-.55-.43-.15 0-.32.02-.34.02z"/>
+                  </svg>
+                </div>
+                <div class="details-call-circle" onclick="alert('Calling client...')" title="Call">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 0 0-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div class="details-vehicle-row">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+              </svg>
+              <span class="details-vehicle-model" id="details-vehicle-model">Toyota Corolla</span>
+              <div class="details-vehicle-divider"></div>
+              <div class="details-plate-badge"><span></span><span></span><span></span></div>
+              <span class="details-plate-num" id="details-plate-num">KSA 1234</span>
+            </div>
+          </div>
+
+          <!-- Customer Note Card (matching user screenshot) -->
+          <div class="details-note-card">
+            <div class="details-note-icon-box">
+              <svg width="24" height="26" viewBox="0 0 24 26" fill="none">
+                <rect y="4" width="24" height="22" rx="6" fill="#252527"/>
+                <rect x="4.5" width="3.5" height="6" rx="1.75" fill="#252527"/>
+                <rect x="16" width="3.5" height="6" rx="1.75" fill="#252527"/>
+                <rect x="5" y="10.5" width="8.5" height="2.2" rx="1.1" fill="#F3F2F5"/>
+                <rect x="5" y="15.5" width="14" height="2.2" rx="1.1" fill="#F3F2F5"/>
+              </svg>
+            </div>
+            <div class="details-note-col">
+              <div class="details-note-title" id="details-note-title">Customer Note</div>
+              <div class="details-note-body" id="details-note-body">Battery is dead and the car won't start. Need a jump start.</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- buttons layout branding: width: 350; height: 52; top: 451px; left: 20px; gap: 12px; -->
+        <div class="details-buttons-layout">
+          <div class="btn-decline-box" onclick="closeRequestDetails()" id="details-btn-decline">Decline</div>
+          <div class="btn-accept-box" onclick="acceptRequestAction()" id="details-btn-accept">Accept Request</div>
+        </div>
+
+        <!-- bottom indicator bar -->
+        <div class="bottom-home-indicator"></div>
+      </div>
+    </div>
+
+    <!-- ================= ACTIVE REQUEST SCREEN OVERLAY ================= -->
+    <div class="active-screen-overlay" id="active-screen-modal">
+      <!-- 1. Header with Chevron Back, Title, and Floating "On the way" Pill Card -->
+      <div class="active-header">
+        <div class="active-header-left">
+          <div class="active-back-btn" onclick="closeActiveRequest()" title="Back to Requests">
+            <svg viewBox="0 0 7 13">
+              <polyline points="6 1 1 6.5 6 12"></polyline>
+            </svg>
+          </div>
+          <div class="active-title-txt" id="active-header-title">Active Request</div>
+        </div>
+
+        <!-- Floating Status Card: "On the way / Arriving in 8 min • 3.2 km away" -->
+        <div class="active-status-card">
+          <div class="active-status-icon-box">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#FFFFFF">
+              <path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.99L21 3z"/>
+            </svg>
+          </div>
+          <div class="active-status-col">
+            <span class="active-status-title" id="active-status-title">On the way</span>
+            <span class="active-status-meta" id="active-status-meta">Arriving in 8 min • 3.2 km away</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Map Section Background (Identical branding to Request Details) -->
+      <div class="details-map-area">
+        <img class="details-map-bg" src="../assets/images/img.png" alt="Map" onerror="this.src='https://images.unsplash.com/photo-1524661135-423995f22d0b?w=600&auto=format&fit=crop&q=80'">
+        <div class="details-map-gradient"></div>
+
+        <!-- Tooltip Badge: "2.4 km" pointing down to pin -->
+        <div class="details-dist-tooltip" id="active-map-dist">2.4 km</div>
+
+        <!-- Location Pin with Purple Halo Rings -->
+        <div class="details-pin-halo"></div>
+        <div class="details-pin-circle">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+        </div>
+
+        <!-- Purple Route Line Connecting Pin to Car -->
+        <svg class="details-route-svg" viewBox="0 0 75 72" fill="none">
+          <path d="M18 0 L6 38 Q2 48 16 56 L75 72" stroke="#8B53FE" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+
+        <!-- Vehicle Angled Along Street -->
+        <div class="details-car-wrap">
+          <svg width="22" height="32" viewBox="0 0 24 24" fill="#8B53FE">
+            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+          </svg>
+        </div>
+
+        <!-- White Speech Bubble Tooltip: "You" -->
+        <div class="details-you-bubble" id="active-you-badge">You</div>
+
+        <!-- Landmark: "Al Nakheel Mall / النخيل مول" -->
+        <div class="details-landmark">
+          <div style="width: 22px; height: 22px; border-radius: 50%; background: rgba(86, 102, 99, 0.15); display: flex; align-items: center; justify-content: center;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#566663" stroke-width="2">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+          </div>
+          <div>
+            <div style="font-size: 10px; font-weight: 600; color: #566663; line-height: 1.1;" id="active-landmark-ar">النخيل مول</div>
+            <div style="font-size: 8.5px; font-weight: 500; color: #6B7280; line-height: 1.1;" id="active-landmark-en">Al Nakheel Mall</div>
+          </div>
+        </div>
+
+        <!-- Floating GPS / Re-Center Target Button -->
+        <div class="details-gps-btn" onclick="alert('Centering to current location...')" title="Re-center">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1C2926" stroke-width="2">
+            <circle cx="12" cy="12" r="7"></circle>
+            <circle cx="12" cy="12" r="3" fill="#1C2926"></circle>
+            <line x1="12" y1="1" x2="12" y2="4"></line>
+            <line x1="12" y1="20" x2="12" y2="23"></line>
+            <line x1="1" y1="12" x2="4" y2="12"></line>
+            <line x1="20" y1="12" x2="23" y2="12"></line>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 3. Bottom Card (User-Friendly Expandable & Scrollable with Equal Gaps) -->
+      <div class="active-bottom-card" id="active-bottom-card">
+        <!-- Top Handle Bar (Tap to expand/collapse card) -->
+        <div class="active-card-handle-wrap" onclick="toggleActiveCardExpanded()" title="Tap to expand or collapse card">
+          <div class="active-card-handle"></div>
+        </div>
+
+        <!-- Scrollable Card Content -->
+        <div class="active-card-scroll">
+          <!-- 3a. Service Row 1: Image + Service Title + Client Name & Location -->
+          <div class="active-service-row">
+            <img class="active-service-img" src="../assets/images/img.png" alt="Service" onerror="this.src='https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=150&auto=format&fit=crop&q=80'">
+            <div class="active-service-info">
+              <div class="active-service-title" id="active-row1-title">Battery Jump Start</div>
+              <div class="active-service-subtitle">
+                <span id="active-row1-client">From Faisal Al-Harbi</span>
+                <span class="active-dot-sep"></span>
+                <span id="active-row1-loc">King Abdullah Rd, Riyadh</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3b. Customer Location Card -->
+          <div class="details-loc-card" style="width: 100%;">
+            <div class="details-loc-icon-box">
+              <svg width="16" height="18" viewBox="0 0 16 18" fill="none">
+                <path d="M8 0C3.58 0 0 3.58 0 8C0 13.25 8 18 8 18S16 13.25 16 8C16 3.58 12.42 0 8 0ZM8 10.5C6.62 10.5 5.5 9.38 5.5 8C5.5 6.62 6.62 5.5 8 5.5C9.38 5.5 10.5 6.62 10.5 8C10.5 9.38 9.38 10.5 8 10.5Z" fill="#252527"/>
+              </svg>
+            </div>
+            <div class="details-loc-content">
+              <div class="details-loc-label" id="active-loc-label">Customer Location</div>
+              <div class="details-loc-value" id="active-loc-val">King Abdullah Rd, Riyadh</div>
+            </div>
+          </div>
+
+          <!-- 3c. Twin Row: Distance Away & Estimated Time -->
+          <div class="details-twin-row" style="width: 100%;">
+            <div class="details-twin-card" style="width: calc(50% - 6px);">
+              <div class="details-twin-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+              </div>
+              <div class="details-twin-col">
+                <span class="details-twin-val" id="active-twin-dist">2.4 km</span>
+                <span class="details-twin-lbl" id="active-twin-dist-lbl">Distance Away</span>
+              </div>
+            </div>
+            <div class="details-twin-card" style="width: calc(50% - 6px);">
+              <div class="details-twin-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/>
+                </svg>
+              </div>
+              <div class="details-twin-col">
+                <span class="details-twin-val" id="active-twin-time">8 min</span>
+                <span class="details-twin-lbl" id="active-twin-time-lbl">Estimated time</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3d. Customer Card (Avatar, Name, WhatsApp, Call, Vehicle) -->
+          <div class="details-customer-card" style="width: 100%;">
+            <div class="details-customer-top">
+              <div class="details-customer-info">
+                <img class="details-customer-avatar" src="../assets/images/ahmed_khan.jpg" alt="Ahmed Khan" onerror="this.src='assets/images/ahmed_khan.jpg'">
+                <div class="details-customer-names">
+                  <span class="details-customer-lbl" id="active-customer-lbl">Customer</span>
+                  <span class="details-customer-name" id="active-customer-name">Ahmed Khan</span>
+                </div>
+              </div>
+              <div class="details-customer-actions">
+                <div class="details-wa-circle" onclick="alert('Opening WhatsApp...')" title="WhatsApp">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M12.04 2.0C6.58 2.0 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22.0l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.92 0-2.65-1.03-5.14-2.9-7.01C17.18 3.03 14.69 2.0 12.04 2.0zm.01 1.67c2.2 0 4.26.86 5.82 2.42 1.55 1.56 2.41 3.63 2.41 5.83 0 4.54-3.7 8.24-8.24 8.24-1.38 0-2.74-.36-3.94-1.05l-.29-.17-3.11.82.83-3.03-.19-.3C4.56 15.19 4.15 13.57 4.15 11.91c0-4.54 3.7-8.24 8.25-8.24zm-3.52 3.66c-.16 0-.43.06-.66.31-.22.25-.85.84-.85 2.07 0 1.22.89 2.4 1.01 2.56.13.17 1.72 2.61 4.16 3.66 2.03.88 2.44.7 2.89.66.45-.04 1.45-.59 1.66-1.17.21-.58.21-1.08.15-1.18-.07-.11-.23-.17-.48-.29-.25-.13-1.47-.73-1.7-.81-.22-.08-.39-.13-.55.12-.17.25-.64.81-.79.98-.14.16-.29.18-.54.06-.25-.13-1.05-.39-2-.84-.74-.66-1.24-1.47-1.36-1.72-.13-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.13-.15.17-.25.25-.42.08-.16.04-.31-.02-.43-.06-.12-.55-1.33-.76-1.82-.2-.49-.4-.42-.55-.43-.15 0-.32.02-.34.02z"/>
+                  </svg>
+                </div>
+                <div class="details-call-circle" onclick="alert('Calling client...')" title="Call">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 0 0-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div class="details-vehicle-row">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+              </svg>
+              <span class="details-vehicle-model" id="active-vehicle-model">Toyota Corolla</span>
+              <div class="details-vehicle-divider"></div>
+              <div class="details-plate-badge"><span></span><span></span><span></span></div>
+              <span class="details-plate-num" id="active-plate-num">KSA 1234</span>
+            </div>
+          </div>
+
+          <!-- 3e. 5-Step Service Status Stepper -->
+          <div class="active-stepper-wrap">
+            <div class="active-stepper-track" id="active-stepper-track">
+              <!-- Node 0: Accepted (Done) -->
+              <div class="active-step-node done" id="step-node-0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <div class="active-step-line done" id="step-line-0"></div>
+
+              <!-- Node 1: On the way (Active) -->
+              <div class="active-step-node current" id="step-node-1">
+                <div class="current-dot"></div>
+              </div>
+              <div class="active-step-line" id="step-line-1"></div>
+
+              <!-- Node 2: Arrived -->
+              <div class="active-step-node pending" id="step-node-2"></div>
+              <div class="active-step-line" id="step-line-2"></div>
+
+              <!-- Node 3: In Progress -->
+              <div class="active-step-node pending" id="step-node-3"></div>
+              <div class="active-step-line" id="step-line-3"></div>
+
+              <!-- Node 4: Completed -->
+              <div class="active-step-node pending" id="step-node-4"></div>
+            </div>
+
+            <!-- Stepper Labels -->
+            <div class="active-stepper-labels">
+              <span class="active-step-label done" id="step-lbl-0">Accepted</span>
+              <span class="active-step-label current" id="step-lbl-1">On the way</span>
+              <span class="active-step-label" id="step-lbl-2">Arrived</span>
+              <span class="active-step-label" id="step-lbl-3">In Progress</span>
+              <span class="active-step-label" id="step-lbl-4">Completed</span>
+            </div>
+          </div>
+
+          <!-- 3f. Customer Note Card (Exact previous screen branding) -->
+          <div class="details-note-card" style="width: 100%;">
+            <div class="details-note-icon-box">
+              <svg width="24" height="26" viewBox="0 0 24 26" fill="none">
+                <rect y="4" width="24" height="22" rx="6" fill="#252527"/>
+                <rect x="4.5" width="3.5" height="6" rx="1.75" fill="#252527"/>
+                <rect x="16" width="3.5" height="6" rx="1.75" fill="#252527"/>
+                <rect x="5" y="10.5" width="8.5" height="2.2" rx="1.1" fill="#F3F2F5"/>
+                <rect x="5" y="15.5" width="14" height="2.2" rx="1.1" fill="#F3F2F5"/>
+              </svg>
+            </div>
+            <div class="details-note-col">
+              <div class="details-note-title" id="active-note-title">Customer Note</div>
+              <div class="details-note-body" id="active-note-body">Battery is dead and the car won’t start. Need a jump start.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pinned Bottom Section: Action Button & Bottom Home Indicator Bar -->
+        <div class="active-bottom-pinned">
+          <!-- 3g. Primary Action Button: "I've Arrived ->" (Exact previous button branding) -->
+          <div class="active-action-btn" onclick="advanceActiveStep()" id="active-primary-action-btn">
+            <span id="active-action-btn-text">I've Arrived</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </div>
+
+          <!-- 3h. Bottom Home Indicator Bar (Always with bottom) -->
+          <div class="bottom-home-indicator-pinned"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentLang = 'en';
+    let currentTab = 0;
+    let selectedCard = 0;
+
+    const translations = {
+      en: {
+        title: "Requests",
+        subtitle: "Manage and track incoming service requests",
+        tab0: "New (10)",
+        tab1: "Active (2)",
+        tab2: "Completed",
+        tab3: "Cancelled",
+        badge1: "New Request",
+        time1: "Just now",
+        title1: "Battery Jump Start",
+        loc1: "King Abdullah Rd, Riyadh",
+        dist1: "4.1 km away",
+        badge2: "New Request",
+        time2: "5 min ago",
+        title2: "Tyre Repair",
+        loc2: "Al Malaz, Riyadh",
+        dist2: "3.2 km away",
+        badge3: "New Request",
+        time3: "12 min ago",
+        title3: "Vehicle Towing",
+        loc3: "King Fahd Rd, Riyadh",
+        dist3: "2.4 km away",
+        badge4: "New Request",
+        time4: "18 min ago",
+        title4: "Emergency Fuel Delivery",
+        loc4: "Al Olaya, Riyadh",
+        dist4: "5.0 km away",
+        badge5: "New Request",
+        time5: "25 min ago",
+        title5: "Car Lockout Assistance",
+        loc5: "Al Nakheel, Riyadh",
+        dist5: "6.8 km away",
+        navHome: "Home",
+        navRequests: "Requests",
+        navProfile: "Profile",
+        detailsTitle: "Request Details",
+        detailsSub: "View and update request status",
+        detailsSec1: "Customer & Location",
+        detailsSec2: "Service & Pricing",
+        clientName: "Sultan Al-Qahtani",
+        clientTag: "Verified Client ★ 4.9",
+        lblType: "Service Type",
+        lblPay: "Payment Method",
+        valPay: "Mada / Digital Pay",
+        lblFare: "Estimated Fare",
+        valFare: "120 SAR",
+        pendingResponse: "Pending Response",
+        btnDecline: "Decline",
+        btnAccept: "Accept Request",
+        activeTitle: "Active Request",
+        activeStatusOnWay: "On the way",
+        activeStatusMeta: "Arriving in 8 min • 3.2 km away",
+        stepAccepted: "Accepted",
+        stepOnWay: "On the way",
+        stepArrived: "Arrived",
+        stepInProgress: "In Progress",
+        stepCompleted: "Completed",
+        btnArrived: "I've Arrived",
+        btnStartService: "Start Service",
+        btnCompleteService: "Complete Service",
+        btnCompleted: "Service Completed"
+      },
+      ar: {
+        title: "الطلبات",
+        subtitle: "إدارة ومتابعة طلبات الخدمة الواردة",
+        tab0: "جديد (10)",
+        tab1: "نشط (2)",
+        tab2: "مكتمل",
+        tab3: "ملغي",
+        badge1: "طلب جديد",
+        time1: "الآن",
+        title1: "شحن وتبديل بطارية",
+        loc1: "طريق الملك عبدالله، الرياض",
+        dist1: "على بعد ٤.١ كم",
+        badge2: "طلب جديد",
+        time2: "منذ ٥ دقائق",
+        title2: "إصلاح إطارات",
+        loc2: "الملز، الرياض",
+        dist2: "على بعد ٣.٢ كم",
+        badge3: "طلب جديد",
+        time3: "منذ ١٢ دقيقة",
+        title3: "سحب ونقل سيارة",
+        loc2: "طريق الملك فهد، الرياض",
+        dist3: "على بعد ٢.٤ كم",
+        badge4: "طلب جديد",
+        time4: "منذ ١٨ دقيقة",
+        title4: "توصيل وقود طارئ",
+        loc4: "العليا، الرياض",
+        dist4: "على بعد ٥.٠ كم",
+        badge5: "طلب جديد",
+        time5: "منذ ٢٥ دقيقة",
+        title5: "فتح أقفال سيارات",
+        loc5: "النخيل، الرياض",
+        dist5: "على بعد ٦.٨ كم",
+        navHome: "الرئيسية",
+        navRequests: "الطلبات",
+        navProfile: "الملف الشخصي",
+        detailsTitle: "تفاصيل الطلب",
+        detailsSub: "عرض وتحديث حالة الطلب",
+        detailsSec1: "معلومات العميل والموقع",
+        detailsSec2: "تفاصيل الخدمة والأجرة",
+        clientName: "سلطان القحطاني",
+        clientTag: "عميل موثق ★ 4.9",
+        lblType: "نوع الخدمة المطلوبة",
+        lblPay: "طريقة الدفع",
+        valPay: "بطاقة مدى / إلكتروني",
+        lblFare: "الأجرة التقديرية",
+        valFare: "١٢٠ ر.س",
+        pendingResponse: "بانتظار الموافقة",
+        btnDecline: "رفض",
+        btnAccept: "قبول الطلب",
+        activeTitle: "طلب نشط",
+        activeStatusOnWay: "في الطريق",
+        activeStatusMeta: "الوصول خلال ٨ دقائق • ٣.٢ كم",
+        stepAccepted: "تم القبول",
+        stepOnWay: "في الطريق",
+        stepArrived: "تم الوصول",
+        stepInProgress: "جاري العمل",
+        stepCompleted: "مكتمل",
+        btnArrived: "لقد وصلت",
+        btnStartService: "بدء الخدمة",
+        btnCompleteService: "إكمال الخدمة",
+        btnCompleted: "تم الانتهاء بنجاح"
+      }
+    };
+
+    function toggleLanguage() {
+      const toggle = document.getElementById('lang-toggle');
+      const detailsToggle = document.getElementById('details-lang-toggle');
+      if (currentLang === 'en') {
+        currentLang = 'ar';
+        toggle.className = 'lang-toggle ar';
+        if (detailsToggle) detailsToggle.className = 'lang-toggle ar';
+        document.body.className = 'rtl';
+      } else {
+        currentLang = 'en';
+        toggle.className = 'lang-toggle en';
+        if (detailsToggle) detailsToggle.className = 'lang-toggle en';
+        document.body.className = '';
+      }
+      applyTranslations();
+    }
+
+    function applyTranslations() {
+      const t = translations[currentLang];
+      document.getElementById('txt-title').textContent = t.title;
+      document.getElementById('txt-subtitle').textContent = t.subtitle;
+      document.getElementById('tab-0-txt').textContent = t.tab0;
+      document.getElementById('tab-1-txt').textContent = t.tab1;
+      document.getElementById('tab-2-txt').textContent = t.tab2;
+      document.getElementById('tab-3-txt').textContent = t.tab3;
+
+      document.querySelector('.badge-1').textContent = t.badge1;
+      document.querySelector('.time-1').textContent = t.time1;
+      document.querySelector('.title-1').textContent = t.title1;
+      document.querySelector('.loc-1').textContent = t.loc1;
+      document.querySelector('.dist-1').textContent = t.dist1;
+
+      document.querySelector('.badge-2').textContent = t.badge2;
+      document.querySelector('.time-2').textContent = t.time2;
+      document.querySelector('.title-2').textContent = t.title2;
+      document.querySelector('.loc-2').textContent = t.loc2;
+      document.querySelector('.dist-2').textContent = t.dist2;
+
+      document.querySelector('.badge-3').textContent = t.badge3;
+      document.querySelector('.time-3').textContent = t.time3;
+      document.querySelector('.title-3').textContent = t.title3;
+      document.querySelector('.loc-3').textContent = t.loc3;
+      document.querySelector('.dist-3').textContent = t.dist3;
+
+      document.querySelector('.badge-4').textContent = t.badge4;
+      document.querySelector('.time-4').textContent = t.time4;
+      document.querySelector('.title-4').textContent = t.title4;
+      document.querySelector('.loc-4').textContent = t.loc4;
+      document.querySelector('.dist-4').textContent = t.dist4;
+
+      document.querySelector('.badge-5').textContent = t.badge5;
+      document.querySelector('.time-5').textContent = t.time5;
+      document.querySelector('.title-5').textContent = t.title5;
+      document.querySelector('.loc-5').textContent = t.loc5;
+      document.querySelector('.dist-5').textContent = t.dist5;
+
+      document.querySelector('.nav-home').textContent = t.navHome;
+      document.querySelector('.nav-requests').textContent = t.navRequests;
+      document.querySelector('.nav-profile').textContent = t.navProfile;
+
+      // Details Screen Translations
+      document.getElementById('details-header-title').textContent = t.detailsTitle;
+      document.getElementById('details-btn-decline').textContent = t.btnDecline;
+      document.getElementById('details-btn-accept').textContent = t.btnAccept;
+      document.getElementById('details-you-badge').textContent = currentLang === 'ar' ? 'أنت' : 'You';
+      document.getElementById('details-row1-client').textContent = currentLang === 'ar' ? 'من فيصل الحربي' : 'From Faisal Al-Harbi';
+
+      document.getElementById('details-twin-dist-lbl').textContent = currentLang === 'ar' ? 'المسافة' : 'Distance Away';
+      document.getElementById('details-twin-time').textContent = currentLang === 'ar' ? '٨ دقائق' : '8 min';
+      document.getElementById('details-twin-time-lbl').textContent = currentLang === 'ar' ? 'الوقت المتوقع' : 'Estimated time';
+      document.getElementById('details-customer-lbl').textContent = currentLang === 'ar' ? 'العميل' : 'Customer';
+      document.getElementById('details-customer-name').textContent = currentLang === 'ar' ? 'أحمد خان' : 'Ahmed Khan';
+      document.getElementById('details-vehicle-model').textContent = currentLang === 'ar' ? 'تويوتا كورولا' : 'Toyota Corolla';
+      document.getElementById('details-note-title').textContent = currentLang === 'ar' ? 'ملاحظة العميل' : 'Customer Note';
+      document.getElementById('details-note-body').textContent = currentLang === 'ar'
+        ? 'البطارية فارغة والسيارة لا تعمل. أحتاج إلى شحن بطارية.'
+        : 'Battery is dead and the car won’t start. Need a jump start.';
+
+      if (selectedCard !== null) {
+        const titleKey = `title${selectedCard + 1}`;
+        const distKey = `dist${selectedCard + 1}`;
+        const timeKey = `time${selectedCard + 1}`;
+        const locKey = `loc${selectedCard + 1}`;
+
+        const title = t[titleKey] || t.title1;
+        const dist = t[distKey] || t.dist1;
+        const time = t[timeKey] || t.time1;
+        const loc = t[locKey] || t.loc1;
+        const distVal = dist.replace(' away', '').replace('على بعد ', '');
+
+        document.getElementById('details-row1-title').textContent = title;
+        document.getElementById('details-row1-loc').textContent = loc;
+        document.getElementById('details-loc-label').textContent = currentLang === 'ar' ? 'موقع العميل' : 'Customer Location';
+        document.getElementById('details-loc-val').textContent = loc;
+        document.getElementById('details-map-dist').textContent = distVal;
+        document.getElementById('details-twin-dist').textContent = distVal;
+      }
+
+      applyActiveTranslations();
+    }
+
+    let currentActiveStep = 1; // 0: Accepted, 1: On the way, 2: Arrived, 3: In Progress, 4: Completed
+
+    function switchTab(index, el) {
+      currentTab = index;
+      document.querySelectorAll('.tab-pill').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function selectCard(index, el) {
+      selectedCard = index;
+      document.querySelectorAll('.request-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      if (currentTab === 1) {
+        openActiveRequest();
+      } else {
+        openRequestDetails(index);
+      }
+    }
+
+    function openRequestDetails(index) {
+      selectedCard = index;
+      const t = translations[currentLang];
+      const titleKey = `title${index + 1}`;
+      const distKey = `dist${index + 1}`;
+      const timeKey = `time${index + 1}`;
+      const locKey = `loc${index + 1}`;
+
+      const title = t[titleKey] || t.title1;
+      const dist = t[distKey] || t.dist1;
+      const time = t[timeKey] || t.time1;
+      const loc = t[locKey] || t.loc1;
+      const distVal = dist.replace(' away', '').replace('على بعد ', '');
+
+      document.getElementById('details-row1-title').textContent = title;
+      document.getElementById('details-row1-client').textContent = currentLang === 'ar' ? 'من فيصل الحربي' : 'From Faisal Al-Harbi';
+      document.getElementById('details-row1-loc').textContent = loc;
+      document.getElementById('details-loc-label').textContent = currentLang === 'ar' ? 'موقع العميل' : 'Customer Location';
+      document.getElementById('details-loc-val').textContent = loc;
+      document.getElementById('details-map-dist').textContent = distVal;
+      document.getElementById('details-twin-dist').textContent = distVal;
+
+      document.getElementById('details-screen-modal').classList.add('active');
+    }
+
+    function closeRequestDetails() {
+      document.getElementById('details-screen-modal').classList.remove('active');
+    }
+
+    function acceptRequestAction() {
+      closeRequestDetails();
+      openActiveRequest();
+    }
+
+    function openActiveRequest() {
+      currentActiveStep = 1;
+      updateActiveStepperUI();
+      applyActiveTranslations();
+      document.getElementById('active-screen-modal').classList.add('active');
+    }
+
+    function closeActiveRequest() {
+      document.getElementById('active-screen-modal').classList.remove('active');
+    }
+
+    function advanceActiveStep() {
+      if (currentActiveStep < 4) {
+        currentActiveStep++;
+        updateActiveStepperUI();
+        applyActiveTranslations();
+      } else {
+        alert(currentLang === 'ar' ? 'تم إكمال الخدمة بنجاح!' : 'Service successfully completed!');
+        closeActiveRequest();
+      }
+    }
+
+    function updateActiveStepperUI() {
+      for (let i = 0; i <= 4; i++) {
+        const node = document.getElementById(`step-node-${i}`);
+        const line = document.getElementById(`step-line-${i}`);
+        const lbl = document.getElementById(`step-lbl-${i}`);
+
+        if (i < currentActiveStep) {
+          // Done
+          node.className = 'active-step-node done';
+          node.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+          if (line) line.className = 'active-step-line done';
+          lbl.className = 'active-step-label done';
+        } else if (i === currentActiveStep) {
+          // Current active
+          node.className = 'active-step-node current';
+          node.innerHTML = `<div class="current-dot"></div>`;
+          if (line) line.className = 'active-step-line';
+          lbl.className = 'active-step-label current';
+        } else {
+          // Pending
+          node.className = 'active-step-node pending';
+          node.innerHTML = '';
+          if (line) line.className = 'active-step-line';
+          lbl.className = 'active-step-label';
+        }
+      }
+    }
+
+    function applyActiveTranslations() {
+      const t = translations[currentLang];
+      document.getElementById('active-header-title').textContent = t.activeTitle;
+      document.getElementById('active-you-badge').textContent = currentLang === 'ar' ? 'أنت' : 'You';
+      document.getElementById('active-row1-client').textContent = currentLang === 'ar' ? 'من فيصل الحربي' : 'From Faisal Al-Harbi';
+      document.getElementById('active-loc-label').textContent = currentLang === 'ar' ? 'موقع العميل' : 'Customer Location';
+      document.getElementById('active-twin-dist-lbl').textContent = currentLang === 'ar' ? 'المسافة' : 'Distance Away';
+      document.getElementById('active-twin-time-lbl').textContent = currentLang === 'ar' ? 'الوقت المتوقع' : 'Estimated time';
+      document.getElementById('active-customer-lbl').textContent = currentLang === 'ar' ? 'العميل' : 'Customer';
+      document.getElementById('active-customer-name').textContent = currentLang === 'ar' ? 'أحمد خان' : 'Ahmed Khan';
+      document.getElementById('active-vehicle-model').textContent = currentLang === 'ar' ? 'تويوتا كورولا' : 'Toyota Corolla';
+      document.getElementById('active-note-title').textContent = currentLang === 'ar' ? 'ملاحظة العميل' : 'Customer Note';
+      document.getElementById('active-note-body').textContent = currentLang === 'ar'
+        ? 'البطارية فارغة والسيارة لا تعمل. أحتاج إلى شحن بطارية.'
+        : 'Battery is dead and the car won’t start. Need a jump start.';
+
+      // Stepper labels
+      document.getElementById('step-lbl-0').textContent = t.stepAccepted;
+      document.getElementById('step-lbl-1').textContent = t.stepOnWay;
+      document.getElementById('step-lbl-2').textContent = t.stepArrived;
+      document.getElementById('step-lbl-3').textContent = t.stepInProgress;
+      document.getElementById('step-lbl-4').textContent = t.stepCompleted;
+
+      // Status text & Action Button text based on currentActiveStep
+      if (currentActiveStep === 1) {
+        document.getElementById('active-status-title').textContent = t.activeStatusOnWay;
+        document.getElementById('active-status-meta').textContent = t.activeStatusMeta;
+        document.getElementById('active-action-btn-text').textContent = t.btnArrived;
+      } else if (currentActiveStep === 2) {
+        document.getElementById('active-status-title').textContent = t.stepArrived;
+        document.getElementById('active-status-meta').textContent = currentLang === 'ar' ? 'في موقع العميل' : 'At customer location';
+        document.getElementById('active-action-btn-text').textContent = t.btnStartService;
+      } else if (currentActiveStep === 3) {
+        document.getElementById('active-status-title').textContent = t.stepInProgress;
+        document.getElementById('active-status-meta').textContent = currentLang === 'ar' ? 'جاري تنفيذ الخدمة' : 'Performing service';
+        document.getElementById('active-action-btn-text').textContent = t.btnCompleteService;
+      } else if (currentActiveStep === 4) {
+        document.getElementById('active-status-title').textContent = t.stepCompleted;
+        document.getElementById('active-status-meta').textContent = currentLang === 'ar' ? 'تم الانتهاء بنجاح' : 'Job finished';
+        document.getElementById('active-action-btn-text').textContent = t.btnCompleted;
+      }
+
+      if (selectedCard !== null) {
+        const titleKey = `title${selectedCard + 1}`;
+        const distKey = `dist${selectedCard + 1}`;
+        const timeKey = `time${selectedCard + 1}`;
+        const locKey = `loc${selectedCard + 1}`;
+
+        const title = t[titleKey] || t.title1;
+        const dist = t[distKey] || t.dist1;
+        const time = t[timeKey] || t.time1;
+        const loc = t[locKey] || t.loc1;
+        const distVal = dist.replace(' away', '').replace('على بعد ', '');
+
+        document.getElementById('active-row1-title').textContent = title;
+        document.getElementById('active-row1-loc').textContent = loc;
+        document.getElementById('active-loc-val').textContent = loc;
+        document.getElementById('active-map-dist').textContent = currentLang === 'ar' ? '٢.٤ كم' : '2.4 km';
+        document.getElementById('active-twin-dist').textContent = currentLang === 'ar' ? '٢.٤ كم' : '2.4 km';
+        document.getElementById('active-twin-time').textContent = currentLang === 'ar' ? '٨ دقائق' : '8 min';
+      }
+    }
+
+    function toggleActiveCardExpanded() {
+      const card = document.getElementById('active-bottom-card');
+      if (card) {
+        card.classList.toggle('expanded');
+      }
+    }
+
+    // Touch swipe support to expand / collapse bottom card smoothly
+    let activeCardTouchStartY = 0;
+    document.addEventListener('DOMContentLoaded', () => {
+      const card = document.getElementById('active-bottom-card');
+      const handleWrap = document.querySelector('.active-card-handle-wrap');
+      if (card && handleWrap) {
+        handleWrap.addEventListener('touchstart', (e) => {
+          activeCardTouchStartY = e.touches[0].clientY;
+        }, { passive: true });
+        handleWrap.addEventListener('touchend', (e) => {
+          const touchEndY = e.changedTouches[0].clientY;
+          const diff = touchEndY - activeCardTouchStartY;
+          if (diff < -30) {
+            // Swiped up -> expand
+            card.classList.add('expanded');
+          } else if (diff > 30) {
+            // Swiped down -> collapse
+            card.classList.remove('expanded');
+          }
+        }, { passive: true });
+      }
+    });
+  </script>
+</body>
+</html>

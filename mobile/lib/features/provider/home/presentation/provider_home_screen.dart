@@ -15,7 +15,7 @@ import 'package:mobile/features/provider/home/presentation/widgets/provider_onli
 import 'package:mobile/features/provider/home/presentation/widgets/provider_service_area_card.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_stats_cards.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_vehicle_card.dart';
-import 'package:mobile/features/requests/presentation/requests_screen.dart';
+import 'package:mobile/features/provider/requests/presentation/provider_requests_screen.dart';
 import 'package:mobile/providers/notifications_provider.dart';
 
 /// Provider Home Screen
@@ -91,7 +91,8 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
       index: _currentTabIndex,
       children: [
         _buildHomeTab(context),
-        RequestsScreen(
+        ProviderRequestsScreen(
+          onBackTap: () => _onTabSelected(0),
           onTabSelected: _onTabSelected,
         ),
         ProfileScreen(
@@ -197,7 +198,18 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
                                   onViewsTap: () {
                                     Navigator.of(context).push(
                                       MaterialPageRoute(
-                                        builder: (_) => const ProviderDashboardScreen(),
+                                        builder: (_) => const ProviderDashboardScreen(
+                                          initialCardIndex: 0,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  onContactsTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const ProviderDashboardScreen(
+                                          initialCardIndex: 1,
+                                        ),
                                       ),
                                     );
                                   },

@@ -268,13 +268,11 @@ class _ProviderProfileViewsCardState extends State<ProviderProfileViewsCard> {
                         color: Color(0xFFF3F2F5),
                         shape: BoxShape.circle,
                       ),
-                      child: Center(
-                        // Eye vector inner branding: width: 20; height: 16;
-                        child: CustomPaint(
-                          size: const Size(20.0, 16.0),
-                          painter: const _EyeVectorPainter(
-                            color: Color(0xFF8B53FE),
-                          ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.remove_red_eye_rounded,
+                          size: 18.0,
+                          color: Color(0xFF8B53FE),
                         ),
                       ),
                     ),
@@ -590,16 +588,17 @@ class _EyeVectorPainter extends CustomPainter {
 
     canvas.drawPath(path, paint);
 
-    // Inner pupil (white circle)
-    final pupilPaint = Paint()
+    // Inner pupil (white ring "O" matching exact Figma screenshot)
+    final ringPaint = Paint()
       ..color = Colors.white
-      ..style = PaintingStyle.fill
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
       ..isAntiAlias = true;
 
     canvas.drawCircle(
       Offset(size.width * 0.5, size.height * 0.5),
-      size.height * 0.22,
-      pupilPaint,
+      size.height * 0.28,
+      ringPaint,
     );
   }
 
