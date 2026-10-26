@@ -203,9 +203,7 @@ class _ProviderProfileViewsCardState extends State<ProviderProfileViewsCard> {
   // Bar 5: Fri, width: 40.29, height: 90, top: 26, left: 185.14, value: 4 (highlighted #8B53FE)
   // Bar 6: Sat, width: 41.00, height: 48, top: 68, left: 231.00, value: 2
   // Bar 7: Sun, width: 40.29, height: 69, top: 47, left: 277.71, value: 3
-  static const List<double> _barWidths = [40.29, 40.29, 40.29, 40.29, 40.29, 41.00, 40.29];
   static const List<double> _barHeights = [20.0, 70.0, 90.0, 116.0, 90.0, 48.0, 69.0];
-  static const List<double> _barLefts = [0.0, 46.29, 92.57, 138.86, 185.14, 231.0, 277.71];
   static const List<int> _barValues = [1, 3, 4, 7, 4, 2, 3];
   static const List<String> _daysEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   static const List<String> _daysAr = ['إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت', 'أحد'];
@@ -396,12 +394,10 @@ class _ProviderProfileViewsCardState extends State<ProviderProfileViewsCard> {
               ),
 
               // 2. Next Row Layout: Tabs (Today, Yesterday, 10days, 15 days, 20 days)
-              // width: 318; height: 27; top: 154px; left: 16px; gap: 6px;
               Positioned(
                 top: 154.0,
-                left: isArabic ? null : 16.0,
-                right: isArabic ? 16.0 : null,
-                width: 318.0,
+                left: 16.0,
+                right: 16.0,
                 height: 27.0,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -455,38 +451,31 @@ class _ProviderProfileViewsCardState extends State<ProviderProfileViewsCard> {
                 ),
               ),
 
-              // 3. Graph Layout: width: 318; height: 152; top: 205px; left: 16px;
+              // 3. Graph Layout: responsive left: 16px, right: 16px, height: 152px, top: 205px
               Positioned(
                 top: 205.0,
-                left: isArabic ? null : 16.0,
-                right: isArabic ? 16.0 : null,
-                width: 318.0,
+                left: 16.0,
+                right: 16.0,
                 height: 152.0,
-                child: Stack(
-                  clipBehavior: Clip.none,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: List.generate(7, (index) {
-                    final double barWidth = _barWidths[index];
                     final double barHeight = _barHeights[index];
-                    final double barLeft = _barLefts[index];
                     final int value = _barValues[index];
                     final bool isBarSelected = _selectedBarIndex == index;
 
-                    // Bar color: Fri (#8B53FE), others (#F3F2F5)
+                    // Bar color: selected (#8B53FE), others (#F3F2F5)
                     final Color barColor = isBarSelected
                         ? const Color(0xFF8B53FE)
                         : const Color(0xFFF3F2F5);
 
-                    // Day label color: Fri (#8B53FE), others (#616166)
+                    // Day label color: selected (#8B53FE), others (#616166)
                     final Color labelColor = isBarSelected
                         ? const Color(0xFF8B53FE)
                         : const Color(0xFF616166);
 
-                    return Positioned(
-                      left: isArabic ? null : barLeft,
-                      right: isArabic ? barLeft : null,
-                      width: barWidth,
-                      top: 0,
-                      bottom: 0,
+                    return Expanded(
                       child: GestureDetector(
                         onTap: () {
                           setState(() {
@@ -512,11 +501,11 @@ class _ProviderProfileViewsCardState extends State<ProviderProfileViewsCard> {
 
                             const SizedBox(height: 5.0),
 
-                            // The bar container
+                            // The bar container (centered within its equal column slot, max width 36px)
                             AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               curve: Curves.easeInOut,
-                              width: barWidth,
+                              width: 36.0,
                               height: barHeight,
                               decoration: BoxDecoration(
                                 color: barColor,
@@ -527,16 +516,19 @@ class _ProviderProfileViewsCardState extends State<ProviderProfileViewsCard> {
                             const SizedBox(height: 7.0),
 
                             // Day label at the bottom (Mon, Tue, Wed, Thu, Fri, Sat, Sun)
-                            Text(
-                              days[index],
-                              style: TextStyle(
-                                fontFamily: isArabic ? GoogleFonts.cairo().fontFamily : 'Inter',
-                                fontSize: 10.0,
-                                fontWeight: isBarSelected ? FontWeight.w500 : FontWeight.w400,
-                                color: labelColor,
-                                height: 1.0,
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                days[index],
+                                style: TextStyle(
+                                  fontFamily: isArabic ? GoogleFonts.cairo().fontFamily : 'Inter',
+                                  fontSize: 10.0,
+                                  fontWeight: isBarSelected ? FontWeight.w500 : FontWeight.w400,
+                                  color: labelColor,
+                                  height: 1.0,
+                                ),
+                                maxLines: 1,
                               ),
-                              maxLines: 1,
                             ),
                           ],
                         ),
@@ -550,60 +542,5 @@ class _ProviderProfileViewsCardState extends State<ProviderProfileViewsCard> {
         ),
       ),
     );
-  }
-}
-
-/// Custom painter for the exact 20x16 eye vector
-/// top: 10px, left: 8px, background: #8B53FE with white pupil
-class _EyeVectorPainter extends CustomPainter {
-  final Color color;
-
-  const _EyeVectorPainter({
-    required this.color,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-
-    // Outer eye path
-    final path = Path();
-    path.moveTo(0, size.height * 0.5);
-    path.quadraticBezierTo(
-      size.width * 0.5,
-      0,
-      size.width,
-      size.height * 0.5,
-    );
-    path.quadraticBezierTo(
-      size.width * 0.5,
-      size.height,
-      0,
-      size.height * 0.5,
-    );
-    path.close();
-
-    canvas.drawPath(path, paint);
-
-    // Inner pupil (white ring "O" matching exact Figma screenshot)
-    final ringPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..isAntiAlias = true;
-
-    canvas.drawCircle(
-      Offset(size.width * 0.5, size.height * 0.5),
-      size.height * 0.28,
-      ringPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _EyeVectorPainter oldDelegate) {
-    return oldDelegate.color != color;
   }
 }

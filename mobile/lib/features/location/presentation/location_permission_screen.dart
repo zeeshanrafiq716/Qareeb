@@ -2,12 +2,12 @@ import 'dart:math' as math;
 import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/localization/app_locale.dart';
 import 'pickup_delivery_screen.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/backend_provider.dart';
+import '../../../services/location_service.dart';
 
 /// Location Permission screen displayed when selecting any category service.
 /// Designed strictly according to branding specifications:
@@ -15,7 +15,7 @@ import '../../../providers/backend_provider.dart';
 /// - Background Map Image: assets/images/BG image.png
 /// - Gradient Overlay: linear-gradient(180deg, rgba(255, 255, 255, 0) 21.53%, #FFFFFF 45.6%)
 /// - Header: Circular shadow back button + Service Title
-class LocationPermissionScreen extends ConsumerWidget {
+class LocationPermissionScreen extends ConsumerStatefulWidget {
   final String serviceName;
 
   const LocationPermissionScreen({
@@ -24,7 +24,457 @@ class LocationPermissionScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LocationPermissionScreen> createState() =>
+      _LocationPermissionScreenState();
+}
+
+class _LocationPermissionScreenState
+    extends ConsumerState<LocationPermissionScreen>
+    with WidgetsBindingObserver {
+  bool _isLocating = false;
+  String? _statusMessage;
+  bool _waitingForLocationSettings = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _waitingForLocationSettings) {
+      _waitingForLocationSettings = false;
+      // When user returns from system Settings, automatically re-verify device location
+      Future.delayed(const Duration(milliseconds: 350), () {
+        if (mounted) {
+          _handleAllowLocation();
+        }
+      });
+    }
+  }
+
+  /// Handles the "Allow Location" CTA.
+  /// Strictly requires device location (GPS) to be ON before navigating to the map screen.
+  Future<void> _handleAllowLocation() async {
+    if (_isLocating) return;
+
+    final tr = ref.read(translationsProvider);
+    final locationService = ref.read(locationServiceProvider);
+
+    setState(() {
+      _isLocating = true;
+      _statusMessage = tr.isArabic ? 'جارٍ التحقق من موقع الجهاز...' : 'Checking device location...';
+    });
+
+    HapticFeedback.lightImpact();
+
+    try {
+      // 1. MUST BE ON FROM DEVICE: Check device GPS/Location service toggle
+      final bool isServiceEnabled = await locationService.isLocationServiceEnabled();
+      if (!isServiceEnabled) {
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage = null;
+          });
+          _showDeviceLocationDisabledDialog();
+        }
+        return;
+      }
+
+      // 2. CHECK & REQUEST PERMISSION
+      if (mounted) {
+        setState(() {
+          _statusMessage = tr.isArabic ? 'جارٍ طلب إذن الموقع...' : 'Requesting permission...';
+        });
+      }
+
+      var permission = await locationService.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await locationService.requestPermission();
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage = null;
+          });
+          _showPermissionPermanentlyDeniedDialog();
+        }
+        return;
+      }
+
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage = null;
+          });
+          _showPermissionDeniedFeedback();
+        }
+        return;
+      }
+
+      // 3. ACQUIRE REAL DEVICE GPS COORDINATES
+      if (mounted) {
+        setState(() {
+          _statusMessage = tr.isArabic ? 'جارٍ تحديد إحداثيات GPS...' : 'Acquiring GPS coordinates...';
+        });
+      }
+
+      final userLoc = await locationService.acquireDeviceLocation();
+
+      if (!userLoc.isGpsDetected) {
+        throw const LocationServiceDisabledException();
+      }
+
+      // Refresh global providers so map and nearby lists immediately use real GPS
+      ref.invalidate(userLocationProvider);
+      ref.invalidate(nearbyProvidersProvider);
+
+      if (mounted) {
+        setState(() {
+          _isLocating = false;
+          _statusMessage = null;
+        });
+
+        // 4. AFTER THAT HE WILL LAND ON MAP
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => PickupDeliveryScreen(
+              serviceName: widget.serviceName,
+            ),
+          ),
+        );
+      }
+    } on LocationServiceDisabledException {
+      if (mounted) {
+        setState(() {
+          _isLocating = false;
+          _statusMessage = null;
+        });
+        _showDeviceLocationDisabledDialog();
+      }
+    } on PermissionDeniedException {
+      if (mounted) {
+        setState(() {
+          _isLocating = false;
+          _statusMessage = null;
+        });
+        _showPermissionPermanentlyDeniedDialog();
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLocating = false;
+          _statusMessage = null;
+        });
+        _showDeviceLocationDisabledDialog();
+      }
+    }
+  }
+
+  /// Dialog shown when device GPS / Location service is turned OFF
+  void _showDeviceLocationDisabledDialog() {
+    final tr = ref.read(translationsProvider);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24.0),
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 20.0),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Circular Beacon Icon
+              Container(
+                width: 64.0,
+                height: 64.0,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFEF2F2),
+                  border: Border.all(
+                    color: const Color(0xFFFEE2E2),
+                    width: 2.0,
+                  ),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.location_off_rounded,
+                    size: 32.0,
+                    color: Color(0xFFEF4444),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18.0),
+
+              // Title
+              Text(
+                tr.isArabic
+                    ? 'خدمة الموقع متوقفة على جهازك'
+                    : 'Device Location is Turned Off',
+                textAlign: TextAlign.center,
+                style: tr.font(
+                  fontSize: 18.0,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1C2926),
+                  height: 1.3,
+                ),
+              ),
+              const SizedBox(height: 10.0),
+
+              // Description
+              Text(
+                tr.isArabic
+                    ? 'يجب تشغيل خدمة الموقع (GPS) من جهازك للمتابعة وعرض الخريطة ومزودي الخدمة القريبين منك.'
+                    : 'Location service (GPS) must be turned on from your device to proceed to the map and view nearby service providers.',
+                textAlign: TextAlign.center,
+                style: tr.font(
+                  fontSize: 13.0,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF566663),
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 22.0),
+
+              // Action 1: Turn On Location in Settings
+              SizedBox(
+                width: double.infinity,
+                height: 48.0,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.of(dialogContext).pop();
+                    _waitingForLocationSettings = true;
+                    final locationService = ref.read(locationServiceProvider);
+                    await locationService.openLocationSettings();
+                  },
+                  icon: const Icon(Icons.settings_rounded, size: 18.0),
+                  label: Text(
+                    tr.isArabic ? 'تشغيل الموقع من الإعدادات' : 'Turn On in Settings',
+                    style: tr.font(
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B53FE),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10.0),
+
+              // Action 2: Check Location Again
+              SizedBox(
+                width: double.infinity,
+                height: 44.0,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    _handleAllowLocation();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF8B53FE), width: 1.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                  child: Text(
+                    tr.isArabic ? 'إعادة المحاولة' : 'Check Location Again',
+                    style: tr.font(
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF8B53FE),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6.0),
+
+              // Action 3: Cancel
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(
+                  tr.cancel,
+                  style: tr.font(
+                    fontSize: 13.0,
+                    fontWeight: FontWeight.w400,
+                    color: const Color(0xFF8A9A96),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Dialog shown when location permission is permanently denied in OS
+  void _showPermissionPermanentlyDeniedDialog() {
+    final tr = ref.read(translationsProvider);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24.0),
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 20.0),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64.0,
+                height: 64.0,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFF3E8FF),
+                  border: Border.all(
+                    color: const Color(0xFFE9D5FF),
+                    width: 2.0,
+                  ),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.security_rounded,
+                    size: 32.0,
+                    color: Color(0xFF8B53FE),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18.0),
+              Text(
+                tr.isArabic
+                    ? 'إذن الموقع مطلوب'
+                    : 'Location Permission Required',
+                textAlign: TextAlign.center,
+                style: tr.font(
+                  fontSize: 18.0,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1C2926),
+                  height: 1.3,
+                ),
+              ),
+              const SizedBox(height: 10.0),
+              Text(
+                tr.isArabic
+                    ? 'تم رفض إذن الوصول إلى الموقع بشكل دائم. يرجى تفعيل إذن الموقع من إعدادات التطبيق للمتابعة إلى الخريطة.'
+                    : 'Location permission was permanently denied. Please enable location access in App Settings to proceed to the map.',
+                textAlign: TextAlign.center,
+                style: tr.font(
+                  fontSize: 13.0,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF566663),
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 22.0),
+              SizedBox(
+                width: double.infinity,
+                height: 48.0,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.of(dialogContext).pop();
+                    _waitingForLocationSettings = true;
+                    final locationService = ref.read(locationServiceProvider);
+                    await locationService.openAppSettings();
+                  },
+                  icon: const Icon(Icons.settings_applications_rounded, size: 20.0),
+                  label: Text(
+                    tr.isArabic ? 'فتح إعدادات التطبيق' : 'Open App Settings',
+                    style: tr.font(
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B53FE),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6.0),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(
+                  tr.cancel,
+                  style: tr.font(
+                    fontSize: 13.0,
+                    fontWeight: FontWeight.w400,
+                    color: const Color(0xFF8A9A96),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// SnackBar feedback when permission is denied once
+  void _showPermissionDeniedFeedback() {
+    final tr = ref.read(translationsProvider);
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, size: 18.0, color: Colors.white),
+            const SizedBox(width: 10.0),
+            Expanded(
+              child: Text(
+                tr.isArabic
+                    ? 'يرجى منح إذن الموقع للمتابعة إلى الخريطة'
+                    : 'Please allow location permission to land on the map.',
+                style: tr.font(fontSize: 12.0, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        action: SnackBarAction(
+          label: tr.isArabic ? 'إعادة المحاولة' : 'Retry',
+          textColor: const Color(0xFFA67AFE),
+          onPressed: _handleAllowLocation,
+        ),
+        backgroundColor: const Color(0xFF1C2926),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final serviceName = widget.serviceName;
     final tr = ref.watch(translationsProvider);
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -150,14 +600,11 @@ class LocationPermissionScreen extends ConsumerWidget {
                                   ),
                                 ],
                               ),
-                              child: Center(
-                                child: Transform.scale(
-                                  scaleX: tr.isArabic ? -1.0 : 1.0,
-                                  child: const Icon(
-                                    Icons.arrow_back_ios_new_rounded,
-                                    size: 15.0,
-                                    color: Color(0xFF172623),
-                                  ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.arrow_back_ios_new_rounded,
+                                  size: 15.0,
+                                  color: Color(0xFF172623),
                                 ),
                               ),
                             ),
@@ -621,23 +1068,15 @@ class LocationPermissionScreen extends ConsumerWidget {
                               children: [
                                 // Button
                                 GestureDetector(
-                                  onTap: () {
-                                    HapticFeedback.lightImpact();
-                                    ref.refresh(userLocationProvider);
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => PickupDeliveryScreen(
-                                          serviceName: serviceName,
-                                        ),
-                                      ),
-                                    );
-                                  },
+                                  onTap: _isLocating ? null : _handleAllowLocation,
                                   behavior: HitTestBehavior.opaque,
                                   child: Container(
                                     width: double.infinity,
                                     height: 52.0,
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF8B53FE),
+                                      color: _isLocating
+                                          ? const Color(0xFF7A45E5)
+                                          : const Color(0xFF8B53FE),
                                       borderRadius: BorderRadius.circular(12.0),
                                       boxShadow: const [
                                         BoxShadow(
@@ -652,45 +1091,73 @@ class LocationPermissionScreen extends ConsumerWidget {
                                       child: Stack(
                                         alignment: Alignment.center,
                                         children: [
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment: CrossAxisAlignment.center,
-                                            children: [
-                                              // icon branding: width: 16; height: 16; white filled navigation arrow
-                                              const CustomPaint(
-                                                size: Size(16.0, 16.0),
-                                                painter: _FilledNavigationArrowPainter(color: Colors.white),
-                                              ),
+                                          if (_isLocating)
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment: CrossAxisAlignment.center,
+                                              children: [
+                                                const SizedBox(
+                                                  width: 18.0,
+                                                  height: 18.0,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2.2,
+                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 10.0),
+                                                Text(
+                                                  _statusMessage ??
+                                                      (tr.isArabic
+                                                          ? 'جارٍ تشغيل وتحديد الموقع...'
+                                                          : 'Enabling GPS & Locating...'),
+                                                  style: tr.font(
+                                                    fontSize: 13.0,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          else ...[
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment: CrossAxisAlignment.center,
+                                              children: [
+                                                // icon branding: width: 16; height: 16; white filled navigation arrow
+                                                const CustomPaint(
+                                                  size: Size(16.0, 16.0),
+                                                  painter: _FilledNavigationArrowPainter(color: Colors.white),
+                                                ),
 
-                                              // gap: 10px;
-                                              const SizedBox(width: 10.0),
+                                                // gap: 10px;
+                                                const SizedBox(width: 10.0),
 
-                                              // content: Allow Location
-                                              // width: 98; height: 10; Inter Medium 14px; line-height: 22px; color: #FFFFFF
-                                              Text(
-                                                tr.allowLocation,
-                                                style: tr.font(
-                                                  fontSize: 14.0,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: const Color(0xFFFFFFFF),
-                                                  height: 22.0 / 14.0,
-                                                  letterSpacing: 0.0,
+                                                // content: Allow Location
+                                                Text(
+                                                  tr.allowLocation,
+                                                  style: tr.font(
+                                                    fontSize: 14.0,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: const Color(0xFFFFFFFF),
+                                                    height: 22.0 / 14.0,
+                                                    letterSpacing: 0.0,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+
+                                            // vector > branding: width: 6; height: 12; angle: -180 deg; border: 0.8px solid #FFFFFF
+                                            Align(
+                                              alignment: AlignmentDirectional.centerEnd,
+                                              child: Transform.scale(
+                                                scaleX: (tr.isArabic || Directionality.of(context) == TextDirection.rtl) ? -1.0 : 1.0,
+                                                child: const CustomPaint(
+                                                  size: Size(6.0, 12.0),
+                                                  painter: _RightChevronPainter(color: Colors.white),
                                                 ),
                                               ),
-                                            ],
-                                          ),
-
-                                          // vector > branding: width: 6; height: 12; angle: -180 deg; border: 0.8px solid #FFFFFF
-                                          Align(
-                                            alignment: AlignmentDirectional.centerEnd,
-                                            child: Transform.scale(
-                                              scaleX: tr.isArabic ? -1.0 : 1.0,
-                                              child: const CustomPaint(
-                                                size: Size(6.0, 12.0),
-                                                painter: _RightChevronPainter(color: Colors.white),
-                                              ),
                                             ),
-                                          ),
+                                          ],
                                         ],
                                       ),
                                     ),
@@ -702,15 +1169,11 @@ class LocationPermissionScreen extends ConsumerWidget {
 
                                 // after button branding: content: You can change this later in Settings
                                 GestureDetector(
-                                  onTap: () {
+                                  onTap: () async {
                                     HapticFeedback.selectionClick();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(tr.openingLocationSettings, style: tr.font(color: Colors.white)),
-                                        backgroundColor: const Color(0xFF1C2926),
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
+                                    _waitingForLocationSettings = true;
+                                    final locationService = ref.read(locationServiceProvider);
+                                    await locationService.openLocationSettings();
                                   },
                                   behavior: HitTestBehavior.opaque,
                                   child: SizedBox(

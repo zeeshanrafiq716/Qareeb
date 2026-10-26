@@ -211,14 +211,11 @@ class _EmergencyServicesScreenState extends ConsumerState<EmergencyServicesScree
                                       ),
                                     ],
                                   ),
-                                  child: Center(
-                                    child: Transform.scale(
-                                      scaleX: tr.isArabic ? -1.0 : 1.0,
-                                      child: const Icon(
-                                        Icons.arrow_back_ios_new_rounded,
-                                        size: 15.0,
-                                        color: Color(0xFF1C2926),
-                                      ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.arrow_back_ios_new_rounded,
+                                      size: 15.0,
+                                      color: Color(0xFF1C2926),
                                     ),
                                   ),
                                 ),
@@ -943,13 +940,12 @@ class _EmergencyCategoryCard extends ConsumerWidget {
                   const SizedBox(width: 8.0),
 
                   // vector > styling on right side:
-                  Transform.scale(
-                    scaleX: tr.isArabic ? -1.0 : 1.0,
-                    child: const Icon(
-                      Icons.chevron_right_rounded,
-                      size: 18.0,
-                      color: Color(0xFF566663),
-                    ),
+                  Icon(
+                    (tr.isArabic || Directionality.of(context) == TextDirection.rtl)
+                        ? Icons.chevron_left_rounded
+                        : Icons.chevron_right_rounded,
+                    size: 18.0,
+                    color: const Color(0xFF566663),
                   ),
                 ],
               ),

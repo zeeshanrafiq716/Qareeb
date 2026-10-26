@@ -12,6 +12,8 @@ import 'features/provider/auth/presentation/provider_profile_details_screen.dart
 import 'features/provider/auth/presentation/upload_documents_screen.dart';
 import 'features/provider/auth/presentation/vehicle_service_details_screen.dart';
 import 'features/provider/home/presentation/provider_home_screen.dart';
+import 'features/provider/requests/presentation/provider_requests_screen.dart';
+import 'features/provider/requests/presentation/provider_service_completed_screen.dart';
 import 'features/provider/splash/presentation/provider_splash_screen.dart';
 import 'features/provider/theme/provider_colors.dart';
 import 'features/provider/theme/provider_text_styles.dart';
@@ -117,6 +119,12 @@ class QareebProviderApp extends ConsumerWidget {
         '/home': (context) => const ProviderHomeScreen(),
         '/provider/home': (context) => const ProviderHomeScreen(),
         '/provider-home': (context) => const ProviderHomeScreen(),
+        '/requests': (context) => const ProviderRequestsScreen(),
+        '/provider/requests': (context) => const ProviderRequestsScreen(),
+        '/requests-history': (context) => const ProviderRequestsScreen(isHistoryMode: true),
+        '/provider/requests-history': (context) => const ProviderRequestsScreen(isHistoryMode: true),
+        '/service-completed': (context) => const ProviderServiceCompletedScreen(),
+        '/provider/service-completed': (context) => const ProviderServiceCompletedScreen(),
       },
     );
   }

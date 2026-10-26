@@ -164,10 +164,16 @@ class CategoryCardWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(8.0),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x1A000000), // #0000001A
-            blurRadius: 12.0,
+            color: Color(0x10000000), // subtle base elevation
+            blurRadius: 8.0,
             spreadRadius: 0.0,
             offset: Offset(0, 1),
+          ),
+          BoxShadow(
+            color: Color(0x268B53FE), // light shadow of brand purple
+            blurRadius: 12.0,
+            spreadRadius: 1.0,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -213,35 +219,34 @@ class CategoryCardWidget extends StatelessWidget {
                                       color: const Color(0xFF172623),
                                       height: 1.2,
                                     )
-                                  : GoogleFonts.inter(
+                                  : GoogleFonts.cairo(
                                       fontSize: 12.0,
                                       fontWeight: FontWeight.w600,
                                       color: const Color(0xFF172623),
                                       height: 1.2,
-                                      letterSpacing: 0.0,
                                     ),
                             ),
 
                             const SizedBox(height: 2.0),
 
-                            // Subtitle
+                            // Subtitle - wraps naturally, never converts to dots
                             Text(
                               effectiveSubtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                              softWrap: true,
+                              overflow: TextOverflow.clip,
                               style: tr != null
                                   ? tr!.font(
-                                      fontSize: 10.0,
+                                      fontSize: 9.5,
                                       fontWeight: FontWeight.w400,
                                       color: const Color(0xFF566663),
                                       height: 1.2,
                                     )
-                                  : GoogleFonts.inter(
-                                      fontSize: 10.0,
+                                  : GoogleFonts.cairo(
+                                      fontSize: 9.5,
                                       fontWeight: FontWeight.w400,
                                       color: const Color(0xFF566663),
                                       height: 1.2,
-                                      letterSpacing: 0.0,
                                     ),
                             ),
                           ],
@@ -250,13 +255,13 @@ class CategoryCardWidget extends StatelessWidget {
 
                       const SizedBox(width: 6.0),
 
-                      // Vector on right side of >: width: 5; height: 10; border: 0.6px solid #566663 (mirrored for RTL)
+                      // Vector chevron in brand purple #8B53FE (mirrored for RTL to <)
                       Transform.scale(
-                        scaleX: (tr?.isArabic ?? false) ? -1.0 : 1.0,
+                        scaleX: ((tr?.isArabic ?? false) || Directionality.of(context) == TextDirection.rtl) ? -1.0 : 1.0,
                         child: const _VectorChevron(
                           width: 5.0,
                           height: 10.0,
-                          color: Color(0xFF566663),
+                          color: Color(0xFF8B53FE),
                         ),
                       ),
                     ],
@@ -312,7 +317,7 @@ class _VectorChevronPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 0.8
+      ..strokeWidth = 1.1
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;

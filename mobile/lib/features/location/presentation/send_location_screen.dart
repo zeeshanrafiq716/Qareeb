@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/localization/app_locale.dart';
 import 'widgets/top_down_car_widget.dart';
+import 'widgets/real_map_background_widget.dart';
 
 /// Screen displayed when user clicks 'Send My Location' on the Provider Detail screen.
 /// Implements the pickup & delivery header and map navigation with identical branding.
@@ -95,27 +96,18 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                         child: Stack(
                           clipBehavior: Clip.none,
                           children: [
-                      // 1. Background Map Layer ("use map img"):
+                      // 1. Live Real Slippy Map Layer
                       Positioned.fill(
-                        child: Image.asset(
-                          'assets/images/img.png',
-                          fit: BoxFit.cover,
-                          alignment: Alignment.topCenter,
-                          errorBuilder: (context, error, stackTrace) => Image.asset(
-                            'assets/images/BG image.png',
-                            fit: BoxFit.cover,
-                            alignment: Alignment.topCenter,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              color: const Color(0xFFF3F4F6),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.map_outlined,
-                                  size: 48,
-                                  color: Color(0xFF9CA3AF),
-                                ),
-                              ),
-                            ),
-                          ),
+                        child: RealMapBackgroundWidget(
+                          enableDrag: true,
+                          zoom: 15.0,
+                          trackingStep: MapTrackingStep.onTheWay,
+                          driverName: widget.providerName,
+                          serviceCategory: widget.serviceCategory,
+                          vehicleName: 'Toyota Hilux',
+                          etaText: tr.isArabic ? '6 د' : '6 min',
+                          distanceText: widget.distance,
+                          showControls: true,
                         ),
                       ),
 
@@ -140,149 +132,6 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                         ),
                       ),
 
-                      // 3. Route Line Vector:
-                      // width: 145.5; height: 91; angle: 0 deg; top: 183px; left: 116.5px; border: 4px solid #1D8070;
-                      Positioned(
-                        top: 183.0,
-                        left: 116.5 + ((containerWidth - 390.0) / 2.0),
-                        width: 145.5,
-                        height: 91.0,
-                        child: const CustomPaint(
-                          size: Size(145.5, 91.0),
-                          painter: _RouteVectorPainter(
-                            color: Color(0xFF8B53FE),
-                            strokeWidth: 4.0,
-                          ),
-                        ),
-                      ),
-
-                      // 4. Car Branding:
-                      // width: 15; height: 24; angle: 60 deg; top: 250px; left: 236px;
-                      Positioned(
-                        top: 250.0,
-                        left: 236.0 + ((containerWidth - 390.0) / 2.0),
-                        child: TopDownCarWidget(
-                          width: 16.5,
-                          height: 28.5,
-                          angle: -60.0,
-                          driverName: widget.providerName,
-                          distanceKm: 1.8,
-                          showBadge: true,
-                          bodyColor: const Color(0xFFA67AFE),
-                        ),
-                      ),
-
-                      // 5. Location Marker Halo & Pin Branding:
-                      // Outer soft glowing mint halo rings:
-                      Positioned(
-                        top: 153.0 - 12.0,
-                        left: (111.0 - 12.0) + ((containerWidth - 390.0) / 2.0),
-                        width: 60.0,
-                        height: 60.0,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFF8B53FE).withValues(alpha: 0.12),
-                            border: Border.all(
-                              color: const Color(0xFF8B53FE).withValues(alpha: 0.22),
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 153.0 - 5.0,
-                        left: (111.0 - 5.0) + ((containerWidth - 390.0) / 2.0),
-                        width: 46.0,
-                        height: 46.0,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFF8B53FE).withValues(alpha: 0.18),
-                          ),
-                        ),
-                      ),
-
-                      // Location icon branding:
-                      // width: 36; height: 36; gap: 10px; angle: 0 deg; opacity: 1; border-radius: 40px;
-                      // padding: 4px; top: 153px; left: 111px; background: #F0FFF7; box-shadow: 0px 0px 4px 0px #9FFFCB66 inset;
-                      Positioned(
-                        top: 153.0,
-                        left: 111.0 + ((containerWidth - 390.0) / 2.0),
-                        width: 36.0,
-                        height: 36.0,
-                        child: Container(
-                          width: 36.0,
-                          height: 36.0,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFFF0EAFE),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x408B53FE),
-                                blurRadius: 4.0,
-                                spreadRadius: 0.0,
-                              ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.all(4.0),
-                          child: Center(
-                            child: Container(
-                              width: 28.0,
-                              height: 28.0,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF8B53FE),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.location_on_rounded,
-                                  size: 16.0,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // 6. Distance Badge Branding:
-                      // distance badge branding: width: 42; height: 26; angle: 0 deg; top: 124px; left: 119px; background: #1D8070;
-                      // inner branding: width: 42; height: 19; gap: 10px; border-radius: 4px; padding: 6px; top: 124px; left: 119px;
-                      // content: 1.8 km (width: 30; height: 7; Inter 400 10px line-height 22px #FFFFFF)
-                      Positioned(
-                        top: 124.0,
-                        left: 119.0 + ((containerWidth - 390.0) / 2.0),
-                        width: 42.0,
-                        height: 26.0,
-                        child: CustomPaint(
-                          size: const Size(42.0, 26.0),
-                          painter: const _DistanceBadgeTooltipPainter(
-                            color: Color(0xFF8B53FE),
-                            cornerRadius: 4.0,
-                            pointerX: 10.0,
-                            pointerWidth: 8.0,
-                            pointerHeight: 7.0,
-                          ),
-                          child: Align(
-                            alignment: const Alignment(0.0, -0.45),
-                            child: Text(
-                              tr.isArabic ? widget.distance.replaceAll('km', 'كم').replaceAll('min', 'د') : widget.distance,
-                              textHeightBehavior: const TextHeightBehavior(
-                                applyHeightToFirstAscent: false,
-                                applyHeightToLastDescent: false,
-                              ),
-                              style: tr.font(
-                                fontSize: 10.0,
-                                fontWeight: FontWeight.w400,
-                                color: const Color(0xFFFFFFFF),
-                                height: 1.15,
-                                letterSpacing: 0.0,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
 
                       // 7. Header with same previous branding:
                       // width: 350; height: 36; gap: 16px; top: 56px; left: 20px;
@@ -1222,19 +1071,12 @@ class _RouteVectorPainter extends CustomPainter {
   final double strokeWidth;
 
   const _RouteVectorPainter({
-    this.color = const Color(0xFF8B53FE),
+    this.color = const Color(0xFFB892FF),
     this.strokeWidth = 4.0,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
     final path = Path();
     // Starts directly beneath the location pin (pin center is x ~ 12.5)
     path.moveTo(12.5, 0.0);
@@ -1245,7 +1087,32 @@ class _RouteVectorPainter extends CustomPainter {
     // Straight diagonal run southeast towards the car
     path.lineTo(size.width - 2.0, size.height - 4.0);
 
+    // Light purple glow casing
+    final glowPaint = Paint()
+      ..color = color.withValues(alpha: 0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth * 2.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(path, glowPaint);
+
+    // Main route line in light purple
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
     canvas.drawPath(path, paint);
+
+    // Inner white center road stripe
+    final innerPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(path, innerPaint);
   }
 
   @override

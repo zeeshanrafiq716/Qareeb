@@ -76,6 +76,55 @@ class ServicesSectionWidget extends ConsumerWidget {
       subtitle: 'Urgent roadside aid',
       isEnabled: true,
     ),
+    // 6 Additional category cards copied from the first 4 cards
+    CategoryModel(
+      id: 7,
+      name: 'Ride',
+      slug: 'ride',
+      subtitle: 'City & local rides',
+      assetImage: 'assets/images/car_ride.png',
+      isEnabled: true,
+    ),
+    CategoryModel(
+      id: 8,
+      name: 'Pickup',
+      slug: 'pickup',
+      subtitle: 'Goods & deliveries',
+      assetImage: 'assets/images/pickup.png',
+      isEnabled: true,
+    ),
+    CategoryModel(
+      id: 9,
+      name: 'Rider',
+      slug: 'rider',
+      subtitle: 'Fast & convenient',
+      assetImage: 'assets/images/rider_bike.png',
+      isEnabled: true,
+    ),
+    CategoryModel(
+      id: 10,
+      name: 'Van',
+      slug: 'van',
+      subtitle: 'Group & family travel',
+      assetImage: 'assets/images/van.png',
+      isEnabled: true,
+    ),
+    CategoryModel(
+      id: 11,
+      name: 'Ride',
+      slug: 'ride',
+      subtitle: 'City & local rides',
+      assetImage: 'assets/images/car_ride.png',
+      isEnabled: true,
+    ),
+    CategoryModel(
+      id: 12,
+      name: 'Pickup',
+      slug: 'pickup',
+      subtitle: 'Goods & deliveries',
+      assetImage: 'assets/images/pickup.png',
+      isEnabled: true,
+    ),
   ];
 
   const ServicesSectionWidget({
@@ -143,8 +192,8 @@ class ServicesSectionWidget extends ConsumerWidget {
                   ),
                 ),
 
-                // gap: 12px
-                const SizedBox(height: 12.0),
+                // gap: reduced from 12px to 4px
+                const SizedBox(height: 4.0),
 
                 // Text: Choose a service and see available options.
                 Text(

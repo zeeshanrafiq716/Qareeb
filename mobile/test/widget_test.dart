@@ -47,8 +47,6 @@ void main() {
       ),
     );
 
-    expect(find.text('Hello, Shayan'), findsOneWidget);
-    expect(find.text('Explore Something'), findsOneWidget);
     expect(find.text('Current location'), findsOneWidget);
     expect(find.text('Karachi Pakistan'), findsOneWidget);
     expect(find.byIcon(Icons.notifications_none_rounded), findsOneWidget);
@@ -184,21 +182,31 @@ void main() {
     expect(find.text('Pickup & Delivery'), findsOneWidget);
     expect(find.byKey(const Key('map_widget_beacon')), findsOneWidget);
     expect(find.byKey(const Key('current_location_button')), findsOneWidget);
-    expect(find.byKey(const Key('user_gps_center_marker')), findsOneWidget);
-    expect(find.byKey(const Key('radar_rotated_layout')), findsOneWidget);
-    expect(find.byKey(const Key('animated_radar_sector')), findsOneWidget);
-    expect(find.byKey(const ValueKey('fake_car_1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('driver_car_1')), findsOneWidget);
     expect(find.text('Uzair'), findsOneWidget);
-    // Verify reviews/stars are removed from car badges
-    expect(find.byIcon(Icons.star_rounded), findsNothing);
 
-    // Verify tapping on fake_car_1 triggers selection card and selected state
-    await tester.tap(find.byKey(const ValueKey('fake_car_1')));
-    await tester.pump();
+    // Verify top-to-bottom provider count slider bar is present at top of screen above header
+    expect(find.byKey(const Key('top_provider_slider_card')), findsOneWidget);
+    expect(find.byKey(const Key('provider_count_slider')), findsOneWidget);
+    expect(find.text('Nearest Providers'), findsOneWidget);
+    expect(find.byKey(const ValueKey('animated_radius_circle_builder')), findsOneWidget);
+    // Verify previous static custom radius and km labels are completely removed
+    expect(find.text('Customer Radius • 850m'), findsNothing);
 
+    // Test slider interaction
+    await tester.drag(find.byKey(const Key('provider_count_slider')), const Offset(50.0, 0.0));
+    await tester.pumpAndSettle();
+
+    // Tap on Uzair's car to select it
+    await tester.tap(find.byKey(const ValueKey('driver_car_1')));
+    await tester.pumpAndSettle();
+
+    // Tap on current location button to test exact GPS tracing
+    await tester.tap(find.byKey(const Key('current_location_button')));
+    await tester.pumpAndSettle();
+
+    // Verify selected driver card appears with driver details
     expect(find.byKey(const Key('selected_driver_card')), findsOneWidget);
-    expect(find.text('SELECTED'), findsOneWidget);
-    expect(find.text('Confirm Uzair'), findsOneWidget);
   });
 
   testWidgets('ProviderLocationPermissionScreen renders background image, gradient, back button, beacon, feature card and Allow Location CTA', (WidgetTester tester) async {

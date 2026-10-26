@@ -63,7 +63,7 @@ class ProviderHeaderBackButton extends StatelessWidget {
               customBorder: const CircleBorder(),
               child: Center(
                 child: Transform.flip(
-                  flipX: Directionality.of(context) == TextDirection.rtl,
+                  flipX: false,
                   child: const SizedBox(
                     width: chevronWidth,
                     height: chevronHeight,

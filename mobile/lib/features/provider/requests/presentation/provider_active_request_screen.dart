@@ -1,13 +1,13 @@
-import 'dart:math' as math;
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/location/presentation/widgets/top_down_car_widget.dart';
+import 'package:mobile/features/location/presentation/widgets/real_map_background_widget.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_scroll_behavior.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_header_back_button.dart';
-import 'package:mobile/features/provider/theme/provider_colors.dart';
+import 'package:mobile/features/provider/requests/presentation/provider_service_completed_screen.dart';
 
 /// Provider Active Request Screen
 /// Displays active request details with:
@@ -77,6 +77,14 @@ class _ProviderActiveRequestScreenState
   // Sheet expandable state for smooth user-friendly scrolling
   bool _isSheetExpanded = false;
 
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isArabic = context.isArabic;
@@ -110,7 +118,10 @@ class _ProviderActiveRequestScreenState
             final double containerHeight =
                 isDesktopWeb ? designHeight : constraints.maxHeight;
 
-            final double topSafeArea = MediaQuery.of(context).padding.top;
+            final double topSafeArea =
+                MediaQuery.maybeOf(context)?.padding.top ?? 0.0;
+            final double bottomSafeArea =
+                MediaQuery.maybeOf(context)?.padding.bottom ?? 0.0;
             final double headerTop =
                 topSafeArea > 0 ? (topSafeArea + 8.0) : 52.0;
 
@@ -130,29 +141,16 @@ class _ProviderActiveRequestScreenState
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        // 1a. Background Map Layer
+                        // 1a. Live Real Slippy Map Layer
                         Positioned.fill(
-                          child: Image.asset(
-                            'assets/images/img.png',
-                            fit: BoxFit.cover,
-                            alignment: Alignment.topCenter,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Image.asset(
-                              'assets/images/BG image.png',
-                              fit: BoxFit.cover,
-                              alignment: Alignment.topCenter,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                color: const Color(0xFFF3F4F6),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.map_outlined,
-                                    size: 48,
-                                    color: Color(0xFF9CA3AF),
-                                  ),
-                                ),
-                              ),
-                            ),
+                          child: RealMapBackgroundWidget(
+                            enableDrag: true,
+                            zoom: 15.0,
+                            trackingStep: MapTrackingStep.onTheWay,
+                            driverName: isArabic ? 'أنت' : 'You',
+                            etaText: cleanDistance,
+                            distanceText: cleanDistance,
+                            showControls: true,
                           ),
                         ),
 
@@ -171,152 +169,6 @@ class _ProviderActiveRequestScreenState
                                     Color(0x00FFFFFF),
                                     Color(0x00FFFFFF),
                                   ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // 1c. Purple Street Route Line
-                        Positioned(
-                          top: 154.0,
-                          left: 110.0 + ((containerWidth - 390.0) / 2.0),
-                          width: 75.0,
-                          height: 72.0,
-                          child: const CustomPaint(
-                            size: Size(75.0, 72.0),
-                            painter: _ActiveStreetRoutePainter(
-                              color: Color(0xFF8B53FE),
-                              strokeWidth: 4.8,
-                            ),
-                          ),
-                        ),
-
-                        // 1d. Destination Pin Halo
-                        Positioned(
-                          top: 132.0,
-                          left: 104.0 + ((containerWidth - 390.0) / 2.0),
-                          width: 48.0,
-                          height: 48.0,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: const Color(0xFF8B53FE)
-                                  .withValues(alpha: 0.16),
-                              border: Border.all(
-                                color: const Color(0xFF8B53FE)
-                                    .withValues(alpha: 0.28),
-                                width: 1.5,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // 1e. Destination Pin Circle
-                        Positioned(
-                          top: 138.0,
-                          left: 110.0 + ((containerWidth - 390.0) / 2.0),
-                          width: 36.0,
-                          height: 36.0,
-                          child: Container(
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Color(0xFF8B53FE),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Color(0x4D8B53FE),
-                                  blurRadius: 8.0,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.location_on_rounded,
-                                size: 20.0,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // 1f. Purple Distance Tooltip Badge: "2.4 km"
-                        Positioned(
-                          top: 104.0,
-                          left: 99.0 + ((containerWidth - 390.0) / 2.0),
-                          width: 58.0,
-                          height: 28.0,
-                          child: CustomPaint(
-                            size: const Size(58.0, 28.0),
-                            painter: const _ActiveTooltipSpeechBubblePainter(
-                              color: Color(0xFF8B53FE),
-                              cornerRadius: 6.0,
-                              pointerWidth: 8.0,
-                              pointerHeight: 6.0,
-                              shadowColor: Color(0x338B53FE),
-                            ),
-                            child: Align(
-                              alignment: const Alignment(0.0, -0.4),
-                              child: Text(
-                                cleanDistance,
-                                style: isArabic
-                                    ? GoogleFonts.cairo(
-                                        fontSize: 11.0,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                        height: 1.0,
-                                      )
-                                    : GoogleFonts.inter(
-                                        fontSize: 11.0,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                        height: 1.0,
-                                      ),
-                                maxLines: 1,
-                                softWrap: false,
-                                overflow: TextOverflow.visible,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // 1g. Top-Down Vehicle Car
-                        Positioned(
-                          top: 215.0,
-                          left: 172.0 + ((containerWidth - 390.0) / 2.0),
-                          child: TopDownCarWidget(
-                            width: 17.0,
-                            height: 29.0,
-                            angle: -48.0,
-                            showBadge: false,
-                            bodyColor: const Color(0xFF8B53FE),
-                          ),
-                        ),
-
-                        // 1h. White "You" Speech Bubble
-                        Positioned(
-                          top: 179.0,
-                          left: 162.0 + ((containerWidth - 390.0) / 2.0),
-                          width: 44.0,
-                          height: 30.0,
-                          child: CustomPaint(
-                            size: const Size(44.0, 30.0),
-                            painter: const _ActiveTooltipSpeechBubblePainter(
-                              color: Colors.white,
-                              cornerRadius: 8.0,
-                              pointerWidth: 8.0,
-                              pointerHeight: 6.0,
-                              shadowColor: Color(0x22000000),
-                            ),
-                            child: Align(
-                              alignment: const Alignment(0.0, -0.45),
-                              child: Text(
-                                isArabic ? 'أنت' : 'You',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11.0,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF1C2926),
-                                  height: 1.1,
                                 ),
                               ),
                             ),
@@ -623,13 +475,20 @@ class _ProviderActiveRequestScreenState
 
                           // Scrollable Bottom Card Content Area (Smooth bouncing physics, equal gaps)
                           Expanded(
-                            child: SingleChildScrollView(
-                              physics: const BouncingScrollPhysics(
-                                parent: AlwaysScrollableScrollPhysics(),
-                              ),
-                              padding: const EdgeInsets.fromLTRB(
-                                  20.0, 6.0, 20.0, 0.0),
-                              child: Column(
+                            child: ScrollConfiguration(
+                              behavior: const ProviderCardScrollBehavior(),
+                              child: SingleChildScrollView(
+                                controller: _scrollController,
+                                physics: const AlwaysScrollableScrollPhysics(
+                                  parent: BouncingScrollPhysics(),
+                                ),
+                                padding: EdgeInsets.fromLTRB(
+                                  20.0,
+                                  6.0,
+                                  20.0,
+                                  bottomSafeArea > 0 ? (bottomSafeArea + 24.0) : 24.0,
+                                ),
+                                child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   // 3a. Row 1: Service Image + Service Title + Client Name & Location
@@ -1439,34 +1298,52 @@ class _ProviderActiveRequestScreenState
                                       ],
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
+                                  const SizedBox(height: 16.0),
 
-                          const SizedBox(height: 12.0),
-
-                          // 3g. Primary Action Button: "I've Arrived ->" (Exact previous button branding)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                            child: GestureDetector(
+                                  // 3g. Primary Action Button: "I've Arrived ->" (Exact previous button branding)
+                                  GestureDetector(
                               onTap: () {
                                 HapticFeedback.mediumImpact();
-                                setState(() {
-                                  if (_currentStep < 4) {
+                                if (_currentStep < 3) {
+                                  setState(() {
                                     _currentStep++;
-                                  }
-                                });
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: const Color(0xFF8B53FE),
-                                    content: Text(
-                                      _getSuccessMessage(isArabic),
-                                      style: GoogleFonts.inter(color: Colors.white),
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      backgroundColor: const Color(0xFF8B53FE),
+                                      content: Text(
+                                        _getSuccessMessage(isArabic),
+                                        style: GoogleFonts.inter(color: Colors.white),
+                                      ),
+                                      duration: const Duration(seconds: 2),
                                     ),
-                                    duration: const Duration(seconds: 2),
-                                  ),
-                                );
+                                  );
+                                } else {
+                                  // Complete Service (_currentStep == 3) or Service Completed (_currentStep == 4)
+                                  setState(() {
+                                    _currentStep = 4;
+                                  });
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => ProviderServiceCompletedScreen(
+                                        requestId: widget.requestId,
+                                        serviceTypeEn: widget.serviceTypeEn,
+                                        serviceTypeAr: widget.serviceTypeAr,
+                                        serviceLocationEn: widget.locationEn.isNotEmpty
+                                            ? widget.locationEn
+                                            : 'Al Malaz, Riyadh Saudi Arabia',
+                                        serviceLocationAr: widget.locationAr.isNotEmpty
+                                            ? widget.locationAr
+                                            : 'الملز، الرياض المملكة العربية السعودية',
+                                        customerNameEn: widget.customerNameEn,
+                                        customerNameAr: widget.customerNameAr,
+                                        vehicleModelEn: widget.vehicleModelEn,
+                                        vehicleModelAr: widget.vehicleModelAr,
+                                        plateNumber: widget.plateNumber,
+                                      ),
+                                    ),
+                                  );
+                                }
                               },
                               child: Container(
                                 width: double.infinity,
@@ -1520,20 +1397,61 @@ class _ProviderActiveRequestScreenState
                                 ),
                               ),
                             ),
-                          ),
 
-                          const SizedBox(height: 12.0),
+                            // 3g-2. Cancel Request Button (Branding: #FFEBEB bg, #FF383C text, 52h, 12r)
+                            if (_currentStep < 4) ...[
+                              const SizedBox(height: 12.0),
+                              GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.lightImpact();
+                                  _showCancelDialog(isArabic);
+                                },
+                                behavior: HitTestBehavior.opaque,
+                                child: Container(
+                                  width: double.infinity,
+                                  height: 52.0,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16.0,
+                                    horizontal: 53.0,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFEBEB),
+                                    borderRadius: BorderRadius.circular(12.0),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    isArabic ? 'إلغاء الطلب' : 'Cancel Request',
+                                    style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                                      fontSize: 14.0,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFFFF383C),
+                                      height: 22.0 / 14.0,
+                                      letterSpacing: 0.0,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 16.0),
 
-                          // 3h. Bottom Home Indicator Bar (Always with bottom)
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 10.0),
-                            width: 134.0,
-                            height: 5.0,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1C1C1E),
-                              borderRadius: BorderRadius.circular(100.0),
+                            // 3h. Bottom Home Indicator Bar (In-scroll, with safe-area padding)
+                            Center(
+                              child: Container(
+                                width: 134.0,
+                                height: 5.0,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1C1C1E),
+                                  borderRadius: BorderRadius.circular(100.0),
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                         ],
                       ),
                     ),
@@ -1642,6 +1560,106 @@ class _ProviderActiveRequestScreenState
         return isArabic
             ? 'تم تحديث حالة الطلب!'
             : 'Request status updated!';
+    }
+  }
+
+  Future<void> _showCancelDialog(bool isArabic) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          title: Text(
+            isArabic ? 'إلغاء الطلب' : 'Cancel Request',
+            style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+              fontSize: 18.0,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF252527),
+            ),
+          ),
+          content: Text(
+            isArabic
+                ? 'هل أنت متأكد من رغبتك في إلغاء هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء.'
+                : 'Are you sure you want to cancel this service request? This action cannot be undone.',
+            style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+              fontSize: 14.0,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF616166),
+              height: 1.4,
+            ),
+          ),
+          actionsPadding: const EdgeInsets.only(left: 20.0, right: 20.0, bottom: 20.0),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(false),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                    ),
+                    child: Text(
+                      isArabic ? 'تراجع' : 'Keep',
+                      style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF616166),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12.0),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF383C),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                    ),
+                    child: Text(
+                      isArabic ? 'نعم، إلغاء' : 'Yes, Cancel',
+                      style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted) return;
+
+    if (confirmed == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFFFF383C),
+          content: Text(
+            isArabic ? 'تم إلغاء الطلب بنجاح' : 'Request has been cancelled',
+            style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+              color: Colors.white,
+            ),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      Navigator.of(context).maybePop();
     }
   }
 
@@ -1757,8 +1775,10 @@ class _ProviderActiveRequestScreenState
           children: List.generate(steps.length, (stepIdx) {
             final bool isDone = stepIdx < _currentStep;
             final bool isActive = stepIdx == _currentStep;
-            final String label =
-                isArabic ? steps[stepIdx]['ar']! : steps[stepIdx]['en']!;
+            final String label = (isArabic
+                    ? steps[stepIdx]['ar']
+                    : steps[stepIdx]['en']) ??
+                '';
 
             Color textColor;
             FontWeight fontWeight;

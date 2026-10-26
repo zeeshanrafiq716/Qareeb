@@ -631,12 +631,15 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                                                   ),
                                                 ],
                                               ),
-                                              const Align(
-                                                alignment: Alignment.centerRight,
-                                                child: CustomPaint(
-                                                  size: Size(6.0, 12.0),
-                                                  painter: _RightChevronPainter(
-                                                    color: Colors.white,
+                                              Align(
+                                                alignment: AlignmentDirectional.centerEnd,
+                                                child: Transform.scale(
+                                                  scaleX: context.isArabic ? -1.0 : 1.0,
+                                                  child: const CustomPaint(
+                                                    size: Size(6.0, 12.0),
+                                                    painter: _RightChevronPainter(
+                                                      color: Colors.white,
+                                                    ),
                                                   ),
                                                 ),
                                               ),

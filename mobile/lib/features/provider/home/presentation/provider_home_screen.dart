@@ -128,7 +128,7 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
             final double containerHeight = isDesktopWeb ? designHeight : constraints.maxHeight;
 
             final double topSafeArea = MediaQuery.of(context).padding.top;
-            final double headerTop = topSafeArea > 0 ? (topSafeArea + 10.0) : 48.0;
+            final double headerTop = topSafeArea > 0 ? (topSafeArea + 18.0) : 56.0;
 
             // HOME SCREEN total layout:
             // width: 392; height: 844; angle: 0 deg; opacity: 1;
@@ -279,11 +279,8 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
                         ),
                         Positioned(
                           top: 106.0,
-                          left: isDesktopWeb
-                              ? 21.0
-                              : ((containerWidth - 350.0) / 2).clamp(10.0, 21.0),
-                          width: 350.0,
-                          height: 96.0,
+                          left: 20.0,
+                          right: 20.0,
                           child: NotificationPopupCard(
                             badgeText: context.isArabic
                                 ? notifState.providerNotification.badgeTextAr

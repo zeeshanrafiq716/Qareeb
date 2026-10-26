@@ -183,7 +183,11 @@ class _BottomNavBarWidgetState extends ConsumerState<BottomNavBarWidget> {
                           fallbackBuilder(iconColor, isSelected),
                     ),
                   ),
-                  const SizedBox(height: 4.0), // gap between icon and label
+                  SizedBox(
+                    height: (tr.isArabic || Directionality.of(context) == TextDirection.rtl)
+                        ? 1.0
+                        : 4.0,
+                  ),
                   Text(
                     label,
                     textAlign: TextAlign.center,

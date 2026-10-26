@@ -219,7 +219,7 @@ class _RightChevronWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Transform.flip(
-      flipX: Directionality.of(context) == TextDirection.rtl,
+      flipX: context.isArabic || Directionality.of(context) == TextDirection.rtl,
       child: const CustomPaint(
         size: Size(5.0, 10.0),
         painter: _RightChevronPainter(),

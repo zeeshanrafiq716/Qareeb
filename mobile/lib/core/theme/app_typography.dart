@@ -41,14 +41,21 @@ class AppTypography {
     Color? decorationColor,
   }) {
     if (isArabic) {
+      // Cairo requires a clean line-height of at least 1.25 to prevent clipping of Arabic dots and diacritics
+      final double effectiveHeight = height != null
+          ? (height < 1.22 ? 1.22 : height)
+          : 1.28;
+
       return GoogleFonts.cairo(
         fontSize: fontSize,
         fontWeight: fontWeight,
         color: color,
-        height: height ?? 1.15,
+        height: effectiveHeight,
         letterSpacing: 0.0,
         decoration: decoration,
         decorationColor: decorationColor,
+      ).copyWith(
+        fontFamilyFallback: const ['Cairo', 'Tajawal', 'Segoe UI', 'Arial', 'sans-serif'],
       );
     } else {
       return GoogleFonts.inter(

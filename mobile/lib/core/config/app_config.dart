@@ -5,6 +5,7 @@ class AppConfig {
 
   static const String appName = 'Qareeb';
   static const String appVersion = '1.0.0';
+  static const String googleMapsApiKey = 'AIzaSyDpF68t3tu43hMcN969pPsub6QCzEwLBLE';
 
   /// Resolves the default backend base URL depending on platform:
   /// - Android Emulator: 10.0.2.2:3000

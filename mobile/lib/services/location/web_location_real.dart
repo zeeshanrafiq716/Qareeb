@@ -62,7 +62,7 @@ Future<Map<String, double>?> getPlatformCoordinates() async {
       final pos = await geo.getCurrentPosition(
         enableHighAccuracy: false,
         timeout: const Duration(seconds: 8),
-        maximumAge: const Duration(minutes: 2),
+        maximumAge: Duration.zero,
       );
       final res = _extractCoordinates(pos);
       if (res != null) return res;
@@ -88,7 +88,7 @@ Stream<Map<String, double>> watchPlatformCoordinates() {
       sub?.cancel();
       sub = geo.watchPosition(
         enableHighAccuracy: highAccuracy,
-        maximumAge: highAccuracy ? Duration.zero : const Duration(seconds: 15),
+        maximumAge: Duration.zero,
       ).listen(
         (pos) {
           final res = _extractCoordinates(pos);
@@ -100,6 +100,11 @@ Stream<Map<String, double>> watchPlatformCoordinates() {
           if (highAccuracy) {
             // If high accuracy errors out on PC, gracefully fall back to standard accuracy
             startWatching(highAccuracy: false);
+          } else {
+            // Location is OFF or permission denied: notify controller
+            if (!controller.isClosed) {
+              controller.addError(err);
+            }
           }
         },
       );

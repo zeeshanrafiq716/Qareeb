@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
 import 'service_in_progress_screen.dart';
 import 'widgets/top_down_car_widget.dart';
+import 'widgets/real_map_background_widget.dart';
 
 /// Screen displayed automatically when provider reaches the location.
 /// Follows the exact same layout and branding as LiveTrackingScreen,
@@ -130,34 +131,22 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                         child: Stack(
                           clipBehavior: Clip.none,
                           children: [
-                            // 1. Background Map Layer
+                            // 1. Live Real Slippy Map Layer
                             Positioned(
                               top: 0.0,
                               left: 0.0,
                               width: containerWidth,
                               height: 540.0,
-                              child: Image.asset(
-                                'assets/images/img.png',
-                                fit: BoxFit.cover,
-                                alignment: Alignment.topCenter,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Image.asset(
-                                  'assets/images/BG image.png',
-                                  fit: BoxFit.cover,
-                                  alignment: Alignment.topCenter,
-                                  errorBuilder:
-                                      (context, error, stackTrace) =>
-                                          Container(
-                                    color: const Color(0xFFF3F4F6),
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.map_outlined,
-                                        size: 48,
-                                        color: Color(0xFF9CA3AF),
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                              child: RealMapBackgroundWidget(
+                                enableDrag: true,
+                                zoom: 15.0,
+                                trackingStep: MapTrackingStep.arrived,
+                                driverName: widget.providerName,
+                                serviceCategory: widget.serviceCategory,
+                                vehicleName: 'Toyota Hilux',
+                                etaText: tr.isArabic ? 'وصل' : 'Arrived',
+                                distanceText: tr.zeroKm,
+                                showControls: true,
                               ),
                             ),
 
@@ -180,138 +169,6 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                         Color(0x00FFFFFF),
                                         Color(0x00FFFFFF),
                                       ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            // 3. Arrived Car Marker (positioned beside user destination pin)
-                            Positioned(
-                              top: 160.0,
-                              left: 155.0 + ((containerWidth - 390.0) / 2.0),
-                              child: AnimatedBuilder(
-                                animation: _pulseAnimation,
-                                builder: (context, child) {
-                                  return Transform.scale(
-                                    scale: _pulseAnimation.value,
-                                    child: child,
-                                  );
-                                },
-                                child: TopDownCarWidget(
-                                  width: 16.5,
-                                  height: 28.5,
-                                  angle: -30.0,
-                                  driverName: widget.providerName,
-                                  showBadge: true,
-                                  isSelected: true,
-                                  bodyColor: const Color(0xFFA67AFE),
-                                ),
-                              ),
-                            ),
-
-                            // 4. Location Marker Halo & Pin Branding
-                            Positioned(
-                              top: 153.0 - 12.0,
-                              left: (111.0 - 12.0) +
-                                  ((containerWidth - 390.0) / 2.0),
-                              width: 60.0,
-                              height: 56.0,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: const Color(0xFF8B53FE)
-                                      .withValues(alpha: 0.12),
-                                  border: Border.all(
-                                    color: const Color(0xFF8B53FE)
-                                        .withValues(alpha: 0.22),
-                                    width: 1.5,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              top: 153.0 - 5.0,
-                              left: (111.0 - 5.0) +
-                                  ((containerWidth - 390.0) / 2.0),
-                              width: 46.0,
-                              height: 46.0,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: const Color(0xFF8B53FE)
-                                      .withValues(alpha: 0.18),
-                                ),
-                              ),
-                            ),
-
-                            // Location icon branding
-                            Positioned(
-                              top: 153.0,
-                              left: 111.0 + ((containerWidth - 390.0) / 2.0),
-                              width: 36.0,
-                              height: 36.0,
-                              child: Container(
-                                width: 36.0,
-                                height: 36.0,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Color(0xFFF0EAFE),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Color(0x408B53FE),
-                                      blurRadius: 4.0,
-                                      spreadRadius: 0.0,
-                                    ),
-                                  ],
-                                ),
-                                padding: const EdgeInsets.all(4.0),
-                                child: Center(
-                                  child: Container(
-                                    width: 28.0,
-                                    constraints: const BoxConstraints(minHeight: 28.0),
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF8B53FE),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Center(
-                                      child: CustomPaint(
-                                        size: Size(13.0, 16.0),
-                                        painter: _LocationPinPainter(
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            // 5. Distance Badge: 0 km (Arrived)
-                            Positioned(
-                              top: 124.0,
-                              left: 119.0 + ((containerWidth - 390.0) / 2.0),
-                              width: 42.0,
-                              height: 26.0,
-                              child: CustomPaint(
-                                size: const Size(42.0, 26.0),
-                                painter: const _DistanceBadgeTooltipPainter(
-                                  color: Color(0xFF8B53FE),
-                                  cornerRadius: 4.0,
-                                  pointerX: 10.0,
-                                  pointerWidth: 8.0,
-                                  pointerHeight: 7.0,
-                                ),
-                                child: Align(
-                                  alignment: const Alignment(0.0, -0.45),
-                                  child: Text(
-                                    tr.zeroKm,
-                                    style: tr.font(
-                                      fontSize: 10.0,
-                                      fontWeight: FontWeight.w400,
-                                      color: const Color(0xFFFFFFFF),
-                                      height: 1.15,
-                                      letterSpacing: 0.0,
                                     ),
                                   ),
                                 ),
@@ -370,7 +227,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                           ),
                                           child: Center(
                                             child: Transform.scale(
-                                              scaleX: tr.isArabic ? -1.0 : 1.0,
+                                              scaleX: 1.0,
                                               child: const CustomPaint(
                                                 size: Size(6.0, 13.0),
                                                 painter: _BackChevronPainter(
@@ -487,15 +344,29 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                             ),
                             const SizedBox(height: 16.0),
 
-                            // content layout:
-                            // width: 350; gap: 20px;
-                            SizedBox(
-                              width: containerWidth >= 390
-                                  ? 350.0
-                                  : (containerWidth - 40.0).clamp(280.0, 350.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                            // content layout (Scrollable):
+                            Expanded(
+                              child: ScrollConfiguration(
+                                behavior: const MaterialScrollBehavior().copyWith(
+                                  scrollbars: false,
+                                  dragDevices: {
+                                    PointerDeviceKind.touch,
+                                    PointerDeviceKind.mouse,
+                                    PointerDeviceKind.trackpad,
+                                    PointerDeviceKind.stylus,
+                                  },
+                                ),
+                                child: SingleChildScrollView(
+                                  physics: const AlwaysScrollableScrollPhysics(
+                                    parent: BouncingScrollPhysics(),
+                                  ),
+                                  child: SizedBox(
+                                    width: containerWidth >= 390
+                                        ? 350.0
+                                        : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
                                   // content inner layout:
                                   SizedBox(
                                     width: containerWidth >= 390
@@ -1228,7 +1099,9 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                 ],
                               ),
                             ),
-                            const Spacer(),
+                          ),
+                        ),
+                      ),
 
                             // Bottom Bar Layout: width: 390; height: 24;
                             SizedBox(
@@ -1322,99 +1195,6 @@ class _BackChevronPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Top-down car graphic painter
-class _CarGraphicPainter extends CustomPainter {
-  final Color roofColor;
-  const _CarGraphicPainter({this.roofColor = const Color(0xFFA67AFE)});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    final bodyPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-
-    final borderPaint = Paint()
-      ..color = const Color(0xFF2C3A36)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8;
-
-    final bodyRRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(1.5, 1.0, w - 3.0, h - 2.0),
-      const Radius.circular(3.5),
-    );
-    canvas.drawRRect(bodyRRect, bodyPaint);
-    canvas.drawRRect(bodyRRect, borderPaint);
-
-    final glassPaint = Paint()
-      ..color = const Color(0xFF1F2937)
-      ..style = PaintingStyle.fill;
-
-    final windshieldRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(3.0, 5.0, w - 6.0, 3.5),
-      const Radius.circular(1.0),
-    );
-    canvas.drawRRect(windshieldRect, glassPaint);
-
-    final roofPaint = Paint()
-      ..color = roofColor
-      ..style = PaintingStyle.fill;
-
-    final roofRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(3.2, 9.0, w - 6.4, 7.0),
-      const Radius.circular(1.0),
-    );
-    canvas.drawRRect(roofRect, roofPaint);
-
-    final rearGlassRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(3.0, 16.5, w - 6.0, 2.5),
-      const Radius.circular(1.0),
-    );
-    canvas.drawRRect(rearGlassRect, glassPaint);
-
-    final tailPaint = Paint()
-      ..color = const Color(0xFFEF4444)
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(2.5, h - 2.5, 2.5, 1.0),
-        const Radius.circular(0.5),
-      ),
-      tailPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w - 5.0, h - 2.5, 2.5, 1.0),
-        const Radius.circular(0.5),
-      ),
-      tailPaint,
-    );
-
-    final headPaint = Paint()
-      ..color = const Color(0xFFE0F2FE)
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(2.5, 1.5, 2.5, 1.2),
-        const Radius.circular(0.5),
-      ),
-      headPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w - 5.0, 1.5, 2.5, 1.2),
-        const Radius.circular(0.5),
-      ),
-      headPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _CarGraphicPainter oldDelegate) =>
-      roofColor != oldDelegate.roofColor;
-}
 
 /// Location pin icon vector
 class _LocationPinPainter extends CustomPainter {

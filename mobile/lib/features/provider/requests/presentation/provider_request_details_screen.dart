@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,10 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/requests/presentation/provider_active_request_screen.dart';
 import 'package:mobile/features/location/presentation/widgets/top_down_car_widget.dart';
+import 'package:mobile/features/location/presentation/widgets/real_map_background_widget.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_scroll_behavior.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_header_back_button.dart';
-import 'package:mobile/features/provider/theme/provider_colors.dart';
-import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Request Details Screen
 /// Exact Figma specification matching user screenshot:
@@ -85,9 +83,22 @@ class _ProviderRequestDetailsScreenState
   static const double designWidth = 390.0;
   static const double designHeight = 843.0;
 
+  bool _isSheetExpanded = false;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isArabic = context.isArabic;
+    final cleanDistance = (isArabic ? widget.distanceAr : widget.distanceEn)
+        .replaceAll(' away', '')
+        .replaceAll('على بعد ', '')
+        .trim();
 
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -113,7 +124,10 @@ class _ProviderRequestDetailsScreenState
             final double containerHeight =
                 isDesktopWeb ? designHeight : constraints.maxHeight;
 
-            final double topSafeArea = MediaQuery.of(context).padding.top;
+            final double topSafeArea =
+                MediaQuery.maybeOf(context)?.padding.top ?? 0.0;
+            final double bottomSafeArea =
+                MediaQuery.maybeOf(context)?.padding.bottom ?? 0.0;
             final double headerTop =
                 topSafeArea > 0 ? (topSafeArea + 8.0) : 52.0;
 
@@ -133,29 +147,16 @@ class _ProviderRequestDetailsScreenState
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        // 1a. Background Map Layer
+                        // 1a. Live Real Slippy Map Layer
                         Positioned.fill(
-                          child: Image.asset(
-                            'assets/images/img.png',
-                            fit: BoxFit.cover,
-                            alignment: Alignment.topCenter,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Image.asset(
-                              'assets/images/BG image.png',
-                              fit: BoxFit.cover,
-                              alignment: Alignment.topCenter,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                color: const Color(0xFFF3F4F6),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.map_outlined,
-                                    size: 48,
-                                    color: Color(0xFF9CA3AF),
-                                  ),
-                                ),
-                              ),
-                            ),
+                          child: RealMapBackgroundWidget(
+                            enableDrag: true,
+                            zoom: 15.0,
+                            trackingStep: MapTrackingStep.onTheWay,
+                            driverName: isArabic ? 'أنت' : 'You',
+                            etaText: cleanDistance,
+                            distanceText: cleanDistance,
+                            showControls: true,
                           ),
                         ),
 
@@ -181,154 +182,6 @@ class _ProviderRequestDetailsScreenState
                           ),
                         ),
 
-                        // 1c. Purple Street Route Line:
-                        // Connecting the destination pin to the vehicle
-                        Positioned(
-                          top: 154.0,
-                          left: 110.0 + ((containerWidth - 390.0) / 2.0),
-                          width: 75.0,
-                          height: 72.0,
-                          child: const CustomPaint(
-                            size: Size(75.0, 72.0),
-                            painter: _StreetRoutePainter(
-                              color: Color(0xFF8B53FE),
-                              strokeWidth: 4.8,
-                            ),
-                          ),
-                        ),
-
-                        // 1d. Destination Location Pin Halo & Pin:
-                        // Outer soft purple halo
-                        Positioned(
-                          top: 132.0,
-                          left: 104.0 + ((containerWidth - 390.0) / 2.0),
-                          width: 48.0,
-                          height: 48.0,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: const Color(0xFF8B53FE).withValues(alpha: 0.16),
-                              border: Border.all(
-                                color: const Color(0xFF8B53FE).withValues(alpha: 0.28),
-                                width: 1.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Inner Pin Circle
-                        Positioned(
-                          top: 138.0,
-                          left: 110.0 + ((containerWidth - 390.0) / 2.0),
-                          width: 36.0,
-                          height: 36.0,
-                          child: Container(
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Color(0xFF8B53FE),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Color(0x4D8B53FE),
-                                  blurRadius: 8.0,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.location_on_rounded,
-                                size: 20.0,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // 1e. Purple Distance Tooltip Badge: "2.4 km"
-                        // Positioned directly above the pin with downward pointer
-                        Positioned(
-                          top: 104.0,
-                          left: 99.0 + ((containerWidth - 390.0) / 2.0),
-                          width: 58.0,
-                          height: 28.0,
-                          child: CustomPaint(
-                            size: const Size(58.0, 28.0),
-                            painter: const _TooltipSpeechBubblePainter(
-                              color: Color(0xFF8B53FE),
-                              cornerRadius: 6.0,
-                              pointerWidth: 8.0,
-                              pointerHeight: 6.0,
-                              shadowColor: Color(0x338B53FE),
-                            ),
-                            child: Align(
-                              alignment: const Alignment(0.0, -0.4),
-                              child: Text(
-                                (isArabic ? widget.distanceAr : widget.distanceEn)
-                                    .replaceAll(' away', '')
-                                    .replaceAll('على بعد ', '')
-                                    .trim(),
-                                style: isArabic
-                                    ? GoogleFonts.cairo(
-                                        fontSize: 11.0,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                        height: 1.0,
-                                      )
-                                    : GoogleFonts.inter(
-                                        fontSize: 11.0,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                        height: 1.0,
-                                      ),
-                                maxLines: 1,
-                                softWrap: false,
-                                overflow: TextOverflow.visible,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // 1f. Top-Down Vehicle Car (Angled along the street):
-                        Positioned(
-                          top: 215.0,
-                          left: 172.0 + ((containerWidth - 390.0) / 2.0),
-                          child: TopDownCarWidget(
-                            width: 17.0,
-                            height: 29.0,
-                            angle: -48.0,
-                            showBadge: false,
-                            bodyColor: const Color(0xFF8B53FE),
-                          ),
-                        ),
-
-                        // 1g. White Speech-Bubble Tooltip above Car: "You" (as in user screenshot)
-                        Positioned(
-                          top: 179.0,
-                          left: 162.0 + ((containerWidth - 390.0) / 2.0),
-                          width: 44.0,
-                          height: 30.0,
-                          child: CustomPaint(
-                            size: const Size(44.0, 30.0),
-                            painter: const _TooltipSpeechBubblePainter(
-                              color: Colors.white,
-                              cornerRadius: 8.0,
-                              pointerWidth: 8.0,
-                              pointerHeight: 6.0,
-                              shadowColor: Color(0x22000000),
-                            ),
-                            child: Align(
-                              alignment: const Alignment(0.0, -0.45),
-                              child: Text(
-                                isArabic ? 'أنت' : 'You',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11.0,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF1C2926),
-                                  height: 1.1,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
 
                         // 1h. Landmark Indicator: "Al Nakheel Mall / النخيل مول"
                         Positioned(
@@ -469,26 +322,23 @@ class _ProviderRequestDetailsScreenState
                     ),
                   ),
 
-                  // 3. Exact Figma Card Layout:
-                  // width: 390; height: 553; top: 291px;
-                  // border-top-left-radius: 28px; border-top-right-radius: 28px;
-                  // border-bottom-right-radius: 28px; border-bottom-left-radius: 20px;
-                  // background: #FFFFFF; box-shadow: 0px -2px 12px 0px #00000014;
-                  Positioned(
-                    top: 291.0,
+                  // 3. User-friendly Expandable & Scrollable Bottom Card
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 320),
+                    curve: Curves.easeOutCubic,
+                    top: _isSheetExpanded
+                        ? (topSafeArea > 0 ? (topSafeArea + 50.0) : 88.0)
+                        : 291.0,
                     left: 0,
                     right: 0,
-                    height: 553.0,
+                    bottom: 0,
                     child: Container(
                       width: containerWidth,
-                      height: 553.0,
                       decoration: const BoxDecoration(
                         color: Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(28.0),
                           topRight: Radius.circular(28.0),
-                          bottomRight: Radius.circular(28.0),
-                          bottomLeft: Radius.circular(20.0),
                         ),
                         boxShadow: [
                           BoxShadow(
@@ -499,209 +349,206 @@ class _ProviderRequestDetailsScreenState
                           ),
                         ],
                       ),
-                      child: Stack(
+                      child: Column(
                         children: [
-                          // row 1 branding:
-                          // width: 350; height: 52; top: 32px; left: 20px; gap: 16px; border-radius: 16px;
-                          Positioned(
-                            top: 32.0,
-                            left: 20.0,
-                            right: 20.0,
-                            height: 52.0,
+                          // Interactive Drag Handle Bar (Tap or drag up/down to expand/collapse)
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              setState(() {
+                                _isSheetExpanded = !_isSheetExpanded;
+                              });
+                            },
+                            onVerticalDragEnd: (details) {
+                              if (details.primaryVelocity != null) {
+                                if (details.primaryVelocity! < -80) {
+                                  HapticFeedback.lightImpact();
+                                  setState(() => _isSheetExpanded = true);
+                                } else if (details.primaryVelocity! > 80) {
+                                  HapticFeedback.lightImpact();
+                                  setState(() => _isSheetExpanded = false);
+                                }
+                              }
+                            },
                             child: Container(
-                              width: 350.0,
-                              height: 52.0,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16.0),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  // img layout: width: 52; height: 52; border-radius: 12px;
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(12.0),
-                                    child: Image.asset(
-                                      'assets/images/img.png',
-                                      width: 52.0,
-                                      height: 52.0,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Container(
-                                          width: 52.0,
-                                          height: 52.0,
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFF3F2F5),
-                                            borderRadius: BorderRadius.circular(12.0),
-                                          ),
-                                          child: const Icon(
-                                            Icons.car_repair_rounded,
-                                            color: Color(0xFF8B53FE),
-                                            size: 26.0,
-                                          ),
-                                        );
-                                      },
-                                    ),
+                              width: double.infinity,
+                              padding: const EdgeInsets.only(top: 10.0, bottom: 8.0),
+                              color: Colors.transparent,
+                              child: Center(
+                                child: Container(
+                                  width: 44.0,
+                                  height: 4.0,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE0DFE4),
+                                    borderRadius: BorderRadius.circular(100.0),
                                   ),
-
-                                  const SizedBox(width: 16.0), // gap: 16px
-
-                                  // content layout: width: 282; height: 33; gap: 16px;
-                                  Expanded(
-                                    child: SizedBox(
-                                      height: 33.0,
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          // content 1st row : width: 282; height: 10; justify-content: space-between;
-                                          SizedBox(
-                                            height: 14.0,
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                              crossAxisAlignment: CrossAxisAlignment.center,
-                                              children: [
-                                                // Battery Jump Start
-                                                Text(
-                                                  isArabic ? widget.serviceTypeAr : widget.serviceTypeEn,
-                                                  style: isArabic
-                                                      ? GoogleFonts.cairo(
-                                                          fontSize: 14.0,
-                                                          fontWeight: FontWeight.w500,
-                                                          color: const Color(0xFF252527),
-                                                          height: 1.0,
-                                                        )
-                                                      : GoogleFonts.inter(
-                                                          fontSize: 14.0,
-                                                          fontWeight: FontWeight.w500,
-                                                          color: const Color(0xFF252527),
-                                                          height: 1.0,
-                                                        ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-
-                                          // 2nd row of content layout: width: 235; height: 7; gap: 8px;
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment: CrossAxisAlignment.center,
-                                            children: [
-                                              // From Faisal Al-Harbi
-                                              Text(
-                                                isArabic ? 'من فيصل الحربي' : 'From Faisal Al-Harbi',
-                                                style: isArabic
-                                                    ? GoogleFonts.cairo(
-                                                        fontSize: 10.0,
-                                                        fontWeight: FontWeight.w400,
-                                                        color: const Color(0xFF616166),
-                                                        height: 1.0,
-                                                      )
-                                                    : GoogleFonts.inter(
-                                                        fontSize: 10.0,
-                                                        fontWeight: FontWeight.w400,
-                                                        color: const Color(0xFF616166),
-                                                        height: 1.0,
-                                                      ),
-                                              ),
-
-                                              const SizedBox(width: 8.0), // gap: 8px
-
-                                              // ellipse branding: width: 4; height: 4; background: #616166;
-                                              Container(
-                                                width: 4.0,
-                                                height: 4.0,
-                                                decoration: const BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: Color(0xFF616166),
-                                                ),
-                                              ),
-
-                                              const SizedBox(width: 8.0), // gap: 8px
-
-                                              // King Abdullah Rd, Riyadh
-                                              Flexible(
-                                                child: Text(
-                                                  isArabic ? widget.locationAr : widget.locationEn,
-                                                  style: isArabic
-                                                      ? GoogleFonts.cairo(
-                                                          fontSize: 10.0,
-                                                          fontWeight: FontWeight.w400,
-                                                          color: const Color(0xFF616166),
-                                                          height: 1.0,
-                                                        )
-                                                      : GoogleFonts.inter(
-                                                          fontSize: 10.0,
-                                                          fontWeight: FontWeight.w400,
-                                                          color: const Color(0xFF616166),
-                                                          height: 1.0,
-                                                        ),
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
                           ),
 
-                          // content layout: width: 350; height: 324; top: 100px; left: 20px; gap: 12px;
-                          Positioned(
-                            top: 100.0,
-                            left: 20.0,
-                            right: 20.0,
-                            height: 324.0,
-                            child: SingleChildScrollView(
-                              physics: const BouncingScrollPhysics(),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // 1st row card layout:
-                                  // width: 350; height: 68; gap: 12px; border-radius: 12px; padding: 16px; background: #F3F2F5;
-                                  Container(
-                                    width: 350.0,
-                                    height: 68.0,
-                                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 15.0),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF3F2F5),
-                                      borderRadius: BorderRadius.circular(12.0),
-                                    ),
-                                    child: Row(
+                          // Complete Card Content Area (Scrollable with AlwaysScrollableScrollPhysics)
+                          Expanded(
+                            child: ScrollConfiguration(
+                              behavior: const ProviderCardScrollBehavior(),
+                              child: SingleChildScrollView(
+                                controller: _scrollController,
+                                physics: const AlwaysScrollableScrollPhysics(
+                                  parent: BouncingScrollPhysics(),
+                                ),
+                                padding: EdgeInsets.fromLTRB(20.0, 6.0, 20.0, bottomSafeArea > 0 ? (bottomSafeArea + 24.0) : 24.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // 3a. Row 1: Service Image + Service Title + Client Name & Location
+                                    Row(
                                       crossAxisAlignment: CrossAxisAlignment.center,
                                       children: [
-                                        // inner branding: icon layout:
-                                        // width: 36; height: 36; border-radius: 8px; background: #E7E6EB;
-                                        Container(
-                                          width: 36.0,
-                                          height: 36.0,
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFE7E6EB),
-                                            borderRadius: BorderRadius.circular(8.0),
-                                          ),
-                                          child: const Center(
-                                            child: Icon(
-                                              Icons.location_on_rounded,
-                                              size: 18.0,
-                                              color: Color(0xFF252527),
-                                            ),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(12.0),
+                                          child: Image.asset(
+                                            widget.imageAsset.isNotEmpty
+                                                ? widget.imageAsset
+                                                : 'assets/images/img.png',
+                                            width: 52.0,
+                                            height: 52.0,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) {
+                                              return Container(
+                                                width: 52.0,
+                                                height: 52.0,
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFF3F2F5),
+                                                  borderRadius: BorderRadius.circular(12.0),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.car_repair_rounded,
+                                                  color: Color(0xFF8B53FE),
+                                                  size: 26.0,
+                                                ),
+                                              );
+                                            },
                                           ),
                                         ),
 
-                                        const SizedBox(width: 12.0), // gap: 12px
+                                        const SizedBox(width: 16.0),
 
-                                        // content branding: width: 144; height: 26; gap: 10px;
                                         Expanded(
-                                          child: SizedBox(
-                                            height: 28.0,
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                isArabic ? widget.serviceTypeAr : widget.serviceTypeEn,
+                                                style: isArabic
+                                                    ? GoogleFonts.cairo(
+                                                        fontSize: 14.0,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: const Color(0xFF252527),
+                                                        height: 1.2,
+                                                      )
+                                                    : GoogleFonts.inter(
+                                                        fontSize: 14.0,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: const Color(0xFF252527),
+                                                        height: 1.2,
+                                                      ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 4.0),
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                crossAxisAlignment: CrossAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    isArabic ? 'من فيصل الحربي' : 'From Faisal Al-Harbi',
+                                                    style: isArabic
+                                                        ? GoogleFonts.cairo(
+                                                            fontSize: 10.0,
+                                                            fontWeight: FontWeight.w400,
+                                                            color: const Color(0xFF616166),
+                                                            height: 1.0,
+                                                          )
+                                                        : GoogleFonts.inter(
+                                                            fontSize: 10.0,
+                                                            fontWeight: FontWeight.w400,
+                                                            color: const Color(0xFF616166),
+                                                            height: 1.0,
+                                                          ),
+                                                  ),
+                                                  const SizedBox(width: 8.0),
+                                                  Container(
+                                                    width: 4.0,
+                                                    height: 4.0,
+                                                    decoration: const BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: Color(0xFF616166),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8.0),
+                                                  Flexible(
+                                                    child: Text(
+                                                      isArabic ? widget.locationAr : widget.locationEn,
+                                                      style: isArabic
+                                                          ? GoogleFonts.cairo(
+                                                              fontSize: 10.0,
+                                                              fontWeight: FontWeight.w400,
+                                                              color: const Color(0xFF616166),
+                                                              height: 1.0,
+                                                            )
+                                                          : GoogleFonts.inter(
+                                                              fontSize: 10.0,
+                                                              fontWeight: FontWeight.w400,
+                                                              color: const Color(0xFF616166),
+                                                              height: 1.0,
+                                                            ),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    const SizedBox(height: 14.0),
+
+                                    // 3b. Customer Location Card
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 15.0),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF3F2F5),
+                                        borderRadius: BorderRadius.circular(12.0),
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            width: 36.0,
+                                            height: 36.0,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFE7E6EB),
+                                              borderRadius: BorderRadius.circular(8.0),
+                                            ),
+                                            child: const Center(
+                                              child: Icon(
+                                                Icons.location_on_rounded,
+                                                size: 18.0,
+                                                color: Color(0xFF252527),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12.0),
+                                          Expanded(
                                             child: Column(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              mainAxisSize: MainAxisSize.min,
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                // Customer Location: width: 144; height: 7; font-size: 10px; Inter 400; color: #616166;
                                                 Text(
                                                   isArabic ? 'موقع العميل' : 'Customer Location',
                                                   style: isArabic
@@ -720,8 +567,7 @@ class _ProviderRequestDetailsScreenState
                                                   maxLines: 1,
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
-
-                                                // King Abdullah Rd, Riyadh: width: 144; height: 9; font-size: 12px; Inter 500; line-height: 24px; color: #252527;
+                                                const SizedBox(height: 4.0),
                                                 Text(
                                                   isArabic ? widget.locationAr : widget.locationEn,
                                                   style: isArabic
@@ -743,22 +589,16 @@ class _ProviderRequestDetailsScreenState
                                               ],
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
 
-                                  const SizedBox(height: 12.0), // gap: 12px
+                                    const SizedBox(height: 12.0),
 
-                                  // next row layout:
-                                  // width: 350; height: 64; gap: 12px;
-                                  SizedBox(
-                                    width: 350.0,
-                                    height: 64.0,
-                                    child: Row(
+                                    // 3c. Distance Away & Estimated Time Twin Cards
+                                    Row(
                                       children: [
-                                        // 1st card branding:
-                                        // width: 169; height: 64; gap: 12px; border-radius: 12px; padding: 16px; background: #F3F2F5;
+                                        // 1st Card: Distance Away
                                         Expanded(
                                           child: Container(
                                             height: 64.0,
@@ -770,7 +610,6 @@ class _ProviderRequestDetailsScreenState
                                             child: Row(
                                               crossAxisAlignment: CrossAxisAlignment.center,
                                               children: [
-                                                // Location icon circular badge: width: 36; height: 36; background: #E7E6EB;
                                                 Container(
                                                   width: 36.0,
                                                   height: 36.0,
@@ -786,10 +625,7 @@ class _ProviderRequestDetailsScreenState
                                                     ),
                                                   ),
                                                 ),
-
-                                                const SizedBox(width: 12.0), // gap: 12px
-
-                                                // 2.4 km / Distance Away
+                                                const SizedBox(width: 12.0),
                                                 Expanded(
                                                   child: Column(
                                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -833,10 +669,9 @@ class _ProviderRequestDetailsScreenState
                                           ),
                                         ),
 
-                                        const SizedBox(width: 12.0), // equal gap: 12px
+                                        const SizedBox(width: 12.0),
 
-                                        // 2nd card branding (Estimated time):
-                                        // width: 169; height: 64; gap: 12px; border-radius: 12px; padding: 16px; background: #F3F2F5;
+                                        // 2nd Card: Estimated Time
                                         Expanded(
                                           child: Container(
                                             height: 64.0,
@@ -848,7 +683,6 @@ class _ProviderRequestDetailsScreenState
                                             child: Row(
                                               crossAxisAlignment: CrossAxisAlignment.center,
                                               children: [
-                                                // Clock icon circular badge: width: 36; height: 36; background: #E7E6EB;
                                                 Container(
                                                   width: 36.0,
                                                   height: 36.0,
@@ -864,10 +698,7 @@ class _ProviderRequestDetailsScreenState
                                                     ),
                                                   ),
                                                 ),
-
-                                                const SizedBox(width: 12.0), // gap: 12px
-
-                                                // 8 min / Estimated time
+                                                const SizedBox(width: 12.0),
                                                 Expanded(
                                                   child: Column(
                                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -919,223 +750,218 @@ class _ProviderRequestDetailsScreenState
                                         ),
                                       ],
                                     ),
-                                  ),
 
-                                  const SizedBox(height: 12.0), // gap: 12px
+                                    const SizedBox(height: 12.0),
 
-                                  // Customer Card (Matching user screenshot)
-                                  Container(
-                                            width: 350.0,
-                                            padding: const EdgeInsets.all(16.0),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF3F2F5),
-                                              borderRadius: BorderRadius.circular(16.0),
-                                            ),
-                                            child: Column(
-                                              children: [
-                                                Row(
-                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                                  children: [
-                                                    // Avatar + Customer info
-                                                    Row(
-                                                      children: [
-                                                        ClipOval(
-                                                          child: Image.asset(
-                                                            'assets/images/ahmed_khan.jpg',
-                                                            width: 44.0,
-                                                            height: 44.0,
-                                                            fit: BoxFit.cover,
-                                                            errorBuilder: (context, error, stackTrace) => Image.asset(
-                                                              'assets/images/img.png',
-                                                              width: 44.0,
-                                                              height: 44.0,
-                                                              fit: BoxFit.cover,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        const SizedBox(width: 12.0),
-                                                        Column(
-                                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                                          children: [
-                                                            Text(
-                                                              isArabic ? 'العميل' : 'Customer',
-                                                              style: isArabic
-                                                                  ? GoogleFonts.cairo(
-                                                                      fontSize: 11.0,
-                                                                      fontWeight: FontWeight.w400,
-                                                                      color: const Color(0xFF75757A),
-                                                                    )
-                                                                  : GoogleFonts.inter(
-                                                                      fontSize: 11.0,
-                                                                      fontWeight: FontWeight.w400,
-                                                                      color: const Color(0xFF75757A),
-                                                                    ),
-                                                            ),
-                                                            const SizedBox(height: 2.0),
-                                                            Text(
-                                                              isArabic ? 'أحمد خان' : 'Ahmed Khan',
-                                                              style: isArabic
-                                                                  ? GoogleFonts.cairo(
-                                                                      fontSize: 15.0,
-                                                                      fontWeight: FontWeight.w600,
-                                                                      color: const Color(0xFF1C1C1E),
-                                                                    )
-                                                                  : GoogleFonts.inter(
-                                                                      fontSize: 15.0,
-                                                                      fontWeight: FontWeight.w600,
-                                                                      color: const Color(0xFF1C1C1E),
-                                                                    ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ],
-                                                    ),
-
-                                                    // Contact Buttons: WhatsApp green, Call dark #252527
-                                                    Row(
-                                                      children: [
-                                                        // WhatsApp Button
-                                                        GestureDetector(
-                                                          onTap: () {
-                                                            HapticFeedback.lightImpact();
-                                                            ScaffoldMessenger.of(context).showSnackBar(
-                                                              SnackBar(
-                                                                content: Text(
-                                                                  isArabic ? 'جاري فتح واتساب...' : 'Opening WhatsApp...',
-                                                                  style: GoogleFonts.inter(color: Colors.white),
-                                                                ),
-                                                                duration: const Duration(seconds: 1),
-                                                              ),
-                                                            );
-                                                         },
-                                                          child: Container(
-                                                            width: 38.0,
-                                                            height: 38.0,
-                                                            decoration: const BoxDecoration(
-                                                              shape: BoxShape.circle,
-                                                              color: Color(0xFF25D366),
-                                                            ),
-                                                            child: const Center(
-                                                              child: SizedBox(
-                                                                width: 20.0,
-                                                                height: 20.0,
-                                                                child: CustomPaint(
-                                                                  painter: _OfficialWhatsAppLogoPainter(),
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        const SizedBox(width: 10.0),
-                                                        // Call Button (dark #252527)
-                                                        GestureDetector(
-                                                          onTap: () {
-                                                            HapticFeedback.lightImpact();
-                                                            ScaffoldMessenger.of(context).showSnackBar(
-                                                              SnackBar(
-                                                                content: Text(
-                                                                  isArabic ? 'جاري الاتصال بالعميل...' : 'Calling client...',
-                                                                  style: GoogleFonts.inter(color: Colors.white),
-                                                                ),
-                                                                duration: const Duration(seconds: 1),
-                                                              ),
-                                                            );
-                                                          },
-                                                          child: Container(
-                                                            width: 38.0,
-                                                            height: 38.0,
-                                                            decoration: const BoxDecoration(
-                                                              shape: BoxShape.circle,
-                                                              color: Color(0xFF252527),
-                                                            ),
-                                                            child: const Center(
-                                                              child: Icon(Icons.phone_rounded, size: 18.0, color: Colors.white),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
-
-                                                const SizedBox(height: 14.0),
-
-                                                // Vehicle row: Toyota Corolla | Plate badge KSA 1234
-                                                Row(
-                                                  children: [
-                                                    const Icon(Icons.directions_car_rounded, size: 18.0, color: Color(0xFF252527)),
-                                                    const SizedBox(width: 8.0),
-                                                    Text(
-                                                      isArabic ? 'تويوتا كورولا' : 'Toyota Corolla',
-                                                      style: isArabic
-                                                          ? GoogleFonts.cairo(
-                                                              fontSize: 13.0,
-                                                              fontWeight: FontWeight.w500,
-                                                              color: const Color(0xFF252527),
-                                                            )
-                                                          : GoogleFonts.inter(
-                                                              fontSize: 13.0,
-                                                              fontWeight: FontWeight.w500,
-                                                              color: const Color(0xFF252527),
-                                                            ),
-                                                    ),
-                                                    const SizedBox(width: 12.0),
-                                                    Container(width: 1.0, height: 14.0, color: const Color(0xFFE0DFE4)),
-                                                    const SizedBox(width: 12.0),
-                                                    // Plate icon badge matching screenshot
-                                                    Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 2.0),
-                                                      decoration: BoxDecoration(
-                                                        border: Border.all(color: const Color(0xFF9E9EA4), width: 1.0),
-                                                        borderRadius: BorderRadius.circular(3.5),
-                                                      ),
-                                                      child: Row(
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        children: [
-                                                          Container(width: 1.0, height: 7.5, color: const Color(0xFF75757A)),
-                                                          const SizedBox(width: 2.0),
-                                                          Container(width: 1.0, height: 7.5, color: const Color(0xFF75757A)),
-                                                          const SizedBox(width: 2.0),
-                                                          Container(width: 1.0, height: 7.5, color: const Color(0xFF75757A)),
-                                                        ],
+                                    // 3d. Customer Card (Avatar, Name, WhatsApp, Call, Vehicle, Plate)
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(16.0),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF3F2F5),
+                                        borderRadius: BorderRadius.circular(16.0),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            crossAxisAlignment: CrossAxisAlignment.center,
+                                            children: [
+                                              // Avatar + Customer info
+                                              Row(
+                                                children: [
+                                                  ClipOval(
+                                                    child: Image.asset(
+                                                      'assets/images/ahmed_khan.jpg',
+                                                      width: 44.0,
+                                                      height: 44.0,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                                                        'assets/images/img.png',
+                                                        width: 44.0,
+                                                        height: 44.0,
+                                                        fit: BoxFit.cover,
                                                       ),
                                                     ),
-                                                    const SizedBox(width: 6.0),
-                                                    Text(
-                                                      'KSA 1234',
-                                                      style: GoogleFonts.inter(
-                                                        fontSize: 12.0,
-                                                        fontWeight: FontWeight.w500,
-                                                        color: const Color(0xFF5E5E63),
+                                                  ),
+                                                  const SizedBox(width: 12.0),
+                                                  Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        isArabic ? 'العميل' : 'Customer',
+                                                        style: isArabic
+                                                            ? GoogleFonts.cairo(
+                                                                fontSize: 11.0,
+                                                                fontWeight: FontWeight.w400,
+                                                                color: const Color(0xFF75757A),
+                                                              )
+                                                            : GoogleFonts.inter(
+                                                                fontSize: 11.0,
+                                                                fontWeight: FontWeight.w400,
+                                                                color: const Color(0xFF75757A),
+                                                              ),
+                                                      ),
+                                                      const SizedBox(height: 2.0),
+                                                      Text(
+                                                        isArabic ? 'أحمد خان' : 'Ahmed Khan',
+                                                        style: isArabic
+                                                            ? GoogleFonts.cairo(
+                                                                fontSize: 15.0,
+                                                                fontWeight: FontWeight.w600,
+                                                                color: const Color(0xFF1C1C1E),
+                                                              )
+                                                            : GoogleFonts.inter(
+                                                                fontSize: 15.0,
+                                                                fontWeight: FontWeight.w600,
+                                                                color: const Color(0xFF1C1C1E),
+                                                              ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+
+                                              // Contact Buttons: WhatsApp green, Call dark #252527
+                                              Row(
+                                                children: [
+                                                  // WhatsApp Button
+                                                  GestureDetector(
+                                                    onTap: () {
+                                                      HapticFeedback.lightImpact();
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            isArabic ? 'جاري فتح واتساب...' : 'Opening WhatsApp...',
+                                                            style: GoogleFonts.inter(color: Colors.white),
+                                                          ),
+                                                          duration: const Duration(seconds: 1),
+                                                        ),
+                                                      );
+                                                    },
+                                                    child: Container(
+                                                      width: 38.0,
+                                                      height: 38.0,
+                                                      decoration: const BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        color: Color(0xFF25D366),
+                                                      ),
+                                                      child: const Center(
+                                                        child: SizedBox(
+                                                          width: 20.0,
+                                                          height: 20.0,
+                                                          child: CustomPaint(
+                                                            painter: _OfficialWhatsAppLogoPainter(),
+                                                          ),
+                                                        ),
                                                       ),
                                                     ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
+                                                  ),
+                                                  const SizedBox(width: 10.0),
+                                                  // Call Button (dark #252527)
+                                                  GestureDetector(
+                                                    onTap: () {
+                                                      HapticFeedback.lightImpact();
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            isArabic ? 'جاري الاتصال بالعميل...' : 'Calling client...',
+                                                            style: GoogleFonts.inter(color: Colors.white),
+                                                          ),
+                                                          duration: const Duration(seconds: 1),
+                                                        ),
+                                                      );
+                                                    },
+                                                    child: Container(
+                                                      width: 38.0,
+                                                      height: 38.0,
+                                                      decoration: const BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        color: Color(0xFF252527),
+                                                      ),
+                                                      child: const Center(
+                                                        child: Icon(Icons.phone_rounded, size: 18.0, color: Colors.white),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
                                           ),
 
-                                          const SizedBox(height: 12.0),
+                                          const SizedBox(height: 14.0),
 
-                                          // Customer Note Card (Matching user screenshot & exact Figma specs)
-                                          Container(
-                                    width: 350.0,
-                                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 15.0),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF3F2F5),
-                                      borderRadius: BorderRadius.circular(12.0),
+                                          // Vehicle row: Toyota Corolla | Plate badge KSA 1234
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.directions_car_rounded, size: 18.0, color: Color(0xFF252527)),
+                                              const SizedBox(width: 8.0),
+                                              Text(
+                                                isArabic ? 'تويوتا كورولا' : 'Toyota Corolla',
+                                                style: isArabic
+                                                    ? GoogleFonts.cairo(
+                                                        fontSize: 13.0,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: const Color(0xFF252527),
+                                                      )
+                                                    : GoogleFonts.inter(
+                                                        fontSize: 13.0,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: const Color(0xFF252527),
+                                                      ),
+                                              ),
+                                              const SizedBox(width: 12.0),
+                                              Container(width: 1.0, height: 14.0, color: const Color(0xFFE0DFE4)),
+                                              const SizedBox(width: 12.0),
+                                              // Plate icon badge matching screenshot
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 2.0),
+                                                decoration: BoxDecoration(
+                                                  border: Border.all(color: const Color(0xFF9E9EA4), width: 1.0),
+                                                  borderRadius: BorderRadius.circular(3.5),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Container(width: 1.0, height: 7.5, color: const Color(0xFF75757A)),
+                                                    const SizedBox(width: 2.0),
+                                                    Container(width: 1.0, height: 7.5, color: const Color(0xFF75757A)),
+                                                    const SizedBox(width: 2.0),
+                                                    Container(width: 1.0, height: 7.5, color: const Color(0xFF75757A)),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6.0),
+                                              Text(
+                                                'KSA 1234',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 12.0,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: const Color(0xFF5E5E63),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: [
-                                        // Custom notepad / calendar icon on #F3F2F5
-                                        const _CustomerNoteIcon(),
-                                        const SizedBox(width: 11.0),
-                                        // last card content layout: width: 283; height: 26; gap: 10px;
-                                        Expanded(
-                                          child: SizedBox(
-                                            width: 283.0,
+
+                                    const SizedBox(height: 12.0),
+
+                                    // 3e. Customer Note Card
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 15.0),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF3F2F5),
+                                        borderRadius: BorderRadius.circular(12.0),
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          const _CustomerNoteIcon(),
+                                          const SizedBox(width: 11.0),
+                                          Expanded(
                                             child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               mainAxisSize: MainAxisSize.min,
@@ -1160,7 +986,7 @@ class _ProviderRequestDetailsScreenState
                                                   maxLines: 1,
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
-                                                const SizedBox(height: 6.0), // gap: 10px
+                                                const SizedBox(height: 6.0),
                                                 Text(
                                                   isArabic
                                                       ? 'البطارية فارغة والسيارة لا تعمل. أحتاج إلى شحن بطارية.'
@@ -1170,183 +996,165 @@ class _ProviderRequestDetailsScreenState
                                                           fontSize: 10.0,
                                                           fontWeight: FontWeight.w400,
                                                           color: const Color(0xFF616166),
-                                                          height: 1.1,
+                                                          height: 1.2,
                                                           letterSpacing: 0.0,
                                                         )
                                                       : GoogleFonts.inter(
                                                           fontSize: 10.0,
                                                           fontWeight: FontWeight.w400,
                                                           color: const Color(0xFF616166),
-                                                          height: 1.1,
+                                                          height: 1.2,
                                                           letterSpacing: 0.0,
                                                         ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
                                                 ),
                                               ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 16.0),
+
+                                    // 3f. Action Buttons: Decline & Accept Request
+                                    Row(
+                                      children: [
+                                        // Decline button
+                                        Expanded(
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              HapticFeedback.lightImpact();
+                                              Navigator.of(context).maybePop();
+                                            },
+                                            child: Container(
+                                              height: 52.0,
+                                              padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFFFEBEB),
+                                                borderRadius: BorderRadius.circular(12.0),
+                                              ),
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                isArabic ? 'رفض' : 'Decline',
+                                                style: isArabic
+                                                    ? GoogleFonts.cairo(
+                                                        fontSize: 14.0,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: const Color(0xFFFF383C),
+                                                        height: 1.2,
+                                                        letterSpacing: 0.0,
+                                                      )
+                                                    : GoogleFonts.inter(
+                                                        fontSize: 14.0,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: const Color(0xFFFF383C),
+                                                        height: 1.2,
+                                                        letterSpacing: 0.0,
+                                                      ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+
+                                        const SizedBox(width: 12.0),
+
+                                        // Accept button
+                                        Expanded(
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              HapticFeedback.mediumImpact();
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  backgroundColor: const Color(0xFF8B53FE),
+                                                  content: Text(
+                                                    isArabic
+                                                        ? 'تم قبول الطلب بنجاح!'
+                                                        : 'Request Accepted Successfully!',
+                                                    style: GoogleFonts.inter(color: Colors.white),
+                                                  ),
+                                                  duration: const Duration(seconds: 1),
+                                                ),
+                                              );
+                                              Navigator.of(context).pushReplacement(
+                                                MaterialPageRoute(
+                                                  builder: (_) => ProviderActiveRequestScreen(
+                                                    requestId: widget.requestId,
+                                                    serviceTypeEn: widget.serviceTypeEn,
+                                                    serviceTypeAr: widget.serviceTypeAr,
+                                                    locationEn: widget.locationEn,
+                                                    locationAr: widget.locationAr,
+                                                    distanceEn: widget.distanceEn,
+                                                    distanceAr: widget.distanceAr,
+                                                    timeEn: '8 min',
+                                                    timeAr: '٨ دقائق',
+                                                    customerNameEn: 'Ahmed Khan',
+                                                    customerNameAr: 'أحمد خان',
+                                                    vehicleModelEn: 'Toyota Corolla',
+                                                    vehicleModelAr: 'تويوتا كورولا',
+                                                    plateNumber: 'KSA 1234',
+                                                    customerNoteEn: 'Battery is dead and the car won’t start. Need a jump start.',
+                                                    customerNoteAr: 'البطارية فارغة والسيارة لا تعمل. أحتاج إلى شحن بطارية.',
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            child: Container(
+                                              height: 52.0,
+                                              padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF8B53FE),
+                                                borderRadius: BorderRadius.circular(12.0),
+                                                boxShadow: const [
+                                                  BoxShadow(
+                                                    color: Color(0x338B53FE),
+                                                    blurRadius: 10.0,
+                                                    offset: Offset(0, 4),
+                                                  ),
+                                                ],
+                                              ),
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                isArabic ? 'قبول الطلب' : 'Accept Request',
+                                                style: isArabic
+                                                    ? GoogleFonts.cairo(
+                                                        fontSize: 14.0,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: Colors.white,
+                                                        height: 1.2,
+                                                        letterSpacing: 0.0,
+                                                      )
+                                                    : GoogleFonts.inter(
+                                                        fontSize: 14.0,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: Colors.white,
+                                                        height: 1.2,
+                                                        letterSpacing: 0.0,
+                                                      ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ),
 
-                                ],
-                              ),
-                            ),
-                          ),
+                                    const SizedBox(height: 16.0),
 
-                          // buttons layout branding:
-                          // width: 350; height: 52; top: 451px; left: 20px; gap: 12px;
-                          Positioned(
-                            top: 451.0,
-                            left: 20.0,
-                            right: 20.0,
-                            height: 52.0,
-                            child: SizedBox(
-                              width: 350.0,
-                              height: 52.0,
-                              child: Row(
-                                children: [
-                                  // decline button layout:
-                                  // width: 169; height: 52; gap: 10px; border-radius: 12px; padding: 16px 53px; background: #FFEBEB;
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        HapticFeedback.lightImpact();
-                                        Navigator.of(context).maybePop();
-                                      },
+                                    // 3g. Bottom Home Indicator Bar (with dynamic safe-area)
+                                    Center(
                                       child: Container(
-                                        height: 52.0,
-                                        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
+                                        width: 134.0,
+                                        height: 5.0,
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFFFEBEB),
-                                          borderRadius: BorderRadius.circular(12.0),
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          isArabic ? 'رفض' : 'Decline',
-                                          style: isArabic
-                                              ? GoogleFonts.cairo(
-                                                  fontSize: 14.0,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: const Color(0xFFFF383C),
-                                                  height: 22.0 / 14.0,
-                                                  letterSpacing: 0.0,
-                                                )
-                                              : GoogleFonts.inter(
-                                                  fontSize: 14.0,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: const Color(0xFFFF383C),
-                                                  height: 22.0 / 14.0,
-                                                  letterSpacing: 0.0,
-                                                ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                          color: const Color(0xFF1C1C1E),
+                                          borderRadius: BorderRadius.circular(100.0),
                                         ),
                                       ),
                                     ),
-                                  ),
-
-                                  const SizedBox(width: 12.0), // gap: 12px
-
-                                  // accept button layout:
-                                  // width: 169; height: 52; border-radius: 12px; padding: 16px; background: #8B53FE;
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        HapticFeedback.mediumImpact();
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            backgroundColor: const Color(0xFF8B53FE),
-                                            content: Text(
-                                              isArabic
-                                                  ? 'تم قبول الطلب بنجاح!'
-                                                  : 'Request Accepted Successfully!',
-                                              style: GoogleFonts.inter(color: Colors.white),
-                                            ),
-                                            duration: const Duration(seconds: 1),
-                                          ),
-                                        );
-                                        Navigator.of(context).pushReplacement(
-                                          MaterialPageRoute(
-                                            builder: (_) => ProviderActiveRequestScreen(
-                                              requestId: widget.requestId,
-                                              serviceTypeEn: widget.serviceTypeEn,
-                                              serviceTypeAr: widget.serviceTypeAr,
-                                              locationEn: widget.locationEn,
-                                              locationAr: widget.locationAr,
-                                              distanceEn: widget.distanceEn,
-                                              distanceAr: widget.distanceAr,
-                                              timeEn: '8 min',
-                                              timeAr: '٨ دقائق',
-                                              customerNameEn: 'Ahmed Khan',
-                                              customerNameAr: 'أحمد خان',
-                                              vehicleModelEn: 'Toyota Corolla',
-                                              vehicleModelAr: 'تويوتا كورولا',
-                                              plateNumber: 'KSA 1234',
-                                              customerNoteEn: 'Battery is dead and the car won’t start. Need a jump start.',
-                                              customerNoteAr: 'البطارية فارغة والسيارة لا تعمل. أحتاج إلى شحن بطارية.',
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      child: Container(
-                                        height: 52.0,
-                                        padding: const EdgeInsets.all(16.0),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF8B53FE),
-                                          borderRadius: BorderRadius.circular(12.0),
-                                          boxShadow: const [
-                                            BoxShadow(
-                                              color: Color(0x338B53FE),
-                                              blurRadius: 10.0,
-                                              offset: Offset(0, 4),
-                                            ),
-                                          ],
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          isArabic ? 'قبول الطلب' : 'Accept Request',
-                                          style: isArabic
-                                              ? GoogleFonts.cairo(
-                                                  fontSize: 14.0,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: Colors.white,
-                                                  height: 22.0 / 14.0,
-                                                  letterSpacing: 0.0,
-                                                )
-                                              : GoogleFonts.inter(
-                                                  fontSize: 14.0,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: Colors.white,
-                                                  height: 22.0 / 14.0,
-                                                  letterSpacing: 0.0,
-                                                ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          // bottom indicator bar:
-                          // width: 134; height: 5; border-radius: 100px; background: #1C1C1E;
-                          Positioned(
-                            bottom: 10.0,
-                            left: 0.0,
-                            right: 0.0,
-                            child: Center(
-                              child: Container(
-                                width: 134.0,
-                                height: 5.0,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1C1C1E),
-                                  borderRadius: BorderRadius.circular(100.0),
+                                  ],
                                 ),
                               ),
                             ),

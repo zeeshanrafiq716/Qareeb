@@ -38,12 +38,6 @@ class HomeHeaderWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tr = ref.watch(translationsProvider);
-    final String effectiveGreeting = (userName == 'Shayan')
-        ? tr.greeting(tr.isArabic ? 'شايان' : 'Shayan')
-        : tr.greeting(userName);
-    final String effectiveSubtitle = (subtitle == 'Explore Something')
-        ? tr.exploreSomething
-        : subtitle;
     final String effectiveLocationLabel = (locationLabel == 'Current location')
         ? tr.currentLocation
         : locationLabel;
@@ -62,7 +56,7 @@ class HomeHeaderWidget extends ConsumerWidget {
             top: 0,
             left: 0,
             right: 0,
-            height: 246.0,
+            height: 256.0,
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -70,7 +64,7 @@ class HomeHeaderWidget extends ConsumerWidget {
                   end: Alignment(-0.009, 1.0),
                   stops: [0.0, 1.0],
                   colors: [
-                    Color(0x5F8B53FE), // rgba(139, 83, 254, 0.37284) at -0.59%
+                    Color(0x188B53FE), // rgba(139, 83, 254, 0.094) soft subtle top tint
                     Color(0x008B53FE), // rgba(139, 83, 254, 0) at 29.8%
                   ],
                 ),
@@ -82,8 +76,8 @@ class HomeHeaderWidget extends ConsumerWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Status bar spacing
-              SizedBox(height: effectiveTopPadding + 8.0),
+              // Status bar spacing with minor top breathing room
+              SizedBox(height: effectiveTopPadding + 18.0),
 
           // 1. Profile, Location & Notification Row
           // width: 390; height: 36; justify-content: space-between; padding-left: 20px; padding-right: 20px;
@@ -227,53 +221,8 @@ class HomeHeaderWidget extends ConsumerWidget {
             ),
           ),
 
-          // 24px vertical space between Profile row and Greeting ('24px I' redline)
-          const SizedBox(height: 24.0),
-
-          // 2. Greeting Section: "Hello, Shayan" and "Explore Something"
-          // width: 130; height: 36; top: 116px; left: 130px; gap: 12px;
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 280.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // "Hello, Shayan"
-                  Text(
-                    effectiveGreeting,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    style: tr.font(
-                      fontSize: 20.0,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF1C2926),
-                      height: 1.1,
-                    ),
-                  ),
-
-                  // gap: 12px
-                  const SizedBox(height: 12.0),
-
-                  // "Explore Something"
-                  Text(
-                    effectiveSubtitle,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    style: tr.font(
-                      fontSize: 12.0,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF566663),
-                      height: 1.1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-              // 24px vertical space below greeting towards card ('24px I' redline, bringing top to 176px)
-              const SizedBox(height: 24.0),
+              // Spacing between Profile row and Urgent Assistance Card
+              const SizedBox(height: 16.0),
 
               // 3. Urgent Assistance Card Container:
               // width: 350; height: 70; top: 176px; left: 20px; angle: 0 deg; opacity: 1; gap: 10px; border-width: 1px; border-radius: 12px; padding: 16px; background: #FFFFFF;

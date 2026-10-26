@@ -154,7 +154,7 @@ class _ServiceInProgressScreenState
                                   ),
                                   child: Center(
                                     child: Transform.scale(
-                                      scaleX: tr.isArabic ? -1.0 : 1.0,
+                                      scaleX: 1.0,
                                       child: const CustomPaint(
                                         size: Size(6.0, 13.0),
                                         painter: _BackChevronPainter(

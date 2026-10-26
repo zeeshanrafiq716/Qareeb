@@ -119,13 +119,12 @@ class UrgentAssistanceCard extends ConsumerWidget {
                   ),
                 ),
 
-                // Right side chevron arrow icon: color: #566663 (mirrored for RTL)
-                Icon(
-                  tr.isArabic
-                      ? Icons.chevron_left_rounded
-                      : Icons.chevron_right_rounded,
-                  size: 22.0,
+                // Vector chevron: width: 7, height: 14, pointing < in Arabic
+                _EmergencyVectorChevron(
+                  width: 7.0,
+                  height: 14.0,
                   color: const Color(0xFF566663),
+                  isLeft: tr.isArabic || Directionality.of(context) == TextDirection.rtl,
                 ),
               ],
             ),
@@ -146,4 +145,56 @@ class UrgentAssistanceCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Custom vector chevron for emergency card matching Figma stroke specifications.
+class _EmergencyVectorChevron extends StatelessWidget {
+  final double width;
+  final double height;
+  final Color color;
+  final bool isLeft;
+
+  const _EmergencyVectorChevron({
+    required this.width,
+    required this.height,
+    required this.color,
+    required this.isLeft,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.scale(
+      scaleX: isLeft ? -1.0 : 1.0,
+      child: CustomPaint(
+        size: Size(width, height),
+        painter: _EmergencyChevronPainter(color: color),
+      ),
+    );
+  }
+}
+
+class _EmergencyChevronPainter extends CustomPainter {
+  final Color color;
+
+  _EmergencyChevronPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.4
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path()
+      ..moveTo(1.0, 1.0)
+      ..lineTo(size.width - 1.0, size.height / 2)
+      ..lineTo(1.0, size.height - 1.0);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

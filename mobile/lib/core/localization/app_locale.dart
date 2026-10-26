@@ -162,21 +162,21 @@ extension AppLocalizationsDomainExtension on AppLocalizations {
 
     final key = '${slugOrSubtitle.toLowerCase()} ${text.toLowerCase()}';
     if (key.contains('available') || key.contains('services')) return 'خدمات متاحة وموثوقة';
-    if (key.contains('wiring') || key.contains('ac &') || key.contains('ac repair') || key.contains('technician')) return 'إصلاح التكييف والأسلاك';
-    if (key.contains('cleaning') || key.contains('clean &') || key.contains('repairs')) return 'تنظيف وصيانة متكاملة';
-    if (key.contains('city') || key.contains('local ride') || key.contains('local rides')) return 'رحلات سريعة ومريحة داخل المدينة';
-    if (key.contains('good') || key.contains('deliver')) return 'شحن ونقل البضائع بأمان';
-    if (key.contains('fast') || key.contains('convenient')) return 'سريع، موثوق واقتصادي';
-    if (key.contains('group') || key.contains('family')) return 'مساحة واسعة للرحلات العائلية';
-    if (key.contains('affordable') || key.contains('local travel')) return 'تنقل محلي بأفضل سعر';
-    if (key.contains('roadside') || key.contains('urgent aid')) return 'مساعدة فورية على مدار الساعة';
+    if (key.contains('wiring') || key.contains('ac &') || key.contains('ac repair') || key.contains('technician')) return 'صيانة التكييف والكهرباء';
+    if (key.contains('cleaning') || key.contains('clean &') || key.contains('repairs')) return 'تنظيف وصيانة';
+    if (key.contains('city') || key.contains('local ride') || key.contains('local rides')) return 'رحلات سريعة ومريحة';
+    if (key.contains('good') || key.contains('deliver')) return 'شحن ونقل بضائع';
+    if (key.contains('fast') || key.contains('convenient')) return 'سريع واقتصادي';
+    if (key.contains('group') || key.contains('family')) return 'رحلات عائلية وجماعية';
+    if (key.contains('affordable') || key.contains('local travel')) return 'تنقل محلي اقتصادي';
+    if (key.contains('roadside') || key.contains('urgent aid')) return 'مساعدة فورية على الطريق';
     if (key.contains('pipe') || key.contains('plumb')) return 'إصلاح وصيانة السباكة';
-    if (key.contains('paint') || key.contains('wall')) return 'أعمال الدهان والديكور الحديث';
+    if (key.contains('paint') || key.contains('wall')) return 'أعمال الدهان والديكور';
     if (key.contains('vehicle') || key.contains('engine')) return 'صيانة وإصلاح المركبات';
     if (key.contains('pest') || key.contains('spray')) return 'مكافحة وإبادة الحشرات';
-    if (key.contains('wood') || key.contains('furniture')) return 'أعمال النجارة وتركيب الأثاث';
-    if (key.contains('electric') || key.contains('wiring')) return 'تمديدات وصيانة كهربائية متخصصة';
-    if (key.contains('maintenance') || key.contains('home care')) return 'صيانة وإصلاحات منزلية شاملة';
+    if (key.contains('wood') || key.contains('furniture')) return 'أعمال النجارة والأثاث';
+    if (key.contains('electric') || key.contains('wiring')) return 'تمديدات وصيانة كهربائية';
+    if (key.contains('maintenance') || key.contains('home care')) return 'صيانة منزلية شاملة';
 
     if (RegExp(r'[a-zA-Z]').hasMatch(text)) {
       return 'خدمات فورية وموثوقة';

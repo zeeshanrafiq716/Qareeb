@@ -66,5 +66,13 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Qareeb requires access to your location to show nearby providers and track service requests.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Qareeb requires access to your location to provide real-time tracking.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Qareeb requires access to your location to provide real-time tracking.</string>
+	<key>io.flutter.embedded_views_preview</key>
+	<true/>
 </dict>
 </plist>

@@ -8,6 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../home/presentation/widgets/bottom_nav_bar_widget.dart';
 import '../../location/presentation/widgets/top_down_car_widget.dart';
+import '../../location/presentation/widgets/map_tracking_step.dart';
+import '../../location/presentation/widgets/real_map_background_widget.dart';
 
 /// Requests Tab screen with branding header layout.
 /// Hosts the request management view and floating bottom navigation bar.
@@ -478,15 +480,15 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                               ),
 
                               // 3. Active Request Card:
-                              // width: 350; height: 320; border-radius: 16px; background: #FFFFFF; box-shadow: 0px 1px 12px 0px #0000001A;
+                              // width: 350; height: 336; border-radius: 16px; background: #FFFFFF; box-shadow: 0px 1px 12px 0px #0000001A;
                               if (_activeFilterIndex == 0)
                                 Positioned(
                                   top: 184.0,
                                   left: horizontalPadding,
                                   right: horizontalPadding,
-                                  height: 320.0,
+                                  height: 336.0,
                                   child: Container(
-                                    height: 320.0,
+                                    height: 336.0,
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFFFFFFF),
                                       borderRadius: BorderRadius.circular(16.0),
@@ -595,302 +597,30 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                         child: ClipRRect(
                                           borderRadius:
                                               BorderRadius.circular(12.0),
-                                          child: LayoutBuilder(
-                                            builder: (context, mapConstraints) {
-                                              final double mapWidth =
-                                                  mapConstraints.maxWidth;
-                                              // Route cluster was designed for 350px card; center cluster dynamically on all screen widths
-                                              final double offsetX =
-                                                  (mapWidth - 350.0) / 2.0;
-
-                                              return Stack(
-                                                clipBehavior: Clip.none,
-                                                children: [
-                                                  // 1. Background map image: assets/images/BG image.png
-                                                  Positioned.fill(
-                                                    child: Image.asset(
-                                                      'assets/images/BG image.png',
-                                                      fit: BoxFit.cover,
-                                                      alignment:
-                                                          Alignment.center,
-                                                      errorBuilder: (context,
-                                                              error,
-                                                              stackTrace) =>
-                                                          Container(
-                                                        color: const Color(
-                                                            0xFFF3F4F6),
-                                                        child: const Center(
-                                                          child: Icon(
-                                                            Icons.map_outlined,
-                                                            size: 40,
-                                                            color: Color(
-                                                                0xFF9CA3AF),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-
-                                                  // Soft subtle overlay tint
-                                                  Positioned.fill(
-                                                    child: Container(
-                                                      color: Colors.white
-                                                          .withValues(
-                                                              alpha: 0.10),
-                                                    ),
-                                                  ),
-
-                                                  // 2. Vector layout: width: 102.97; height: 57.56; top: 57.44px; left: 102.53px; border: 4px solid #1D8070
-                                                  Positioned(
-                                                    top: 57.44,
-                                                    left: 102.53 + offsetX,
-                                                    width: 102.97,
-                                                    height: 57.56,
-                                                    child: const CustomPaint(
-                                                      size: Size(102.97, 57.56),
-                                                      painter:
-                                                          _RouteVectorPainter(
-                                                        color:
-                                                            Color(0xFF8B53FE),
-                                                        strokeWidth: 4.0,
-                                                      ),
-                                                    ),
-                                                  ),
-
-                                                  // 3. Top-down aerodynamic car with brand purple roof (#A67AFE):
-                                                  Positioned(
-                                                    top: 40.0,
-                                                    left: 79.0 + offsetX,
-                                                    child: const TopDownCarWidget(
-                                                      width: 16.5,
-                                                      height: 28.5,
-                                                      angle: -120.0,
-                                                      showBadge: false,
-                                                      bodyColor: Color(0xFFA67AFE),
-                                                    ),
-                                                  ),
-
-                                                  // 4. Timer badge layout: width: 55; height: 24; top: 18px; left: 78px;
-                                                  // inner layout: width: 55; height: 18; border-radius: 4px; padding: 6px; background: #1D8070;
-                                                  // content: 8 min away (Inter Regular 8px, #FFFFFF)
-                                                  Positioned(
-                                                    top: 18.0,
-                                                    left: 78.0 + offsetX,
-                                                    width: 55.0,
-                                                    height: 24.0,
-                                                    child: Column(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .center,
-                                                      children: [
-                                                        Container(
-                                                          width: 55.0,
-                                                          height: 18.0,
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: const Color(
-                                                                0xFF8B53FE),
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        4.0),
-                                                            boxShadow: const [
-                                                              BoxShadow(
-                                                                color: Color(
-                                                                    0x0F000000), // #0000000F
-                                                                blurRadius: 8.0,
-                                                                offset: Offset(
-                                                                    0, 1),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                          alignment:
-                                                              Alignment.center,
-                                                          child: Text(
-                                                            tr.eightMinAway,
-                                                            style: tr.font(
-                                                              fontSize: 8.0,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w400,
-                                                              color: const Color(
-                                                                  0xFFFFFFFF),
-                                                              height: 1.0,
-                                                              letterSpacing:
-                                                                  0.0,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        CustomPaint(
-                                                          size: const Size(
-                                                              6.0, 4.0),
-                                                          painter:
-                                                              const _TooltipArrowPainter(
-                                                            color: Color(
-                                                                0xFF8B53FE),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-
-                                                  // 5. Location Marker Halo & Brand Purple 3D Pin (replaces green Group 5.png):
-                                                  Positioned(
-                                                    top: 94.0,
-                                                    left: 180.5 + offsetX,
-                                                    width: 46.0,
-                                                    height: 46.0,
-                                                    child: Container(
-                                                      width: 46.0,
-                                                      height: 46.0,
-                                                      decoration: BoxDecoration(
-                                                        shape: BoxShape.circle,
-                                                        color: const Color(0xFFF0EAFE),
-                                                        border: Border.all(
-                                                          color: const Color(0x668B53FE),
-                                                          width: 1.5,
-                                                        ),
-                                                        boxShadow: const [
-                                                          BoxShadow(
-                                                            color: Color(0x268B53FE),
-                                                            blurRadius: 10.0,
-                                                            spreadRadius: 2.0,
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-
-                                                  Positioned(
-                                                    top: 97.0,
-                                                    left: 184.5 + offsetX,
-                                                    width: 38.0,
-                                                    height: 38.0,
-                                                    child: const Center(
-                                                      child: _BrandPurpleLocationPinWidget(
-                                                        size: 32.0,
-                                                      ),
-                                                    ),
-                                                  ),
-
-                                                  // 6. Badge layout ("You"):
-                                                  Positioned(
-                                                    top: 76.0,
-                                                    left: 190.0 + offsetX,
-                                                    width: 27.0,
-                                                    height: 24.0,
-                                                    child: Column(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .center,
-                                                      children: [
-                                                        Container(
-                                                          width: 27.0,
-                                                          height: 18.0,
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: const Color(
-                                                                0xFF8B53FE),
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        4.0),
-                                                            boxShadow: const [
-                                                              BoxShadow(
-                                                                color: Color(
-                                                                    0x0F000000), // #0000000F
-                                                                blurRadius: 8.0,
-                                                                offset: Offset(
-                                                                    0, 1),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                          alignment:
-                                                              Alignment.center,
-                                                          child: Text(
-                                                            tr.youBadge,
-                                                            style: tr.font(
-                                                              fontSize: 8.0,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w400,
-                                                              color: const Color(
-                                                                  0xFFFFFFFF),
-                                                              height: 1.0,
-                                                              letterSpacing:
-                                                                  0.0,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        CustomPaint(
-                                                          size: const Size(
-                                                              6.0, 4.0),
-                                                          painter:
-                                                              const _TooltipArrowPainter(
-                                                            color: Color(
-                                                                0xFF8B53FE),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-
-                                                  // 7. Curent location icon layout: width: 24; height: 24; border-radius: 4px; top: 120px; right: 16px;
-                                                  // background: #FFFFFF; box-shadow: 0px 1px 8px 0px #0000000F;
-                                                  // icon inner layout: width: 13.33; height: 13.33; top: 5.33px; left: 5.33px; background: #1C2926;
-                                                  Positioned(
-                                                    top: 120.0,
-                                                    right: 16.0,
-                                                    width: 24.0,
-                                                    height: 24.0,
-                                                    child: Container(
-                                                      width: 24.0,
-                                                      height: 24.0,
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(
-                                                            0xFFFFFFFF),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(4.0),
-                                                        boxShadow: const [
-                                                          BoxShadow(
-                                                            color: Color(
-                                                                0x0F000000), // #0000000F
-                                                            blurRadius: 8.0,
-                                                            offset:
-                                                                Offset(0, 1),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      child: const Center(
-                                                        child: Icon(
-                                                          Icons
-                                                              .my_location_rounded,
-                                                          size: 13.33,
-                                                          color:
-                                                              Color(0xFF1C2926),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              );
-                                            },
+                                          child: RealMapBackgroundWidget(
+                                            enableDrag: true,
+                                            zoom: 15.0,
+                                            borderRadius:
+                                                BorderRadius.circular(12.0),
+                                            trackingStep:
+                                                MapTrackingStep.onTheWay,
+                                            driverName: 'Ahmad Transport',
+                                            etaText: tr.isArabic
+                                                ? '8 د'
+                                                : '8 min away',
+                                            distanceText: '1.8 km',
+                                            showControls: true,
                                           ),
                                         ),
                                       ),
 
                                       // Driver summary layout:
-                                      // width: 350; height: 64; top: 240px; padding-left: 16px; padding-right: 16px; justify-content: space-between;
+                                      // width: 350; top: 232px; bottom: 8px; padding-left: 16px; padding-right: 16px;
                                       Positioned(
-                                        top: 240.0,
+                                        top: 232.0,
+                                        bottom: 8.0,
                                         left: 0.0,
                                         right: 0.0,
-                                        height: 64.0,
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 16.0),
@@ -900,128 +630,129 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.center,
                                             children: [
-                                              // card inner branding: width: 311; height: 64; gap: 16px;
-                                              Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.center,
-                                                children: [
-                                                  // img layout: width: 48; height: 48;
-                                                  ClipOval(
-                                                    child: Image.asset(
-                                                      'assets/images/driver_avatar.png',
-                                                      width: 48.0,
-                                                      height: 48.0,
-                                                      fit: BoxFit.cover,
-                                                      errorBuilder: (context,
-                                                              error,
-                                                              stackTrace) =>
-                                                          Container(
+                                              // card inner branding with flexible width to prevent Arabic overflow
+                                              Expanded(
+                                                child: Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.center,
+                                                  children: [
+                                                    // img layout: width: 48; height: 48;
+                                                    ClipOval(
+                                                      child: Image.asset(
+                                                        'assets/images/driver_avatar.png',
                                                         width: 48.0,
                                                         height: 48.0,
-                                                        decoration:
-                                                            const BoxDecoration(
-                                                          color: Color(
-                                                              0xFFFFB6C1),
-                                                          shape:
-                                                              BoxShape.circle,
-                                                        ),
-                                                        child: const Icon(
-                                                          Icons.person_rounded,
-                                                          size: 28.0,
-                                                          color: Colors.white,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder: (context,
+                                                                error,
+                                                                stackTrace) =>
+                                                            Container(
+                                                          width: 48.0,
+                                                          height: 48.0,
+                                                          decoration:
+                                                              const BoxDecoration(
+                                                            color: Color(
+                                                                0xFFFFB6C1),
+                                                            shape:
+                                                                BoxShape.circle,
+                                                          ),
+                                                          child: const Icon(
+                                                            Icons.person_rounded,
+                                                            size: 28.0,
+                                                            color: Colors.white,
+                                                          ),
                                                         ),
                                                       ),
                                                     ),
-                                                  ),
-                                                  const SizedBox(width: 16.0), // gap: 16px;
+                                                    const SizedBox(width: 14.0), // gap: 14px;
 
-                                                  // content layout: width: 171; height: 64; gap: 12px;
-                                                  Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment.start,
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment.center,
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      // 1st row: content: Ahmad Transport
-                                                      Text(
-                                                        tr.formatProviderName('Ahmad Transport'),
-                                                        style: tr.font(
-                                                          fontSize: 12.0,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                          color: const Color(
-                                                              0xFF1C2926),
-                                                          height: 1.15,
-                                                          letterSpacing: 0.0,
-                                                        ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                      const SizedBox(
-                                                          height: 2.0),
-
-                                                      // 2nd row: star branding + 4.9 (120 trips)
-                                                      Row(
+                                                    // content layout: flexible column
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment.start,
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment.center,
                                                         mainAxisSize:
                                                             MainAxisSize.min,
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .center,
                                                         children: [
-                                                          // star branding: width: 10; height: 10; background: #1D8070;
-                                                          const Icon(
-                                                            Icons.star_rounded,
-                                                            size: 11.0,
-                                                            color: Color(
-                                                                0xFF8B53FE),
+                                                          // 1st row: content: Ahmad Transport
+                                                          Text(
+                                                            tr.formatProviderName('Ahmad Transport'),
+                                                            style: tr.font(
+                                                              fontSize: 12.0,
+                                                              fontWeight:
+                                                                  FontWeight.w500,
+                                                              color: const Color(
+                                                                  0xFF1C2926),
+                                                              height: 1.15,
+                                                              letterSpacing: 0.0,
+                                                            ),
+                                                            maxLines: 1,
+                                                            overflow: TextOverflow
+                                                                .ellipsis,
                                                           ),
                                                           const SizedBox(
-                                                              width: 4.0), // gap: 4px;
-                                                          Text.rich(
-                                                            TextSpan(
-                                                              children: [
+                                                              height: 2.0),
+
+                                                          // 2nd row: star branding + 4.9 (120 trips)
+                                                          Row(
+                                                            mainAxisSize:
+                                                                MainAxisSize.min,
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .center,
+                                                            children: [
+                                                              // star branding: width: 10; height: 10; background: #1D8070;
+                                                              const Icon(
+                                                                Icons.star_rounded,
+                                                                size: 11.0,
+                                                                color: Color(
+                                                                    0xFF8B53FE),
+                                                              ),
+                                                              const SizedBox(
+                                                                  width: 4.0), // gap: 4px;
+                                                              Text.rich(
                                                                 TextSpan(
-                                                                  text: '4.9 ',
-                                                                  style: tr.font(
-                                                                    fontSize:
-                                                                        10.0,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w400,
-                                                                    color: const Color(
-                                                                        0xFF1C2926),
-                                                                    height:
-                                                                        1.15,
-                                                                    letterSpacing:
-                                                                        0.0,
-                                                                  ),
+                                                                  children: [
+                                                                    TextSpan(
+                                                                      text: '4.9 ',
+                                                                      style: tr.font(
+                                                                        fontSize:
+                                                                            10.0,
+                                                                        fontWeight:
+                                                                            FontWeight
+                                                                                .w400,
+                                                                        color: const Color(
+                                                                            0xFF1C2926),
+                                                                        height:
+                                                                            1.15,
+                                                                        letterSpacing:
+                                                                            0.0,
+                                                                      ),
+                                                                    ),
+                                                                    TextSpan(
+                                                                      text:
+                                                                          tr.isArabic ? '(120 رحلة)' : '(120 trips)',
+                                                                      style: tr.font(
+                                                                        fontSize:
+                                                                            10.0,
+                                                                        fontWeight:
+                                                                            FontWeight
+                                                                                .w400,
+                                                                        color: const Color(
+                                                                            0xFF566663),
+                                                                        height:
+                                                                            1.15,
+                                                                        letterSpacing:
+                                                                            0.0,
+                                                                      ),
+                                                                    ),
+                                                                  ],
                                                                 ),
-                                                                TextSpan(
-                                                                  text:
-                                                                      tr.isArabic ? '(120 Ø±Ø­Ù„Ø©)' : '(120 trips)',
-                                                                  style: tr.font(
-                                                                    fontSize:
-                                                                        10.0,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w400,
-                                                                    color: const Color(
-                                                                        0xFF566663),
-                                                                    height:
-                                                                        1.15,
-                                                                    letterSpacing:
-                                                                        0.0,
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
+                                                              ),
+                                                            ],
                                                           ),
-                                                        ],
-                                                      ),
                                                       const SizedBox(
                                                           height: 2.0),
 
@@ -1146,17 +877,18 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                       ),
                                                     ],
                                                   ),
-                                                ],
-                                              ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
 
                                               // right side of card icon >: width: 7; height: ~15; border: 1px solid #566663
-                                              Transform.scale(
-                                                scaleX: tr.isArabic ? -1.0 : 1.0,
-                                                child: const Icon(
-                                                  Icons.chevron_right_rounded,
-                                                  size: 20.0,
-                                                  color: Color(0xFF566663),
-                                                ),
+                                              Icon(
+                                                (tr.isArabic || Directionality.of(context) == TextDirection.rtl)
+                                                    ? Icons.chevron_left_rounded
+                                                    : Icons.chevron_right_rounded,
+                                                size: 20.0,
+                                                color: const Color(0xFF566663),
                                               ),
                                             ],
                                           ),
@@ -1168,15 +900,15 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                 ),
 
                               // 4. Status Progress Stepper Card:
-                              // width: 350; height: 81; border-radius: 12px; background: #F2F5F4;
+                              // width: 350; height: 88; border-radius: 12px; background: #F2F5F4;
                               if (_activeFilterIndex == 0)
                                 Positioned(
-                                  top: 520.0,
+                                  top: 532.0,
                                   left: horizontalPadding,
                                   right: horizontalPadding,
-                                  height: 81.0,
+                                  height: 88.0,
                                   child: Container(
-                                    height: 81.0,
+                                    height: 88.0,
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFF2F5F4),
                                       borderRadius:
@@ -1258,7 +990,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                               // width: 350; height: 64; gap: 12px;
                               if (_activeFilterIndex == 0)
                                 Positioned(
-                                  top: 617.0,
+                                  top: 632.0,
                                   left: horizontalPadding,
                                   right: horizontalPadding,
                                   height: 64.0,
@@ -1416,7 +1148,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                         alignment: AlignmentDirectional
                                                             .centerStart,
                                                         child: Text(
-                                                          tr.isArabic ? '8 Ø¯' : '8 min',
+                                                          tr.isArabic ? '8 د' : '8 min',
                                                           style:
                                                               tr.font(
                                                             fontSize: 14.0,
@@ -1760,48 +1492,56 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const SizedBox(height: 16.0), // top: 16px;
+        const SizedBox(height: 12.0), // top: 12px;
         SizedBox(
           height: 20.0,
           child: Center(
             child: _buildStepIcon(state),
           ),
         ),
-        const SizedBox(height: 8.0), // gap: 8px to text row at top: 44px
+        const SizedBox(height: 6.0), // gap: 6px to text row
         SizedBox(
           width: 64.0,
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: tr.font(
-              fontSize: 10.0,
-              fontWeight: FontWeight.w500,
-              color: state == _RequestStepState.pending
-                  ? const Color(0xFF566663)
-                  : const Color(0xFF8B53FE),
-              height: 1.15,
-              letterSpacing: 0.0,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: tr.font(
+                fontSize: 10.0,
+                fontWeight: FontWeight.w500,
+                color: state == _RequestStepState.pending
+                    ? const Color(0xFF566663)
+                    : const Color(0xFF8B53FE),
+                height: 1.15,
+                letterSpacing: 0.0,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.visible,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.visible,
           ),
         ),
         if (time != null) ...[
           const SizedBox(height: 2.0),
           SizedBox(
             width: 64.0,
-            child: Text(
-              time,
-              textAlign: TextAlign.center,
-              style: tr.font(
-                fontSize: 8.0,
-                fontWeight: FontWeight.w400,
-                color: const Color(0xFF566663),
-                height: 1.15,
-                letterSpacing: 0.0,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: Text(
+                time,
+                textAlign: TextAlign.center,
+                style: tr.font(
+                  fontSize: 8.0,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF566663),
+                  height: 1.15,
+                  letterSpacing: 0.0,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.visible,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.visible,
             ),
           ),
         ],
@@ -2077,10 +1817,10 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                 ),
                 const SizedBox(width: 16.0), // gap: 16px;
 
-                // content layout: width: 254; height: 78; justify-content: space-between;
+                // content layout: width: 254; min-height: 78; justify-content: space-between;
                 Expanded(
-                  child: SizedBox(
-                    height: 78.0,
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 78.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -2289,13 +2029,12 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                         // card right side > branding: width: 6; height: 12; angle: -180 deg; border: 0.8px solid #566663
                         Padding(
                           padding: const EdgeInsets.only(left: 4.0),
-                          child: Transform.scale(
-                            scaleX: tr.isArabic ? -1.0 : 1.0,
-                            child: const Icon(
-                              Icons.chevron_right_rounded,
-                              size: 18.0,
-                              color: Color(0xFF566663),
-                            ),
+                          child: Icon(
+                            (tr.isArabic || Directionality.of(context) == TextDirection.rtl)
+                                ? Icons.chevron_left_rounded
+                                : Icons.chevron_right_rounded,
+                            size: 18.0,
+                            color: const Color(0xFF566663),
                           ),
                         ),
                       ],

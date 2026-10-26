@@ -9,6 +9,8 @@ import '../../../models/provider_model.dart';
 import '../../../providers/backend_provider.dart';
 import '../../../services/location_service.dart';
 import 'provider_detail_screen.dart';
+import 'widgets/provider_detail_card_widget.dart';
+import 'widgets/top_down_car_widget.dart';
 
 /// Custom scroll behavior enabling smooth mouse dragging, trackpad gestures, and touch on all devices:
 class _EasyScrollBehavior extends MaterialScrollBehavior {
@@ -39,73 +41,615 @@ class FindProviderScreen extends ConsumerStatefulWidget {
 }
 
 class _NearbyProviderItem {
+  final int id;
   final String name;
+  final String nameAr;
   final String vehicle;
+  final String vehicleAr;
   final double rating;
   final int reviews;
   final String status;
-  final String distance;
+  final double distanceKm;
   final String eta;
+  final String etaAr;
   final String imagePath;
   final String phone;
+  final double latOffset;
+  final double lngOffset;
+  final double heading;
+  final Color carColor;
 
   const _NearbyProviderItem({
+    required this.id,
     required this.name,
+    required this.nameAr,
     required this.vehicle,
+    required this.vehicleAr,
     required this.rating,
     required this.reviews,
     required this.status,
-    required this.distance,
+    required this.distanceKm,
     required this.eta,
+    required this.etaAr,
     required this.imagePath,
     required this.phone,
+    required this.latOffset,
+    required this.lngOffset,
+    this.heading = 45.0,
+    this.carColor = const Color(0xFFA67AFE),
   });
 }
 
-const List<_NearbyProviderItem> _nearbyProviders = [
+const List<_NearbyProviderItem> _all30NearbyProviders = [
   _NearbyProviderItem(
-    name: 'Ahmad Raza',
-    vehicle: 'Sedan . AC',
+    id: 1,
+    name: 'Uzair Ahmed',
+    nameAr: 'عزير أحمد',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
     rating: 4.9,
     reviews: 120,
     status: 'Available',
-    distance: '0.3 km',
+    distanceKm: 0.3,
     eta: '2 min away',
+    etaAr: 'على بعد 2 د',
     imagePath: 'assets/images/car_ride.png',
     phone: '+92 300 1234567',
+    latOffset: 0.0018,
+    lngOffset: -0.0022,
+    heading: 85.0,
+    carColor: Color(0xFFA67AFE),
   ),
   _NearbyProviderItem(
+    id: 2,
+    name: 'Ahmad Raza',
+    nameAr: 'أحمد رضا',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
+    rating: 4.9,
+    reviews: 115,
+    status: 'Available',
+    distanceKm: 0.5,
+    eta: '3 min away',
+    etaAr: 'على بعد 3 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 301 2345678',
+    latOffset: -0.0015,
+    lngOffset: 0.0028,
+    heading: 210.0,
+    carColor: Color(0xFF8B53FE),
+  ),
+  _NearbyProviderItem(
+    id: 3,
     name: 'Muhammad Bilal',
-    vehicle: 'Sedan . AC',
+    nameAr: 'محمد بلال',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
     rating: 4.8,
     reviews: 95,
     status: 'Available',
-    distance: '0.6 km',
+    distanceKm: 0.6,
     eta: '4 min away',
+    etaAr: 'على بعد 4 د',
     imagePath: 'assets/images/car_ride.png',
-    phone: '+92 301 2345678',
+    phone: '+92 302 3456789',
+    latOffset: 0.0032,
+    lngOffset: 0.0015,
+    heading: 340.0,
+    carColor: Color(0xFF6C3CE9),
   ),
   _NearbyProviderItem(
+    id: 4,
     name: 'Usman Ali',
-    vehicle: 'Pickup . AC',
+    nameAr: 'عثمان علي',
+    vehicle: 'Pickup • AC',
+    vehicleAr: 'شاحنة نقل • مكيف',
     rating: 4.9,
     reviews: 142,
     status: 'Available',
-    distance: '0.9 km',
+    distanceKm: 0.9,
     eta: '5 min away',
+    etaAr: 'على بعد 5 د',
     imagePath: 'assets/images/pickup.png',
-    phone: '+92 302 3456789',
+    phone: '+92 303 4567890',
+    latOffset: -0.0028,
+    lngOffset: -0.0035,
+    heading: 120.0,
+    carColor: Color(0xFF9E6CF5),
   ),
   _NearbyProviderItem(
+    id: 5,
     name: 'Hamza Sheikh',
-    vehicle: 'Sedan . Non-AC',
+    nameAr: 'حمزة شيخ',
+    vehicle: 'Sedan • Non-AC',
+    vehicleAr: 'سيدان • بدون تكييف',
     rating: 4.7,
     reviews: 80,
     status: 'Available',
-    distance: '1.2 km',
-    eta: '7 min away',
+    distanceKm: 1.1,
+    eta: '6 min away',
+    etaAr: 'على بعد 6 د',
     imagePath: 'assets/images/car_ride.png',
-    phone: '+92 303 4567890',
+    phone: '+92 304 5678901',
+    latOffset: 0.0042,
+    lngOffset: -0.0018,
+    heading: 45.0,
+    carColor: Color(0xFF7C4DFF),
+  ),
+  _NearbyProviderItem(
+    id: 6,
+    name: 'Tariq Mahmood',
+    nameAr: 'طارق محمود',
+    vehicle: 'SUV • AC',
+    vehicleAr: 'دفع رباعي • مكيف',
+    rating: 4.8,
+    reviews: 108,
+    status: 'Available',
+    distanceKm: 1.2,
+    eta: '7 min away',
+    etaAr: 'على بعد 7 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 305 6789012',
+    latOffset: -0.0038,
+    lngOffset: 0.0042,
+    heading: 175.0,
+    carColor: Color(0xFF8B53FE),
+  ),
+  _NearbyProviderItem(
+    id: 7,
+    name: 'Zeeshan Khan',
+    nameAr: 'ذیشان خان',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
+    rating: 4.9,
+    reviews: 134,
+    status: 'Available',
+    distanceKm: 1.4,
+    eta: '8 min away',
+    etaAr: 'على بعد 8 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 306 7890123',
+    latOffset: 0.0022,
+    lngOffset: 0.0051,
+    heading: 290.0,
+    carColor: Color(0xFFA67AFE),
+  ),
+  _NearbyProviderItem(
+    id: 8,
+    name: 'Fahad Mustafa',
+    nameAr: 'فهد مصطفى',
+    vehicle: 'Hatchback • AC',
+    vehicleAr: 'هاتشباك • مكيف',
+    rating: 4.7,
+    reviews: 64,
+    status: 'Available',
+    distanceKm: 1.5,
+    eta: '9 min away',
+    etaAr: 'على بعد 9 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 307 8901234',
+    latOffset: -0.0045,
+    lngOffset: -0.0021,
+    heading: 60.0,
+    carColor: Color(0xFF9E6CF5),
+  ),
+  _NearbyProviderItem(
+    id: 9,
+    name: 'Imran Butt',
+    nameAr: 'عمران بت',
+    vehicle: 'Pickup • AC',
+    vehicleAr: 'شاحنة نقل • مكيف',
+    rating: 4.8,
+    reviews: 112,
+    status: 'Available',
+    distanceKm: 1.7,
+    eta: '10 min away',
+    etaAr: 'على بعد 10 د',
+    imagePath: 'assets/images/pickup.png',
+    phone: '+92 308 9012345',
+    latOffset: 0.0055,
+    lngOffset: 0.0033,
+    heading: 195.0,
+    carColor: Color(0xFF6C3CE9),
+  ),
+  _NearbyProviderItem(
+    id: 10,
+    name: 'Asad Malik',
+    nameAr: 'أسعد مالك',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
+    rating: 4.9,
+    reviews: 88,
+    status: 'Available',
+    distanceKm: 1.8,
+    eta: '11 min away',
+    etaAr: 'على بعد 11 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 309 0123456',
+    latOffset: -0.0019,
+    lngOffset: 0.0062,
+    heading: 315.0,
+    carColor: Color(0xFF8B53FE),
+  ),
+  _NearbyProviderItem(
+    id: 11,
+    name: 'Rashid Minhas',
+    nameAr: 'راشد منهاس',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
+    rating: 4.8,
+    reviews: 92,
+    status: 'Available',
+    distanceKm: 2.0,
+    eta: '12 min away',
+    etaAr: 'على بعد 12 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 310 1234567',
+    latOffset: 0.0062,
+    lngOffset: -0.0041,
+    heading: 110.0,
+    carColor: Color(0xFFA67AFE),
+  ),
+  _NearbyProviderItem(
+    id: 12,
+    name: 'Daniyal Siddiqui',
+    nameAr: 'دانيال صديقي',
+    vehicle: 'SUV • AC',
+    vehicleAr: 'دفع رباعي • مكيف',
+    rating: 4.9,
+    reviews: 150,
+    status: 'Available',
+    distanceKm: 2.1,
+    eta: '12 min away',
+    etaAr: 'على بعد 12 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 311 2345678',
+    latOffset: -0.0058,
+    lngOffset: 0.0054,
+    heading: 225.0,
+    carColor: Color(0xFF7C4DFF),
+  ),
+  _NearbyProviderItem(
+    id: 13,
+    name: 'Waqas Qureshi',
+    nameAr: 'وقاص قريشي',
+    vehicle: 'Pickup • AC',
+    vehicleAr: 'شاحنة نقل • مكيف',
+    rating: 4.7,
+    reviews: 76,
+    status: 'Available',
+    distanceKm: 2.3,
+    eta: '13 min away',
+    etaAr: 'على بعد 13 د',
+    imagePath: 'assets/images/pickup.png',
+    phone: '+92 312 3456789',
+    latOffset: 0.0035,
+    lngOffset: -0.0068,
+    heading: 15.0,
+    carColor: Color(0xFF9E6CF5),
+  ),
+  _NearbyProviderItem(
+    id: 14,
+    name: 'Salman Farooq',
+    nameAr: 'سلمان فاروق',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
+    rating: 4.8,
+    reviews: 104,
+    status: 'Available',
+    distanceKm: 2.4,
+    eta: '14 min away',
+    etaAr: 'على بعد 14 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 313 4567890',
+    latOffset: -0.0065,
+    lngOffset: -0.0039,
+    heading: 140.0,
+    carColor: Color(0xFF8B53FE),
+  ),
+  _NearbyProviderItem(
+    id: 15,
+    name: 'Haris Rauf',
+    nameAr: 'حارث رؤوف',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
+    rating: 4.9,
+    reviews: 128,
+    status: 'Available',
+    distanceKm: 2.5,
+    eta: '14 min away',
+    etaAr: 'على بعد 14 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 314 5678901',
+    latOffset: 0.0071,
+    lngOffset: 0.0025,
+    heading: 270.0,
+    carColor: Color(0xFF6C3CE9),
+  ),
+  _NearbyProviderItem(
+    id: 16,
+    name: 'Babar Azam',
+    nameAr: 'بابر أعظم',
+    vehicle: 'SUV • AC',
+    vehicleAr: 'دفع رباعي • مكيف',
+    rating: 5.0,
+    reviews: 210,
+    status: 'Available',
+    distanceKm: 2.7,
+    eta: '15 min away',
+    etaAr: 'على بعد 15 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 315 6789012',
+    latOffset: -0.0041,
+    lngOffset: 0.0078,
+    heading: 35.0,
+    carColor: Color(0xFFA67AFE),
+  ),
+  _NearbyProviderItem(
+    id: 17,
+    name: 'Shaheen Afridi',
+    nameAr: 'شاهين أفريدي',
+    vehicle: 'Pickup • AC',
+    vehicleAr: 'شاحنة نقل • مكيف',
+    rating: 4.9,
+    reviews: 175,
+    status: 'Available',
+    distanceKm: 2.8,
+    eta: '16 min away',
+    etaAr: 'على بعد 16 د',
+    imagePath: 'assets/images/pickup.png',
+    phone: '+92 316 7890123',
+    latOffset: 0.0048,
+    lngOffset: -0.0075,
+    heading: 180.0,
+    carColor: Color(0xFF8B53FE),
+  ),
+  _NearbyProviderItem(
+    id: 18,
+    name: 'Shadab Khan',
+    nameAr: 'شاداب خان',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
+    rating: 4.8,
+    reviews: 98,
+    status: 'Available',
+    distanceKm: 3.0,
+    eta: '17 min away',
+    etaAr: 'على بعد 17 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 317 8901234',
+    latOffset: -0.0074,
+    lngOffset: 0.0048,
+    heading: 300.0,
+    carColor: Color(0xFF9E6CF5),
+  ),
+  _NearbyProviderItem(
+    id: 19,
+    name: 'Naseem Shah',
+    nameAr: 'نسيم شاه',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
+    rating: 4.9,
+    reviews: 110,
+    status: 'Available',
+    distanceKm: 3.1,
+    eta: '17 min away',
+    etaAr: 'على بعد 17 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 318 9012345',
+    latOffset: 0.0082,
+    lngOffset: -0.0031,
+    heading: 90.0,
+    carColor: Color(0xFF7C4DFF),
+  ),
+  _NearbyProviderItem(
+    id: 20,
+    name: 'Mohammad Rizwan',
+    nameAr: 'محمد رضوان',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
+    rating: 4.9,
+    reviews: 185,
+    status: 'Available',
+    distanceKm: 3.2,
+    eta: '18 min away',
+    etaAr: 'على بعد 18 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 319 0123456',
+    latOffset: -0.0051,
+    lngOffset: -0.0082,
+    heading: 240.0,
+    carColor: Color(0xFF8B53FE),
+  ),
+  _NearbyProviderItem(
+    id: 21,
+    name: 'Fakhar Zaman',
+    nameAr: 'فخر زمان',
+    vehicle: 'SUV • AC',
+    vehicleAr: 'دفع رباعي • مكيف',
+    rating: 4.8,
+    reviews: 102,
+    status: 'Available',
+    distanceKm: 3.4,
+    eta: '19 min away',
+    etaAr: 'على بعد 19 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 320 1234567',
+    latOffset: 0.0069,
+    lngOffset: 0.0065,
+    heading: 135.0,
+    carColor: Color(0xFFA67AFE),
+  ),
+  _NearbyProviderItem(
+    id: 22,
+    name: 'Iftikhar Ahmed',
+    nameAr: 'افتخار أحمد',
+    vehicle: 'Pickup • AC',
+    vehicleAr: 'شاحنة نقل • مكيف',
+    rating: 4.7,
+    reviews: 89,
+    status: 'Available',
+    distanceKm: 3.5,
+    eta: '20 min away',
+    etaAr: 'على بعد 20 د',
+    imagePath: 'assets/images/pickup.png',
+    phone: '+92 321 2345678',
+    latOffset: -0.0083,
+    lngOffset: -0.0055,
+    heading: 330.0,
+    carColor: Color(0xFF6C3CE9),
+  ),
+  _NearbyProviderItem(
+    id: 23,
+    name: 'Imad Wasim',
+    nameAr: 'عماد وسيم',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
+    rating: 4.8,
+    reviews: 114,
+    status: 'Available',
+    distanceKm: 3.6,
+    eta: '20 min away',
+    etaAr: 'على بعد 20 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 322 3456789',
+    latOffset: 0.0058,
+    lngOffset: -0.0088,
+    heading: 50.0,
+    carColor: Color(0xFF8B53FE),
+  ),
+  _NearbyProviderItem(
+    id: 24,
+    name: 'Hasan Ali',
+    nameAr: 'حسن علي',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
+    rating: 4.7,
+    reviews: 73,
+    status: 'Available',
+    distanceKm: 3.8,
+    eta: '21 min away',
+    etaAr: 'على بعد 21 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 323 4567890',
+    latOffset: -0.0068,
+    lngOffset: 0.0086,
+    heading: 215.0,
+    carColor: Color(0xFF9E6CF5),
+  ),
+  _NearbyProviderItem(
+    id: 25,
+    name: 'Faheem Ashraf',
+    nameAr: 'فهيم أشرف',
+    vehicle: 'Hatchback • AC',
+    vehicleAr: 'هاتشباك • مكيف',
+    rating: 4.6,
+    reviews: 58,
+    status: 'Available',
+    distanceKm: 3.9,
+    eta: '22 min away',
+    etaAr: 'على بعد 22 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 324 5678901',
+    latOffset: 0.0091,
+    lngOffset: 0.0042,
+    heading: 160.0,
+    carColor: Color(0xFF7C4DFF),
+  ),
+  _NearbyProviderItem(
+    id: 26,
+    name: 'Aamer Jamal',
+    nameAr: 'عامر جمال',
+    vehicle: 'Pickup • AC',
+    vehicleAr: 'شاحنة نقل • مكيف',
+    rating: 4.8,
+    reviews: 91,
+    status: 'Available',
+    distanceKm: 4.1,
+    eta: '23 min away',
+    etaAr: 'على بعد 23 د',
+    imagePath: 'assets/images/pickup.png',
+    phone: '+92 325 6789012',
+    latOffset: -0.0092,
+    lngOffset: -0.0046,
+    heading: 280.0,
+    carColor: Color(0xFF8B53FE),
+  ),
+  _NearbyProviderItem(
+    id: 27,
+    name: 'Saim Ayub',
+    nameAr: 'صائم أيوب',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
+    rating: 4.9,
+    reviews: 130,
+    status: 'Available',
+    distanceKm: 4.2,
+    eta: '23 min away',
+    etaAr: 'على بعد 23 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 326 7890123',
+    latOffset: 0.0076,
+    lngOffset: -0.0079,
+    heading: 20.0,
+    carColor: Color(0xFFA67AFE),
+  ),
+  _NearbyProviderItem(
+    id: 28,
+    name: 'Abdullah Shafique',
+    nameAr: 'عبد الله شفيق',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
+    rating: 4.8,
+    reviews: 84,
+    status: 'Available',
+    distanceKm: 4.4,
+    eta: '24 min away',
+    etaAr: 'على بعد 24 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 327 8901234',
+    latOffset: -0.0079,
+    lngOffset: 0.0094,
+    heading: 190.0,
+    carColor: Color(0xFF6C3CE9),
+  ),
+  _NearbyProviderItem(
+    id: 29,
+    name: 'Usama Mir',
+    nameAr: 'أسامة مير',
+    vehicle: 'SUV • AC',
+    vehicleAr: 'دفع رباعي • مكيف',
+    rating: 4.7,
+    reviews: 67,
+    status: 'Available',
+    distanceKm: 4.5,
+    eta: '25 min away',
+    etaAr: 'على بعد 25 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 328 9012345',
+    latOffset: 0.0098,
+    lngOffset: -0.0062,
+    heading: 320.0,
+    carColor: Color(0xFF9E6CF5),
+  ),
+  _NearbyProviderItem(
+    id: 30,
+    name: 'Zaman Khan',
+    nameAr: 'زمان خان',
+    vehicle: 'Sedan • AC',
+    vehicleAr: 'سيدان • مكيف',
+    rating: 4.8,
+    reviews: 95,
+    status: 'Available',
+    distanceKm: 4.7,
+    eta: '26 min away',
+    etaAr: 'على بعد 26 د',
+    imagePath: 'assets/images/car_ride.png',
+    phone: '+92 329 0123456',
+    latOffset: -0.0095,
+    lngOffset: -0.0078,
+    heading: 75.0,
+    carColor: Color(0xFF8B53FE),
   ),
 ];
 
@@ -114,6 +658,11 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   int _selectedProviderCount = 10;
+  double _zoom = 14.5;
+  double? _centerPixelX;
+  double? _centerPixelY;
+  bool _isDraggingMap = false;
+  int? _selectedProviderId;
 
   AppTranslations get tr => ref.read(translationsProvider);
 
@@ -145,7 +694,12 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
           builder: (context, constraints) {
             final bool isDesktopWeb = constraints.maxWidth > 500;
             final double containerWidth = isDesktopWeb ? 390.0 : constraints.maxWidth;
-            final double cardWidth = containerWidth >= 390 ? 350.0 : (containerWidth - 40.0).clamp(280.0, 350.0);
+            final double horizontalPadding = isDesktopWeb
+                ? 20.0
+                : (containerWidth > 420.0
+                    ? ((containerWidth - 380.0) / 2.0).clamp(16.0, 40.0)
+                    : 20.0);
+            final double cardWidth = containerWidth - (horizontalPadding * 2.0);
             final double containerHeight = isDesktopWeb
                 ? math.min(844.0, (constraints.maxHeight - 32.0).clamp(520.0, 844.0))
                 : constraints.maxHeight;
@@ -157,18 +711,31 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
             final nearbyProvidersAsync = ref.watch(nearbyProvidersProvider);
             final List<ProviderMarkerModel> liveProviders = nearbyProvidersAsync.value ?? [];
 
+            _centerPixelX ??= MercatorProjection.lngToX(userLoc.longitude, _zoom);
+            _centerPixelY ??= MercatorProjection.latToY(userLoc.latitude, _zoom) + 15.0;
+
+            final double mapWidth = containerWidth;
+            final double mapHeight = 220.0;
+            final double leftPx = _centerPixelX! - (mapWidth / 2.0);
+            final double topPx = _centerPixelY! - (mapHeight / 2.0);
+
+            final double userScreenX = MercatorProjection.lngToX(userLoc.longitude, _zoom) - leftPx;
+            final double userScreenY = MercatorProjection.latToY(userLoc.latitude, _zoom) - topPx;
+
             final String searchQuery = _searchController.text.trim().toLowerCase();
-            final List<ProviderMarkerModel> filteredProviders = searchQuery.isEmpty
-                ? liveProviders
-                : liveProviders.where((p) {
+            final List<_NearbyProviderItem> searchedProviders = searchQuery.isEmpty
+                ? _all30NearbyProviders
+                : _all30NearbyProviders.where((p) {
                     return p.name.toLowerCase().contains(searchQuery) ||
-                        p.categoryName.toLowerCase().contains(searchQuery) ||
-                        p.coordinatesDisplay.contains(searchQuery);
+                        p.nameAr.toLowerCase().contains(searchQuery) ||
+                        p.vehicle.toLowerCase().contains(searchQuery) ||
+                        p.vehicleAr.toLowerCase().contains(searchQuery) ||
+                        '${p.distanceKm} km'.contains(searchQuery);
                   }).toList();
 
-            final int itemsCount = filteredProviders.isNotEmpty
-                ? math.min(_selectedProviderCount, filteredProviders.length)
-                : _selectedProviderCount;
+            final List<_NearbyProviderItem> activeProviders = searchedProviders
+                .take(_selectedProviderCount)
+                .toList();
 
             final screenContent = Container(
               width: containerWidth,
@@ -176,46 +743,142 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
               color: Colors.white,
               child: Stack(
                 children: [
-                  // 1. Background Map Layer ("in bg map hoga"):
-                  Positioned.fill(
-                    child: Image.asset(
-                      'assets/images/BG image.png',
-                      width: containerWidth,
-                      height: containerHeight,
-                      fit: BoxFit.cover,
-                      alignment: Alignment.topCenter,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: const Color(0xFFF3F4F6),
-                        child: const Center(
-                          child: Icon(
-                            Icons.map_outlined,
-                            size: 48,
-                            color: Color(0xFF9CA3AF),
-                          ),
+                  // 1. Real Slippy Map Layer at Top behind card ("in bg map hoga"):
+                  Positioned(
+                    top: 0.0,
+                    left: 0.0,
+                    width: mapWidth,
+                    height: mapHeight,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onPanStart: (details) {
+                        setState(() => _isDraggingMap = true);
+                      },
+                      onPanUpdate: (details) {
+                        setState(() {
+                          _centerPixelX = (_centerPixelX ?? 0) - details.delta.dx;
+                          _centerPixelY = (_centerPixelY ?? 0) - details.delta.dy;
+                        });
+                      },
+                      onPanEnd: (details) {
+                        setState(() => _isDraggingMap = false);
+                      },
+                      child: MouseRegion(
+                        cursor: _isDraggingMap
+                            ? SystemMouseCursors.grabbing
+                            : SystemMouseCursors.grab,
+                        child: Stack(
+                          clipBehavior: Clip.hardEdge,
+                          children: [
+                            // A. Slippy Tile Layer with Google/OSM tiles
+                            _DynamicMapTileLayer(
+                              centerPixelX: _centerPixelX!,
+                              centerPixelY: _centerPixelY!,
+                              zoom: _zoom,
+                              width: mapWidth,
+                              height: mapHeight,
+                            ),
+
+                            // B. Customer Location Center Beacon
+                            Positioned(
+                              left: userScreenX - 14.0,
+                              top: userScreenY - 14.0,
+                              child: Tooltip(
+                                message: tr.isArabic
+                                    ? 'موقعك: ${userLoc.cityName}'
+                                    : 'Your Location: ${userLoc.cityName}',
+                                child: Container(
+                                  key: const Key('find_provider_gps_center_marker'),
+                                  width: 28.0,
+                                  height: 28.0,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: const Color(0xFF8B53FE),
+                                    border: Border.all(color: Colors.white, width: 2.5),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x408B53FE),
+                                        blurRadius: 10.0,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.person_pin_circle_rounded,
+                                      size: 16.0,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // C. Providers cars plotted on real map according to filter (10, 20, 30)
+                            ...activeProviders.map((p) {
+                              final double pLat = userLoc.latitude + p.latOffset;
+                              final double pLng = userLoc.longitude + p.lngOffset;
+                              final double carScreenX = MercatorProjection.lngToX(pLng, _zoom) - leftPx;
+                              final double carScreenY = MercatorProjection.latToY(pLat, _zoom) - topPx;
+
+                              return Positioned(
+                                left: carScreenX - 45.0,
+                                top: carScreenY - 37.0,
+                                width: 90.0,
+                                height: 74.0,
+                                child: TopDownCarWidget(
+                                  key: ValueKey('find_provider_car_${p.id}'),
+                                  width: 17.0,
+                                  height: 29.0,
+                                  angle: p.heading,
+                                  driverName: (tr.isArabic ? p.nameAr : p.name).split(' ').first,
+                                  distanceKm: p.distanceKm,
+                                  bodyColor: p.carColor,
+                                  showBadge: true,
+                                  isSelected: _selectedProviderId == p.id,
+                                  isInsideRadius: true,
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    setState(() {
+                                      _selectedProviderId = p.id;
+                                    });
+                                    ProviderDetailCardWidget.showAsBottomSheet(
+                                      context: context,
+                                      providerName: tr.isArabic ? p.nameAr : p.name,
+                                      serviceCategory: tr.categoryName(widget.serviceCategory),
+                                      vehicleName: tr.isArabic ? p.vehicleAr : p.vehicle,
+                                      distance: tr.isArabic ? '${p.distanceKm} كم' : '${p.distanceKm} km',
+                                      estimatedTime: tr.isArabic ? p.etaAr : p.eta,
+                                      rating: p.rating,
+                                      tripsCount: p.reviews,
+                                      phoneNumber: p.phone,
+                                    );
+                                  },
+                                ),
+                              );
+                            }),
+                          ],
                         ),
                       ),
                     ),
                   ),
 
-                  // 2. Gradient Overlay Layer ("after header"):
-                  // width: 390; height: 843; top: 1px;
-                  // background: linear-gradient(180deg, #FFFFFF 2.14%, rgba(255, 255, 255, 0.839534) 17.05%, rgba(255, 255, 255, 0) 26.93%);
+                  // 2. Subtle Gradient Overlay Layer ("after header"):
                   Positioned(
-                    top: 1.0,
+                    top: 0.0,
                     left: 0.0,
                     width: containerWidth,
-                    height: containerHeight,
+                    height: 96.0,
                     child: const IgnorePointer(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            stops: [0.0214, 0.1705, 0.2693, 1.0],
+                            stops: [0.0, 0.65, 1.0],
                             colors: [
-                              Color(0xFFFFFFFF), // #FFFFFF 2.14%
-                              Color(0xD6FFFFFF), // rgba(255, 255, 255, 0.839534) 17.05%
-                              Color(0x00FFFFFF), // rgba(255, 255, 255, 0) 26.93%
+                              Color(0xDDFFFFFF),
+                              Color(0x77FFFFFF),
                               Color(0x00FFFFFF),
                             ],
                           ),
@@ -225,14 +888,9 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                   ),
 
                   // 3. Location Button Layout:
-                  // width: 36; height: 36; top: 106px; left: 334px;
-                  // border-radius: 8px; background: #FFFFFF; box-shadow: 0px 1px 8px 0px #0000000F;
-                  // icon styling: width: 20; height: 20; top: 8px; left: 8px; background: #1C2926;
                   Positioned(
                     top: 106.0,
-                    left: containerWidth >= 390
-                        ? 334.0
-                        : (containerWidth - 36.0 - 20.0),
+                    right: horizontalPadding,
                     width: 36.0,
                     height: 36.0,
                     child: GestureDetector(
@@ -257,6 +915,11 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                         final freshLoc = await ref.read(locationServiceProvider).getCurrentLocation();
                         ref.refresh(userLocationProvider);
                         ref.refresh(nearbyProvidersProvider);
+
+                        setState(() {
+                          _centerPixelX = MercatorProjection.lngToX(freshLoc.longitude, _zoom);
+                          _centerPixelY = MercatorProjection.latToY(freshLoc.latitude, _zoom) + 15.0;
+                        });
 
                         if (!context.mounted) return;
                         ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -308,21 +971,14 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                     ),
                   ),
 
-                  // 4. Header Branding (Matches PickupDeliveryScreen exactly):
-                  // width: 350; height: 36; gap: 16px; top: 56px; left: 20px;
+                  // 4. Header Branding (Symmetrical margins matching cards exactly):
                   Positioned(
                     top: 56.0,
-                    left: containerWidth >= 390
-                        ? 20.0
-                        : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                    width: containerWidth >= 390
-                        ? 350.0
-                        : (containerWidth - 40.0).clamp(280.0, 350.0),
+                    left: horizontalPadding,
+                    right: horizontalPadding,
                     height: 36.0,
                     child: SizedBox(
-                      width: containerWidth >= 390
-                          ? 350.0
-                          : (containerWidth - 40.0).clamp(280.0, 350.0),
+                      width: cardWidth,
                       height: 36.0,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -355,7 +1011,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                               ),
                               child: Center(
                                 child: Transform.scale(
-                                  scaleX: tr.isArabic ? -1.0 : 1.0,
+                                  scaleX: (tr.isArabic || Directionality.of(context) == TextDirection.rtl) ? -1.0 : 1.0,
                                   child: const CustomPaint(
                                     size: Size(6.0, 13.0),
                                     painter: _BackChevronPainter(
@@ -385,8 +1041,6 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                             ),
                           ),
                           const SizedBox(width: 16.0),
-                          // search icon in header on right side matching screenshot:
-                          // width: 36; height: 36; angle: 0 deg; opacity: 1; border-radius: 8px; background: #FFFFFF; box-shadow: 0px 1px 8px 0px #0000000F;
                           GestureDetector(
                             key: const Key('header_search_button'),
                             onTap: () {
@@ -437,10 +1091,6 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                   ),
 
                   // 5. Card Styling:
-                  // width: 390; height: 682; top: 162px;
-                  // angle: 0 deg; opacity: 1;
-                  // border-top-left-radius: 28px; border-top-right-radius: 28px;
-                  // background: #FFFFFF; box-shadow: 0px -2px 12px 0px #00000014;
                   Positioned(
                     top: 162.0,
                     left: 0.0,
@@ -475,28 +1125,32 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                           child: ListView(
                             padding: EdgeInsets.only(
                               top: 24.0,
-                              left: ((containerWidth - cardWidth) / 2.0).clamp(12.0, 60.0),
-                              right: ((containerWidth - cardWidth) / 2.0).clamp(12.0, 60.0),
+                              left: horizontalPadding,
+                              right: horizontalPadding,
                               bottom: 80.0,
                             ),
                             physics: const AlwaysScrollableScrollPhysics(
                               parent: BouncingScrollPhysics(),
                             ),
                             children: [
-                              // 1. Header controls (Providers to show, buttons, bar, total providers):
-                              Center(child: _buildProvidersInnerCard(containerWidth, filteredProviders.length, userLoc)),
+                              // 1. Header controls (Providers to show, buttons):
+                              Center(child: _buildProvidersInnerCard(cardWidth)),
 
                               const SizedBox(height: 16.0),
 
                               // 2. Services cards:
-                              ...List.generate(
-                                itemsCount,
-                                (index) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 12.0),
-                                  child: Center(
-                                    child: _buildServiceCard(cardWidth, index, filteredProviders),
-                                  ),
-                                ),
+                              ...activeProviders.asMap().entries.map(
+                                (entry) {
+                                  final index = entry.key;
+                                  final item = entry.value;
+                                  final liveItem = (index < liveProviders.length) ? liveProviders[index] : null;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 12.0),
+                                    child: Center(
+                                      child: _buildServiceCard(cardWidth, item, liveItem),
+                                    ),
+                                  );
+                                },
                               ),
 
                               const SizedBox(height: 16.0),
@@ -663,11 +1317,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
   }
 
   /// Providers to show widget matching Figma branding from pickup screen:
-  Widget _buildProvidersInnerCard(double containerWidth, [int? totalCount, UserLocation? userLoc]) {
-    final double cardWidth = containerWidth >= 390
-        ? 350.0
-        : (containerWidth - 40.0).clamp(280.0, 350.0);
-
+  Widget _buildProvidersInnerCard(double cardWidth) {
     return SizedBox(
       width: cardWidth,
       child: Column(
@@ -717,27 +1367,30 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                         fontSize: 16.0,
                         fontWeight: FontWeight.w500,
                         color: const Color(0xFF1C2926),
-                        height: 1.15,
+                        height: tr.isArabic ? 1.0 : 1.15,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 3.0),
-                    // Content: Adjust the number of providers on the map. (12px, weight 400, line-height 22px, #566663)
-                    Text(
-                      tr.isArabic ? 'حدد عدد المزودين الظاهرين على الخريطة.' : 'Adjust the number of providers on the map.',
-                      textHeightBehavior: const TextHeightBehavior(
-                        applyHeightToFirstAscent: false,
-                        applyHeightToLastDescent: false,
+                    SizedBox(height: tr.isArabic ? 0.0 : 2.0),
+                    // Content: Adjust the number of providers on the map. (wrapped without dots)
+                    Transform.translate(
+                      offset: Offset(0, tr.isArabic ? -3.5 : 0.0),
+                      child: Text(
+                        tr.isArabic ? 'حدد عدد المزودين الظاهرين على الخريطة.' : 'Adjust the number of providers on the map.',
+                        textHeightBehavior: const TextHeightBehavior(
+                          applyHeightToFirstAscent: false,
+                          applyHeightToLastDescent: false,
+                        ),
+                        style: tr.font(
+                          fontSize: 12.0,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF566663),
+                          height: tr.isArabic ? 1.05 : 1.15,
+                        ),
+                        maxLines: 2,
+                        softWrap: true,
                       ),
-                      style: tr.font(
-                        fontSize: 12.0,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF566663),
-                        height: 1.15,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -761,256 +1414,39 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
               ],
             ),
           ),
-
-          const SizedBox(height: 16.0),
-
-          // Bar branding:
-          // width: 350; height: 1; angle: 0 deg; opacity: 1; border-radius: 16px; background: #F4F5F2;
-          Container(
-            key: const Key('providers_to_show_divider_bar'),
-            width: cardWidth,
-            height: 1.0,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF4F5F2),
-              borderRadius: BorderRadius.circular(16.0),
-            ),
-          ),
-
-          const SizedBox(height: 16.0),
-
-          // 4. Total number of providers layout widget branding:
-          // width: 350; height: 42; justify-content: space-between;
-          _buildTotalProvidersLayout(cardWidth, totalCount, userLoc),
         ],
-      ),
-    );
-  }
-
-  /// Total number of providers layout widget matching exact Figma specifications:
-  /// width: 350; height: 42; justify-content: space-between; angle: 0 deg; opacity: 1;
-  Widget _buildTotalProvidersLayout(double cardWidth, [int? totalCount, UserLocation? userLoc]) {
-    return SizedBox(
-      width: cardWidth,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Left side content layout: gap: 12px;
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // content: 18 Providers nearby
-                // width: 152; height: 12; font-family: Inter; font-weight: 500; font-size: 16px; leading-trim: CAP_HEIGHT; line-height: 22px; color: #1C2926;
-                Text(
-                  tr.providersNearbyCount(totalCount != null && totalCount > 0 ? totalCount : 18),
-                  textHeightBehavior: const TextHeightBehavior(
-                    applyHeightToFirstAscent: false,
-                    applyHeightToLastDescent: false,
-                  ),
-                  style: tr.font(
-                    fontSize: 16.0,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF1C2926),
-                    height: 1.15,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2.0),
-                // content: Within 1 km radius • locality
-                Text(
-                  (userLoc != null && userLoc.cityName.isNotEmpty && userLoc.cityName != 'Detecting Location...')
-                      ? (tr.isArabic
-                          ? 'ضمن نطاق 1 كم • ${userLoc.cityName == 'Karachi Pakistan' ? 'كراتشي، باكستان' : userLoc.cityName}'
-                          : 'Within 1 km radius • ${userLoc.cityName}')
-                      : tr.withinRadius,
-                  textHeightBehavior: const TextHeightBehavior(
-                    applyHeightToFirstAscent: false,
-                    applyHeightToLastDescent: false,
-                  ),
-                  style: tr.font(
-                    fontSize: 12.0,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF566663),
-                    height: 1.15,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-
-          // Right side content layout:
-          // width: 117; height: 42; angle: 0 deg; opacity: 1; border-radius: 60px; gap: 12px; padding: 16px; background: #F2F5F4;
-          GestureDetector(
-            key: const Key('view_all_providers_chip'),
-            onTap: () {
-              HapticFeedback.lightImpact();
-            },
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 42.0, minWidth: 100.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFF8B53FE),
-                borderRadius: BorderRadius.circular(60.0),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x338B53FE),
-                    blurRadius: 6.0,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // vector arrow up and down branding
-                  const CustomPaint(
-                    size: Size(12.0, 10.0),
-                    painter: _ArrowUpDownVectorPainter(
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 8.0),
-                  // content: View All
-                  Text(
-                    tr.viewAll,
-                    style: tr.font(
-                      fontSize: 12.0,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                      height: 1.15,
-                    ),
-                    maxLines: 1,
-                  ),
-                  const SizedBox(width: 8.0),
-                  // vector > branding
-                  Transform.scale(
-                    scaleX: tr.isArabic ? -1.0 : 1.0,
-                    child: const CustomPaint(
-                      size: Size(4.0, 8.0),
-                      painter: _ChevronRightVectorPainter(
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Services cards layout branding:
-  /// Equal gap from left to right and equal 12px gap between cards
-  Widget _buildServicesCardsLayout(double containerWidth) {
-    final double cardWidth = containerWidth >= 390
-        ? 350.0
-        : (containerWidth - 32.0).clamp(280.0, 350.0);
-    final double horizontalGap = ((containerWidth - cardWidth) / 2.0).clamp(12.0, 40.0);
-
-    return ScrollConfiguration(
-      behavior: const _EasyScrollBehavior(),
-      child: ListView.separated(
-        padding: EdgeInsets.symmetric(horizontal: horizontalGap, vertical: 12.0),
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
-        ),
-        itemCount: _selectedProviderCount,
-        separatorBuilder: (context, index) => const SizedBox(height: 12.0), // gap: 12px;
-        itemBuilder: (context, index) => Center(
-          child: _buildServiceCard(cardWidth, index),
-        ),
       ),
     );
   }
 
   /// Card branding matching exact Figma specifications:
-  /// card layout:
-  /// width: 350; height: 78; border-radius: 12px; justify-content: space-between;
-  /// angle: 0 deg; opacity: 1; padding: 16px;
-  /// background: #FFFFFF; box-shadow: 0px 1px 12px 0px #0000001A;
-  ///
-  /// left side content layout: width: 195; height: 46; gap: 12px;
-  /// left side img branding: width: 60; height: 40; angle: -180 deg; opacity: 1;
-  /// content branding: width: 123; height: 46; gap: 12px;
-  /// row 1 name branding: Ahmad Raza, 12px Inter Medium (500), #1C2926;
-  /// row 2 and 3 layout: width: 123; height: 25; gap: 24px;
-  /// text layout: width: 57; height: 25; gap: 8px;
-  ///   content: Sedan . AC, 10px Inter Regular (400), #566663;
-  ///   row 3 layout: width: 57; height: 10; gap: 4px;
-  ///     star branding: width: 10; height: 10; background: #8B53FE;
-  ///     content: 4.9 (120), 10px Inter Regular (400);
-  /// available badge layout: width: 42; height: 14; border-radius: 60px; padding: 4px; background: #F0EAFE;
-  ///   content: Available, 8px Inter Regular (400), #8B53FE;
-  ///
-  /// right side content layout:
-  /// distance and timer layout: width: 54; height: 29; gap: 12px;
-  ///   distance layout: width: 54; height: 10; gap: 4px;
-  ///     send vector branding: width: 10; height: 10; background: #1C2926;
-  ///     content: 0.3 km, 12px Inter Medium (500), #1C2926;
-  ///   timer layout: 2 min away, 10px Inter Regular (400), #566663;
-  /// call icon layout: width: 36; height: 36; border-radius: 60px; border-width: 0.6px; background: #F5F7F7;
-  ///   call icon inner branding: width: 12; height: 12; background: #1C2926;
-  Widget _buildServiceCard(double cardWidth, int index, [List<ProviderMarkerModel>? liveProviders]) {
-    final ProviderMarkerModel? liveItem =
-        (liveProviders != null && index < liveProviders.length)
-            ? liveProviders[index]
-            : null;
-
-    final baseItem = _nearbyProviders[index % _nearbyProviders.length];
-
-    // Card 0 is strictly Ahmad Raza from specs, subsequent cards vary realistically
+  Widget _buildServiceCard(double cardWidth, _NearbyProviderItem item, [ProviderMarkerModel? liveItem]) {
     final String providerName = liveItem != null
         ? tr.formatProviderName(liveItem.name)
-        : (index == 0
-            ? (tr.isArabic ? 'أحمد رضا' : 'Ahmad Raza')
-            : index == 1
-                ? (tr.isArabic ? 'محمد بلال' : 'Muhammad Bilal')
-                : index == 2
-                    ? (tr.isArabic ? 'عثمان علي' : 'Usman Ali')
-                    : index == 3
-                        ? (tr.isArabic ? 'حمزة شيخ' : 'Hamza Sheikh')
-                        : (tr.isArabic ? 'مزود خدمة ${index + 1}' : 'Provider ${index + 1}'));
+        : (tr.isArabic ? item.nameAr : item.name);
 
-    final String imagePath = (liveItem?.categorySlug == 'pickup' || index % 3 == 2)
+    final String imagePath = (liveItem?.categorySlug == 'pickup' || item.imagePath.contains('pickup'))
         ? 'assets/images/pickup.png'
         : 'assets/images/car_ride.png';
 
     final String vehicleType = liveItem != null
-        ? '${tr.categoryName(liveItem.categoryName)} • ${tr.isArabic ? 'مكيف' : 'AC'}'
-        : (index % 3 == 2
-            ? '${tr.isArabic ? 'شاحنة نقل' : 'Pickup'} • ${tr.isArabic ? 'مكيف' : 'AC'}'
-            : '${tr.isArabic ? 'سيدان' : 'Sedan'} • ${tr.isArabic ? 'مكيف' : 'AC'}');
+        ? (liveItem.categorySlug == 'pickup'
+            ? (tr.isArabic ? 'بيك أب • مكيف' : 'Pickup • AC')
+            : (tr.isArabic ? 'سيدان • مكيف' : 'Sedan • AC'))
+        : (tr.isArabic ? item.vehicleAr : item.vehicle);
 
-    final double distanceKm = liveItem?.distanceKm ?? (0.3 + (index * 0.25));
+    final double distanceKm = liveItem?.distanceKm ?? item.distanceKm;
     final String etaStr = tr.isArabic
-        ? 'على بعد ${2 + (index * 2)} د'
-        : (liveItem?.etaDisplay ?? ('${2 + (index * 2)} min away'));
+        ? item.etaAr
+        : (liveItem?.etaDisplay ?? item.eta);
     final String distanceStr = tr.isArabic
         ? '${distanceKm.toStringAsFixed(1)} كم'
         : '${distanceKm.toStringAsFixed(1)} km';
 
-    final double rating = liveItem?.ratingAvg ??
-        (index == 0
-            ? 4.9
-            : (4.7 + ((index * 3) % 4) * 0.1).clamp(4.6, 5.0));
+    final double rating = liveItem?.ratingAvg ?? item.rating;
+    final int reviews = liveItem?.ratingCount ?? item.reviews;
 
-    final int reviews = liveItem?.ratingCount ??
-        (index == 0
-            ? 120
-            : (75 + ((index * 19) % 80)));
-
-    final double effectiveWidth = math.min(350.0, cardWidth);
+    final double effectiveWidth = cardWidth;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1029,7 +1465,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
         behavior: HitTestBehavior.opaque,
         child: Container(
           width: effectiveWidth,
-          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
           decoration: BoxDecoration(
             color: const Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(12.0),
@@ -1051,34 +1487,34 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Provider vehicle image
+                    // Provider vehicle image (optimized size for mobile screens)
                     SizedBox(
-                      width: 54.0,
-                      height: 38.0,
+                      width: 48.0,
+                      height: 34.0,
                       child: Transform.flip(
                         flipX: true,
                         child: Image.asset(
                           imagePath,
-                          width: 54.0,
-                          height: 38.0,
+                          width: 48.0,
+                          height: 34.0,
                           fit: BoxFit.contain,
                           errorBuilder: (context, error, stackTrace) => Container(
-                            width: 54.0,
-                            height: 38.0,
+                            width: 48.0,
+                            height: 34.0,
                             decoration: BoxDecoration(
                               color: const Color(0xFFF0EAFE),
                               borderRadius: BorderRadius.circular(6.0),
                             ),
                             child: const Icon(
                               Icons.directions_car_filled,
-                              size: 20,
+                              size: 18,
                               color: Color(0xFF8B53FE),
                             ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10.0), // gap: 10px;
+                    const SizedBox(width: 8.0), // gap: 8px;
 
                     // Content details column
                     Expanded(
@@ -1104,30 +1540,28 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                           ),
                           const SizedBox(height: 2.0),
 
-                          // Vehicle Type and Available badge row
+                          // Vehicle Type and Available badge row (Maintains exact original branding)
                           Row(
                             mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Flexible(
-                                child: Text(
-                                  vehicleType,
-                                  textHeightBehavior: const TextHeightBehavior(
-                                    applyHeightToFirstAscent: false,
-                                    applyHeightToLastDescent: false,
-                                  ),
-                                  style: tr.font(
-                                    fontSize: 10.0,
-                                    fontWeight: FontWeight.w400,
-                                    color: const Color(0xFF566663),
-                                    height: 1.15,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                              Text(
+                                vehicleType,
+                                textHeightBehavior: const TextHeightBehavior(
+                                  applyHeightToFirstAscent: false,
+                                  applyHeightToLastDescent: false,
                                 ),
+                                style: tr.font(
+                                  fontSize: 10.0,
+                                  fontWeight: FontWeight.w400,
+                                  color: const Color(0xFF566663),
+                                  height: 1.15,
+                                ),
+                                maxLines: 1,
                               ),
                               const SizedBox(width: 6.0),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 1.5),
+                                padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF0EAFE),
                                   borderRadius: BorderRadius.circular(60.0),
@@ -1208,17 +1642,17 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Distance row
+                      // Distance row with clean navigation arrow icon
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Transform.rotate(
-                            angle: -math.pi / 4.0,
+                          Transform.scale(
+                            scaleX: (tr.isArabic || Directionality.of(context) == TextDirection.rtl) ? -1.0 : 1.0,
                             child: const Icon(
-                              Icons.navigation,
-                              size: 9.0,
-                              color: Color(0xFF1C2926),
+                              Icons.near_me_rounded,
+                              size: 11.5,
+                              color: Color(0xFF8B53FE),
                             ),
                           ),
                           const SizedBox(width: 3.0),
@@ -1232,32 +1666,35 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                               fontSize: 11.0,
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF1C2926),
-                              height: 1.15,
+                              height: 1.0,
                             ),
                             maxLines: 1,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 2.0),
+                      SizedBox(height: tr.isArabic ? 0.0 : 1.0),
 
-                      // ETA Timer
-                      Text(
-                        etaStr,
-                        textHeightBehavior: const TextHeightBehavior(
-                          applyHeightToFirstAscent: false,
-                          applyHeightToLastDescent: false,
+                      // ETA Timer (gap decreased)
+                      Transform.translate(
+                        offset: Offset(0, tr.isArabic ? -3.0 : -1.0),
+                        child: Text(
+                          etaStr,
+                          textHeightBehavior: const TextHeightBehavior(
+                            applyHeightToFirstAscent: false,
+                            applyHeightToLastDescent: false,
+                          ),
+                          style: tr.font(
+                            fontSize: 10.0,
+                            fontWeight: FontWeight.w400,
+                            color: const Color(0xFF566663),
+                            height: 1.0,
+                          ),
+                          maxLines: 1,
                         ),
-                        style: tr.font(
-                          fontSize: 10.0,
-                          fontWeight: FontWeight.w400,
-                          color: const Color(0xFF566663),
-                          height: 1.15,
-                        ),
-                        maxLines: 1,
                       ),
                     ],
                   ),
-                  const SizedBox(width: 10.0), // gap: 10px;
+                  const SizedBox(width: 8.0),
 
                   // Call icon
                   GestureDetector(
@@ -1272,7 +1709,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                                     : 'Calling $providerName (GPS: ${liveItem.coordinatesDisplay})...')
                                 : (tr.isArabic
                                     ? 'جارٍ الاتصال بـ $providerName...'
-                                    : 'Calling $providerName (${baseItem.phone})...'),
+                                    : 'Calling $providerName (${item.phone})...'),
                             style: tr.font(fontSize: 12.0, color: Colors.white),
                           ),
                           backgroundColor: const Color(0xFF8B53FE),
@@ -1570,3 +2007,138 @@ class _ChevronRightVectorPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+/// Standard Web Mercator (EPSG:3857) projection matching Google Maps & OpenStreetMap
+class MercatorProjection {
+  static double latToY(double lat, double zoom) {
+    final double latRad = lat * math.pi / 180.0;
+    final double sinLat = math.sin(latRad).clamp(-0.9999, 0.9999);
+    return (128.0 / math.pi) * (1 << zoom.toInt()) * (math.pi - math.log((1.0 + sinLat) / (1.0 - sinLat)) / 2.0);
+  }
+
+  static double lngToX(double lng, double zoom) {
+    return (128.0 / math.pi) * (1 << zoom.toInt()) * ((lng * math.pi / 180.0) + math.pi);
+  }
+
+  static double xToLng(double x, double zoom) {
+    final double n = 256.0 * (1 << zoom.toInt());
+    return (x / n) * 360.0 - 180.0;
+  }
+
+  static double yToLat(double y, double zoom) {
+    final double n = 256.0 * (1 << zoom.toInt());
+    final double u = math.pi * (1.0 - 2.0 * y / n);
+    final double latRad = 2.0 * math.atan(math.exp(u)) - (math.pi / 2.0);
+    return latRad * 180.0 / math.pi;
+  }
+}
+
+/// Dynamic Slippy Map Layer supporting unlimited viewport dragging & Google/OSM tile rendering
+class _DynamicMapTileLayer extends StatelessWidget {
+  final double centerPixelX;
+  final double centerPixelY;
+  final double zoom;
+  final double width;
+  final double height;
+
+  const _DynamicMapTileLayer({
+    required this.centerPixelX,
+    required this.centerPixelY,
+    required this.zoom,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const double tileSize = 256.0;
+    final int z = zoom.toInt();
+
+    final double leftPx = centerPixelX - (width / 2.0);
+    final double topPx = centerPixelY - (height / 2.0);
+    final double rightPx = leftPx + width;
+    final double bottomPx = topPx + height;
+
+    final int minTileX = (leftPx / tileSize).floor() - 1;
+    final int maxTileX = (rightPx / tileSize).ceil() + 1;
+    final int minTileY = (topPx / tileSize).floor() - 1;
+    final int maxTileY = (bottomPx / tileSize).ceil() + 1;
+
+    final int maxIndex = (1 << z) - 1;
+    final List<Widget> tileWidgets = [];
+
+    for (int tx = minTileX; tx <= maxTileX; tx++) {
+      for (int ty = minTileY; ty <= maxTileY; ty++) {
+        final int wrappedTileX = (tx % (maxIndex + 1) + (maxIndex + 1)) % (maxIndex + 1);
+        if (ty < 0 || ty > maxIndex) continue;
+
+        final double tileLeft = (tx * tileSize) - leftPx;
+        final double tileTop = (ty * tileSize) - topPx;
+
+        final int serverIdx = (wrappedTileX.abs() + ty.abs()) % 4;
+        final String lang = Localizations.localeOf(context).languageCode;
+        final String googleTileUrl =
+            'https://mt$serverIdx.google.com/vt/lyrs=m&hl=$lang&x=$wrappedTileX&y=$ty&z=$z';
+        final String osmTileUrl =
+            'https://tile.openstreetmap.org/$z/$wrappedTileX/$ty.png';
+
+        tileWidgets.add(
+          Positioned(
+            key: ValueKey('find_tile_${wrappedTileX}_${ty}_$z'),
+            left: tileLeft,
+            top: tileTop,
+            width: tileSize,
+            height: tileSize,
+            child: Image.network(
+              googleTileUrl,
+              fit: BoxFit.cover,
+              gaplessPlayback: true,
+              filterQuality: FilterQuality.low,
+              errorBuilder: (context, error, stackTrace) {
+                return Image.network(
+                  osmTileUrl,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  filterQuality: FilterQuality.low,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Image.asset(
+                      'assets/images/BG image.png',
+                      fit: BoxFit.cover,
+                      gaplessPlayback: true,
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      }
+    }
+
+    return ClipRect(
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/BG image.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+            ...tileWidgets,
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B53FE).withValues(alpha: 0.03),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

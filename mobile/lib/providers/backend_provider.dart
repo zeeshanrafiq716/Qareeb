@@ -1,3 +1,4 @@
+import '../services/google_maps_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/api/api_client.dart';
 import '../models/category_model.dart';
@@ -15,8 +16,13 @@ final backendServiceProvider = Provider<BackendService>((ref) {
   return BackendService(client);
 });
 
+final googleMapsServiceProvider = Provider<GoogleMapsService>((ref) {
+  return GoogleMapsService();
+});
+
 final locationServiceProvider = Provider<LocationService>((ref) {
-  return LocationService();
+  final googleMaps = ref.watch(googleMapsServiceProvider);
+  return LocationService(null, googleMaps);
 });
 
 /// Continuous real-time GPS tracking stream provider
@@ -39,7 +45,7 @@ final categoriesProvider = FutureProvider<List<CategoryModel>>((ref) async {
 
 /// Real nearby providers based on real user GPS coordinates
 final nearbyProvidersProvider = FutureProvider<List<ProviderMarkerModel>>((ref) async {
-  final userLoc = await ref.watch(userLocationProvider.future);
+  final userLoc = ref.watch(userLocationProvider).value ?? UserLocation.defaultLocation;
   final backendService = ref.watch(backendServiceProvider);
 
   return await backendService.getNearbyProviders(
@@ -52,7 +58,7 @@ final nearbyProvidersProvider = FutureProvider<List<ProviderMarkerModel>>((ref) 
 /// Filtered nearby providers by category slug
 final categoryNearbyProvidersProvider =
     FutureProvider.family<List<ProviderMarkerModel>, String?>((ref, categorySlug) async {
-  final userLoc = await ref.watch(userLocationProvider.future);
+  final userLoc = ref.watch(userLocationProvider).value ?? UserLocation.defaultLocation;
   final backendService = ref.watch(backendServiceProvider);
 
   return await backendService.getNearbyProviders(

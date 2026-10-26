@@ -61,7 +61,7 @@ class TopDownCarWidget extends StatelessWidget {
       ),
     );
 
-    // Scaling animation on selection (thora sa increase: 1.28x on tap)
+    // Scaling animation on selection (increase to 1.28x on tap)
     final Widget animatedCar = AnimatedScale(
       scale: isSelected ? 1.28 : 1.0,
       duration: const Duration(milliseconds: 240),
@@ -70,83 +70,42 @@ class TopDownCarWidget extends StatelessWidget {
       child: carGraphic,
     );
 
-    // If badge is not needed, return clickable car with generous hit area
-    if (!showBadge || driverName == null) {
-      return SizedBox(
-        width: width,
-        height: height,
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.center,
-          children: [
-            Positioned(
-              left: (width - 48.0) / 2.0,
-              top: (height - 48.0) / 2.0,
-              width: 48.0,
-              height: 48.0,
-              child: GestureDetector(
-                onTap: onTap,
-                behavior: HitTestBehavior.opaque,
-                child: const SizedBox.expand(),
-              ),
-            ),
-            Opacity(
-              opacity: opacity,
-              child: animatedCar,
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Full car with Speech Bubble Tooltip
+    // Full car with Speech Bubble Tooltip in a unified, hit-testable 90x74 box
     return SizedBox(
-      width: width,
-      height: height,
-      child: Opacity(
-        opacity: opacity,
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.topCenter,
-          children: [
-            // 48x48 touch hit area for easy tapping
-            Positioned(
-              left: (width - 48.0) / 2.0,
-              top: (height - 48.0) / 2.0,
-              width: 48.0,
-              height: 48.0,
-              child: GestureDetector(
-                onTap: onTap,
-                behavior: HitTestBehavior.opaque,
-                child: const SizedBox.expand(),
-              ),
-            ),
+      width: 90.0,
+      height: 74.0,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Opacity(
+            opacity: opacity,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.topCenter,
+              children: [
+                // Speech Bubble Tooltip attached directly above car (centered horizontally)
+                if (showBadge && driverName != null)
+                  Positioned(
+                    top: 0.0,
+                    child: _SpeechBubbleTooltip(
+                      driverName: driverName!,
+                      distanceKm: distanceKm,
+                      isSelected: isSelected,
+                      isInsideRadius: isInsideRadius,
+                      tailOnCenter: true,
+                    ),
+                  ),
 
-            // Car Icon
-            Positioned(
-              top: 0.0,
-              child: animatedCar,
-            ),
-
-            // Speech Bubble Tooltip attached directly to car (adapts alignment near edges)
-            Positioned(
-              top: alignBadgeBelow ? (isSelected ? (height + 2.0) : (height - 1.5)) : null,
-              bottom: !alignBadgeBelow ? (isSelected ? (height + 2.0) : (height - 1.5)) : null,
-              right: alignBadgeLeft ? ((width / 2.0) - 12.0) : null,
-              child: GestureDetector(
-                onTap: onTap,
-                behavior: HitTestBehavior.opaque,
-                child: _SpeechBubbleTooltip(
-                  driverName: driverName!,
-                  distanceKm: distanceKm,
-                  isSelected: isSelected,
-                  tailOnCenter: !alignBadgeLeft,
-                  tailOnRight: alignBadgeLeft,
-                  tailOnTop: alignBadgeBelow,
+                // Car Icon positioned right beneath the speech bubble tail tip
+                Positioned(
+                  top: (showBadge && driverName != null) ? 36.0 : 21.5,
+                  child: animatedCar,
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -417,6 +376,7 @@ class _SpeechBubbleTooltip extends ConsumerWidget {
   final String driverName;
   final double? distanceKm;
   final bool isSelected;
+  final bool isInsideRadius;
   final bool tailOnCenter;
   final bool tailOnRight;
   final bool tailOnTop;
@@ -425,6 +385,7 @@ class _SpeechBubbleTooltip extends ConsumerWidget {
     required this.driverName,
     this.distanceKm,
     this.isSelected = false,
+    this.isInsideRadius = true,
     this.tailOnCenter = true,
     this.tailOnRight = false,
     this.tailOnTop = false,
@@ -438,8 +399,10 @@ class _SpeechBubbleTooltip extends ConsumerWidget {
     return CustomPaint(
       painter: _SpeechBubbleCardPainter(
         backgroundColor: Colors.white,
-        borderColor: isSelected ? const Color(0xFF8B53FE) : const Color(0xFFE2E8F0),
-        borderWidth: isSelected ? 1.4 : 0.8,
+        borderColor: isSelected
+            ? const Color(0xFF8B53FE)
+            : (isInsideRadius ? const Color(0xFF8B53FE).withValues(alpha: 0.65) : const Color(0xFFE2E8F0)),
+        borderWidth: isSelected ? 1.4 : 0.9,
         borderRadius: 7.0,
         tailWidth: 8.0,
         tailHeight: 4.5,
@@ -459,14 +422,31 @@ class _SpeechBubbleTooltip extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              localizedDriverName,
-              style: tr.font(
-                fontSize: isSelected ? 10.5 : 10.0,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF1C2926),
-                height: 1.1,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (isInsideRadius) ...[
+                  Container(
+                    width: 5.0,
+                    height: 5.0,
+                    margin: const EdgeInsets.only(right: 3.5),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF10B981), // Emerald green "Near" dot
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+                Text(
+                  localizedDriverName,
+                  style: tr.font(
+                    fontSize: isSelected ? 10.5 : 10.0,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1C2926),
+                    height: 1.1,
+                  ),
+                ),
+              ],
             ),
             if (distanceKm != null) ...[
               const SizedBox(height: 2.0),
@@ -475,10 +455,10 @@ class _SpeechBubbleTooltip extends ConsumerWidget {
                 children: [
                   Transform.rotate(
                     angle: -math.pi / 4.0, // Tilted navigation arrow matching screenshot
-                    child: const Icon(
+                    child: Icon(
                       Icons.navigation,
                       size: 8.5,
-                      color: Color(0xFF566663),
+                      color: isInsideRadius ? const Color(0xFF8B53FE) : const Color(0xFF566663),
                     ),
                   ),
                   const SizedBox(width: 3.0),
@@ -488,8 +468,8 @@ class _SpeechBubbleTooltip extends ConsumerWidget {
                         : '${distanceKm!.toStringAsFixed(1)} km',
                     style: tr.font(
                       fontSize: 9.0,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF566663),
+                      fontWeight: isInsideRadius ? FontWeight.w600 : FontWeight.w500,
+                      color: isInsideRadius ? const Color(0xFF8B53FE) : const Color(0xFF566663),
                       height: 1.1,
                     ),
                   ),

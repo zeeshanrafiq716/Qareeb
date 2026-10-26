@@ -1,6 +1,4 @@
-import 'dart:math' as math;
 import 'dart:ui';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,8 +9,6 @@ import 'package:mobile/features/provider/requests/presentation/provider_active_r
 import 'package:mobile/features/provider/requests/presentation/provider_request_details_screen.dart';
 import 'package:mobile/features/provider/requests/presentation/widgets/provider_request_card.dart';
 import 'package:mobile/features/provider/requests/presentation/widgets/provider_requests_header.dart';
-import 'package:mobile/features/provider/theme/provider_colors.dart';
-import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Model representing incoming service requests for the provider side
 class _ProviderRequestItem {
@@ -29,6 +25,9 @@ class _ProviderRequestItem {
   final String badgeAr;
   final String imageAsset;
   final String status; // 'new', 'active', 'completed', 'cancelled'
+  final String customerNameEn;
+  final String customerNameAr;
+  final String customerAvatarAsset;
 
   const _ProviderRequestItem({
     required this.id,
@@ -44,6 +43,9 @@ class _ProviderRequestItem {
     required this.badgeAr,
     required this.imageAsset,
     required this.status,
+    this.customerNameEn = 'Ahmed Khan',
+    this.customerNameAr = 'أحمد خان',
+    this.customerAvatarAsset = 'assets/images/ahmed_khan.jpg',
   });
 }
 
@@ -66,12 +68,16 @@ class ProviderRequestsScreen extends ConsumerStatefulWidget {
   final VoidCallback? onBackTap;
   final ValueChanged<int>? onTabSelected;
   final bool showBottomNav;
+  final int initialFilterIndex;
+  final bool isHistoryMode;
 
   const ProviderRequestsScreen({
     super.key,
     this.onBackTap,
     this.onTabSelected,
     this.showBottomNav = true,
+    this.initialFilterIndex = 0,
+    this.isHistoryMode = false,
   });
 
   static const double designWidth = 392.0;
@@ -92,6 +98,12 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
 
   int _selectedFilterIndex = 0; // 0: New (10), 1: Active (2), 2: Completed, 3: Cancelled
   int _selectedCardIndex = 0; // Selected card index (default 0)
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedFilterIndex = widget.initialFilterIndex;
+  }
 
   final List<_ProviderRequestItem> _sampleRequests = const [
     // Card 1 (Selected): Battery Jump Start
@@ -213,6 +225,24 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
 
     // Completed Requests Tab
     _ProviderRequestItem(
+      id: 'REQ-300',
+      serviceTypeEn: 'Battery Jump Start',
+      serviceTypeAr: 'شحن وتبديل بطارية',
+      locationEn: 'King Abdullah Rd, Riyadh',
+      locationAr: 'طريق الملك عبدالله، الرياض',
+      distanceEn: '4.1km',
+      distanceAr: '٤.١ كم',
+      timeEn: '10:24 PM',
+      timeAr: '١٠:٢٤ م',
+      badgeEn: 'Completed',
+      badgeAr: 'مكتمل',
+      customerNameEn: 'Ahmed Khan',
+      customerNameAr: 'أحمد خان',
+      customerAvatarAsset: 'assets/images/ahmed_khan.jpg',
+      imageAsset: 'assets/images/img.png',
+      status: 'completed',
+    ),
+    _ProviderRequestItem(
       id: 'REQ-301',
       serviceTypeEn: 'Vehicle Towing',
       serviceTypeAr: 'سحب ونقل سيارة',
@@ -271,6 +301,8 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
     HapticFeedback.lightImpact();
     if (widget.onBackTap != null) {
       widget.onBackTap!();
+    } else if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
     } else if (widget.onTabSelected != null) {
       widget.onTabSelected!(0);
     } else {
@@ -279,17 +311,42 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
   }
 
   List<_ProviderRequestItem> get _filteredRequests {
-    switch (_selectedFilterIndex) {
-      case 0:
-        return _sampleRequests.where((r) => r.status == 'new').toList();
-      case 1:
-        return _sampleRequests.where((r) => r.status == 'active').toList();
-      case 2:
-        return _sampleRequests.where((r) => r.status == 'completed').toList();
-      case 3:
-        return _sampleRequests.where((r) => r.status == 'cancelled').toList();
-      default:
-        return _sampleRequests;
+    if (widget.isHistoryMode) {
+      // History Mode Tabs: 0: Completed, 1: Pending, 2: In Progress, 3: Cancelled
+      switch (_selectedFilterIndex) {
+        case 0:
+          return _sampleRequests.where((r) => r.status == 'completed').toList();
+        case 1:
+          return _sampleRequests
+              .where((r) => r.status == 'new' || r.status == 'pending')
+              .toList();
+        case 2:
+          return _sampleRequests
+              .where((r) => r.status == 'active' || r.status == 'in_progress')
+              .toList();
+        case 3:
+          return _sampleRequests.where((r) => r.status == 'cancelled').toList();
+        default:
+          return _sampleRequests;
+      }
+    } else {
+      // Main Requests Tab Screen: 0: New, 1: Active, 2: Completed, 3: Cancelled
+      switch (_selectedFilterIndex) {
+        case 0:
+          return _sampleRequests
+              .where((r) => r.status == 'new' || r.status == 'pending')
+              .toList();
+        case 1:
+          return _sampleRequests
+              .where((r) => r.status == 'active' || r.status == 'in_progress')
+              .toList();
+        case 2:
+          return _sampleRequests.where((r) => r.status == 'completed').toList();
+        case 3:
+          return _sampleRequests.where((r) => r.status == 'cancelled').toList();
+        default:
+          return _sampleRequests;
+      }
     }
   }
 
@@ -322,21 +379,19 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                 isDesktopWeb ? designHeight : constraints.maxHeight;
 
             final double topSafeArea = MediaQuery.of(context).padding.top;
-            final double headerTop =
-                topSafeArea > 0 ? (topSafeArea + 10.0) : 48.0;
+            final double headerTop = isDesktopWeb
+                ? ProviderRequestsHeader.designTop
+                : (topSafeArea > 0
+                    ? (topSafeArea + 12.0)
+                    : ProviderRequestsHeader.designTop);
 
-            // Header height: 46px
-            // Row layout specifications:
-            // top: 108px (when headerTop is 56.0: 56 + 46 + 6 = 108px)
-            // height: 45px
-            final double tabsTop = headerTop + ProviderRequestsHeader.designHeight + 6.0;
+            // Header height: 36px (matching previous screen branding)
+            // Tabs row layout specifications:
+            final double tabsTop =
+                headerTop + ProviderRequestsHeader.designHeight + 16.0;
 
-            // Next widget layout specifications:
-            // top: 169px; left: 22px; width: 350; height: 530; gap: 12px;
-            final double cardsTop = 169.0;
-            final double cardsLeft = isDesktopWeb
-                ? 21.0
-                : ((containerWidth - 350.0) / 2.0).clamp(16.0, 22.0);
+            // Cards layout specifications (equal 20px padding left & right):
+            final double cardsTop = tabsTop + 45.0 + 14.0;
 
             final Widget screenContent = Opacity(
               opacity: 1.0,
@@ -381,23 +436,19 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                         ),
                       ),
 
-                      // 2. Pinned Tabs Row Layout:
-                      // width: 350; height: 45; border-radius: 12px; top: 108px; left: 20px; padding: 4px; background: #F3F2F5;
+                      // 2. Pinned Tabs Row Layout (equal left & right padding: 20px)
                       Positioned(
                         top: tabsTop,
                         left: 20.0,
                         right: 20.0,
-                        child: Center(
-                          child: _buildFilterTabsRow(isArabic),
-                        ),
+                        child: _buildFilterTabsRow(isArabic),
                       ),
 
-                      // 3. Next Widget Layout: Cards Container with 4,5 cards & equal gap: 12px
-                      // width: 350; height: 530; top: 169px; left: 22px; gap: 12px;
+                      // 3. Next Widget Layout: Cards Container with equal left and right padding: 20px
                       Positioned(
                         top: cardsTop,
-                        left: cardsLeft,
-                        width: 350.0,
+                        left: 20.0,
+                        right: 20.0,
                         bottom: isDesktopWeb
                             ? 96.0
                             : (MediaQuery.of(context).padding.bottom + 84.0),
@@ -427,6 +478,18 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                                     final item = _filteredRequests[index];
                                     final bool isSelected = _selectedCardIndex == index;
 
+                                    String badgeTextEn = item.badgeEn;
+                                    String badgeTextAr = item.badgeAr;
+                                    if (widget.isHistoryMode) {
+                                      if (item.status == 'new' || item.status == 'pending') {
+                                        badgeTextEn = 'Pending';
+                                        badgeTextAr = 'معلق';
+                                      } else if (item.status == 'active' || item.status == 'in_progress') {
+                                        badgeTextEn = 'In Progress';
+                                        badgeTextAr = 'جاري التنفيذ';
+                                      }
+                                    }
+
                                     return Padding(
                                       padding: const EdgeInsets.only(bottom: 12.0), // equal gap: 12px
                                       child: ProviderRequestCard(
@@ -434,6 +497,11 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                                         title: isArabic
                                             ? item.serviceTypeAr
                                             : item.serviceTypeEn,
+                                        customerName: isArabic
+                                            ? (item.customerNameAr ?? 'أحمد خان')
+                                            : (item.customerNameEn ?? 'Ahmed Khan'),
+                                        customerAvatarAsset: item.customerAvatarAsset ??
+                                            'assets/images/ahmed_khan.jpg',
                                         location: isArabic
                                             ? item.locationAr
                                             : item.locationEn,
@@ -444,8 +512,8 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                                             ? item.timeAr
                                             : item.timeEn,
                                         badgeText: isArabic
-                                            ? item.badgeAr
-                                            : item.badgeEn,
+                                            ? badgeTextAr
+                                            : badgeTextEn,
                                         imageAsset: item.imageAsset,
                                         onTap: () {
                                           HapticFeedback.lightImpact();
@@ -585,15 +653,22 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
   /// 3rd tab: width: 82; height: 37; Completed - Inter 400 12px #616166
   /// 4th tab: width: 82; height: 37; Cancelled - Inter 400 12px #616166
   Widget _buildFilterTabsRow(bool isArabic) {
-    final tabs = [
-      {'labelEn': 'New (10)', 'labelAr': 'جديد (10)', 'flex': 96},
-      {'labelEn': 'Active (2)', 'labelAr': 'نشط (2)', 'flex': 82},
-      {'labelEn': 'Completed', 'labelAr': 'مكتمل', 'flex': 82},
-      {'labelEn': 'Cancelled', 'labelAr': 'ملغي', 'flex': 82},
-    ];
+    final List<Map<String, dynamic>> tabs = widget.isHistoryMode
+        ? [
+            {'labelEn': 'Completed', 'labelAr': 'مكتمل', 'flex': 88},
+            {'labelEn': 'Pending', 'labelAr': 'معلق', 'flex': 80},
+            {'labelEn': 'In Progress', 'labelAr': 'جاري التنفيذ', 'flex': 96},
+            {'labelEn': 'Cancelled', 'labelAr': 'ملغي', 'flex': 80},
+          ]
+        : [
+            {'labelEn': 'New (10)', 'labelAr': 'جديد (10)', 'flex': 96},
+            {'labelEn': 'Active (2)', 'labelAr': 'نشط (2)', 'flex': 82},
+            {'labelEn': 'Completed', 'labelAr': 'مكتمل', 'flex': 82},
+            {'labelEn': 'Cancelled', 'labelAr': 'ملغي', 'flex': 82},
+          ];
 
     return Container(
-      width: 350.0,
+      width: double.infinity,
       height: 45.0,
       padding: const EdgeInsets.all(4.0),
       decoration: BoxDecoration(

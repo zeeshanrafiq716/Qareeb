@@ -319,7 +319,7 @@ class _ProviderStatCard extends StatelessWidget {
                           size: const Size(6.0, 13.0),
                           painter: _ChevronArrowPainter(
                             color: const Color(0xFF616166),
-                            isRtl: isArabic,
+                            isRtl: isArabic || Directionality.of(context) == TextDirection.rtl,
                           ),
                         ),
                       ),

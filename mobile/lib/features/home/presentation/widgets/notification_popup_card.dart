@@ -56,6 +56,7 @@ class NotificationPopupCard extends StatelessWidget {
   final String distance;
   final String time;
   final String? imageAsset;
+  final double? width;
   final VoidCallback? onTap;
   final VoidCallback? onDismiss;
 
@@ -67,6 +68,7 @@ class NotificationPopupCard extends StatelessWidget {
     this.distance = '4.1 km  away',
     this.time = 'Just now',
     this.imageAsset,
+    this.width,
     this.onTap,
     this.onDismiss,
   });
@@ -79,20 +81,20 @@ class NotificationPopupCard extends StatelessWidget {
   static const double designGap = 16.0;
   static const double imgWidth = 63.999996185302734;
   static const double imgHeight = 64.0;
-  static const double contentWidth = 238.0;
   static const double contentHeight = 64.0;
   static const double contentGap = 12.0;
 
   @override
   Widget build(BuildContext context) {
-    final bool isRtl = Directionality.of(context) == TextDirection.rtl;
+    final bool isRtl = Directionality.of(context) == TextDirection.rtl ||
+        Localizations.maybeLocaleOf(context)?.languageCode == 'ar';
 
     return Opacity(
       opacity: 1.0, // opacity: 1
       child: Transform.rotate(
         angle: 0.0, // angle: 0 deg
         child: Container(
-          width: designWidth,
+          width: width,
           height: designHeight,
           padding: const EdgeInsets.all(designPadding),
           decoration: BoxDecoration(
@@ -115,7 +117,6 @@ class NotificationPopupCard extends StatelessWidget {
               splashColor: const Color(0xFF8B53FE).withValues(alpha: 0.08),
               highlightColor: const Color(0xFF8B53FE).withValues(alpha: 0.04),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // 1. Card Inner Layout Image Branding
@@ -146,186 +147,169 @@ class NotificationPopupCard extends StatelessWidget {
                   // gap: 16px;
                   const SizedBox(width: designGap),
 
-                  // 2. Content Layout
-                  //    width: 238; height: 64; gap: 12px; angle: 0 deg; opacity: 1;
-                  Opacity(
-                    opacity: 1.0, // opacity: 1
-                    child: Transform.rotate(
-                      angle: 0.0, // angle: 0 deg
-                      child: SizedBox(
-                        width: contentWidth,
-                        height: contentHeight,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // 2.1 Content Layout Row 1: width: 238; height: 23; justify-content: space-between;
-                            SizedBox(
-                              width: contentWidth,
-                              height: 23.0,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  // Badge Branding: width: ~80; height: 23; border-radius: 20px; padding: 8px; bg: #F3F2F5;
-                                  Container(
-                                    height: 23.0,
-                                    constraints: const BoxConstraints(
-                                      minWidth: 80.0,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8.0,
-                                      vertical: 2.0,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF3F2F5),
-                                      borderRadius: BorderRadius.circular(20.0),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      badgeText,
+                  // 2. Content Layout - Expanded to flexibly adapt to equal left & right card margins
+                  Expanded(
+                    child: SizedBox(
+                      height: contentHeight,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // 2.1 Content Layout Row 1: justify-content: space-between;
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // Badge Branding: width: ~80; height: 23; border-radius: 20px; padding: 8px; bg: #F3F2F5;
+                              Container(
+                                height: 23.0,
+                                constraints: const BoxConstraints(
+                                  minWidth: 80.0,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8.0,
+                                  vertical: 2.0,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF3F2F5),
+                                  borderRadius: BorderRadius.circular(20.0),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  badgeText,
+                                  style: const TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontWeight: FontWeight.w400,
+                                    fontSize: 10.0,
+                                    color: Color(0xFF8B53FE),
+                                    height: 1.0,
+                                    letterSpacing: 0.0,
+                                  ),
+                                  maxLines: 1,
+                                ),
+                              ),
+
+                              // Just now: font-size: 10px; color: #616166;
+                              Text(
+                                time,
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w400,
+                                  fontSize: 10.0,
+                                  color: Color(0xFF616166),
+                                  height: 1.0,
+                                  letterSpacing: 0.0,
+                                ),
+                                maxLines: 1,
+                              ),
+                            ],
+                          ),
+
+                          // 2.2 Row 2,3 Layout: justify-content: space-between;
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // Row 2,3 Content Branding: title + location/distance
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    // Row 2 Content: Battery Jump Start (14px, 500, #1C2926)
+                                    Text(
+                                      title,
                                       style: const TextStyle(
                                         fontFamily: 'Inter',
-                                        fontWeight: FontWeight.w400,
-                                        fontSize: 10.0,
-                                        color: Color(0xFF8B53FE),
-                                        height: 1.0,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 14.0,
+                                        color: Color(0xFF1C2926),
+                                        height: 1.1,
                                         letterSpacing: 0.0,
                                       ),
                                       maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
 
-                                  // Just now: width: 43; height: 7; font-size: 10px; color: #616166;
-                                  Text(
-                                    time,
-                                    style: const TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontWeight: FontWeight.w400,
-                                      fontSize: 10.0,
-                                      color: Color(0xFF616166),
-                                      height: 1.0,
-                                      letterSpacing: 0.0,
-                                    ),
-                                    maxLines: 1,
-                                  ),
-                                ],
-                              ),
-                            ),
+                                    const SizedBox(height: 3.0),
 
-                            // gap: 12px;
-                            const SizedBox(height: contentGap),
-
-                            // 2.2 Row 2,3 Layout: width: 238; height: 29; justify-content: space-between;
-                            SizedBox(
-                              width: contentWidth,
-                              height: 29.0,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  // Row 2,3 Content Branding: width: 199; height: 29;
-                                  SizedBox(
-                                    width: 199.0,
-                                    height: 29.0,
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    // Row 3 Content Layout: location + ellipse + distance
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.center,
                                       children: [
-                                        // Row 2 Content: Battery Jump Start (14px, 500, #1C2926)
+                                        // King Abdullah Rd, Riyadh (10px, 400, #616166)
+                                        Flexible(
+                                          child: Text(
+                                            location,
+                                            style: const TextStyle(
+                                              fontFamily: 'Inter',
+                                              fontWeight: FontWeight.w400,
+                                              fontSize: 10.0,
+                                              color: Color(0xFF616166),
+                                              height: 1.0,
+                                              letterSpacing: 0.0,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+
+                                        const SizedBox(width: 8.0), // gap: 8px
+
+                                        // Ellipse Branding: width: 4; height: 4; bg: #616166;
+                                        Container(
+                                          width: 4.0,
+                                          height: 4.0,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF616166),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+
+                                        const SizedBox(width: 8.0), // gap: 8px
+
+                                        // 4.1 km away (10px, 400, #616166)
                                         Text(
-                                          title,
+                                          distance,
                                           style: const TextStyle(
                                             fontFamily: 'Inter',
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: 14.0,
-                                            color: Color(0xFF1C2926),
-                                            height: 1.1,
+                                            fontWeight: FontWeight.w400,
+                                            fontSize: 10.0,
+                                            color: Color(0xFF616166),
+                                            height: 1.0,
                                             letterSpacing: 0.0,
                                           ),
                                           maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-
-                                        // Row 3 Content Layout: width: 199; height: 7; gap: 8px;
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment: CrossAxisAlignment.center,
-                                          children: [
-                                            // King Abdullah Rd, Riyadh (10px, 400, #616166)
-                                            Flexible(
-                                              child: Text(
-                                                location,
-                                                style: const TextStyle(
-                                                  fontFamily: 'Inter',
-                                                  fontWeight: FontWeight.w400,
-                                                  fontSize: 10.0,
-                                                  color: Color(0xFF616166),
-                                                  height: 1.0,
-                                                  letterSpacing: 0.0,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-
-                                            const SizedBox(width: 8.0), // gap: 8px
-
-                                            // Ellipse Branding: width: 4; height: 4; bg: #616166;
-                                            Container(
-                                              width: 4.0,
-                                              height: 4.0,
-                                              decoration: const BoxDecoration(
-                                                color: Color(0xFF616166),
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-
-                                            const SizedBox(width: 8.0), // gap: 8px
-
-                                            // 4.1 km away (10px, 400, #616166)
-                                            Text(
-                                              distance,
-                                              style: const TextStyle(
-                                                fontFamily: 'Inter',
-                                                fontWeight: FontWeight.w400,
-                                                fontSize: 10.0,
-                                                color: Color(0xFF616166),
-                                                height: 1.0,
-                                                letterSpacing: 0.0,
-                                              ),
-                                              maxLines: 1,
-                                            ),
-                                          ],
                                         ),
                                       ],
                                     ),
-                                  ),
+                                  ],
+                                ),
+                              ),
 
-                                  // > branding: width: 6.06; height: 12.87; border: 1px solid #616166;
-                                  Opacity(
-                                    opacity: 1.0, // opacity: 1
-                                    child: Transform.rotate(
-                                      angle: 0.0, // angle: 0 deg
-                                      child: Transform.scale(
-                                        scaleX: isRtl ? -1.0 : 1.0,
-                                        child: SizedBox(
-                                          width: 6.059617519378662,
-                                          height: 12.873345375061035,
-                                          child: CustomPaint(
-                                            painter: const _ChevronPainter(
-                                              color: Color(0xFF616166),
-                                            ),
-                                          ),
-                                        ),
+                              const SizedBox(width: 8.0),
+
+                              // > branding: width: 6.06; height: 12.87; border: 1px solid #616166;
+                              Opacity(
+                                opacity: 1.0, // opacity: 1
+                                child: Transform.scale(
+                                  scaleX: isRtl ? -1.0 : 1.0,
+                                  child: SizedBox(
+                                    width: 6.059617519378662,
+                                    height: 12.873345375061035,
+                                    child: CustomPaint(
+                                      painter: const _ChevronPainter(
+                                        color: Color(0xFF616166),
                                       ),
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),

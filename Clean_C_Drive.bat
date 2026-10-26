@@ -1,24 +1,28 @@
 @echo off
 :: ==============================================================
-:: QAREEB APP - C: DRIVE DEEP CLEANUP TOOL (MINIMUM 10-15+ GB)
+:: QAREEB APP - C: DRIVE DEEP CLEANUP TOOL (12-16+ GB RECLAIM)
 :: ==============================================================
-:: Run this file by Right-Clicking and selecting "Run as administrator"
 
+:: Check for Administrator privileges; if not elevated, request UAC elevation automatically
 net session >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] This tool must be run as Administrator!
-    echo.
-    echo Please right-click this file "Clean_C_Drive.bat"
-    echo and choose: "Run as administrator"
-    echo.
-    pause
-    exit /b 1
+    echo ==========================================================
+    echo   Requesting Administrator privileges to clean 12-16 GB...
+    echo   Please click "Yes" on the Windows prompt!
+    echo ==========================================================
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd.exe -ArgumentList '/k `\"%~dpnx0`\"' -Verb RunAs"
+    exit /b
 )
 
+title C: Drive Deep Cleanup (15+ GB Reclaim)
 color 0B
+cls
 echo ==========================================================
-echo       QAREEB - SYSTEM C: DRIVE DEEP CLEANUP (15+ GB)     
+echo        QAREEB - SYSTEM C: DRIVE DEEP CLEANUP TOOL        
 echo ==========================================================
+echo.
+echo Current Disk Space:
+powershell -NoProfile -Command "[System.IO.DriveInfo]::GetDrives() | Where-Object {$_.IsReady} | Select-Object Name, @{N='Total(GB)';E={[math]::Round($_.TotalSize/1GB,2)}}, @{N='Free(GB)';E={[math]::Round($_.TotalFreeSpace/1GB,2)}} | Format-Table -AutoSize"
 echo.
 
 :: 1. Disable Windows Hibernation (Instantly removes C:\hiberfil.sys: ~3.4 GB)
@@ -31,8 +35,8 @@ if not exist "C:\hiberfil.sys" (
 )
 echo.
 
-:: 2. Move Windows Pagefile to D: drive (Frees ~8.4 GB on C:)
-echo [2/4] Relocating Windows Pagefile to D: drive (56 GB available on D:)...
+:: 2. Relocate Windows Pagefile to D: drive (Frees ~8.4 GB on C:)
+echo [2/4] Relocating Windows Pagefile to D: drive (50+ GB available on D:)...
 powershell -NoProfile -Command "try { $cs = Get-CimInstance Win32_ComputerSystem; $cs | Set-CimInstance -Property @{AutomaticManagedPagefile=$False}; Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management' -Name 'PagingFiles' -Value @('D:\pagefile.sys 4096 8192'); Write-Host '  [OK] Pagefile successfully relocated to D:\ (4GB - 8GB)!' -ForegroundColor Green } catch { Write-Warning $_ }"
 echo.
 
@@ -57,8 +61,10 @@ echo.
 echo ==========================================================
 echo                     CLEANUP FINISHED!                     
 echo ==========================================================
+echo New Disk Space:
 powershell -NoProfile -Command "[System.IO.DriveInfo]::GetDrives() | Where-Object {$_.IsReady} | Select-Object Name, @{N='Total(GB)';E={[math]::Round($_.TotalSize/1GB,2)}}, @{N='Free(GB)';E={[math]::Round($_.TotalFreeSpace/1GB,2)}} | Format-Table -AutoSize"
 echo.
 echo NOTE: Restart your computer to apply the new Pagefile configuration.
 echo.
+echo You can now close this window.
 pause

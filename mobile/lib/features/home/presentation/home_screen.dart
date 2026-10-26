@@ -85,16 +85,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final notifState = ref.watch(notificationsProvider);
     final userLocAsync = ref.watch(userLocationProvider);
     final String locationText = userLocAsync.when(
-      data: (loc) => loc.cityName.isNotEmpty
-          ? loc.cityName
-          : (tr.isArabic ? 'كراتشي، باكستان' : 'Karachi Pakistan'),
+      data: (loc) {
+        if (!loc.isGpsDetected) {
+          return tr.isArabic ? 'خدمة الموقع غير مفعلة' : 'Location is OFF';
+        }
+        return loc.cityName.isNotEmpty
+            ? loc.cityName
+            : (tr.isArabic ? 'كراتشي، باكستان' : 'Karachi Pakistan');
+      },
       loading: () => tr.gpsDetecting,
-      error: (_, _) => (tr.isArabic ? 'كراتشي، باكستان' : 'Karachi Pakistan'),
+      error: (_, _) => tr.isArabic ? 'خدمة الموقع غير مفعلة' : 'Location is OFF',
     );
     final String locationLabel = userLocAsync.when(
-      data: (loc) => loc.isGpsDetected ? tr.realGps : tr.currentLocation,
+      data: (loc) => loc.isGpsDetected ? tr.realGps : (tr.isArabic ? 'الموقع غير مفعل' : 'Location Disabled'),
       loading: () => tr.gpsDetecting,
-      error: (_, _) => tr.currentLocation,
+      error: (_, _) => (tr.isArabic ? 'الموقع غير مفعل' : 'Location Disabled'),
     );
 
     SystemChrome.setSystemUIOverlayStyle(
@@ -140,7 +145,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             end: Alignment(-0.009, 1.0),
                             stops: [0.0, 1.0],
                             colors: [
-                              Color(0x5F8B53FE), // rgba(139, 83, 254, 0.37284) at top
+                              Color(0x188B53FE), // rgba(139, 83, 254, 0.094) soft subtle top tint
                               Color(0x008B53FE), // rgba(139, 83, 254, 0) at 29.8%
                             ],
                           ),
@@ -249,10 +254,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                     Positioned(
-                      top: 106.0,
-                      left: isDesktopWeb ? 21.0 : ((containerWidth - 350.0) / 2).clamp(10.0, 21.0),
-                      width: 350.0,
-                      height: 96.0,
+                      top: 116.0,
+                      left: 20.0,
+                      right: 20.0,
                       child: NotificationPopupCard(
                         badgeText: tr.isArabic
                             ? notifState.customerNotification.badgeTextAr

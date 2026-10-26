@@ -27,7 +27,7 @@ class ProviderRequestsHeader extends StatelessWidget {
   });
 
   static const double designWidth = 350.0;
-  static const double designHeight = 46.0;
+  static const double designHeight = 36.0;
   static const double designTop = 56.0;
   static const double designLeft = 20.0;
   static const double designGap = 12.0;
@@ -36,10 +36,7 @@ class ProviderRequestsHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isArabic = context.isArabic;
     final String effectiveTitle = title ?? (isArabic ? 'الطلبات' : 'Requests');
-    final String effectiveSubtitle = subtitle ??
-        (isArabic
-            ? 'إدارة ومتابعة طلبات الخدمة الواردة'
-            : 'Manage and track incoming service requests');
+    final bool hasSubtitle = subtitle != null && subtitle!.trim().isNotEmpty;
 
     return Opacity(
       opacity: 1.0, // opacity: 1
@@ -47,6 +44,7 @@ class ProviderRequestsHeader extends StatelessWidget {
         angle: 0.0, // angle: 0 deg
         child: SizedBox(
           width: double.infinity,
+          height: designHeight,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -58,34 +56,46 @@ class ProviderRequestsHeader extends StatelessWidget {
               // gap: 12px;
               const SizedBox(width: designGap),
 
-              // 2. Content: Title + Subtitle
+              // 2. Content: Title (Subtitle removed from Requests header)
               Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: AlignmentDirectional.centerStart,
-                      child: Text(
-                        effectiveTitle,
-                        style: ProviderTextStyles.profileDetailsHeaderTitle,
-                        maxLines: 1,
+                child: hasSubtitle
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              effectiveTitle,
+                              style:
+                                  ProviderTextStyles.profileDetailsHeaderTitle,
+                              maxLines: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 2.0),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              subtitle!,
+                              style: ProviderTextStyles
+                                  .profileDetailsHeaderSubtitle,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ],
+                      )
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          effectiveTitle,
+                          style: ProviderTextStyles.headerTitle,
+                          maxLines: 1,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2.0),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: AlignmentDirectional.centerStart,
-                      child: Text(
-                        effectiveSubtitle,
-                        style: ProviderTextStyles.profileDetailsHeaderSubtitle,
-                        maxLines: 1,
-                      ),
-                    ),
-                  ],
-                ),
               ),
 
               const SizedBox(width: designGap),
