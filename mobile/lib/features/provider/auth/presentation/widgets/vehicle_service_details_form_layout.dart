@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
 import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_continue_button.dart';
@@ -78,11 +79,18 @@ class _VehicleServiceDetailsFormLayoutState
   @override
   void initState() {
     super.initState();
-    _serviceCategoryCtrl = TextEditingController(text: 'Vehicle Towing');
-    _vehicleTypeCtrl = TextEditingController(text: 'Flatbed Truck');
-    _plateNumberCtrl = TextEditingController();
-    _vehicleModelCtrl = TextEditingController();
-    _vehicleColorCtrl = TextEditingController(text: 'White');
+    final data = ProviderRegistrationStore.instance.data;
+    _serviceCategoryCtrl = TextEditingController(
+      text: data.serviceCategory.isNotEmpty ? data.serviceCategory : 'Vehicle Towing',
+    );
+    _vehicleTypeCtrl = TextEditingController(
+      text: data.vehicleType.isNotEmpty ? data.vehicleType : 'Flatbed Truck',
+    );
+    _plateNumberCtrl = TextEditingController(text: data.plateNumber);
+    _vehicleModelCtrl = TextEditingController(text: data.vehicleModel);
+    _vehicleColorCtrl = TextEditingController(
+      text: data.vehicleColor.isNotEmpty ? data.vehicleColor : 'White',
+    );
   }
 
   @override
@@ -315,6 +323,45 @@ class _VehicleServiceDetailsFormLayoutState
   }
 
   void _defaultOnContinue(BuildContext context) {
+    final isArabic = context.isArabic;
+    final plate = _plateNumberCtrl.text.trim();
+    final model = _vehicleModelCtrl.text.trim();
+
+    if (plate.isEmpty) {
+      _showFeedback(
+        context,
+        isArabic ? 'يرجى إدخال رقم لوحة المركبة' : 'Please enter vehicle plate number',
+      );
+      return;
+    }
+
+    if (model.isEmpty) {
+      _showFeedback(
+        context,
+        isArabic ? 'يرجى إدخال موديل المركبة' : 'Please enter vehicle model',
+      );
+      return;
+    }
+
+    // Persist vehicle & service details
+    ProviderRegistrationStore.instance.update(
+      (data) => data.copyWith(
+        serviceCategory: _serviceCategoryCtrl.text,
+        vehicleType: _vehicleTypeCtrl.text,
+        plateNumber: plate,
+        vehicleModel: model,
+        vehicleColor: _vehicleColorCtrl.text,
+      ),
+    );
+
+    _showFeedback(
+      context,
+      isArabic
+          ? 'تم حفظ بيانات المركبة والخدمة بنجاح'
+          : 'Vehicle and service details saved successfully',
+      isSuccess: true,
+    );
+
     Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (_, _, _) => const UploadDocumentsScreen(),
@@ -326,6 +373,37 @@ class _VehicleServiceDetailsFormLayoutState
           child: child,
         ),
         transitionDuration: const Duration(milliseconds: 350),
+      ),
+    );
+  }
+
+  void _showFeedback(BuildContext context, String message, {bool isSuccess = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        backgroundColor: const Color(0xFF1C2926),
+        content: Row(
+          children: [
+            Icon(
+              isSuccess ? Icons.check_circle_rounded : Icons.info_outline,
+              color: isSuccess ? ProviderColors.whatsappGreen : Colors.orangeAccent,
+              size: 20.0,
+            ),
+            const SizedBox(width: 10.0),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13.0,
+                ),
+              ),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 3),
       ),
     );
   }

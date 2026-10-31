@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_step_card.dart';
 
 /// Provider Step Cards List Layout Widget
@@ -48,10 +49,40 @@ class ProviderStepCardsList extends StatelessWidget {
           ProviderStepCard.profile(
             title: l10n.completeYourProfile,
             subtitle: l10n.completeProfileSubtitle,
+            onTap: () {
+              Navigator.of(context).push(
+                PageRouteBuilder(
+                  pageBuilder: (_, _, _) => const UploadDocumentsScreen(),
+                  transitionsBuilder: (_, animation, _, child) => FadeTransition(
+                    opacity: CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeInOutCubic,
+                    ),
+                    child: child,
+                  ),
+                  transitionDuration: const Duration(milliseconds: 350),
+                ),
+              );
+            },
           ),
           ProviderStepCard.getVerified(
             title: l10n.getVerified,
             subtitle: l10n.getVerifiedSubtitle,
+            onTap: () {
+              Navigator.of(context).push(
+                PageRouteBuilder(
+                  pageBuilder: (_, _, _) => const UploadDocumentsScreen(),
+                  transitionsBuilder: (_, animation, _, child) => FadeTransition(
+                    opacity: CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeInOutCubic,
+                    ),
+                    child: child,
+                  ),
+                  transitionDuration: const Duration(milliseconds: 350),
+                ),
+              );
+            },
           ),
           ProviderStepCard.startReceivingRequests(
             title: l10n.startReceivingRequests,

@@ -1,17 +1,20 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_scroll_behavior.dart';
 import 'package:mobile/features/provider/dashboard/presentation/widgets/provider_contacts_received_card.dart';
 import 'package:mobile/features/provider/dashboard/presentation/widgets/provider_dashboard_header.dart';
 import 'package:mobile/features/provider/dashboard/presentation/widgets/provider_profile_views_card.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
+import 'package:mobile/models/provider_dashboard_model.dart';
+import 'package:mobile/providers/backend_provider.dart';
 
 /// Provider Dashboard Screen
 /// Opens when user taps on "Views today" stat card.
 /// Implements exact previous screens branding with back button, title, subtitle, and language toggle.
-class ProviderDashboardScreen extends StatefulWidget {
+class ProviderDashboardScreen extends ConsumerStatefulWidget {
   final int initialTabIndex;
   final int initialCardIndex; // 0: Profile Views, 1: Contacts Received
 
@@ -25,10 +28,10 @@ class ProviderDashboardScreen extends StatefulWidget {
   static const double designHeight = 844.0;
 
   @override
-  State<ProviderDashboardScreen> createState() => _ProviderDashboardScreenState();
+  ConsumerState<ProviderDashboardScreen> createState() => _ProviderDashboardScreenState();
 }
 
-class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
+class _ProviderDashboardScreenState extends ConsumerState<ProviderDashboardScreen> {
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -64,6 +67,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
     );
+
+    final dashboardAsync = ref.watch(providerDashboardProvider);
+    final dashboardData = dashboardAsync.value ?? ProviderDashboardModel.defaults;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -142,19 +148,23 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: const [
+                            children: [
                               // 1. Profile Views Card (350x377) matching exact branding
-                              ProviderProfileViewsCard(),
+                              ProviderProfileViewsCard(
+                                data: dashboardData.viewsCard,
+                              ),
 
-                              SizedBox(height: 12.0), // gap: 12px
+                              const SizedBox(height: 12.0), // gap: 12px
 
                               // 2. Contacts Received Card (350x461) containing dayz tabs, call & whatsapp cards, and chart
-                              ProviderContactsReceivedCard(),
+                              ProviderContactsReceivedCard(
+                                data: dashboardData.contactsCard,
+                              ),
 
-                              SizedBox(height: 16.0), // gap: 16px
+                              const SizedBox(height: 16.0), // gap: 16px
 
                               // 3. Bottom Indicator Bar (not fixed, appears at the end of screen scroll)
-                              ProviderCardBottomIndicator(),
+                              const ProviderCardBottomIndicator(),
                             ],
                           ),
                         ),

@@ -36,6 +36,35 @@ export async function requireProvider(req, _res, next) {
   }
 }
 
+export async function optionalProvider(req, _res, next) {
+  try {
+    const header = req.headers.authorization || "";
+    if (header.startsWith("Bearer ")) {
+      const token = header.slice(7).trim();
+      try {
+        const payload = verifyToken(token);
+        if (payload.role === ROLES.PROVIDER) {
+          const { rows } = await query(
+            `SELECT p.*, s.code AS status_code, s.label AS status_label, c.name AS category_name
+             FROM providers p
+             JOIN statuses s ON s.id = p.status_id
+             LEFT JOIN categories c ON c.id = p.category_id
+             WHERE p.id = $1`,
+            [payload.sub],
+          );
+          if (rows[0]) {
+            req.user = payload;
+            req.provider = rows[0];
+          }
+        }
+      } catch (_) {}
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function requireAdmin(req, _res, next) {
   try {
     const payload = verifyToken(readToken(req));

@@ -181,7 +181,7 @@ class ProviderServiceAreaCard extends StatelessWidget {
                                             fontWeight: FontWeight.w500,
                                             color: const Color(0xFF252527),
                                             letterSpacing: 0.0,
-                                            height: 1.15,
+                                            height: isArabic ? 1.05 : 1.15,
                                           ),
                                           textHeightBehavior: const TextHeightBehavior(
                                             applyHeightToFirstAscent: false,
@@ -193,7 +193,7 @@ class ProviderServiceAreaCard extends StatelessWidget {
                                       ),
                                     ),
 
-                                    const SizedBox(height: 2.0),
+                                    SizedBox(height: isArabic ? 0.0 : 2.0),
 
                                     // Nearby requests based on your location
                                     // width: 266; height: 7; font-size: 10px; font-weight: 400;
@@ -209,7 +209,7 @@ class ProviderServiceAreaCard extends StatelessWidget {
                                             fontWeight: FontWeight.w400,
                                             color: const Color(0xFF616166),
                                             letterSpacing: 0.0,
-                                            height: 1.1,
+                                            height: isArabic ? 1.0 : 1.1,
                                           ),
                                           textHeightBehavior: const TextHeightBehavior(
                                             applyHeightToFirstAscent: false,

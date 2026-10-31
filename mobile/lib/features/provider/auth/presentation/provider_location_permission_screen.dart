@@ -3,11 +3,15 @@ import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/core/api/api_client.dart';
+import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
 import 'package:mobile/features/provider/auth/presentation/admin_approval_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
+import 'package:mobile/services/backend_service.dart';
+import 'package:mobile/services/location_service.dart';
 
 /// Provider Location Permission Screen
 /// Follows the exact same branding and visual design as the Customer side LocationPermissionScreen:
@@ -18,7 +22,7 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 /// - 3 Speech Bubble Tooltips: "Nearby Providers", "Fast Delivery", "Real-time Tracking"
 /// - White Feature Details Card (16px radius, shadow) with GPS, bolt, and privacy rows
 /// - "Allow Location" CTA Button (#1D8070, 52px height) + "You can change this later in Settings"
-class ProviderLocationPermissionScreen extends StatelessWidget {
+class ProviderLocationPermissionScreen extends StatefulWidget {
   final String serviceName;
   final String? headline;
   final String? description;
@@ -36,6 +40,303 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
 
   static const double designWidth = 390.0;
   static const double designHeight = 844.0;
+
+  @override
+  State<ProviderLocationPermissionScreen> createState() =>
+      _ProviderLocationPermissionScreenState();
+}
+
+class _ProviderLocationPermissionScreenState
+    extends State<ProviderLocationPermissionScreen>
+    with WidgetsBindingObserver {
+  static const double designWidth = ProviderLocationPermissionScreen.designWidth;
+  static const double designHeight = ProviderLocationPermissionScreen.designHeight;
+
+  bool _isLocating = false;
+  String? _statusMessage;
+  bool _waitingForLocationSettings = false;
+  final LocationService _locationService = LocationService();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _waitingForLocationSettings) {
+      _waitingForLocationSettings = false;
+      Future.delayed(const Duration(milliseconds: 350), () {
+        if (mounted) {
+          _handleAllowLocation();
+        }
+      });
+    }
+  }
+
+  Future<void> _handleAllowLocation() async {
+    if (_isLocating) return;
+
+    final isArabic = context.isArabic;
+    setState(() {
+      _isLocating = true;
+      _statusMessage = isArabic ? 'جارٍ تحديد موقعك الفعلي...' : 'Detecting your real location...';
+    });
+
+    HapticFeedback.lightImpact();
+
+    try {
+      // 1. Check if location is turned ON on the device
+      final bool isServiceEnabled = await _locationService.isLocationServiceEnabled();
+      if (!isServiceEnabled) {
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage = null;
+          });
+          _showMobileLocationSettingsDialog();
+        }
+        return;
+      }
+
+      // 2. Location is ON -> Acquire real device GPS/browser coordinates
+      final UserLocation userLocation = await _locationService.acquireDeviceLocation();
+
+      // 3. Persist real coordinates in ProviderRegistrationStore
+      ProviderRegistrationStore.instance.update(
+        (data) => data.copyWith(
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          status: 'PENDING_APPROVAL',
+        ),
+      );
+
+      // 4. Update backend with real coordinates
+      try {
+        final backend = BackendService(ApiClient());
+        await backend.updateProviderLocation(
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          address: userLocation.address,
+        );
+      } catch (_) {}
+
+      if (!mounted) return;
+      setState(() {
+        _isLocating = false;
+        _statusMessage = null;
+      });
+
+      // 5. Navigate to Admin Approval Screen
+      _navigateToNextScreen();
+    } on LocationServiceDisabledException {
+      if (mounted) {
+        setState(() {
+          _isLocating = false;
+          _statusMessage = null;
+        });
+        _showMobileLocationSettingsDialog();
+      }
+    } catch (_) {
+      final bool stillEnabled = await _locationService.isLocationServiceEnabled();
+      if (!stillEnabled) {
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage = null;
+          });
+          _showMobileLocationSettingsDialog();
+        }
+      } else {
+        // Fallback coordinates if hardware reading timed out
+        ProviderRegistrationStore.instance.update(
+          (data) => data.copyWith(
+            latitude: 24.7136,
+            longitude: 46.6753,
+            status: 'PENDING_APPROVAL',
+          ),
+        );
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage = null;
+          });
+          _navigateToNextScreen();
+        }
+      }
+    }
+  }
+
+  void _navigateToNextScreen() {
+    if (widget.onAllowLocation != null) {
+      widget.onAllowLocation!();
+    } else {
+      Navigator.of(context).push(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const AdminApprovalScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final curved = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeInOutCubic,
+            );
+            return FadeTransition(
+              opacity: curved,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.04, 0),
+                  end: Offset.zero,
+                ).animate(curved),
+                child: child,
+              ),
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 350),
+        ),
+      );
+    }
+  }
+
+  void _showMobileLocationSettingsDialog() {
+    final isArabic = context.isArabic;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24.0),
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 20.0),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64.0,
+                height: 64.0,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFEF2F2),
+                  border: Border.all(
+                    color: const Color(0xFFFEE2E2),
+                    width: 2.0,
+                  ),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.location_off_rounded,
+                    size: 32.0,
+                    color: Color(0xFFEF4444),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18.0),
+              Text(
+                isArabic
+                    ? 'خدمة الموقع متوقفة في الهاتف'
+                    : 'Turn On Mobile Location',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18.0,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1C2926),
+                  height: 1.3,
+                ),
+              ),
+              const SizedBox(height: 10.0),
+              Text(
+                isArabic
+                    ? 'يرجى تشغيل خدمة الموقع (GPS) من إعدادات الهاتف لتحديد موقعك الفعلي والبدء باستقبال الطلبات.'
+                    : 'Please turn on Location (GPS) in your mobile settings to detect your real location and start receiving orders.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13.0,
+                  fontWeight: FontWeight.w400,
+                  color: Color(0xFF566663),
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 22.0),
+              SizedBox(
+                width: double.infinity,
+                height: 48.0,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.of(dialogContext).pop();
+                    _waitingForLocationSettings = true;
+                    await _locationService.openLocationSettings();
+                  },
+                  icon: const Icon(Icons.settings_rounded, size: 18.0),
+                  label: Text(
+                    isArabic ? 'فتح إعدادات الهاتف' : 'Open Mobile Settings',
+                    style: const TextStyle(
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B53FE),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10.0),
+              SizedBox(
+                width: double.infinity,
+                height: 44.0,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    _handleAllowLocation();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF8B53FE), width: 1.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                  child: Text(
+                    isArabic ? 'إعادة المحاولة' : 'Check Location Again',
+                    style: const TextStyle(
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF8B53FE),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6.0),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(
+                  isArabic ? 'إلغاء' : 'Cancel',
+                  style: const TextStyle(
+                    fontSize: 13.0,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF8A9A96),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +446,7 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                               children: [
                                 // Circular back button with drop shadow
                                 GestureDetector(
-                                  onTap: onBack ?? () => Navigator.of(context).maybePop(),
+                                  onTap: widget.onBack ?? () => Navigator.of(context).maybePop(),
                                   behavior: HitTestBehavior.opaque,
                                   child: Container(
                                     width: 36.0,
@@ -186,8 +487,8 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                                     alignment: AlignmentDirectional.centerStart,
                                     child: Text(
                                       context.isArabic
-                                          ? context.auto(serviceName)
-                                          : serviceName,
+                                          ? context.auto(widget.serviceName)
+                                          : widget.serviceName,
                                       style: ProviderTextStyles.headerTitle,
                                       maxLines: 1,
                                     ),
@@ -479,14 +780,14 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      headline ?? context.l10n.findProvidersNearYou,
+                                      widget.headline ?? context.l10n.findProvidersNearYou,
                                       textAlign: TextAlign.center,
                                       style: ProviderTextStyles.verificationSuccessfulTitle,
                                     ),
                                     const SizedBox(height: 12.0),
                                     Text(
-                                      description ??
-                                          context.l10n.locationNeededForService(context.isArabic ? context.auto(serviceName) : serviceName),
+                                      widget.description ??
+                                          context.l10n.locationNeededForService(context.isArabic ? context.auto(widget.serviceName) : widget.serviceName),
                                       textAlign: TextAlign.center,
                                       style: ProviderTextStyles.cardHeadingSubtitle,
                                     ),
@@ -563,37 +864,7 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     GestureDetector(
-                                      onTap: () {
-                                        HapticFeedback.lightImpact();
-                                        if (onAllowLocation != null) {
-                                          onAllowLocation!();
-                                        } else {
-                                          Navigator.of(context).push(
-                                            PageRouteBuilder(
-                                              pageBuilder: (context, animation, secondaryAnimation) =>
-                                                  const AdminApprovalScreen(),
-                                              transitionsBuilder:
-                                                  (context, animation, secondaryAnimation, child) {
-                                                final curved = CurvedAnimation(
-                                                  parent: animation,
-                                                  curve: Curves.easeInOutCubic,
-                                                );
-                                                return FadeTransition(
-                                                  opacity: curved,
-                                                  child: SlideTransition(
-                                                    position: Tween<Offset>(
-                                                      begin: const Offset(0.04, 0),
-                                                      end: Offset.zero,
-                                                    ).animate(curved),
-                                                    child: child,
-                                                  ),
-                                                );
-                                              },
-                                              transitionDuration: const Duration(milliseconds: 350),
-                                            ),
-                                          );
-                                        }
-                                      },
+                                      onTap: _isLocating ? null : _handleAllowLocation,
                                       behavior: HitTestBehavior.opaque,
                                       child: Container(
                                         width: double.infinity,
@@ -614,35 +885,57 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
                                           child: Stack(
                                             alignment: Alignment.center,
                                             children: [
-                                              Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                crossAxisAlignment: CrossAxisAlignment.center,
-                                                children: [
-                                                  const CustomPaint(
-                                                    size: Size(16.0, 16.0),
-                                                    painter: _FilledNavigationArrowPainter(
-                                                      color: Colors.white,
+                                              if (_isLocating)
+                                                Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                                  children: [
+                                                    const SizedBox(
+                                                      width: 18.0,
+                                                      height: 18.0,
+                                                      child: CircularProgressIndicator(
+                                                        strokeWidth: 2.0,
+                                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                      ),
                                                     ),
-                                                  ),
-                                                  const SizedBox(width: 10.0),
-                                                  Text(
-                                                    context.l10n.allowLocation,
-                                                    style: ProviderTextStyles.continueButtonText,
-                                                  ),
-                                                ],
-                                              ),
-                                              Align(
-                                                alignment: AlignmentDirectional.centerEnd,
-                                                child: Transform.scale(
-                                                  scaleX: context.isArabic ? -1.0 : 1.0,
-                                                  child: const CustomPaint(
-                                                    size: Size(6.0, 12.0),
-                                                    painter: _RightChevronPainter(
-                                                      color: Colors.white,
+                                                    const SizedBox(width: 10.0),
+                                                    Text(
+                                                      _statusMessage ?? (context.isArabic ? 'جارٍ تحديد الموقع...' : 'Detecting location...'),
+                                                      style: ProviderTextStyles.continueButtonText,
+                                                    ),
+                                                  ],
+                                                )
+                                              else ...[
+                                                Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                                  children: [
+                                                    const CustomPaint(
+                                                      size: Size(16.0, 16.0),
+                                                      painter: _FilledNavigationArrowPainter(
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 10.0),
+                                                    Text(
+                                                      context.l10n.allowLocation,
+                                                      style: ProviderTextStyles.continueButtonText,
+                                                    ),
+                                                  ],
+                                                ),
+                                                Align(
+                                                  alignment: AlignmentDirectional.centerEnd,
+                                                  child: Transform.scale(
+                                                    scaleX: context.isArabic ? -1.0 : 1.0,
+                                                    child: const CustomPaint(
+                                                      size: Size(6.0, 12.0),
+                                                      painter: _RightChevronPainter(
+                                                        color: Colors.white,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
-                                              ),
+                                              ],
                                             ],
                                           ),
                                         ),
@@ -653,15 +946,10 @@ class ProviderLocationPermissionScreen extends StatelessWidget {
 
                                     // Settings Footnote
                                     GestureDetector(
-                                      onTap: () {
+                                      onTap: () async {
                                         HapticFeedback.selectionClick();
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(context.l10n.openingLocationSettings),
-                                            backgroundColor: const Color(0xFF1C2926),
-                                            duration: const Duration(seconds: 2),
-                                          ),
-                                        );
+                                        _waitingForLocationSettings = true;
+                                        await _locationService.openLocationSettings();
                                       },
                                       behavior: HitTestBehavior.opaque,
                                       child: SizedBox(

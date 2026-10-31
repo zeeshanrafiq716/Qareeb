@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/dashboard/presentation/provider_dashboard_screen.dart';
+import 'package:mobile/models/provider_dashboard_model.dart';
+import 'package:mobile/providers/backend_provider.dart';
 
 /// Provider Home Stats Cards Widget
 /// Implements exact Figma branding specifications:
@@ -80,16 +83,16 @@ import 'package:mobile/features/provider/dashboard/presentation/provider_dashboa
 ///   opacity: 1;
 ///   border-width: 1px;
 ///   border: 1px solid #616166;
-class ProviderStatsCards extends StatelessWidget {
-  final int viewsToday;
-  final int contactsToday;
+class ProviderStatsCards extends ConsumerWidget {
+  final int? viewsToday;
+  final int? contactsToday;
   final VoidCallback? onViewsTap;
   final VoidCallback? onContactsTap;
 
   const ProviderStatsCards({
     super.key,
-    this.viewsToday = 32,
-    this.contactsToday = 19,
+    this.viewsToday,
+    this.contactsToday,
     this.onViewsTap,
     this.onContactsTap,
   });
@@ -101,8 +104,12 @@ class ProviderStatsCards extends StatelessWidget {
   static const double gap = 12.0;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final bool isArabic = context.isArabic;
+    final stats = ref.watch(providerQuickStatsProvider).value ?? ProviderQuickStatsModel.defaults;
+    final int effectiveViews = viewsToday ?? stats.viewsToday;
+    final int effectiveContacts = contactsToday ?? stats.contactsToday;
+
     final String viewsLabel = isArabic ? 'المشاهدات اليوم' : 'Views today';
     final String contactsLabel = isArabic ? 'جهات الاتصال اليوم' : 'Contacts today';
 
@@ -120,13 +127,15 @@ class ProviderStatsCards extends StatelessWidget {
               Expanded(
                 child: _ProviderStatCard(
                   icon: Icons.remove_red_eye_rounded,
-                  value: '$viewsToday',
+                  value: '$effectiveViews',
                   label: viewsLabel,
                   onTap: onViewsTap ??
                       () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => const ProviderDashboardScreen(),
+                            builder: (_) => const ProviderDashboardScreen(
+                              initialCardIndex: 0,
+                            ),
                           ),
                         );
                       },
@@ -139,7 +148,7 @@ class ProviderStatsCards extends StatelessWidget {
               Expanded(
                 child: _ProviderStatCard(
                   icon: Icons.phone_rounded,
-                  value: '$contactsToday',
+                  value: '$effectiveContacts',
                   label: contactsLabel,
                   onTap: onContactsTap ??
                       () {
@@ -266,7 +275,7 @@ class _ProviderStatCard extends StatelessWidget {
                                             fontSize: 14.0,
                                             fontWeight: FontWeight.w500,
                                             color: const Color(0xFF252527),
-                                            height: 1.15,
+                                            height: isArabic ? 1.05 : 1.15,
                                             letterSpacing: 0.0,
                                           ),
                                           textHeightBehavior: const TextHeightBehavior(
@@ -278,7 +287,7 @@ class _ProviderStatCard extends StatelessWidget {
                                       ),
                                     ),
 
-                                    const SizedBox(height: 1.0),
+                                    SizedBox(height: isArabic ? 0.0 : 1.0),
 
                                     // content: label (Views today / Contacts today)
                                     // width: 73; height: 7; font-family: Inter; font-weight: 400; font-size: 10px;
@@ -293,7 +302,7 @@ class _ProviderStatCard extends StatelessWidget {
                                             fontSize: 10.0,
                                             fontWeight: FontWeight.w400,
                                             color: const Color(0xFF616166),
-                                            height: 1.1,
+                                            height: isArabic ? 0.95 : 1.1,
                                             letterSpacing: 0.0,
                                           ),
                                           textHeightBehavior: const TextHeightBehavior(

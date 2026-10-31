@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'dart:ui' show PointerDeviceKind;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -662,7 +662,40 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
   double? _centerPixelX;
   double? _centerPixelY;
   bool _isDraggingMap = false;
+  double _mapScaleBase = 1.0;
   int? _selectedProviderId;
+
+  void _zoomIn() {
+    HapticFeedback.selectionClick();
+    if (_zoom >= 18.0) return;
+    setState(() {
+      if (_centerPixelX != null && _centerPixelY != null) {
+        final curLng = MercatorProjection.xToLng(_centerPixelX!, _zoom);
+        final curLat = MercatorProjection.yToLat(_centerPixelY!, _zoom);
+        _zoom = (_zoom + 1.0).clamp(10.0, 18.0);
+        _centerPixelX = MercatorProjection.lngToX(curLng, _zoom);
+        _centerPixelY = MercatorProjection.latToY(curLat, _zoom);
+      } else {
+        _zoom = (_zoom + 1.0).clamp(10.0, 18.0);
+      }
+    });
+  }
+
+  void _zoomOut() {
+    HapticFeedback.selectionClick();
+    if (_zoom <= 10.0) return;
+    setState(() {
+      if (_centerPixelX != null && _centerPixelY != null) {
+        final curLng = MercatorProjection.xToLng(_centerPixelX!, _zoom);
+        final curLat = MercatorProjection.yToLat(_centerPixelY!, _zoom);
+        _zoom = (_zoom - 1.0).clamp(10.0, 18.0);
+        _centerPixelX = MercatorProjection.lngToX(curLng, _zoom);
+        _centerPixelY = MercatorProjection.latToY(curLat, _zoom);
+      } else {
+        _zoom = (_zoom - 1.0).clamp(10.0, 18.0);
+      }
+    });
+  }
 
   AppTranslations get tr => ref.read(translationsProvider);
 
@@ -749,20 +782,43 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                     left: 0.0,
                     width: mapWidth,
                     height: mapHeight,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onPanStart: (details) {
-                        setState(() => _isDraggingMap = true);
+                    child: Listener(
+                      onPointerSignal: (pointerSignal) {
+                        if (pointerSignal is PointerScrollEvent) {
+                          if (pointerSignal.scrollDelta.dy < 0) {
+                            _zoomIn();
+                          } else if (pointerSignal.scrollDelta.dy > 0) {
+                            _zoomOut();
+                          }
+                        }
                       },
-                      onPanUpdate: (details) {
-                        setState(() {
-                          _centerPixelX = (_centerPixelX ?? 0) - details.delta.dx;
-                          _centerPixelY = (_centerPixelY ?? 0) - details.delta.dy;
-                        });
-                      },
-                      onPanEnd: (details) {
-                        setState(() => _isDraggingMap = false);
-                      },
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onDoubleTap: _zoomIn,
+                        onScaleStart: (details) {
+                          _mapScaleBase = 1.0;
+                          setState(() => _isDraggingMap = true);
+                        },
+                        onScaleUpdate: (details) {
+                          setState(() {
+                            _centerPixelX = (_centerPixelX ?? 0) - details.focalPointDelta.dx;
+                            _centerPixelY = (_centerPixelY ?? 0) - details.focalPointDelta.dy;
+
+                            if (details.scale != 1.0) {
+                              final double ratio = details.scale / _mapScaleBase;
+                              if (ratio > 1.25 && _zoom < 18.0) {
+                                _zoomIn();
+                                _mapScaleBase = details.scale;
+                              } else if (ratio < 0.8 && _zoom > 10.0) {
+                                _zoomOut();
+                                _mapScaleBase = details.scale;
+                              }
+                            }
+                          });
+                        },
+                        onScaleEnd: (details) {
+                          setState(() => _isDraggingMap = false);
+                        },
                       child: MouseRegion(
                         cursor: _isDraggingMap
                             ? SystemMouseCursors.grabbing
@@ -862,6 +918,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                       ),
                     ),
                   ),
+                ),
 
                   // 2. Subtle Gradient Overlay Layer ("after header"):
                   Positioned(
@@ -887,87 +944,183 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                     ),
                   ),
 
-                  // 3. Location Button Layout:
+                  // 3. Floating Map Controls: Zoom In, Zoom Out, Location Button:
                   Positioned(
                     top: 106.0,
                     right: horizontalPadding,
                     width: 36.0,
-                    height: 36.0,
-                    child: GestureDetector(
-                      key: const Key('find_provider_location_button'),
-                      onTap: () async {
-                        HapticFeedback.lightImpact();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              tr.gpsDetecting,
-                              style: tr.font(
-                                fontSize: 12.0,
-                                color: Colors.white,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Zoom In Button (+)
+                        GestureDetector(
+                          key: const Key('find_provider_zoom_in_button'),
+                          onTap: _zoomIn,
+                          behavior: HitTestBehavior.opaque,
+                          child: Container(
+                            width: 36.0,
+                            height: 36.0,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFFFF),
+                              borderRadius: BorderRadius.circular(8.0),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x0F000000),
+                                  blurRadius: 8.0,
+                                  offset: Offset(0, 1),
+                                  spreadRadius: 0.0,
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.add_rounded,
+                                size: 20.0,
+                                color: Color(0xFF1C2926),
                               ),
                             ),
-                            backgroundColor: const Color(0xFF8B53FE),
-                            duration: const Duration(milliseconds: 1000),
-                            behavior: SnackBarBehavior.floating,
                           ),
-                        );
+                        ),
+                        const SizedBox(height: 8.0),
+                        // Zoom Out Button (-)
+                        GestureDetector(
+                          key: const Key('find_provider_zoom_out_button'),
+                          onTap: _zoomOut,
+                          behavior: HitTestBehavior.opaque,
+                          child: Container(
+                            width: 36.0,
+                            height: 36.0,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFFFF),
+                              borderRadius: BorderRadius.circular(8.0),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x0F000000),
+                                  blurRadius: 8.0,
+                                  offset: Offset(0, 1),
+                                  spreadRadius: 0.0,
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.remove_rounded,
+                                size: 20.0,
+                                color: Color(0xFF1C2926),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8.0),
+                        // Current Location Button
+                        GestureDetector(
+                          key: const Key('find_provider_location_button'),
+                          onTap: () async {
+                            HapticFeedback.lightImpact();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  tr.gpsDetecting,
+                                  style: tr.font(
+                                    fontSize: 12.0,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                backgroundColor: const Color(0xFF8B53FE),
+                                duration: const Duration(milliseconds: 1000),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
 
-                        final freshLoc = await ref.read(locationServiceProvider).getCurrentLocation();
-                        ref.refresh(userLocationProvider);
-                        ref.refresh(nearbyProvidersProvider);
+                            final freshLoc = await ref.read(locationServiceProvider).getCurrentLocation();
+                            ref.refresh(userLocationProvider);
+                            ref.refresh(nearbyProvidersProvider);
 
-                        setState(() {
-                          _centerPixelX = MercatorProjection.lngToX(freshLoc.longitude, _zoom);
-                          _centerPixelY = MercatorProjection.latToY(freshLoc.latitude, _zoom) + 15.0;
-                        });
+                            if (!freshLoc.isGpsDetected) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.location_off_rounded,
+                                        size: 16.0,
+                                        color: Colors.white,
+                                      ),
+                                      const SizedBox(width: 8.0),
+                                      Expanded(
+                                        child: Text(
+                                          tr.isArabic
+                                              ? 'خدمة الموقع غير مفعلة في جهازك'
+                                              : 'Device location is OFF. Please turn ON location in device settings.',
+                                          style: tr.font(
+                                            fontSize: 12.0,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  backgroundColor: const Color(0xFFE11D48),
+                                  duration: const Duration(seconds: 3),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                              return;
+                            }
 
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              freshLoc.isGpsDetected
-                                  ? (tr.isArabic
+                            setState(() {
+                              _centerPixelX = MercatorProjection.lngToX(freshLoc.longitude, _zoom);
+                              _centerPixelY = MercatorProjection.latToY(freshLoc.latitude, _zoom) + 15.0;
+                            });
+
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  tr.isArabic
                                       ? 'تحديد تلقائي: ${freshLoc.coordinatesDisplay} (${freshLoc.cityName})'
-                                      : 'GPS: ${freshLoc.coordinatesDisplay} (${freshLoc.cityName})')
-                                  : (tr.isArabic
-                                      ? 'الموقع: ${freshLoc.cityName}'
-                                      : 'Location: ${freshLoc.cityName}'),
-                              style: tr.font(
-                                fontSize: 12.0,
-                                color: Colors.white,
+                                      : 'GPS: ${freshLoc.coordinatesDisplay} (${freshLoc.cityName})',
+                                  style: tr.font(
+                                    fontSize: 12.0,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                backgroundColor: const Color(0xFF8B53FE),
+                                duration: const Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          behavior: HitTestBehavior.opaque,
+                          child: Container(
+                            width: 36.0,
+                            height: 36.0,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFFFF),
+                              borderRadius: BorderRadius.circular(8.0),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x0F000000), // #0000000F
+                                  blurRadius: 8.0,
+                                  offset: Offset(0, 1),
+                                  spreadRadius: 0.0,
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.my_location_rounded,
+                                size: 20.0,
+                                color: Color(0xFF8B53FE),
                               ),
                             ),
-                            backgroundColor: const Color(0xFF8B53FE),
-                            duration: const Duration(seconds: 2),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        width: 36.0,
-                        height: 36.0,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFFFFF),
-                          borderRadius: BorderRadius.circular(8.0),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x0F000000), // #0000000F
-                              blurRadius: 8.0,
-                              offset: Offset(0, 1),
-                              spreadRadius: 0.0,
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.my_location_rounded,
-                            size: 20.0,
-                            color: Color(0xFF8B53FE),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
 
@@ -2077,10 +2230,11 @@ class _DynamicMapTileLayer extends StatelessWidget {
 
         final int serverIdx = (wrappedTileX.abs() + ty.abs()) % 4;
         final String lang = Localizations.localeOf(context).languageCode;
+        final String topoSub = ['a', 'b', 'c'][(wrappedTileX.abs() + ty.abs()) % 3];
         final String googleTileUrl =
-            'https://mt$serverIdx.google.com/vt/lyrs=m&hl=$lang&x=$wrappedTileX&y=$ty&z=$z';
+            'https://mt$serverIdx.google.com/vt/lyrs=p&hl=$lang&x=$wrappedTileX&y=$ty&z=$z';
         final String osmTileUrl =
-            'https://tile.openstreetmap.org/$z/$wrappedTileX/$ty.png';
+            'https://$topoSub.tile.opentopomap.org/$z/$wrappedTileX/$ty.png';
 
         tileWidgets.add(
           Positioned(

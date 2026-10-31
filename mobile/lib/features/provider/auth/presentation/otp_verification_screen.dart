@@ -24,10 +24,20 @@ import 'package:mobile/features/provider/theme/provider_colors.dart';
 ///   box-shadow: 0px -2px 12px 0px #00000014;
 class OtpVerificationScreen extends StatelessWidget {
   final Widget? cardContent;
+  final String? phoneNumber;
+  final String? fullPhone;
+  final String? dummyOtp;
+  final bool isWhatsApp;
+  final VoidCallback? onVerified;
 
   const OtpVerificationScreen({
     super.key,
     this.cardContent,
+    this.phoneNumber,
+    this.fullPhone,
+    this.dummyOtp,
+    this.isWhatsApp = false,
+    this.onVerified,
   });
 
   static const double designWidth = 390.0;
@@ -167,6 +177,11 @@ class OtpVerificationScreen extends StatelessWidget {
                           width: containerWidth,
                           height: cardHeight,
                           child: cardContent,
+                          phoneNumber: phoneNumber,
+                          fullPhone: fullPhone,
+                          dummyOtp: dummyOtp,
+                          isWhatsApp: isWhatsApp,
+                          onVerified: onVerified,
                         ),
                       ),
                     ],

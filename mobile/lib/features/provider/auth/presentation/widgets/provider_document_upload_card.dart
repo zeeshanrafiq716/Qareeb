@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
@@ -47,6 +48,7 @@ class ProviderDocumentUploadCard extends StatelessWidget {
   final String subtitle;
   final String statusText;
   final String imageAsset;
+  final Uint8List? imageBytes;
   final VoidCallback? onUpload;
   final bool isUploaded;
   final String? uploadedFileName;
@@ -57,6 +59,7 @@ class ProviderDocumentUploadCard extends StatelessWidget {
     required this.subtitle,
     this.statusText = 'Valid and not expired',
     required this.imageAsset,
+    this.imageBytes,
     this.onUpload,
     this.isUploaded = false,
     this.uploadedFileName,
@@ -78,7 +81,6 @@ class ProviderDocumentUploadCard extends StatelessWidget {
         child: Container(
           width: double.infinity,
           height: designHeight,
-          padding: const EdgeInsets.all(16.0), // padding: 16px
           decoration: BoxDecoration(
             color: Colors.white, // background: #FFFFFF
             borderRadius: BorderRadius.circular(16.0), // border-radius: 16px
@@ -91,10 +93,18 @@ class ProviderDocumentUploadCard extends StatelessWidget {
               ),
             ],
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween, // justify-content: space-between
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16.0),
+            child: InkWell(
+              onTap: onUpload,
+              borderRadius: BorderRadius.circular(16.0),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0), // padding: 16px
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween, // justify-content: space-between
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
               // Left Content Layout: takes available width
               Expanded(
                 child: Row(
@@ -107,14 +117,21 @@ class ProviderDocumentUploadCard extends StatelessWidget {
                         width: imageWidth,
                         height: imageHeight,
                         color: const Color(0xFFF2F5F4),
-                        child: Image.asset(
-                          imageAsset,
-                          width: imageWidth,
-                          height: imageHeight,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              _DocumentThumbnailFallback(title: title),
-                        ),
+                        child: imageBytes != null
+                            ? Image.memory(
+                                imageBytes!,
+                                width: imageWidth,
+                                height: imageHeight,
+                                fit: BoxFit.cover,
+                              )
+                            : Image.asset(
+                                imageAsset,
+                                width: imageWidth,
+                                height: imageHeight,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    _DocumentThumbnailFallback(title: title),
+                              ),
                       ),
                     ),
 
@@ -172,7 +189,10 @@ class ProviderDocumentUploadCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ),
+  ),
+),
+);
   }
 }
 

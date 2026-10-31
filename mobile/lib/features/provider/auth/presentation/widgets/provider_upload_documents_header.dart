@@ -52,7 +52,14 @@ class ProviderUploadDocumentsHeader extends StatelessWidget {
             children: [
               // 1. Icon layout: 36x36 circular white back button matching previous branding
               ProviderHeaderBackButton(
-                onTap: onBack ?? () => Navigator.of(context).maybePop(),
+                onTap: onBack ??
+                    () {
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      } else {
+                        Navigator.of(context).pushReplacementNamed('/verified');
+                      }
+                    },
               ),
 
               // gap: 12px;

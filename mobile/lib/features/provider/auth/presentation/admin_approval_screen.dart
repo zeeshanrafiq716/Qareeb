@@ -82,9 +82,7 @@ class AdminApprovalScreen extends StatelessWidget {
                         child: ScrollConfiguration(
                           behavior: const ProviderCardScrollBehavior(),
                           child: SingleChildScrollView(
-                            physics: isDesktopWeb || containerHeight >= 680.0
-                                ? const NeverScrollableScrollPhysics()
-                                : const ClampingScrollPhysics(),
+                            physics: const ClampingScrollPhysics(),
                             padding: const EdgeInsets.only(
                               left: 20.0,
                               right: 20.0,

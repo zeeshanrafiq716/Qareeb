@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
 import 'package:mobile/features/provider/auth/presentation/otp_verification_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_country_picker_modal.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
+import 'package:mobile/models/country_model.dart';
+import 'package:mobile/services/backend_service.dart';
 
 /// Provider Phone Number Widget Layout
 /// Implements exact Figma branding specifications:
@@ -41,17 +46,23 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 ///   width: 350;
 ///   height: 52;
 ///   border-radius: 12px;
-///   background: #1D8070;
+///   background: #8B53FE;
 ///   content: Continue (Inter 500 14px line-height 22px #FFFFFF)
 ///   arrow icon branding: width: 14; height: 12; border: 1.5px solid #FFFFFF;
 class ProviderPhoneInputWidget extends StatefulWidget {
+  final TextEditingController? nameController;
   final TextEditingController? controller;
+  final CountryModel? selectedCountry;
+  final ValueChanged<CountryModel>? onCountryChanged;
   final VoidCallback? onContinue;
   final VoidCallback? onCountryCodeTap;
 
   const ProviderPhoneInputWidget({
     super.key,
+    this.nameController,
     this.controller,
+    this.selectedCountry,
+    this.onCountryChanged,
     this.onContinue,
     this.onCountryCodeTap,
   });
@@ -69,11 +80,17 @@ class ProviderPhoneInputWidget extends StatefulWidget {
 
 class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
   late final TextEditingController _internalController;
+  CountryModel _localSelectedCountry = CountryModel.defaultCountry;
+  bool _isLoading = false;
+  late final BackendService _backendService;
+
+  CountryModel get _selectedCountry => widget.selectedCountry ?? _localSelectedCountry;
 
   @override
   void initState() {
     super.initState();
     _internalController = widget.controller ?? TextEditingController();
+    _backendService = BackendService(ApiClient());
   }
 
   @override
@@ -82,6 +99,165 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
       _internalController.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _openCountryPicker() async {
+    final picked = await ProviderCountryPickerModal.show(
+      context,
+      selectedCountry: _selectedCountry,
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _localSelectedCountry = picked;
+      });
+      widget.onCountryChanged?.call(picked);
+    }
+  }
+
+  Future<void> _handleContinue() async {
+    if (_isLoading) return;
+
+    final isArabic = context.isArabic;
+    final rawName = widget.nameController?.text.trim() ?? '';
+
+    // 1. Name Validation (if nameController is connected)
+    if (widget.nameController != null) {
+      if (rawName.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            backgroundColor: const Color(0xFF1C2926),
+            content: Text(
+              isArabic ? 'يرجى إدخال اسمك الكامل' : 'Please enter your full name',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
+      if (rawName.length < 2) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            backgroundColor: const Color(0xFF1C2926),
+            content: Text(
+              isArabic ? 'الاسم قصير جداً، يرجى إدخال اسم صحيح' : 'Name is too short, please enter a valid name',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+    }
+
+    // 2. Phone Digits Security Validation
+    final rawPhone = _internalController.text.trim();
+    String digits = rawPhone.replaceAll(RegExp(r'\D'), '');
+    if (digits.startsWith('0')) {
+      digits = digits.replaceFirst(RegExp(r'^0+'), '');
+    }
+
+    if (digits.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          backgroundColor: const Color(0xFF1C2926),
+          content: Text(
+            isArabic ? 'يرجى إدخال رقم الهاتف' : 'Please enter your phone number',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // Security Check: Complete digits required matching the selected country code!
+    if (digits.length != _selectedCountry.maxLength) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          backgroundColor: const Color(0xFF1C2926),
+          content: Text(
+            isArabic
+                ? 'يرجى إكمال رقم الهاتف (${digits.length}/${_selectedCountry.maxLength} أرقام لدولة ${_selectedCountry.nameAr})'
+                : 'Please complete ${_selectedCountry.maxLength} digits for ${_selectedCountry.nameEn} (${digits.length}/${_selectedCountry.maxLength})',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    final fullPhone = '${_selectedCountry.dialCode}$digits';
+    final displayPhone = '${_selectedCountry.dialCode} $digits';
+
+    ProviderRegistrationStore.instance.update(
+      (data) => data.copyWith(
+        fullName: rawName.isNotEmpty ? rawName : data.fullName,
+        phone: displayPhone,
+        contactPhone: displayPhone,
+        isWhatsApp: false,
+      ),
+    );
+
+    setState(() => _isLoading = true);
+
+    final result = await _backendService.requestOtp(phone: fullPhone);
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    // Show realistic SMS toast notification with received dummy OTP
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF1C2926),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        content: Row(
+          children: [
+            const Icon(Icons.mark_email_read_outlined, color: ProviderColors.primaryButton, size: 20.0),
+            const SizedBox(width: 10.0),
+            Expanded(
+              child: Text(
+                isArabic
+                    ? 'رمز التحقق (تجريبي): ${result.otp}'
+                    : 'Verification Code (Dummy): ${result.otp}',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 5),
+      ),
+    );
+
+    // Navigate to OTP Screen
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => OtpVerificationScreen(
+          phoneNumber: displayPhone,
+          fullPhone: fullPhone,
+          dummyOtp: result.otp,
+        ),
+        transitionsBuilder: (_, animation, _, child) => FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOutCubic,
+          ),
+          child: child,
+        ),
+        transitionDuration: const Duration(milliseconds: 350),
+      ),
+    );
   }
 
   @override
@@ -97,22 +273,26 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 1st row layout: width: double.infinity; height: 52.22; gap: 10px;
-              SizedBox(
-                width: double.infinity,
-                height: ProviderPhoneInputWidget.row1Height,
-                child: Row(
-                  children: [
-                    // number code card layout: width: 126; height: 52.22; border-radius: 12px; background: #F2F5F4;
-                    _buildNumberCodeCard(),
+              // Enforce LTR so in both Arabic and English, code field stays on the LEFT side and phone input field on the RIGHT side.
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: ProviderPhoneInputWidget.row1Height,
+                  child: Row(
+                    children: [
+                      // number code card layout: width: 126; height: 52.22; border-radius: 12px; background: #F2F5F4;
+                      _buildNumberCodeCard(),
 
-                    // gap: 10px;
-                    const SizedBox(width: ProviderPhoneInputWidget.cardGap),
+                      // gap: 10px;
+                      const SizedBox(width: ProviderPhoneInputWidget.cardGap),
 
-                    // row 1 2nd card layout: Expanded; height: 52; border-radius: 12px; background: #F2F5F4;
-                    Expanded(
-                      child: _buildPhoneNumberInputCard(),
-                    ),
-                  ],
+                      // row 1 2nd card layout: Expanded; height: 52; border-radius: 12px; background: #F2F5F4;
+                      Expanded(
+                        child: _buildPhoneNumberInputCard(),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
@@ -130,12 +310,12 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
 
   /// number code card layout:
   /// width: 126; height: 52.22; border-radius: 12px; padding: 16px; background: #F2F5F4;
-  /// inner content: flag (30x20.22) + gap(6px) + "+966" (37x10) + gap(10px) + dropdown(11x5) = 94px
+  /// inner content: flag (30x20.22) + gap(6px) + dialCode + gap(10px) + dropdown(11x5)
   Widget _buildNumberCodeCard() {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: widget.onCountryCodeTap ?? () {},
+        onTap: widget.onCountryCodeTap ?? _openCountryPicker,
         borderRadius: BorderRadius.circular(12.0),
         child: Container(
           width: 126.0,
@@ -149,16 +329,16 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // text layout: width: 73; height: 20.22; gap: 6px;
               // flag branding: width: 30; height: 20.22;
-              const _SaudiFlagWidget(),
+              _buildCountryFlag(_selectedCountry),
 
               const SizedBox(width: 6.0), // gap: 6px
 
-              // content: +966 (Inter 500 14px line-height 22px #1C2926)
+              // dial code: Inter 500 14px line-height 22px #1C2926
               Text(
-                '+966',
+                _selectedCountry.dialCode,
                 style: ProviderTextStyles.phoneCode,
+                textDirection: TextDirection.ltr,
               ),
 
               const SizedBox(width: 10.0), // gap: 10px
@@ -172,11 +352,38 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
     );
   }
 
+  /// Country Flag widget:
+  /// Uses custom exact painter for Saudi Arabia (SA), and crisp flag display for other countries
+  Widget _buildCountryFlag(CountryModel country) {
+    if (country.code == 'SA') {
+      return const _SaudiFlagWidget();
+    }
+    return Container(
+      width: 30.0,
+      height: 20.22222328186035,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(3.0),
+      ),
+      child: Text(
+        country.flagEmoji,
+        style: const TextStyle(
+          fontSize: 18.0,
+          height: 1.0,
+        ),
+      ),
+    );
+  }
+
   /// row 1 2nd card layout:
   /// width: 214; height: 52; border-radius: 12px; background: #F2F5F4;
   /// card inner content branding:
-  /// content: 50 123 4567; left: 16px; Inter 400 14px line-height 22px #566663;
+  /// content: placeholder; left: 16px; Inter 400 14px line-height 22px #566663;
   Widget _buildPhoneNumberInputCard() {
+    final raw = _internalController.text.trim();
+    final digits = raw.replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^0+'), '');
+    final bool isCompleted = digits.length == _selectedCountry.maxLength;
+
     return Container(
       height: ProviderPhoneInputWidget.row1Height,
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -185,28 +392,62 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
         borderRadius: BorderRadius.circular(12.0),
       ),
       alignment: Alignment.centerLeft,
-      child: TextField(
-        controller: _internalController,
-        keyboardType: TextInputType.phone,
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9\s]')),
-          LengthLimitingTextInputFormatter(14),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _internalController,
+              keyboardType: TextInputType.phone,
+              textDirection: TextDirection.ltr,
+              textAlign: TextAlign.left,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(_selectedCountry.maxLength),
+              ],
+              onChanged: (val) {
+                if (val.startsWith('0')) {
+                  final clean = val.replaceFirst(RegExp(r'^0+'), '');
+                  _internalController.value = TextEditingValue(
+                    text: clean,
+                    selection: TextSelection.collapsed(offset: clean.length),
+                  );
+                }
+                setState(() {});
+              },
+              style: ProviderTextStyles.phoneInput,
+              cursorColor: ProviderColors.primaryButton,
+              decoration: InputDecoration(
+                hintText: _selectedCountry.exampleNumber,
+                hintStyle: ProviderTextStyles.phonePlaceholder,
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ),
+          if (isCompleted)
+            const Icon(
+              Icons.check_circle_rounded,
+              color: Color(0xFF1D8070),
+              size: 18.0,
+            )
+          else if (digits.isNotEmpty)
+            Text(
+              '${digits.length}/${_selectedCountry.maxLength}',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 11.0,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF566663),
+              ),
+            ),
         ],
-        style: ProviderTextStyles.phoneInput,
-        cursorColor: ProviderColors.primaryButton,
-        decoration: InputDecoration(
-          hintText: '50 123 4567',
-          hintStyle: ProviderTextStyles.phonePlaceholder,
-          border: InputBorder.none,
-          isDense: true,
-          contentPadding: EdgeInsets.zero,
-        ),
       ),
     );
   }
 
   /// button layout:
-  /// width: 350; height: 52; border-radius: 12px; background: #1D8070;
+  /// width: 350; height: 52; border-radius: 12px; background: #8B53FE;
   /// button inner branding:
   /// width: 87; height: 12; gap: 12px;
   /// content: Continue (Inter 500 14px line-height 22px #FFFFFF)
@@ -216,24 +457,11 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
       width: double.infinity,
       height: ProviderPhoneInputWidget.buttonHeight,
       child: ElevatedButton(
-        onPressed: widget.onContinue ??
-            () {
-              Navigator.of(context).push(
-                PageRouteBuilder(
-                  pageBuilder: (_, _, _) => const OtpVerificationScreen(),
-                  transitionsBuilder: (_, animation, _, child) => FadeTransition(
-                    opacity: CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeInOutCubic,
-                    ),
-                    child: child,
-                  ),
-                  transitionDuration: const Duration(milliseconds: 350),
-                ),
-              );
-            },
+        onPressed: _isLoading
+            ? null
+            : (widget.onContinue ?? _handleContinue),
         style: ElevatedButton.styleFrom(
-          backgroundColor: ProviderColors.primaryButton, // #1D8070
+          backgroundColor: ProviderColors.primaryButton, // #8B53FE
           foregroundColor: Colors.white,
           elevation: 0,
           shadowColor: Colors.transparent,
@@ -242,23 +470,32 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
           ),
           padding: EdgeInsets.zero,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // content: Continue (Inter 500 14px #FFFFFF)
-            Text(
-              context.l10n.continueButtonText,
-              style: ProviderTextStyles.continueButtonText,
-            ),
+        child: _isLoading
+            ? const SizedBox(
+                width: 20.0,
+                height: 20.0,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.0,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // content: Continue (Inter 500 14px #FFFFFF)
+                  Text(
+                    context.l10n.continueButtonText,
+                    style: ProviderTextStyles.continueButtonText,
+                  ),
 
-            // gap: 12px;
-            const SizedBox(width: 12.0),
+                  // gap: 12px;
+                  const SizedBox(width: 12.0),
 
-            // arrow icon branding: width: 14; height: 12; angle: -180 deg; border: 1.5px solid #FFFFFF
-            const _ContinueArrowWidget(),
-          ],
-        ),
+                  // arrow icon branding: width: 14; height: 12; angle: -180 deg; border: 1.5px solid #FFFFFF
+                  const _ContinueArrowWidget(),
+                ],
+              ),
       ),
     );
   }
@@ -278,7 +515,7 @@ class _SaudiFlagWidget extends StatelessWidget {
         color: ProviderColors.saudiGreen, // #006C35
         borderRadius: BorderRadius.circular(3.0),
       ),
-      child: CustomPaint(
+      child: const CustomPaint(
         painter: _SaudiFlagPainter(),
       ),
     );
@@ -375,8 +612,8 @@ class _ContinueArrowWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Transform.flip(
       flipX: Directionality.of(context) == TextDirection.rtl,
-      child: CustomPaint(
-        size: const Size(14.0, 12.0),
+      child: const CustomPaint(
+        size: Size(14.0, 12.0),
         painter: _ContinueArrowPainter(),
       ),
     );

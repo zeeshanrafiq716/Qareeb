@@ -1,7 +1,6 @@
 import 'package:geolocator/geolocator.dart';
 import 'google_maps_service.dart';
 import 'dart:math' as math;
-import 'package:dio/dio.dart';
 import 'location/web_location.dart';
 
 export 'package:geolocator/geolocator.dart'
@@ -65,13 +64,11 @@ class UserLocation {
 }
 
 class LocationService {
-  final Dio _dio;
   final GoogleMapsService _googleMaps;
   static UserLocation? _cachedLocation;
 
-  LocationService([Dio? dio, GoogleMapsService? googleMaps])
-      : _dio = dio ?? Dio(),
-        _googleMaps = googleMaps ?? GoogleMapsService();
+  LocationService([dynamic dio, GoogleMapsService? googleMaps])
+      : _googleMaps = googleMaps ?? GoogleMapsService();
 
   /// Checks whether GPS / Location services are enabled at the device system level.
   Future<bool> isLocationServiceEnabled() async {
@@ -118,31 +115,25 @@ class LocationService {
     }
   }
 
-  /// Actively enforces device location to be turned ON and permission granted.
-  /// Acquires real device GPS coordinates with high accuracy.
-  /// Throws [LocationServiceDisabledException] if device GPS is switched off.
-  /// Throws [PermissionDeniedException] if user denies permission.
+  /// Actively acquires real device GPS coordinates.
+  /// If device location is enabled, resolves coordinates seamlessly and navigates to map with NO popup.
+  /// Throws [LocationServiceDisabledException] ONLY if location is disabled at device level.
   Future<UserLocation> acquireDeviceLocation({
     Duration timeout = const Duration(seconds: 12),
   }) async {
-    // 1. Verify device location service is turned ON
+    // 1. Check if device location service is turned ON
     final serviceEnabled = await isLocationServiceEnabled();
     if (!serviceEnabled) {
       throw const LocationServiceDisabledException();
     }
 
-    // 2. Check and request location permission
-    var permission = await checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await requestPermission();
+    // 2. Request runtime permission if needed without throwing hard errors
+    try {
+      final permission = await checkPermission();
       if (permission == LocationPermission.denied) {
-        throw const PermissionDeniedException('Location permission denied.');
+        await requestPermission();
       }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      throw const PermissionDeniedException('Location permission permanently denied.');
-    }
+    } catch (_) {}
 
     // 3. Acquire real GPS coordinates from device
     double? lat;
@@ -153,14 +144,14 @@ class LocationService {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 10),
+          timeLimit: Duration(seconds: 8),
         ),
       );
       lat = position.latitude;
       lng = position.longitude;
       acc = position.accuracy;
     } catch (_) {
-      // Fallback: Try last known location or medium accuracy
+      // Fallback 1: Try last known location or medium accuracy
       try {
         final lastKnown = await Geolocator.getLastKnownPosition();
         if (lastKnown != null) {
@@ -171,7 +162,7 @@ class LocationService {
           final pos = await Geolocator.getCurrentPosition(
             locationSettings: const LocationSettings(
               accuracy: LocationAccuracy.medium,
-              timeLimit: Duration(seconds: 8),
+              timeLimit: Duration(seconds: 6),
             ),
           );
           lat = pos.latitude;
@@ -179,17 +170,21 @@ class LocationService {
           acc = pos.accuracy;
         }
       } catch (_) {
-        // Fallback for web if geolocator failed
-        final coords = await getBrowserCoordinates();
-        if (coords != null && coords['latitude'] != null && coords['longitude'] != null) {
-          lat = coords['latitude']!;
-          lng = coords['longitude']!;
-          acc = coords['accuracy'];
-        }
+        // Fallback 2: Browser coordinates (for Chrome / Web)
+        try {
+          final coords = await getBrowserCoordinates();
+          if (coords != null && coords['latitude'] != null && coords['longitude'] != null) {
+            lat = coords['latitude']!;
+            lng = coords['longitude']!;
+            acc = coords['accuracy'];
+          }
+        } catch (_) {}
       }
     }
 
+    // If real GPS coordinates could not be acquired, location is OFF or permission is not granted
     if (lat == null || lng == null) {
+      _cachedLocation = null;
       throw const LocationServiceDisabledException();
     }
 
@@ -318,50 +313,6 @@ class LocationService {
       _cachedLocation = null;
       return UserLocation.defaultLocation;
     }
-  }
-
-  /// Real IP fallback: Resolves user's actual location via client IP address
-  /// if browser geolocation permission was denied or unavailable on PC.
-  Future<UserLocation?> _getIpFallbackLocation() async {
-    try {
-      final response = await _dio.get(
-        'https://api.bigdatacloud.net/data/reverse-geocode-client',
-        options: Options(
-          sendTimeout: const Duration(seconds: 4),
-          receiveTimeout: const Duration(seconds: 4),
-        ),
-      );
-
-      if (response.statusCode == 200 && response.data is Map) {
-        final data = response.data as Map;
-        final lat = (data['latitude'] as num?)?.toDouble();
-        final lng = (data['longitude'] as num?)?.toDouble();
-
-        if (lat != null && lng != null) {
-          final city = (data['city'] ?? data['locality'] ?? data['principalSubdivision'] ?? '').toString().trim();
-          final locality = (data['locality'] ?? '').toString().trim();
-          final country = (data['countryName'] ?? '').toString().trim();
-
-          final displayCity = city.isNotEmpty
-              ? (country.isNotEmpty ? '$city, $country' : city)
-              : (country.isNotEmpty ? country : 'Current Location');
-
-          final displayAddress = locality.isNotEmpty
-              ? (city.isNotEmpty && locality != city ? '$locality, $city' : locality)
-              : displayCity;
-
-          return UserLocation(
-            latitude: lat,
-            longitude: lng,
-            cityName: displayCity,
-            address: displayAddress,
-            isGpsDetected: true,
-            accuracy: 1000.0,
-          );
-        }
-      }
-    } catch (_) {}
-    return null;
   }
 
   /// Reverse geocodes latitude/longitude into city & locality name using Google Maps Platform

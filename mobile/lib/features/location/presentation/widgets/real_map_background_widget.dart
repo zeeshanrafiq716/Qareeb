@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -86,6 +87,25 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
     with TickerProviderStateMixin {
   double _panOffsetX = 0.0;
   double _panOffsetY = 0.0;
+  double? _internalZoom;
+  double _baseScale = 1.0;
+  bool _isDragging = false;
+
+  double get currentZoom => (_internalZoom ?? widget.zoom).clamp(10.0, 19.0);
+
+  void zoomIn() {
+    HapticFeedback.lightImpact();
+    setState(() {
+      _internalZoom = (currentZoom + 1.0).clamp(10.0, 19.0);
+    });
+  }
+
+  void zoomOut() {
+    HapticFeedback.lightImpact();
+    setState(() {
+      _internalZoom = (currentZoom - 1.0).clamp(10.0, 19.0);
+    });
+  }
 
   late final AnimationController _carAnimationController;
   late final AnimationController _pulseAnimationController;
@@ -146,10 +166,11 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
     final double centerLat = widget.latitude ?? userLoc.latitude;
     final double centerLng = widget.longitude ?? userLoc.longitude;
 
+    final double activeZoom = currentZoom;
     final double baseCenterPxX =
-        MapMercatorProjection.lngToX(centerLng, widget.zoom);
+        MapMercatorProjection.lngToX(centerLng, activeZoom);
     final double baseCenterPxY =
-        MapMercatorProjection.latToY(centerLat, widget.zoom);
+        MapMercatorProjection.latToY(centerLat, activeZoom);
 
     final double currentCenterPxX = baseCenterPxX - _panOffsetX;
     final double currentCenterPxY = baseCenterPxY - _panOffsetY;
@@ -162,7 +183,7 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
         if (width <= 0 || height <= 0) return const SizedBox();
 
         const double tileSize = 256.0;
-        final int z = widget.zoom.toInt();
+        final int z = activeZoom.toInt();
 
         final double leftPx = currentCenterPxX - (width / 2.0);
         final double topPx = currentCenterPxY - (height / 2.0);
@@ -188,10 +209,11 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
 
             final int serverIdx = (wrappedTileX.abs() + ty.abs()) % 4;
             final String lang = Localizations.localeOf(context).languageCode;
+            final String topoSub = ['a', 'b', 'c'][(wrappedTileX.abs() + ty.abs()) % 3];
             final String googleTileUrl =
-                'https://mt$serverIdx.google.com/vt/lyrs=m&hl=$lang&x=$wrappedTileX&y=$ty&z=$z';
+                'https://mt$serverIdx.google.com/vt/lyrs=p&hl=$lang&x=$wrappedTileX&y=$ty&z=$z';
             final String osmTileUrl =
-                'https://tile.openstreetmap.org/$z/$wrappedTileX/$ty.png';
+                'https://$topoSub.tile.opentopomap.org/$z/$wrappedTileX/$ty.png';
 
             tileWidgets.add(
               Positioned(
@@ -228,10 +250,10 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
 
         // Coordinate to Screen Pixel converter (stays locked to GPS coords when panning)
         Offset toScreen(double lat, double lng) {
-          final double pxX = MapMercatorProjection.lngToX(lng, widget.zoom) -
+          final double pxX = MapMercatorProjection.lngToX(lng, activeZoom) -
               currentCenterPxX +
               (width / 2.0);
-          final double pxY = MapMercatorProjection.latToY(lat, widget.zoom) -
+          final double pxY = MapMercatorProjection.latToY(lat, activeZoom) -
               currentCenterPxY +
               (height / 2.0);
           return Offset(pxX, pxY);
@@ -436,37 +458,126 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
                 ),
               ),
 
-              // GPS Recenter Button at Bottom-Right
+              // Floating Controls at Bottom-Right: Zoom In, Zoom Out, GPS Recenter
               Positioned(
                 bottom: 10.0,
                 right: 10.0,
-                child: GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    recenter();
-                  },
-                  child: Container(
-                    width: 32.0,
-                    height: 32.0,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(6.0),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x1A000000),
-                          blurRadius: 8.0,
-                          offset: Offset(0, 1),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Zoom In Button (+)
+                    GestureDetector(
+                      onTap: zoomIn,
+                      child: Container(
+                        width: 32.0,
+                        height: 32.0,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6.0),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x1A000000),
+                              blurRadius: 8.0,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Icon(
-                        userLoc.isGpsDetected ? Icons.my_location_rounded : Icons.location_off_rounded,
-                        size: 16.0,
-                        color: userLoc.isGpsDetected ? const Color(0xFF1C2926) : const Color(0xFFEF4444),
+                        child: const Center(
+                          child: Icon(
+                            Icons.add_rounded,
+                            size: 18.0,
+                            color: Color(0xFF1C2926),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 6.0),
+                    // Zoom Out Button (-)
+                    GestureDetector(
+                      onTap: zoomOut,
+                      child: Container(
+                        width: 32.0,
+                        height: 32.0,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6.0),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x1A000000),
+                              blurRadius: 8.0,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.remove_rounded,
+                            size: 18.0,
+                            color: Color(0xFF1C2926),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6.0),
+                    // GPS Recenter Button
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        if (!userLoc.isGpsDetected) {
+                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.location_off_rounded,
+                                    size: 16.0,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 8.0),
+                                  Expanded(
+                                    child: Text(
+                                      tr.isArabic
+                                          ? 'خدمة الموقع غير مفعلة في جهازك'
+                                          : 'Device location is OFF. Please turn ON location in device settings.',
+                                      style: tr.font(fontSize: 12.0, color: Colors.white, fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: const Color(0xFFE11D48),
+                              duration: const Duration(seconds: 3),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+                        recenter();
+                      },
+                      child: Container(
+                        width: 32.0,
+                        height: 32.0,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6.0),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x1A000000),
+                              blurRadius: 8.0,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Icon(
+                            userLoc.isGpsDetected ? Icons.my_location_rounded : Icons.location_off_rounded,
+                            size: 16.0,
+                            color: userLoc.isGpsDetected ? const Color(0xFF1C2926) : const Color(0xFFEF4444),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -476,15 +587,48 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
     );
 
     if (widget.enableDrag) {
-      mapContent = GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onPanUpdate: (details) {
-          setState(() {
-            _panOffsetX += details.delta.dx;
-            _panOffsetY += details.delta.dy;
-          });
+      mapContent = Listener(
+        onPointerSignal: (pointerSignal) {
+          if (pointerSignal is PointerScrollEvent) {
+            if (pointerSignal.scrollDelta.dy < 0) {
+              zoomIn();
+            } else if (pointerSignal.scrollDelta.dy > 0) {
+              zoomOut();
+            }
+          }
         },
-        child: mapContent,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onDoubleTap: zoomIn,
+          onScaleStart: (details) {
+            _baseScale = 1.0;
+            setState(() => _isDragging = true);
+          },
+          onScaleUpdate: (details) {
+            setState(() {
+              _panOffsetX += details.focalPointDelta.dx;
+              _panOffsetY += details.focalPointDelta.dy;
+
+              if (details.scale != 1.0) {
+                final double ratio = details.scale / _baseScale;
+                if (ratio > 1.25 && currentZoom < 19.0) {
+                  _internalZoom = (currentZoom + 1.0).clamp(10.0, 19.0);
+                  _baseScale = details.scale;
+                } else if (ratio < 0.8 && currentZoom > 10.0) {
+                  _internalZoom = (currentZoom - 1.0).clamp(10.0, 19.0);
+                  _baseScale = details.scale;
+                }
+              }
+            });
+          },
+          onScaleEnd: (details) {
+            setState(() => _isDragging = false);
+          },
+          child: MouseRegion(
+            cursor: _isDragging ? SystemMouseCursors.grabbing : SystemMouseCursors.grab,
+            child: mapContent,
+          ),
+        ),
       );
     }
 

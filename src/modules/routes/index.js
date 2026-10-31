@@ -9,4 +9,5 @@ export const apiRouter = Router();
 apiRouter.use(publicRoutes);
 apiRouter.use("/discovery", discoveryRoutes);
 apiRouter.use("/providers", providerRoutes);
+apiRouter.use("/provider", providerRoutes);
 apiRouter.use("/admin", adminRoutes);

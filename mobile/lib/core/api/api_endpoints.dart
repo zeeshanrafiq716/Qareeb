@@ -20,4 +20,12 @@ class ApiEndpoints {
   // Auth endpoints
   static const String authOtpRequest = '$v1Prefix/auth/otp/request';
   static const String authOtpVerify = '$v1Prefix/auth/otp/verify';
+
+  // Provider Verification & KYC endpoints
+  static const String providerVerification = '$v1Prefix/providers/me/verification';
+  static const String providerKycToken = '$v1Prefix/providers/me/kyc/token';
+
+  // Provider Stats & Dashboard Analytics endpoints
+  static const String providerStats = '$v1Prefix/providers/me/stats';
+  static const String providerDashboard = '$v1Prefix/providers/me/dashboard';
 }

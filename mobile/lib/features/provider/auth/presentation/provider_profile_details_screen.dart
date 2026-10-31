@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_scroll_behavior.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_profile_details_content_layout.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_profile_details_header.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
+
+import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
 
 /// Provider Profile Details Screen (Screen 5)
 /// Appears when user taps "Back to Home" (or profile setup action).
@@ -33,6 +34,11 @@ class ProviderProfileDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // TEMPORARY: Screen 1 & 2 hidden per user request; directly presenting UploadDocumentsScreen.
+    return const UploadDocumentsScreen();
+  }
+
+  Widget _buildOriginal(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,

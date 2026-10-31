@@ -1,6 +1,8 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/models/provider_dashboard_model.dart';
 
 /// Provider Profile Views Card Widget
 /// Implements exact Figma specifications:
@@ -170,11 +172,13 @@ import 'package:mobile/core/localization/app_locale.dart';
 class ProviderProfileViewsCard extends StatefulWidget {
   final int initialTabIndex;
   final ValueChanged<int>? onTabChanged;
+  final ProviderViewsCardData? data;
 
   const ProviderProfileViewsCard({
     super.key,
     this.initialTabIndex = 0,
     this.onTabChanged,
+    this.data,
   });
 
   static const double designWidth = 350.0;
@@ -191,20 +195,6 @@ class _ProviderProfileViewsCardState extends State<ProviderProfileViewsCard> {
   final List<String> _tabKeysEn = ['Today', 'Yesterday', '10days', '15 days', '20 days'];
   final List<String> _tabKeysAr = ['اليوم', 'الأمس', '١٠ أيام', '١٥ يوماً', '٢٠ يوماً'];
 
-  // Metrics dynamic to selected tab
-  final List<int> _viewsCounts = [24, 21, 184, 268, 345];
-  final List<String> _trends = ['+12%', '+5%', '+18%', '+22%', '+15%'];
-
-  // Bar specifications from Figma:
-  // Bar 1: Mon, width: 40.29, height: 20, top: 96, left: 0.00, value: 1
-  // Bar 2: Tue, width: 40.29, height: 70, top: 46, left: 46.29, value: 3
-  // Bar 3: Wed, width: 40.29, height: 90, top: 26, left: 92.57, value: 4
-  // Bar 4: Thu, width: 40.29, height: 116, top: 0, left: 138.86, value: 7
-  // Bar 5: Fri, width: 40.29, height: 90, top: 26, left: 185.14, value: 4 (highlighted #8B53FE)
-  // Bar 6: Sat, width: 41.00, height: 48, top: 68, left: 231.00, value: 2
-  // Bar 7: Sun, width: 40.29, height: 69, top: 47, left: 277.71, value: 3
-  static const List<double> _barHeights = [20.0, 70.0, 90.0, 116.0, 90.0, 48.0, 69.0];
-  static const List<int> _barValues = [1, 3, 4, 7, 4, 2, 3];
   static const List<String> _daysEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   static const List<String> _daysAr = ['إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت', 'أحد'];
 
@@ -217,15 +207,27 @@ class _ProviderProfileViewsCardState extends State<ProviderProfileViewsCard> {
   @override
   Widget build(BuildContext context) {
     final bool isArabic = context.isArabic;
+    final viewsData = widget.data ?? ProviderViewsCardData.defaults;
+    final List<int> viewsCounts = viewsData.counts;
+    final List<String> trends = viewsData.trends;
+    final List<int> barValues = viewsData.barValues;
+
     final String headingText = isArabic ? 'مشاهدات الملف الشخصي' : 'Profile Views';
     final String subHeadingText =
         isArabic ? 'العملاء الذين شاهدوا ملفك الشخصي' : 'Customers viewed your profile';
     final String comparisonText = isArabic ? 'مقارنة بالأمس' : 'vs yesterday';
 
-    final int currentViews = _viewsCounts[_selectedTabIndex];
-    final String currentTrend = _trends[_selectedTabIndex];
+    final int currentViews = _selectedTabIndex < viewsCounts.length
+        ? viewsCounts[_selectedTabIndex]
+        : (viewsCounts.isNotEmpty ? viewsCounts[0] : 24);
+    final String currentTrend = _selectedTabIndex < trends.length
+        ? trends[_selectedTabIndex]
+        : (trends.isNotEmpty ? trends[0] : '+12%');
+
     final List<String> tabs = isArabic ? _tabKeysAr : _tabKeysEn;
     final List<String> days = isArabic ? _daysAr : _daysEn;
+
+    final int maxVal = barValues.fold<int>(1, (prev, elem) => elem > prev ? elem : prev);
 
     return Opacity(
       opacity: 1.0, // opacity: 1
@@ -461,8 +463,10 @@ class _ProviderProfileViewsCardState extends State<ProviderProfileViewsCard> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: List.generate(7, (index) {
-                    final double barHeight = _barHeights[index];
-                    final int value = _barValues[index];
+                    final int value = index < barValues.length ? barValues[index] : 0;
+                    final double barHeight = maxVal > 0
+                        ? math.max((value / maxVal) * 116.0, 16.0)
+                        : 20.0;
                     final bool isBarSelected = _selectedBarIndex == index;
 
                     // Bar color: selected (#8B53FE), others (#F3F2F5)

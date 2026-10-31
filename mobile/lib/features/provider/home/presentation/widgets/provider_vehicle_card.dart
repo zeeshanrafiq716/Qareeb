@@ -223,7 +223,7 @@ class ProviderVehicleCard extends StatelessWidget {
                                           fontSize: 16.0,
                                           fontWeight: FontWeight.w500,
                                           color: const Color(0xFF252527),
-                                          height: 1.15,
+                                          height: isArabic ? 1.05 : 1.15,
                                           letterSpacing: 0.0,
                                         ),
                                         textHeightBehavior: const TextHeightBehavior(
@@ -236,7 +236,7 @@ class ProviderVehicleCard extends StatelessWidget {
                                     ),
                                   ),
 
-                                  const SizedBox(height: 5.0),
+                                  SizedBox(height: isArabic ? 1.0 : 5.0),
 
                                   // Available for Pickup & Delivery (width: 175, height: 9)
                                   Opacity(
@@ -249,7 +249,7 @@ class ProviderVehicleCard extends StatelessWidget {
                                           fontSize: 12.0,
                                           fontWeight: FontWeight.w400,
                                           color: const Color(0xFF616166),
-                                          height: 1.1,
+                                          height: isArabic ? 1.0 : 1.1,
                                           letterSpacing: 0.0,
                                         ),
                                         textHeightBehavior: const TextHeightBehavior(
@@ -408,7 +408,7 @@ class ProviderVehicleCard extends StatelessWidget {
                     fontSize: 10.0,
                     fontWeight: FontWeight.w400,
                     color: const Color(0xFF616166), // color: #616166
-                    height: 1.1,
+                    height: isArabic ? 1.0 : 1.1,
                     letterSpacing: 0.0,
                   ),
                   textHeightBehavior: const TextHeightBehavior(
@@ -421,7 +421,7 @@ class ProviderVehicleCard extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 2.0),
+            SizedBox(height: isArabic ? 0.0 : 2.0),
 
             // Value (A 1234 / Pickup & Delivery): font-size: 12px; color: #252527; font-weight: 500;
             Opacity(
@@ -434,7 +434,7 @@ class ProviderVehicleCard extends StatelessWidget {
                     fontSize: 12.0,
                     fontWeight: FontWeight.w600,
                     color: const Color(0xFF252527), // color: #252527
-                    height: 1.15,
+                    height: isArabic ? 1.05 : 1.15,
                     letterSpacing: 0.0,
                   ),
                   textHeightBehavior: const TextHeightBehavior(

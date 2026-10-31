@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Admin Approval Status Card Widget
@@ -22,7 +23,12 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 ///   Row 2: Document Verification (In Progress / Reviewing)
 ///   Row 3: Admin Approval (Pending / Waiting)
 class ProviderAdminApprovalStatusCard extends StatelessWidget {
-  const ProviderAdminApprovalStatusCard({super.key});
+  final bool isApproved;
+
+  const ProviderAdminApprovalStatusCard({
+    super.key,
+    this.isApproved = false,
+  });
 
   static const double designWidth = 350.0;
   static const double designHeight = 180.0;
@@ -32,6 +38,20 @@ class ProviderAdminApprovalStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final data = ProviderRegistrationStore.instance.data;
+
+    final String accountSubtitle = data.fullName.isNotEmpty
+        ? (data.phone.isNotEmpty ? '${data.fullName} • ${data.phone}' : data.fullName)
+        : l10n.accountDetailsItemSubtitle;
+
+    final String docSubtitle = data.serviceCategory.isNotEmpty
+        ? '${data.serviceCategory}${data.vehicleType.isNotEmpty ? ' • ${data.vehicleType}' : ''}'
+        : l10n.documentVerificationItemSubtitle;
+
+    final String approvalSubtitle = data.publicId.isNotEmpty
+        ? (context.isArabic ? 'رقم الطلب: ${data.publicId}' : 'Application ID: ${data.publicId}')
+        : l10n.adminApprovalItemSubtitle;
+
     return Opacity(
       opacity: 1.0, // opacity: 1
       child: Transform.rotate(
@@ -59,28 +79,36 @@ class ProviderAdminApprovalStatusCard extends StatelessWidget {
               _buildRow(
                 leftIcon: const _FolderLeftIcon(),
                 title: l10n.accountDetailsItem,
-                subtitle: l10n.accountDetailsItemSubtitle,
+                subtitle: accountSubtitle,
                 statusBadge: const _CompletedStatusBadge(),
               ),
 
               const SizedBox(height: rowGap), // gap: 20px
 
-              // 2nd row branding: Document Verification (In Progress)
+              // 2nd row branding: Document Verification (In Progress -> Completed when approved)
               _buildRow(
                 leftIcon: const _IdCardLeftIcon(),
                 title: l10n.documentVerificationItem,
-                subtitle: l10n.documentVerificationItemSubtitle,
-                statusBadge: const _InProgressStatusBadge(),
+                subtitle: isApproved
+                    ? (context.isArabic ? 'تم التحقق من جميع المستندات بنجاح' : 'All documents verified successfully')
+                    : docSubtitle,
+                statusBadge: isApproved
+                    ? const _CompletedStatusBadge()
+                    : const _InProgressStatusBadge(),
               ),
 
               const SizedBox(height: rowGap), // gap: 20px
 
-              // 3rd row branding: Admin Approval (Pending)
+              // 3rd row branding: Admin Approval (Pending -> Completed when approved)
               _buildRow(
                 leftIcon: const _ApprovalCheckLeftIcon(),
                 title: l10n.adminApprovalItem,
-                subtitle: l10n.adminApprovalItemSubtitle,
-                statusBadge: const _PendingStatusBadge(),
+                subtitle: isApproved
+                    ? (context.isArabic ? 'تم اعتماد الحساب من قبل الإدارة' : 'Account approved by Admin')
+                    : approvalSubtitle,
+                statusBadge: isApproved
+                    ? const _CompletedStatusBadge()
+                    : const _PendingStatusBadge(),
               ),
             ],
           ),

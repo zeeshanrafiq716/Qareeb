@@ -119,7 +119,7 @@ class ProviderOnlineStatusText extends StatelessWidget {
                               fontSize: isArabic ? 15.0 : 16.0,
                               fontWeight: FontWeight.w500,
                               color: const Color(0xFF252527),
-                              height: 1.15,
+                              height: isArabic ? 1.05 : 1.15,
                               letterSpacing: 0.0,
                             ),
                             textHeightBehavior: const TextHeightBehavior(
@@ -157,7 +157,7 @@ class ProviderOnlineStatusText extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 6.0), // gap: 6px matching Figma
+              SizedBox(height: isArabic ? 1.0 : 6.0), // gap: 6px matching Figma (tightened for Arabic)
 
               // subheading branding: Customers can see you on the map (width: 350, height: 9)
               Opacity(
@@ -172,7 +172,7 @@ class ProviderOnlineStatusText extends StatelessWidget {
                         fontSize: isArabic ? 11.5 : 12.0,
                         fontWeight: FontWeight.w400,
                         color: const Color(0xFF616166),
-                        height: 1.0, // line-height: 100%
+                        height: isArabic ? 0.95 : 1.0, // line-height: 100%
                         letterSpacing: 0.0,
                       ),
                       textHeightBehavior: const TextHeightBehavior(

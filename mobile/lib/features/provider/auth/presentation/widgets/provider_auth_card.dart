@@ -36,8 +36,8 @@ class ProviderAuthCard extends StatelessWidget {
   });
 
   static const double designWidth = 390.0;
-  static const double designHeight = 475.0;
-  static const double designTop = 369.0;
+  static const double designHeight = 560.0;
+  static const double designTop = 284.0;
   static const double horizontalPadding = 20.0;
 
   @override
@@ -76,9 +76,10 @@ class ProviderAuthCard extends StatelessWidget {
             child: Stack(
               alignment: Alignment.topCenter,
               children: [
-                // 1. Fixed, Non-Scrollable Content Area with equal left-to-right padding (20px each)
+                // 1. Content Area with equal left-to-right padding and clamping scroll
                 Positioned.fill(
-                  child: Padding(
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
                     padding: EdgeInsets.only(
                       top: 24.0,
                       left: horizontalPadding,

@@ -73,6 +73,17 @@ class _ProviderOtpInputRowState extends State<ProviderOtpInputRow> {
         if (mounted) setState(() {});
       });
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final code = _currentOtp;
+      if (code.isNotEmpty) {
+        widget.onChanged?.call(code);
+        if (code.length == ProviderOtpInputRow.codeLength) {
+          widget.onCompleted?.call(code);
+        }
+      }
+    });
   }
 
   @override

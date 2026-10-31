@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
-import 'package:mobile/features/provider/auth/presentation/provider_profile_details_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -140,7 +140,7 @@ class ProviderBackToHomeButton extends StatelessWidget {
   void _defaultNavigation(BuildContext context) {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => const ProviderProfileDetailsScreen(),
+        pageBuilder: (_, _, _) => const UploadDocumentsScreen(),
         transitionsBuilder: (_, animation, _, child) => FadeTransition(
           opacity: CurvedAnimation(
             parent: animation,

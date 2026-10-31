@@ -503,12 +503,16 @@ extension AppLocalizationsDomainExtension on AppLocalizations {
   String get vehiclePhotosTitle => isArabic ? 'صور المركبة' : 'Vehicle Photos';
 
   String get vehiclePhotosSubtitle => isArabic
-      ? 'ارفع صوراً أمامية وخلفية لمركبتك'
-      : 'Upload front and rear photos of your vehicle';
+      ? 'ارفع 4 صور لمركبتك (الأمامية، الخلفية، والجانبين)'
+      : 'Upload 4 photos of your vehicle (Front, Rear, and Sides)';
 
   String get frontView => isArabic ? 'الجهة الأمامية' : 'Front View';
 
   String get rearView => isArabic ? 'الجهة الخلفية' : 'Rear View';
+
+  String get leftSideView => isArabic ? 'الجانب الأيسر' : 'Left Side View';
+
+  String get rightSideView => isArabic ? 'الجانب الأيمن' : 'Right Side View';
 
   String get tapToUpload => isArabic ? 'اضغط للرفع' : 'Tap to upload';
 

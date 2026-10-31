@@ -61,7 +61,8 @@ class _LocationPermissionScreenState
   }
 
   /// Handles the "Allow Location" CTA.
-  /// Strictly requires device location (GPS) to be ON before navigating to the map screen.
+  /// If location is already ON, seamlessly lands directly on map with NO popup.
+  /// If location is OFF, prompts user to turn ON location in Mobile Settings.
   Future<void> _handleAllowLocation() async {
     if (_isLocating) return;
 
@@ -70,13 +71,13 @@ class _LocationPermissionScreenState
 
     setState(() {
       _isLocating = true;
-      _statusMessage = tr.isArabic ? 'جارٍ التحقق من موقع الجهاز...' : 'Checking device location...';
+      _statusMessage = tr.isArabic ? 'جارٍ تحديد الموقع...' : 'Detecting location...';
     });
 
     HapticFeedback.lightImpact();
 
     try {
-      // 1. MUST BE ON FROM DEVICE: Check device GPS/Location service toggle
+      // 1. Check if location is turned ON on the device
       final bool isServiceEnabled = await locationService.isLocationServiceEnabled();
       if (!isServiceEnabled) {
         if (mounted) {
@@ -84,59 +85,15 @@ class _LocationPermissionScreenState
             _isLocating = false;
             _statusMessage = null;
           });
-          _showDeviceLocationDisabledDialog();
+          _showMobileLocationSettingsDialog();
         }
         return;
       }
 
-      // 2. CHECK & REQUEST PERMISSION
-      if (mounted) {
-        setState(() {
-          _statusMessage = tr.isArabic ? 'جارٍ طلب إذن الموقع...' : 'Requesting permission...';
-        });
-      }
+      // 2. Location is ON -> Acquire coordinates directly
+      await locationService.acquireDeviceLocation();
 
-      var permission = await locationService.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await locationService.requestPermission();
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        if (mounted) {
-          setState(() {
-            _isLocating = false;
-            _statusMessage = null;
-          });
-          _showPermissionPermanentlyDeniedDialog();
-        }
-        return;
-      }
-
-      if (permission == LocationPermission.denied) {
-        if (mounted) {
-          setState(() {
-            _isLocating = false;
-            _statusMessage = null;
-          });
-          _showPermissionDeniedFeedback();
-        }
-        return;
-      }
-
-      // 3. ACQUIRE REAL DEVICE GPS COORDINATES
-      if (mounted) {
-        setState(() {
-          _statusMessage = tr.isArabic ? 'جارٍ تحديد إحداثيات GPS...' : 'Acquiring GPS coordinates...';
-        });
-      }
-
-      final userLoc = await locationService.acquireDeviceLocation();
-
-      if (!userLoc.isGpsDetected) {
-        throw const LocationServiceDisabledException();
-      }
-
-      // Refresh global providers so map and nearby lists immediately use real GPS
+      // Refresh global providers so map starts immediately with real GPS
       ref.invalidate(userLocationProvider);
       ref.invalidate(nearbyProvidersProvider);
 
@@ -146,7 +103,7 @@ class _LocationPermissionScreenState
           _statusMessage = null;
         });
 
-        // 4. AFTER THAT HE WILL LAND ON MAP
+        // 3. Immediately land on map! (NO POPUP)
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (_) => PickupDeliveryScreen(
@@ -161,29 +118,41 @@ class _LocationPermissionScreenState
           _isLocating = false;
           _statusMessage = null;
         });
-        _showDeviceLocationDisabledDialog();
-      }
-    } on PermissionDeniedException {
-      if (mounted) {
-        setState(() {
-          _isLocating = false;
-          _statusMessage = null;
-        });
-        _showPermissionPermanentlyDeniedDialog();
+        _showMobileLocationSettingsDialog();
       }
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _isLocating = false;
-          _statusMessage = null;
-        });
-        _showDeviceLocationDisabledDialog();
+      // If any issue occurs, check if location is genuinely disabled on the device
+      final bool stillEnabled = await locationService.isLocationServiceEnabled();
+      if (!stillEnabled) {
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage = null;
+          });
+          _showMobileLocationSettingsDialog();
+        }
+      } else {
+        // Location is already ON! Land directly on map with NO popup!
+        ref.invalidate(userLocationProvider);
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage = null;
+          });
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => PickupDeliveryScreen(
+                serviceName: widget.serviceName,
+              ),
+            ),
+          );
+        }
       }
     }
   }
 
-  /// Dialog shown when device GPS / Location service is turned OFF
-  void _showDeviceLocationDisabledDialog() {
+  /// Dialog shown ONLY when mobile location (GPS) is turned OFF on the device
+  void _showMobileLocationSettingsDialog() {
     final tr = ref.read(translationsProvider);
     showDialog<void>(
       context: context,
@@ -221,11 +190,11 @@ class _LocationPermissionScreenState
               ),
               const SizedBox(height: 18.0),
 
-              // Title
+              // Title: Mobile settings
               Text(
                 tr.isArabic
-                    ? 'خدمة الموقع متوقفة على جهازك'
-                    : 'Device Location is Turned Off',
+                    ? 'خدمة الموقع متوقفة في الهاتف'
+                    : 'Turn On Mobile Location',
                 textAlign: TextAlign.center,
                 style: tr.font(
                   fontSize: 18.0,
@@ -239,8 +208,8 @@ class _LocationPermissionScreenState
               // Description
               Text(
                 tr.isArabic
-                    ? 'يجب تشغيل خدمة الموقع (GPS) من جهازك للمتابعة وعرض الخريطة ومزودي الخدمة القريبين منك.'
-                    : 'Location service (GPS) must be turned on from your device to proceed to the map and view nearby service providers.',
+                    ? 'يرجى تشغيل خدمة الموقع (GPS) من إعدادات الهاتف للمتابعة وعرض الخريطة ومزودي الخدمة.'
+                    : 'Please turn on Location (GPS) in your mobile settings to proceed to the map and view nearby providers.',
                 textAlign: TextAlign.center,
                 style: tr.font(
                   fontSize: 13.0,
@@ -251,7 +220,7 @@ class _LocationPermissionScreenState
               ),
               const SizedBox(height: 22.0),
 
-              // Action 1: Turn On Location in Settings
+              // Action 1: Open Mobile Settings
               SizedBox(
                 width: double.infinity,
                 height: 48.0,
@@ -264,7 +233,7 @@ class _LocationPermissionScreenState
                   },
                   icon: const Icon(Icons.settings_rounded, size: 18.0),
                   label: Text(
-                    tr.isArabic ? 'تشغيل الموقع من الإعدادات' : 'Turn On in Settings',
+                    tr.isArabic ? 'فتح إعدادات الهاتف' : 'Open Mobile Settings',
                     style: tr.font(
                       fontSize: 14.0,
                       fontWeight: FontWeight.w600,
@@ -326,149 +295,6 @@ class _LocationPermissionScreenState
           ),
         );
       },
-    );
-  }
-
-  /// Dialog shown when location permission is permanently denied in OS
-  void _showPermissionPermanentlyDeniedDialog() {
-    final tr = ref.read(translationsProvider);
-    showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24.0),
-          ),
-          contentPadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 20.0),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64.0,
-                height: 64.0,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFFF3E8FF),
-                  border: Border.all(
-                    color: const Color(0xFFE9D5FF),
-                    width: 2.0,
-                  ),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.security_rounded,
-                    size: 32.0,
-                    color: Color(0xFF8B53FE),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18.0),
-              Text(
-                tr.isArabic
-                    ? 'إذن الموقع مطلوب'
-                    : 'Location Permission Required',
-                textAlign: TextAlign.center,
-                style: tr.font(
-                  fontSize: 18.0,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1C2926),
-                  height: 1.3,
-                ),
-              ),
-              const SizedBox(height: 10.0),
-              Text(
-                tr.isArabic
-                    ? 'تم رفض إذن الوصول إلى الموقع بشكل دائم. يرجى تفعيل إذن الموقع من إعدادات التطبيق للمتابعة إلى الخريطة.'
-                    : 'Location permission was permanently denied. Please enable location access in App Settings to proceed to the map.',
-                textAlign: TextAlign.center,
-                style: tr.font(
-                  fontSize: 13.0,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF566663),
-                  height: 1.45,
-                ),
-              ),
-              const SizedBox(height: 22.0),
-              SizedBox(
-                width: double.infinity,
-                height: 48.0,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    Navigator.of(dialogContext).pop();
-                    _waitingForLocationSettings = true;
-                    final locationService = ref.read(locationServiceProvider);
-                    await locationService.openAppSettings();
-                  },
-                  icon: const Icon(Icons.settings_applications_rounded, size: 20.0),
-                  label: Text(
-                    tr.isArabic ? 'فتح إعدادات التطبيق' : 'Open App Settings',
-                    style: tr.font(
-                      fontSize: 14.0,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8B53FE),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6.0),
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: Text(
-                  tr.cancel,
-                  style: tr.font(
-                    fontSize: 13.0,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF8A9A96),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  /// SnackBar feedback when permission is denied once
-  void _showPermissionDeniedFeedback() {
-    final tr = ref.read(translationsProvider);
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.warning_amber_rounded, size: 18.0, color: Colors.white),
-            const SizedBox(width: 10.0),
-            Expanded(
-              child: Text(
-                tr.isArabic
-                    ? 'يرجى منح إذن الموقع للمتابعة إلى الخريطة'
-                    : 'Please allow location permission to land on the map.',
-                style: tr.font(fontSize: 12.0, color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-        action: SnackBarAction(
-          label: tr.isArabic ? 'إعادة المحاولة' : 'Retry',
-          textColor: const Color(0xFFA67AFE),
-          onPressed: _handleAllowLocation,
-        ),
-        backgroundColor: const Color(0xFF1C2926),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-      ),
     );
   }
 

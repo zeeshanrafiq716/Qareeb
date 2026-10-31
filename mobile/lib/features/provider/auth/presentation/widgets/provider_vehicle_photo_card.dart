@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
@@ -46,6 +47,7 @@ class ProviderVehiclePhotoCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String imageAsset;
+  final Uint8List? imageBytes;
   final VoidCallback? onUpload;
   final bool isUploaded;
 
@@ -54,6 +56,7 @@ class ProviderVehiclePhotoCard extends StatelessWidget {
     required this.title,
     this.subtitle = 'Upload a clear photo',
     required this.imageAsset,
+    this.imageBytes,
     this.onUpload,
     this.isUploaded = false,
   });
@@ -104,13 +107,19 @@ class ProviderVehiclePhotoCard extends StatelessWidget {
                             fit: StackFit.expand,
                             children: [
                               // Vehicle photo
-                              Image.asset(
-                                imageAsset,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => _VehiclePhotoFallback(
-                                  title: title,
-                                ),
-                              ),
+                              imageBytes != null
+                                  ? Image.memory(
+                                      imageBytes!,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Image.asset(
+                                      imageAsset,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) =>
+                                          _VehiclePhotoFallback(
+                                        title: title,
+                                      ),
+                                    ),
 
                               // Uploader icon branding: 31x31 circular white button
                               Center(

@@ -1,7 +1,9 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/dashboard/presentation/widgets/provider_contact_channel_cards.dart';
+import 'package:mobile/models/provider_dashboard_model.dart';
 
 /// Provider Contacts Received Card Widget
 /// Implements exact Figma specifications:
@@ -29,11 +31,13 @@ import 'package:mobile/features/provider/dashboard/presentation/widgets/provider
 class ProviderContactsReceivedCard extends StatefulWidget {
   final int initialTabIndex;
   final ValueChanged<int>? onTabChanged;
+  final ProviderContactsCardData? data;
 
   const ProviderContactsReceivedCard({
     super.key,
     this.initialTabIndex = 0,
     this.onTabChanged,
+    this.data,
   });
 
   static const double designWidth = 350.0;
@@ -64,16 +68,7 @@ class _ProviderContactsReceivedCardState
     '٢٠ يوماً'
   ];
 
-  // Dynamic metrics per tab
-  final List<int> _contactsCounts = [19, 14, 128, 195, 260];
-  final List<int> _callsCounts = [11, 8, 74, 112, 150];
-  final List<int> _whatsAppCounts = [8, 6, 54, 83, 110];
-  final List<String> _trends = ['+33%', '+10%', '+25%', '+18%', '+20%'];
-
-  // Daily contacts distribution summing to 19 (Today's count: 2 + 3 + 4 + 3 + 4 + 1 + 2 = 19)
   static const List<double> _barWidths = [40.29, 40.29, 40.29, 40.29, 40.29, 41.00, 40.29];
-  static const List<double> _barHeights = [28.0, 45.0, 68.0, 52.0, 78.0, 20.0, 38.0];
-  static const List<int> _barValues = [2, 3, 4, 3, 4, 1, 2];
   static const List<String> _daysEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   static const List<String> _daysAr = ['إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت', 'أحد'];
 
@@ -86,18 +81,36 @@ class _ProviderContactsReceivedCardState
   @override
   Widget build(BuildContext context) {
     final bool isArabic = context.isArabic;
+    final contactsData = widget.data ?? ProviderContactsCardData.defaults;
+    final List<int> contactsCounts = contactsData.counts;
+    final List<int> callsCounts = contactsData.callsCounts;
+    final List<int> whatsAppCounts = contactsData.whatsAppCounts;
+    final List<String> trends = contactsData.trends;
+    final List<int> barValues = contactsData.barValues;
+
     final String headingText = isArabic ? 'جهات الاتصال المستلمة' : 'Contacts Received';
     final String subHeadingText = isArabic
         ? 'العملاء الذين تواصلوا معك عبر قريب.'
         : 'Customers contacted you through QAREEB.';
     final String comparisonText = isArabic ? 'مقارنة بالأمس' : 'vs yesterday';
 
-    final int currentContacts = _contactsCounts[_selectedTabIndex];
-    final int currentCalls = _callsCounts[_selectedTabIndex];
-    final int currentWhatsApp = _whatsAppCounts[_selectedTabIndex];
-    final String currentTrend = _trends[_selectedTabIndex];
+    final int currentContacts = _selectedTabIndex < contactsCounts.length
+        ? contactsCounts[_selectedTabIndex]
+        : (contactsCounts.isNotEmpty ? contactsCounts[0] : 19);
+    final int currentCalls = _selectedTabIndex < callsCounts.length
+        ? callsCounts[_selectedTabIndex]
+        : (callsCounts.isNotEmpty ? callsCounts[0] : 11);
+    final int currentWhatsApp = _selectedTabIndex < whatsAppCounts.length
+        ? whatsAppCounts[_selectedTabIndex]
+        : (whatsAppCounts.isNotEmpty ? whatsAppCounts[0] : 8);
+    final String currentTrend = _selectedTabIndex < trends.length
+        ? trends[_selectedTabIndex]
+        : (trends.isNotEmpty ? trends[0] : '+33%');
+
     final List<String> tabs = isArabic ? _tabKeysAr : _tabKeysEn;
     final List<String> days = isArabic ? _daysAr : _daysEn;
+
+    final int maxVal = barValues.fold<int>(1, (prev, elem) => elem > prev ? elem : prev);
 
     return Opacity(
       opacity: 1.0, // opacity: 1
@@ -351,8 +364,10 @@ class _ProviderContactsReceivedCardState
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: List.generate(7, (index) {
                       final double barWidth = _barWidths[index];
-                      final double barHeight = _barHeights[index];
-                      final int value = _barValues[index];
+                      final int value = index < barValues.length ? barValues[index] : 0;
+                      final double barHeight = maxVal > 0
+                          ? math.max((value / maxVal) * 78.0, 16.0)
+                          : 20.0;
                       final bool isBarSelected = _selectedBarIndex == index;
 
                       final Color barColor = isBarSelected

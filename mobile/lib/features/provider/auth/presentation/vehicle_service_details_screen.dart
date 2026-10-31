@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_scroll_behavior.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_vehicle_service_details_header.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/vehicle_service_details_form_layout.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
+
+import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
 
 /// Vehicle & Service Details Screen (Screen 6)
 /// Appears when user taps "Continue" on the Provider Profile Details Screen.
@@ -31,6 +32,11 @@ class VehicleServiceDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // TEMPORARY: Screen 1 & 2 hidden per user request; directly presenting UploadDocumentsScreen.
+    return const UploadDocumentsScreen();
+  }
+
+  Widget _buildOriginal(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,

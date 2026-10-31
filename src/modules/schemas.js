@@ -26,8 +26,31 @@ export const profileSchema = z.object({
 
 export const verificationSchema = z.object({
   body: z.object({
-    documentType: z.enum(["cnic", "passport", "license", "other"]),
+    documentType: z.enum([
+      "iqama",
+      "registration",
+      "license",
+      "driving_licence",
+      "vehicle_front",
+      "vehicle_rear",
+      "vehicle_left_side",
+      "vehicle_right_side",
+      "vehicle_photo",
+      "cnic",
+      "passport",
+      "other",
+    ]),
+    expiryDate: z.string().trim().optional(),
+    documentNumber: z.string().trim().optional(),
   }),
+});
+
+export const kycTokenSchema = z.object({
+  body: z
+    .object({
+      levelName: z.string().trim().default("provider-verification"),
+    })
+    .default({}),
 });
 
 export const adminLoginSchema = z.object({

@@ -1,9 +1,9 @@
 import 'dart:math' as math;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/config/app_config.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../models/provider_model.dart';
 import '../../../providers/backend_provider.dart';
@@ -265,6 +265,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
   double _zoom = 13.0; // Natural view framing nearest 5 providers
   double? _centerPixelX;
   double? _centerPixelY;
+  double _mapScaleBase = 1.0;
 
   List<NearbyDriverRoute>? _driverRoutes;
   double? _lastBuiltLat;
@@ -568,6 +569,39 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
 
       if (!mounted) return;
 
+      if (!freshLoc.isGpsDetected) {
+        setState(() {
+          _isTracingGps = false;
+        });
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(
+                  Icons.location_off_rounded,
+                  size: 16.0,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 8.0),
+                Expanded(
+                  child: Text(
+                    tr.isArabic
+                        ? 'خدمة الموقع غير مفعلة في جهازك. يرجى تفعيل GPS.'
+                        : 'Device location is OFF. Please turn ON location in device settings.',
+                    style: tr.font(fontSize: 12.0, color: Colors.white, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFE11D48),
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
       setState(() {
         _exactTracedLocation = freshLoc;
         _driverRoutes = _generateDriverRoutes(freshLoc.latitude, freshLoc.longitude);
@@ -588,27 +622,23 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
         SnackBar(
           content: Row(
             children: [
-              Icon(
-                freshLoc.isGpsDetected ? Icons.my_location_rounded : Icons.location_off_rounded,
+              const Icon(
+                Icons.my_location_rounded,
                 size: 16.0,
                 color: Colors.white,
               ),
               const SizedBox(width: 8.0),
               Expanded(
                 child: Text(
-                  freshLoc.isGpsDetected
-                      ? (tr.isArabic
-                          ? 'تم تحديد GPS بدقة: ${freshLoc.exactCoordinatesDisplay} (${freshLoc.cityName})'
-                          : 'Exact GPS Traced: ${freshLoc.exactCoordinatesDisplay} (${freshLoc.cityName})')
-                      : (tr.isArabic
-                          ? 'خدمة الموقع غير مفعلة في جهازك'
-                          : 'Device location is OFF. Please turn ON location in device settings.'),
+                  tr.isArabic
+                      ? 'تم تحديد GPS بدقة: ${freshLoc.exactCoordinatesDisplay} (${freshLoc.cityName})'
+                      : 'Exact GPS Traced: ${freshLoc.exactCoordinatesDisplay} (${freshLoc.cityName})',
                   style: tr.font(fontSize: 12.0, color: Colors.white, fontWeight: FontWeight.w500),
                 ),
               ),
             ],
           ),
-          backgroundColor: freshLoc.isGpsDetected ? const Color(0xFF1C2926) : const Color(0xFFE11D48),
+          backgroundColor: const Color(0xFF1C2926),
           duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),
@@ -618,8 +648,32 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
       setState(() {
         _isTracingGps = false;
       });
-      final curLoc = _exactTracedLocation ?? ref.read(userLocationProvider).value ?? UserLocation.defaultLocation;
-      _recenterMap(curLoc.latitude, curLoc.longitude);
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(
+                Icons.location_off_rounded,
+                size: 16.0,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 8.0),
+              Expanded(
+                child: Text(
+                  tr.isArabic
+                      ? 'تعذر تحديد الموقع. يرجى التأكد من تشغيل GPS.'
+                      : 'Unable to detect location. Please ensure GPS is turned ON.',
+                  style: tr.font(fontSize: 12.0, color: Colors.white, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFE11D48),
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -629,7 +683,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     setState(() {
       final curLng = MercatorProjection.xToLng(_centerPixelX!, _zoom);
       final curLat = MercatorProjection.yToLat(_centerPixelY!, _zoom);
-      _zoom += 0.5;
+      _zoom = (_zoom + 1.0).clamp(10.0, 18.0);
       _centerPixelX = MercatorProjection.lngToX(curLng, _zoom);
       _centerPixelY = MercatorProjection.latToY(curLat, _zoom);
     });
@@ -641,7 +695,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     setState(() {
       final curLng = MercatorProjection.xToLng(_centerPixelX!, _zoom);
       final curLat = MercatorProjection.yToLat(_centerPixelY!, _zoom);
-      _zoom -= 0.5;
+      _zoom = (_zoom - 1.0).clamp(10.0, 18.0);
       _centerPixelX = MercatorProjection.lngToX(curLng, _zoom);
       _centerPixelY = MercatorProjection.latToY(curLat, _zoom);
     });
@@ -842,32 +896,55 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                               ],
                       ),
                       clipBehavior: Clip.antiAlias,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onPanStart: (details) {
-                          setState(() {
-                            _isDraggingMap = true;
-                          });
-                        },
-                        // INFINITE DRAGGING: No clamp restriction! You can drag as much as you want anywhere!
-                        onPanUpdate: (details) {
-                          setState(() {
-                            _centerPixelX = _centerPixelX! - details.delta.dx;
-                            _centerPixelY = _centerPixelY! - details.delta.dy;
-                          });
-                        },
-                        onPanEnd: (details) {
-                          setState(() {
-                            _isDraggingMap = false;
-                          });
-                        },
-                        onTap: () {
-                          if (_selectedCarId != null) {
-                            setState(() {
-                              _selectedCarId = null;
-                            });
+                      child: Listener(
+                        onPointerSignal: (pointerSignal) {
+                          if (pointerSignal is PointerScrollEvent) {
+                            if (pointerSignal.scrollDelta.dy < 0) {
+                              _zoomIn();
+                            } else if (pointerSignal.scrollDelta.dy > 0) {
+                              _zoomOut();
+                            }
                           }
                         },
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onDoubleTap: _zoomIn,
+                          onScaleStart: (details) {
+                            _mapScaleBase = 1.0;
+                            setState(() {
+                              _isDraggingMap = true;
+                            });
+                          },
+                          // FLUID LEFT-TO-RIGHT & MULTI-DIRECTIONAL DRAGGING + PINCH ZOOM
+                          onScaleUpdate: (details) {
+                            setState(() {
+                              _centerPixelX = _centerPixelX! - details.focalPointDelta.dx;
+                              _centerPixelY = _centerPixelY! - details.focalPointDelta.dy;
+
+                              if (details.scale != 1.0) {
+                                final double ratio = details.scale / _mapScaleBase;
+                                if (ratio > 1.25 && _zoom < 18.0) {
+                                  _zoomIn();
+                                  _mapScaleBase = details.scale;
+                                } else if (ratio < 0.8 && _zoom > 10.0) {
+                                  _zoomOut();
+                                  _mapScaleBase = details.scale;
+                                }
+                              }
+                            });
+                          },
+                          onScaleEnd: (details) {
+                            setState(() {
+                              _isDraggingMap = false;
+                            });
+                          },
+                          onTap: () {
+                            if (_selectedCarId != null) {
+                              setState(() {
+                                _selectedCarId = null;
+                              });
+                            }
+                          },
                         child: MouseRegion(
                           cursor: _isDraggingMap
                               ? SystemMouseCursors.grabbing
@@ -1053,8 +1130,8 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                           ? 'موقعك: ${userLoc.cityName}'
                                           : 'Your Location: ${userLoc.cityName}')
                                       : (tr.isArabic
-                                          ? 'خدمة الموقع غير مفعلة'
-                                          : 'Location is OFF (Showing default location)'),
+                                          ? 'خدمة الموقع غير مفعلة - اضغط لتشغيل GPS'
+                                          : 'Location is OFF - Tap target button to enable GPS'),
                                   child: Container(
                                     key: const Key('user_gps_center_marker'),
                                     width: 30.0,
@@ -1248,6 +1325,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                       ),
                     ),
                   ),
+                ),
 
                   // 2. TOP PROVIDER COUNT SLIDER CARD (At very top of screen in standard view):
                   if (!_isFullViewMode)
@@ -1740,17 +1818,17 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
 
     final tr = ref.watch(translationsProvider);
 
-    final int count = _selectedProviderCount;
-    final String providersLabel = tr.isArabic
-        ? 'أقرب $_selectedProviderCount مزودين خدمة'
-        : 'Nearest $_selectedProviderCount service providers';
+    final String heading = tr.isArabic ? 'قائمة المزودين' : 'Provider List';
+    final String baseSubtitle = tr.isArabic
+        ? 'اختر مزود خدمة بالقرب منك'
+        : 'Choose a provider near you';
     final String locationSubtitle = userLoc.isGpsDetected
         ? (userLoc.cityName.isNotEmpty && userLoc.cityName != 'Detecting Location...'
-            ? '$providersLabel • ${userLoc.cityName}'
-            : providersLabel)
+            ? '$baseSubtitle • ${userLoc.cityName}'
+            : baseSubtitle)
         : (tr.isArabic
-            ? '$providersLabel • خدمة الموقع مغلقة'
-            : '$providersLabel • Location is OFF');
+            ? '$baseSubtitle • خدمة الموقع مغلقة'
+            : '$baseSubtitle • Location is OFF');
 
     return SizedBox(
       width: cardWidth,
@@ -1766,14 +1844,14 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  tr.providersNearbyCount(count),
+                  heading,
                   textHeightBehavior: const TextHeightBehavior(
                     applyHeightToFirstAscent: false,
                     applyHeightToLastDescent: false,
                   ),
                   style: tr.font(
                     fontSize: 16.0,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                     color: const Color(0xFF1C2926),
                     height: tr.isArabic ? 1.05 : 1.15,
                     letterSpacing: 0.0,
@@ -2091,10 +2169,11 @@ class _DynamicMapTileLayer extends StatelessWidget {
 
         final int serverIdx = (wrappedTileX.abs() + ty.abs()) % 4;
         final String lang = Localizations.localeOf(context).languageCode;
+        final String topoSub = ['a', 'b', 'c'][(wrappedTileX.abs() + ty.abs()) % 3];
         final String googleTileUrl =
-            'https://mt$serverIdx.google.com/vt/lyrs=m&hl=$lang&x=$wrappedTileX&y=$ty&z=$z';
+            'https://mt$serverIdx.google.com/vt/lyrs=p&hl=$lang&x=$wrappedTileX&y=$ty&z=$z';
         final String osmTileUrl =
-            'https://tile.openstreetmap.org/$z/$wrappedTileX/$ty.png';
+            'https://$topoSub.tile.opentopomap.org/$z/$wrappedTileX/$ty.png';
 
         tileWidgets.add(
           Positioned(

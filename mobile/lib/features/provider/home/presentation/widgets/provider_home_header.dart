@@ -201,7 +201,7 @@ class ProviderHomeHeader extends ConsumerWidget {
                                             fontWeight: FontWeight.w400,
                                             color: const Color(0xFF616166),
                                             letterSpacing: 0.0,
-                                            height: 1.1,
+                                            height: isArabic ? 0.95 : 1.1,
                                           ),
                                           textHeightBehavior: const TextHeightBehavior(
                                             applyHeightToFirstAscent: false,
@@ -214,7 +214,7 @@ class ProviderHomeHeader extends ConsumerWidget {
                                     ),
                                   ),
 
-                                  const SizedBox(height: 1.0),
+                                  SizedBox(height: isArabic ? 0.0 : 1.0),
 
                                   // content: Ahmed Raza
                                   // width: 84; height: 10; angle: 0 deg; opacity: 1;
@@ -233,7 +233,7 @@ class ProviderHomeHeader extends ConsumerWidget {
                                             fontWeight: FontWeight.w500,
                                             color: const Color(0xFF252527),
                                             letterSpacing: 0.0,
-                                            height: 1.15,
+                                            height: isArabic ? 1.05 : 1.15,
                                           ),
                                           textHeightBehavior: const TextHeightBehavior(
                                             applyHeightToFirstAscent: false,

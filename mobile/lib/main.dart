@@ -99,8 +99,9 @@ class QareebApp extends ConsumerWidget {
         '/provider/verification': (context) => const PhoneVerificationScreen(),
         '/provider/otp': (context) => const OtpVerificationScreen(),
         '/provider/verified': (context) => const PhoneVerifiedScreen(),
-        '/provider/profile-details': (context) => const ProviderProfileDetailsScreen(),
-        '/provider/vehicle-service-details': (context) => const VehicleServiceDetailsScreen(),
+        // First 2 screens temporarily hidden - routing directly to UploadDocumentsScreen
+        '/provider/profile-details': (context) => const UploadDocumentsScreen(),
+        '/provider/vehicle-service-details': (context) => const UploadDocumentsScreen(),
         '/provider/upload-documents': (context) => const UploadDocumentsScreen(),
         '/provider/location-permission': (context) => const ProviderLocationPermissionScreen(),
         '/provider/admin-approval': (context) => const AdminApprovalScreen(),

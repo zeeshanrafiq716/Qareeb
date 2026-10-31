@@ -19,12 +19,22 @@ class ProviderOtpCard extends StatelessWidget {
   final Widget? child;
   final double? width;
   final double? height;
+  final String? phoneNumber;
+  final String? fullPhone;
+  final String? dummyOtp;
+  final bool isWhatsApp;
+  final VoidCallback? onVerified;
 
   const ProviderOtpCard({
     super.key,
     this.child,
     this.width,
     this.height,
+    this.phoneNumber,
+    this.fullPhone,
+    this.dummyOtp,
+    this.isWhatsApp = false,
+    this.onVerified,
   });
 
   static const double designWidth = 390.0;
@@ -77,7 +87,14 @@ class ProviderOtpCard extends StatelessWidget {
                       right: horizontalPadding,
                       bottom: bottomSafeArea > 0 ? (bottomSafeArea + 24.0) : 26.0,
                     ),
-                    child: child ?? const ProviderOtpContentLayout(),
+                    child: child ??
+                        ProviderOtpContentLayout(
+                          phoneNumber: phoneNumber,
+                          fullPhone: fullPhone,
+                          dummyOtp: dummyOtp,
+                          isWhatsApp: isWhatsApp,
+                          onVerified: onVerified,
+                        ),
                   ),
                 ),
 
