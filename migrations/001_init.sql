@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS verifications (
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT verifications_document_type_check CHECK (document_type IN ('cnic', 'passport', 'license', 'other'))
+  CONSTRAINT verifications_document_type_check CHECK (document_type IN ('iqama', 'registration', 'license', 'driving_licence', 'vehicle_photos', 'vehicle_front', 'vehicle_rear', 'vehicle_left_side', 'vehicle_right_side', 'cnic', 'passport', 'other'))
 );
 
 CREATE TABLE IF NOT EXISTS provider_status_history (

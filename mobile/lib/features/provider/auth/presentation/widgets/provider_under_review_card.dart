@@ -49,7 +49,23 @@ import 'package:mobile/core/localization/app_locale.dart';
 ///   line-height: 100%;
 ///   color: #616166;
 class ProviderUnderReviewCard extends StatelessWidget {
-  const ProviderUnderReviewCard({super.key});
+  final bool isRejected;
+  final String? title;
+  final String? subtitle;
+
+  const ProviderUnderReviewCard({
+    super.key,
+    this.isRejected = false,
+    this.title,
+    this.subtitle,
+  });
+
+  const ProviderUnderReviewCard.rejected({
+    super.key,
+    this.isRejected = true,
+    this.title,
+    this.subtitle,
+  });
 
   static const double designWidth = 350.0;
   static const double designHeight = 72.0;
@@ -57,6 +73,45 @@ class ProviderUnderReviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isArabic = context.isArabic;
+
+    // Card background:
+    // When review: #F7F3EB (soft cream)
+    // When rejected/suspended: #FEF2F2 (soft light red) with subtle border #FEE2E2
+    final Color bgColor =
+        isRejected ? const Color(0xFFFEF2F2) : const Color(0xFFF7F3EB);
+    final Border? cardBorder = isRejected
+        ? Border.all(color: const Color(0xFFFEE2E2), width: 1.0)
+        : null;
+
+    // Icon circle branding:
+    // When review: outer #FAEAC8, inner #FFAE00 with clock hands
+    // When rejected: outer #FEE2E2, inner #EF4444 with white close icon
+    final Color outerCircleColor =
+        isRejected ? const Color(0xFFFEE2E2) : const Color(0xFFFAEAC8);
+    final Color innerCircleColor =
+        isRejected ? const Color(0xFFEF4444) : const Color(0xFFFFAE00);
+
+    // Title:
+    // When review: "Your Application Is Under Review" (#FFAE00)
+    // When rejected: "Your approval is rejected" (in red #DC2626)
+    final String effectiveTitle = title ??
+        (isRejected
+            ? (isArabic ? 'تم رفض طلب اعتمادك' : 'Your approval is rejected')
+            : (isArabic ? 'طلبك قيد المراجعة' : 'Your Application Is Under Review'));
+    final Color titleColor =
+        isRejected ? const Color(0xFFDC2626) : const Color(0xFFFFAE00);
+
+    // Subtitle (paragraph text maintained according to rejection):
+    // When review: "Your account is still pending approval. We'll notify you when it's approved."
+    // When rejected: "Your account documents were not approved by admin. Please review your submitted documents or contact support."
+    final String effectiveSubtitle = subtitle ??
+        (isRejected
+            ? (isArabic
+                ? 'لم يتم اعتماد مستندات حسابك من قبل الإدارة. يرجى مراجعة المستندات أو التواصل مع الدعم.'
+                : "Your account documents were not approved by admin. Please review your submitted documents or contact support.")
+            : (isArabic
+                ? 'حسابك لا يزال قيد انتظار الموافقة. سنقوم بإشعارك فور اعتماده.'
+                : "Your account is still pending approval. We'll notify you when it's approved."));
 
     return Opacity(
       opacity: 1.0,
@@ -67,34 +122,40 @@ class ProviderUnderReviewCard extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: designHeight),
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            color: const Color(0xFFF7F3EB), // background: #F7F3EB
-            borderRadius: BorderRadius.circular(12.0), // border-radius: 12px
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12.0),
+            border: cardBorder,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Icon branding: width: 32; height: 32; border-radius: 60.5px; background: #FAEAC8;
+              // Icon branding
               Container(
                 width: 32.0,
                 height: 32.0,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFAEAC8),
+                decoration: BoxDecoration(
+                  color: outerCircleColor,
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  // Inner branding: width: 24.89; height: 24.89; background: #FFAE00;
                   child: Container(
                     width: 24.89,
                     height: 24.89,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFFAE00),
+                    decoration: BoxDecoration(
+                      color: innerCircleColor,
                       shape: BoxShape.circle,
                     ),
-                    child: const Center(
-                      child: CustomPaint(
-                        size: Size(15.0, 15.0),
-                        painter: _ReviewClockHandsPainter(),
-                      ),
+                    child: Center(
+                      child: isRejected
+                          ? const Icon(
+                              Icons.close_rounded,
+                              size: 15.0,
+                              color: Colors.white,
+                            )
+                          : const CustomPaint(
+                              size: Size(15.0, 15.0),
+                              painter: _ReviewClockHandsPainter(),
+                            ),
                     ),
                   ),
                 ),
@@ -103,23 +164,20 @@ class ProviderUnderReviewCard extends StatelessWidget {
               // Gap: 12px
               const SizedBox(width: 12.0),
 
-              // Right content layout: width: 274; height: 40;
+              // Right content layout: Title (in red if rejected) + paragraph text
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Title: Your Application Is Under Review (Inter 500 12px #FFAE00)
                     Text(
-                      isArabic
-                          ? 'طلبك قيد المراجعة'
-                          : 'Your Application Is Under Review',
-                      style: const TextStyle(
+                      effectiveTitle,
+                      style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12.0,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFFFFAE00),
+                        fontWeight: FontWeight.w600,
+                        color: titleColor,
                         height: 1.3,
                       ),
                       maxLines: 1,
@@ -128,11 +186,8 @@ class ProviderUnderReviewCard extends StatelessWidget {
 
                     const SizedBox(height: 3.0),
 
-                    // Subtitle: Your account is still pending approval. We'll notify you when it's approved. (Inter 400 10px #616166)
                     Text(
-                      isArabic
-                          ? 'حسابك لا يزال قيد انتظار الموافقة. سنقوم بإشعارك فور اعتماده.'
-                          : "Your account is still pending approval. We'll notify you when it's approved.",
+                      effectiveSubtitle,
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 10.0,

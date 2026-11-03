@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
 import 'send_location_screen.dart';
 import 'send_request_screen.dart';
-import 'widgets/top_down_car_widget.dart';
 import 'widgets/real_map_background_widget.dart';
 
 /// Screen displayed when user clicks on a provider card.
@@ -48,87 +47,40 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
           builder: (context, constraints) {
             final bool isDesktopWeb = constraints.maxWidth > 500;
             final double containerWidth = isDesktopWeb ? 390.0 : constraints.maxWidth;
+            final mediaQuery = MediaQuery.of(context);
             final double containerHeight = isDesktopWeb
                 ? math.min(844.0, (constraints.maxHeight - 32.0).clamp(520.0, 844.0))
                 : constraints.maxHeight;
 
-            final screenContent = ScrollConfiguration(
-              behavior: const MaterialScrollBehavior().copyWith(
-                scrollbars: false,
-                dragDevices: {
-                  PointerDeviceKind.touch,
-                  PointerDeviceKind.mouse,
-                  PointerDeviceKind.trackpad,
-                  PointerDeviceKind.stylus,
-                },
-              ),
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                ),
-                child: SizedBox(
-                  width: containerWidth,
-                  height: math.max(844.0, containerHeight),
-                  child: Stack(
-                    children: [
+            final screenContent = SizedBox(
+              width: containerWidth,
+              height: containerHeight,
+              child: Stack(
+                children: [
                   // 1. Live Real Slippy Map Layer
                   Positioned.fill(
                     child: RealMapBackgroundWidget(
                       enableDrag: true,
                       zoom: 15.0,
-                      trackingStep: MapTrackingStep.onTheWay,
+                      trackingStep: MapTrackingStep.none,
+                      blurSigma: 0.0,
                       driverName: widget.providerName,
                       serviceCategory: widget.serviceCategory,
                       vehicleName: 'Toyota Hilux',
                       etaText: tr.isArabic ? '6 د' : '6 min',
                       distanceText: '1.8 km',
-                      showControls: true,
+                      showControls: false,
                     ),
                   ),
-
-                  // 2. Gradient Overlay Layer ("pickup & delivery screen layout branding"):
-                  // width: 390; height: 843; top: 1px; angle: 0 deg; opacity: 1;
-                  // background: linear-gradient(180deg, #FFFFFF 2.14%, rgba(255, 255, 255, 0.839534) 17.05%, rgba(255, 255, 255, 0) 26.93%);
-                  Positioned(
-                    top: 1.0,
-                    left: 0.0,
-                    width: containerWidth,
-                    height: containerHeight,
-                    child: const IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            stops: [0.0214, 0.1705, 0.2693, 1.0],
-                            colors: [
-                              Color(0xFFFFFFFF), // #FFFFFF 2.14%
-                              Color(0xD6FFFFFF), // rgba(255, 255, 255, 0.839534) 17.05%
-                              Color(0x00FFFFFF), // rgba(255, 255, 255, 0) 26.93%
-                              Color(0x00FFFFFF),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
 
                   // 7. Header with same previous branding:
                   // width: 350; height: 36; gap: 16px; top: 56px; left: 20px;
                   Positioned(
-                    top: 56.0,
-                    left: containerWidth >= 390
-                        ? 20.0
-                        : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                    width: containerWidth >= 390
-                        ? 350.0
-                        : (containerWidth - 40.0).clamp(280.0, 350.0),
+                    top: math.max(48.0, mediaQuery.padding.top + 8.0),
+                    left: 20.0,
+                    right: 20.0,
                     height: 36.0,
                     child: SizedBox(
-                      width: containerWidth >= 390
-                          ? 350.0
-                          : (containerWidth - 40.0).clamp(280.0, 350.0),
                       height: 36.0,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -197,20 +149,14 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                     ),
                   ),
 
-                  // 8. Card Widget Branding:
-                  // width: 390; height: 458; angle: 0 deg; opacity: 1; top: 386px;
-                  // border-top-left-radius: 28px; border-top-right-radius: 28px;
-                  // background: #FFFFFF; box-shadow: 0px -2px 12px 0px #00000014;
+                  // 8. Card Widget: Full responsive edge-to-edge bottom sheet
                   Positioned(
-                    top: 386.0,
-                    left: containerWidth >= 390
-                        ? ((containerWidth - 390.0) / 2.0)
-                        : 0.0,
-                    width: containerWidth >= 390 ? 390.0 : containerWidth,
-                    height: 458.0,
+                    top: (containerHeight * 0.44).clamp(300.0, 386.0),
+                    bottom: 0.0,
+                    left: 0.0,
+                    right: 0.0,
                     child: Container(
-                      width: containerWidth >= 390 ? 390.0 : containerWidth,
-                      height: 458.0,
+                      width: double.infinity,
                       decoration: const BoxDecoration(
                         color: Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.only(
@@ -232,13 +178,16 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                           // Card top indicator handle
                           Positioned(
                             top: 12.0,
-                            left: (((containerWidth >= 390 ? 390.0 : containerWidth) - 40.0) / 2.0),
-                            width: 40.0,
-                            height: 4.0,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE5E7EB),
-                                borderRadius: BorderRadius.circular(2.0),
+                            left: 0.0,
+                            right: 0.0,
+                            child: Center(
+                              child: Container(
+                                width: 40.0,
+                                height: 4.0,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE5E7EB),
+                                  borderRadius: BorderRadius.circular(2.0),
+                                ),
                               ),
                             ),
                           ),
@@ -279,17 +228,12 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                             ),
                           ),
 
-                          // content layout:
-                          // width: 350; height: 366.79998779296875; gap: 16px; angle: 0 deg; opacity: 1; top: 36px; left: 19px;
+                          // content layout: Responsive edge-to-edge
                           Positioned(
                             top: 36.0,
-                            bottom: 32.0,
-                            left: (containerWidth >= 390)
-                                ? 19.0
-                                : (((containerWidth - 350.0) / 2.0).clamp(10.0, 19.0)),
-                            width: (containerWidth >= 390)
-                                ? 350.0
-                                : (containerWidth - 38.0).clamp(280.0, 350.0),
+                            bottom: math.max(16.0, mediaQuery.padding.bottom + 8.0),
+                            left: 20.0,
+                            right: 20.0,
                             child: SingleChildScrollView(
                               physics: const BouncingScrollPhysics(),
                               child: Column(
@@ -298,9 +242,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                 // 1st row designing:
                                 // width: 350; height: 40; justify-content: space-between; angle: 0 deg; opacity: 1;
                                 SizedBox(
-                                  width: (containerWidth >= 390)
-                                      ? 350.0
-                                      : (containerWidth - 38.0).clamp(280.0, 350.0),
+                                  width: double.infinity,
                                   height: 40.0,
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -543,9 +485,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                 // 2nd row: next widget branding:
                                 // width: 350; height: 10; justify-content: space-between; angle: 0 deg; opacity: 1;
                                 SizedBox(
-                                  width: (containerWidth >= 390)
-                                      ? 350.0
-                                      : (containerWidth - 38.0).clamp(280.0, 350.0),
+                                  width: double.infinity,
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -609,9 +549,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                 // 3rd section: next widget styling (metric cards grid):
                                 // width: 350; height: 136; gap: 12px; angle: 0 deg; opacity: 1;
                                 Container(
-                                  width: (containerWidth >= 390)
-                                      ? 350.0
-                                      : (containerWidth - 38.0).clamp(280.0, 350.0),
+                                  width: double.infinity,
                                   constraints: const BoxConstraints(minHeight: 136.0),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -793,9 +731,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                       // width: 350; height: 60; justify-content: space-between; angle: 0 deg; opacity: 1;
                                       // border-radius: 12px; padding: 16px; background: #F2F5F4;
                                       Container(
-                                        width: (containerWidth >= 390)
-                                            ? 350.0
-                                            : (containerWidth - 38.0).clamp(280.0, 350.0),
+                                        width: double.infinity,
                                         constraints: const BoxConstraints(minHeight: 58.0),
                                         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
                                         decoration: BoxDecoration(
@@ -1066,9 +1002,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                 // 4th section: next widget layout (buttons):
                                 // width: 350; height: 116; gap: 12px; angle: 0 deg; opacity: 1;
                                 SizedBox(
-                                  width: (containerWidth >= 390)
-                                      ? 350.0
-                                      : (containerWidth - 38.0).clamp(280.0, 350.0),
+                                  width: double.infinity,
                                   height: 116.0,
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1085,9 +1019,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                           },
                                           behavior: HitTestBehavior.opaque,
                                           child: Container(
-                                            width: (containerWidth >= 390)
-                                                ? 350.0
-                                                : (containerWidth - 38.0).clamp(280.0, 350.0),
+                                            width: double.infinity,
                                             height: 52.0,
                                             decoration: BoxDecoration(
                                               color: const Color(0xFFF2F5F4),
@@ -1145,9 +1077,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                           },
                                           behavior: HitTestBehavior.opaque,
                                           child: Container(
-                                            width: (containerWidth >= 390)
-                                                ? 350.0
-                                                : (containerWidth - 38.0).clamp(280.0, 350.0),
+                                            width: double.infinity,
                                             height: 52.0,
                                             decoration: BoxDecoration(
                                               color: const Color(0xFF8B53FE),
@@ -1216,15 +1146,13 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                             ),
                           ),
                         ),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
-                    ],
-                  ),
                 ),
-              ),
-            );
+              ],
+            ),
+          );
 
             if (isDesktopWeb) {
               return Container(

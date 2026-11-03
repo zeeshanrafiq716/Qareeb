@@ -6,7 +6,6 @@ import 'package:mobile/features/provider/auth/presentation/widgets/provider_head
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_otp_card.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_branding_header.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_splash_background.dart';
-import 'package:mobile/features/provider/theme/provider_colors.dart';
 
 /// Provider OTP Verification Screen (Screen 3)
 /// Appears when user taps "Continue" on PhoneVerificationScreen.
@@ -55,140 +54,149 @@ class OtpVerificationScreen extends StatelessWidget {
     );
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
-      body: Center(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final bool isDesktopWeb = constraints.maxWidth > 500;
-            final double containerWidth = isDesktopWeb ? designWidth : constraints.maxWidth;
-            final double containerHeight = isDesktopWeb ? designHeight : constraints.maxHeight;
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: Center(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final bool isDesktopWeb = constraints.maxWidth > 500;
+              final double containerWidth = isDesktopWeb ? designWidth : constraints.maxWidth;
+              final double containerHeight = isDesktopWeb ? designHeight : constraints.maxHeight;
 
-            final double topSafeArea = MediaQuery.of(context).padding.top;
-            final double toggleTop = topSafeArea > 0 ? (topSafeArea + 16.0) : 48.0;
-            final double headerTop = isDesktopWeb
-                ? 120.0
-                : (toggleTop + 36.0 + 16.0).clamp(90.0, 140.0);
+              final double topSafeArea = MediaQuery.of(context).padding.top;
+              final double keyboardInset = MediaQuery.of(context).viewInsets.bottom;
+              final bool isKeyboardOpen = keyboardInset > 0;
 
-            // Card layout geometry:
-            // width: 390, height: 420, top: 424px (in 390x844 frame, 424 + 420 = 844)
-            final double cardTop = isDesktopWeb
-                ? ProviderOtpCard.designTop
-                : (containerHeight - ProviderOtpCard.designHeight)
-                    .clamp(topSafeArea + 80.0, containerHeight - 150.0);
-            final double cardHeight = isDesktopWeb
-                ? ProviderOtpCard.designHeight
-                : (containerHeight - cardTop);
+              final double toggleTop = topSafeArea > 0 ? (topSafeArea + 16.0) : 48.0;
+              final double headerTop = isDesktopWeb
+                  ? 120.0
+                  : (toggleTop + 36.0 + 16.0).clamp(90.0, 140.0);
 
-            final Widget screenContent = Opacity(
-              opacity: 1.0, // opacity: 1
-              child: Transform.rotate(
-                angle: 0.0, // angle: 0 deg
-                child: Container(
-                  width: containerWidth,
-                  height: containerHeight,
-                  color: Colors.white,
-                  child: Stack(
-                    children: [
-                      // Underneath Scene: Splash screen background (truk.png + branding header)
-                      Positioned.fill(
-                        child: RepaintBoundary(
-                          child: Stack(
-                            children: [
-                              // 1. Base White Canvas
-                              Positioned.fill(
-                                child: Container(color: Colors.white),
-                              ),
+              // Available vertical space above keyboard
+              final double effectiveBottomInset = isDesktopWeb ? 0.0 : keyboardInset;
+              final double availableHeightAboveKeyboard = containerHeight - effectiveBottomInset;
 
-                              // 2. Full-bleed Exact Splash Artwork (truk.png)
-                              //    Contains top purple gradient glow, recovery flatbed truck, and bottom white fade
-                              Positioned.fill(
-                                child: Image.asset(
-                                  'assets/images/truk.png',
-                                  width: containerWidth,
-                                  height: containerHeight,
-                                  fit: BoxFit.cover,
-                                  alignment: Alignment.topCenter,
-                                  gaplessPlayback: true,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const CustomPaint(
-                                      painter: ProviderSplashBrandingPainter(),
-                                    );
-                                  },
+              // Card layout geometry:
+              // When keyboard is open, the card stays flexible at the bottom only,
+              // taking only the required height for OTP fields (~300px) instead of jumping
+              // to the top of the screen.
+              final double cardHeight = isDesktopWeb
+                  ? ProviderOtpCard.designHeight
+                  : (isKeyboardOpen
+                      ? (availableHeightAboveKeyboard - (topSafeArea + 80.0)).clamp(260.0, 340.0)
+                      : ProviderOtpCard.designHeight);
+
+              final Widget screenContent = Opacity(
+                opacity: 1.0, // opacity: 1
+                child: Transform.rotate(
+                  angle: 0.0, // angle: 0 deg
+                  child: Container(
+                    width: containerWidth,
+                    height: containerHeight,
+                    color: Colors.white,
+                    child: Stack(
+                      children: [
+                        // Underneath Scene: Splash screen background (truk.png + branding header)
+                        Positioned.fill(
+                          child: RepaintBoundary(
+                            child: Stack(
+                              children: [
+                                // 1. Base White Canvas
+                                Positioned.fill(
+                                  child: Container(color: Colors.white),
                                 ),
-                              ),
 
-                              // 3. Header Branding in background: QAREEB • / Service always near you
-                              Positioned(
-                                top: headerTop,
-                                left: 0,
-                                right: 0,
-                                child: const Center(
-                                  child: ProviderBrandingHeader(),
+                                // 2. Full-bleed Exact Splash Artwork (truk.png)
+                                //    Contains top purple gradient glow, recovery flatbed truck, and bottom white fade
+                                Positioned.fill(
+                                  child: Image.asset(
+                                    'assets/images/truk.png',
+                                    width: containerWidth,
+                                    height: containerHeight,
+                                    fit: BoxFit.cover,
+                                    alignment: Alignment.topCenter,
+                                    gaplessPlayback: true,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const CustomPaint(
+                                        painter: ProviderSplashBrandingPainter(),
+                                      );
+                                    },
+                                  ),
                                 ),
-                              ),
 
-                              // 4. Frosted Glass Blur & Overlay:
-                              //    background: #FFFFFF1A;
-                              //    backdrop-filter: blur(8px);
-                              Positioned.fill(
-                                child: ClipRect(
-                                  child: BackdropFilter(
-                                    filter: ImageFilter.blur(
-                                      sigmaX: 2.0,
-                                      sigmaY: 2.0,
-                                    ),
-                                    child: Container(
-                                      color: const Color(0x1AFFFFFF), // background: #FFFFFF1A
+                                // 3. Header Branding in background: QAREEB • / Service always near you
+                                Positioned(
+                                  top: headerTop,
+                                  left: 0,
+                                  right: 0,
+                                  child: const Center(
+                                    child: ProviderBrandingHeader(),
+                                  ),
+                                ),
+
+                                // 4. Frosted Glass Blur & Overlay:
+                                //    background: #FFFFFF1A;
+                                //    backdrop-filter: blur(8px);
+                                Positioned.fill(
+                                  child: ClipRect(
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(
+                                        sigmaX: 2.0,
+                                        sigmaY: 2.0,
+                                      ),
+                                      child: Container(
+                                        color: const Color(0x1AFFFFFF), // background: #FFFFFF1A
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // 5. Top Bar: Back Navigation Button + Animated Language Toggle with equal 20px padding
+                        Positioned(
+                          top: toggleTop,
+                          left: 20.0,
+                          right: 20.0,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const ProviderHeaderBackButton(),
+                              const ProviderAnimatedLanguageToggle.compact(),
                             ],
                           ),
                         ),
-                      ),
 
-                      // 5. Top Bar: Back Navigation Button + Animated Language Toggle with equal 20px padding
-                      Positioned(
-                        top: toggleTop,
-                        left: 20.0,
-                        right: 20.0,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const ProviderHeaderBackButton(),
-                            const ProviderAnimatedLanguageToggle.compact(),
-                          ],
-                        ),
-                      ),
-
-                      // 6. New OTP White Bottom Card Layout
-                      //    width: 390; height: 420; top: 424px;
-                      //    border-top-left-radius: 28px; border-top-right-radius: 28px;
-                      //    angle: 0 deg; opacity: 1; background: #FFFFFF;
-                      //    box-shadow: 0px -2px 12px 0px #00000014;
-                      Positioned(
-                        top: cardTop,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: ProviderOtpCard(
-                          width: containerWidth,
+                        // 6. New OTP White Bottom Card Layout
+                        //    Flexible in bottom only: stays docked at the bottom right above the keyboard
+                        //    when entering code without moving up to the top screen.
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: effectiveBottomInset,
                           height: cardHeight,
-                          child: cardContent,
-                          phoneNumber: phoneNumber,
-                          fullPhone: fullPhone,
-                          dummyOtp: dummyOtp,
-                          isWhatsApp: isWhatsApp,
-                          onVerified: onVerified,
+                          child: ProviderOtpCard(
+                            width: containerWidth,
+                            height: cardHeight,
+                            phoneNumber: phoneNumber,
+                            fullPhone: fullPhone,
+                            dummyOtp: dummyOtp,
+                            isWhatsApp: isWhatsApp,
+                            onVerified: onVerified,
+                            child: cardContent,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
+              );
 
             if (isDesktopWeb) {
               return Container(
@@ -235,6 +243,7 @@ class OtpVerificationScreen extends StatelessWidget {
           },
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

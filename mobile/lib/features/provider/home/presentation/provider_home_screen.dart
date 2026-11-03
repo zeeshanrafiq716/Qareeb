@@ -1,6 +1,3 @@
-import 'dart:math' as math;
-import 'dart:ui';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,11 +5,11 @@ import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/home/presentation/widgets/bottom_nav_bar_widget.dart';
 import 'package:mobile/features/home/presentation/widgets/notification_popup_card.dart';
 import 'package:mobile/features/profile/presentation/profile_screen.dart';
+import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
 import 'package:mobile/features/provider/dashboard/presentation/provider_dashboard_screen.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_home_header.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_online_status_text.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_online_toggle.dart';
-import 'package:mobile/features/provider/home/presentation/widgets/provider_service_area_card.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_stats_cards.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_vehicle_card.dart';
 import 'package:mobile/features/provider/requests/presentation/provider_requests_screen.dart';
@@ -52,7 +49,7 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
   static const double designHeight = 844.0;
 
   int _currentTabIndex = 0;
-  bool _isOnline = true;
+  bool _isOnline = false;
 
   ScrollController? _scrollControllerInstance;
   ScrollController get _scrollController =>
@@ -62,6 +59,7 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
   void initState() {
     super.initState();
     _currentTabIndex = widget.initialTabIndex;
+    _isOnline = ProviderRegistrationStore.instance.data.isOnline;
   }
 
   @override
@@ -96,6 +94,7 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
           onTabSelected: _onTabSelected,
         ),
         ProfileScreen(
+          isProvider: true,
           onBackTap: () => _onTabSelected(0),
           onTabSelected: _onTabSelected,
         ),
@@ -229,18 +228,16 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
                                     setState(() {
                                       _isOnline = val;
                                     });
+                                    ProviderRegistrationStore.instance.update(
+                                      (data) => data.copyWith(isOnline: val),
+                                    );
                                   },
                                 ),
 
                                 const SizedBox(height: 12.0),
 
                                 // Next Card: Vehicle Info Card (height: 150)
-                                const ProviderVehicleCard(),
-
-                                const SizedBox(height: 10.0),
-
-                                // Next Card: Service Area Card (height: 68)
-                                const ProviderServiceAreaCard(),
+                                ProviderVehicleCard(),
 
                                 if (widget.body != null) ...[
                                   const SizedBox(height: 12.0),

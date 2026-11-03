@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_handle_bar.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_otp_content_layout.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
@@ -47,6 +46,8 @@ class ProviderOtpCard extends StatelessWidget {
     final double cardWidth = width ?? designWidth;
     final double cardHeight = height ?? designHeight;
     final double bottomSafeArea = MediaQuery.of(context).padding.bottom;
+    final double keyboardInset = MediaQuery.of(context).viewInsets.bottom;
+    final bool isKeyboardOpen = keyboardInset > 0;
 
     return Opacity(
       opacity: 1.0, // opacity: 1
@@ -78,14 +79,17 @@ class ProviderOtpCard extends StatelessWidget {
             child: Stack(
               alignment: Alignment.topCenter,
               children: [
-                // 1. Fixed, Non-Scrollable Content Area with equal left-to-right padding (20px each)
+                // 1. Scrollable Content Area with equal left-to-right padding (20px each)
                 Positioned.fill(
-                  child: Padding(
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
                     padding: EdgeInsets.only(
                       top: 24.0,
                       left: horizontalPadding,
                       right: horizontalPadding,
-                      bottom: bottomSafeArea > 0 ? (bottomSafeArea + 24.0) : 26.0,
+                      bottom: isKeyboardOpen
+                          ? 16.0
+                          : (bottomSafeArea > 0 ? (bottomSafeArea + 24.0) : 26.0),
                     ),
                     child: child ??
                         ProviderOtpContentLayout(
@@ -103,16 +107,6 @@ class ProviderOtpCard extends StatelessWidget {
                   top: ProviderCardHandleBar.designTop, // 12.0px
                   child: IgnorePointer(
                     child: ProviderCardHandleBar(),
-                  ),
-                ),
-
-                // 3. Pinned Bottom Indicator Bar: with safe-area offset so it never gets stuck in bottom
-                Positioned(
-                  bottom: bottomSafeArea > 0 ? (bottomSafeArea + 8.0) : 14.0,
-                  left: 0,
-                  right: 0,
-                  child: const IgnorePointer(
-                    child: ProviderCardBottomIndicator(),
                   ),
                 ),
               ],

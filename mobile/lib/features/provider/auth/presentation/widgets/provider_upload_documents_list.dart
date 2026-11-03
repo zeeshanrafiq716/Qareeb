@@ -50,6 +50,11 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
   late bool _registrationUploaded;
   late bool _licenceUploaded;
 
+  bool _frontUploaded = false;
+  bool _rearUploaded = false;
+  bool _leftSideUploaded = false;
+  bool _rightSideUploaded = false;
+
   Uint8List? _iqamaBytes;
   Uint8List? _registrationBytes;
   Uint8List? _licenceBytes;
@@ -67,6 +72,10 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
     _iqamaUploaded = data.iqamaUploaded;
     _registrationUploaded = data.registrationUploaded;
     _licenceUploaded = data.licenceUploaded;
+    _frontUploaded = data.vehicleFrontUploaded;
+    _rearUploaded = data.vehicleRearUploaded;
+    _leftSideUploaded = data.vehicleLeftUploaded;
+    _rightSideUploaded = data.vehicleRightUploaded;
     _backendService = BackendService(ApiClient());
   }
 
@@ -115,7 +124,7 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
 
       // 2. Real multipart file upload with server-side clarity & anti-dummy check
       final uploadRes = await _backendService.submitVerificationDocument(
-        documentType: docTypeKey,
+        documentType: docTypeKey == 'licence' ? 'license' : docTypeKey,
         fileBytes: result.image!.bytes,
         fileName: result.image!.name,
       );
@@ -278,8 +287,51 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
           // Section Gap: 20px
           const SizedBox(height: 20.0),
 
-          // Next Widget: Vehicle Photos Section (4 photos in 2 rows)
-          const ProviderVehiclePhotosSection(),
+          // Next Widget: Vehicle Photos Section (4 photos in 2 rows) - Compulsory
+          ProviderVehiclePhotosSection(
+            onPhotoChanged: (viewKey, bytes) async {
+              final uploaded = bytes != null;
+              final isFront = viewKey == 'front' || viewKey == 'vehicle_front';
+              final isRear = viewKey == 'rear' || viewKey == 'vehicle_rear';
+              final isLeft = viewKey == 'left' || viewKey == 'left_side' || viewKey == 'vehicle_left_side';
+              final isRight = viewKey == 'right' || viewKey == 'right_side' || viewKey == 'vehicle_right_side';
+
+              setState(() {
+                if (isFront) _frontUploaded = uploaded;
+                if (isRear) _rearUploaded = uploaded;
+                if (isLeft) _leftSideUploaded = uploaded;
+                if (isRight) _rightSideUploaded = uploaded;
+              });
+
+              ProviderRegistrationStore.instance.update((data) {
+                return data.copyWith(
+                  vehicleFrontUploaded: _frontUploaded,
+                  vehicleRearUploaded: _rearUploaded,
+                  vehicleLeftUploaded: _leftSideUploaded,
+                  vehicleRightUploaded: _rightSideUploaded,
+                );
+              });
+
+              if (uploaded) {
+                final String docType;
+                if (isFront) {
+                  docType = 'vehicle_front';
+                } else if (isRear) {
+                  docType = 'vehicle_rear';
+                } else if (isLeft) {
+                  docType = 'vehicle_left_side';
+                } else {
+                  docType = 'vehicle_right_side';
+                }
+
+                await _backendService.submitVerificationDocument(
+                  documentType: docType,
+                  fileBytes: bytes,
+                  fileName: '${docType}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                );
+              }
+            },
+          ),
 
           // Proper gap below Vehicle Photos: 24px
           const SizedBox(height: ProviderUploadDocumentsList.buttonGap),
@@ -300,7 +352,37 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
 
   void _defaultOnContinue(BuildContext context) {
     final isArabic = context.isArabic;
-    if (!_iqamaUploaded && !_licenceUploaded && !_registrationUploaded) {
+
+    // All documents and 4 vehicle photos are compulsory: check if any are missing
+    final List<String> missingItems = [];
+    if (!_iqamaUploaded) {
+      missingItems.add(isArabic ? 'الإقامة / الهوية' : 'Iqama');
+    }
+    if (!_registrationUploaded) {
+      missingItems.add(isArabic ? 'استمارة المركبة' : 'Vehicle Registration');
+    }
+    if (!_licenceUploaded) {
+      missingItems.add(isArabic ? 'رخصة القيادة' : 'Driving Licence');
+    }
+    if (!_frontUploaded) {
+      missingItems.add(isArabic ? 'صورة المركبة من الأمام' : 'Front View Photo');
+    }
+    if (!_rearUploaded) {
+      missingItems.add(isArabic ? 'صورة المركبة من الخلف' : 'Rear View Photo');
+    }
+    if (!_leftSideUploaded) {
+      missingItems.add(isArabic ? 'صورة الجانب الأيسر' : 'Left Side Photo');
+    }
+    if (!_rightSideUploaded) {
+      missingItems.add(isArabic ? 'صورة الجانب الأيمن' : 'Right Side Photo');
+    }
+
+    if (missingItems.isNotEmpty) {
+      final missingStr = missingItems.join(isArabic ? ' و ' : ', ');
+      final message = isArabic
+          ? 'جميع المستندات وصور المركبة إلزامية. يرجى إكمال: $missingStr'
+          : 'All documents and vehicle photos are compulsory. Please upload: $missingStr';
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
@@ -308,13 +390,11 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
           backgroundColor: const Color(0xFF1C2926),
           content: Row(
             children: [
-              const Icon(Icons.info_outline, color: Colors.orangeAccent, size: 20.0),
+              const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 22.0),
               const SizedBox(width: 10.0),
               Expanded(
                 child: Text(
-                  isArabic
-                      ? 'يرجى رفع المستندات المطلوبة (الإقامة ورخصة القيادة)'
-                      : 'Please upload the required documents (Iqama and Driving Licence)',
+                  message,
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w500,
@@ -324,17 +404,24 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
               ),
             ],
           ),
-          duration: const Duration(seconds: 3),
+          duration: const Duration(seconds: 4),
         ),
       );
       return;
     }
+
+    // Verify all compulsory documents and vehicle photos on backend
+    _backendService.verifyAllCompulsoryDocuments();
 
     ProviderRegistrationStore.instance.update(
       (data) => data.copyWith(
         iqamaUploaded: _iqamaUploaded,
         registrationUploaded: _registrationUploaded,
         licenceUploaded: _licenceUploaded,
+        vehicleFrontUploaded: _frontUploaded,
+        vehicleRearUploaded: _rearUploaded,
+        vehicleLeftUploaded: _leftSideUploaded,
+        vehicleRightUploaded: _rightSideUploaded,
         status: 'PENDING_VERIFICATION',
       ),
     );

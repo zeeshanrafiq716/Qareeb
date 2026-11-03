@@ -31,4 +31,27 @@ export const ROLES = {
   ADMIN: "admin",
 };
 
-export const DOCUMENT_TYPES = ["cnic", "passport", "license", "other"];
+export const DOCUMENT_TYPES = [
+  "iqama",
+  "registration",
+  "license",
+  "driving_licence",
+  "vehicle_photos",
+  "vehicle_front",
+  "vehicle_rear",
+  "vehicle_left_side",
+  "vehicle_right_side",
+  "cnic",
+  "passport",
+  "other",
+];
+
+export const COMPULSORY_DOCUMENT_TYPES = [
+  "iqama",
+  "registration",
+  "license",
+  "vehicle_front",
+  "vehicle_rear",
+  "vehicle_left_side",
+  "vehicle_right_side",
+];

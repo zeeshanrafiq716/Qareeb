@@ -6,8 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
 import 'live_tracking_screen.dart';
-import 'widgets/top_down_car_widget.dart';
 import 'widgets/real_map_background_widget.dart';
+import '../../../services/profile_stats_service.dart';
 
 /// Screen displayed when user clicks 'Send Request' in ProviderDetailScreen.
 /// Implements the exact header and map layer of Pickup & Delivery screens as requested.
@@ -37,6 +37,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
   @override
   void initState() {
     super.initState();
+    ProfileStatsService.instance.recordNewRequest(isProvider: false);
     _startAcceptanceSimulation();
   }
 
@@ -139,56 +140,24 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                     child: RealMapBackgroundWidget(
                       enableDrag: true,
                       zoom: 15.0,
-                      trackingStep: MapTrackingStep.requestSent,
+                      trackingStep: MapTrackingStep.none,
+                      blurSigma: 0.0,
                       driverName: widget.providerName,
                       serviceCategory: widget.serviceCategory,
                       vehicleName: 'Toyota Hilux',
                       etaText: tr.isArabic ? 'جاري الإرسال...' : 'Broadcasting...',
                       distanceText: widget.distance,
-                      showControls: true,
-                    ),
-                  ),
-
-                  // 2. Gradient Overlay Layer ("pickup & delivery screen layout branding")
-                  Positioned(
-                    top: 1.0,
-                    left: 0.0,
-                    width: containerWidth,
-                    height: containerHeight,
-                    child: const IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            stops: [0.0214, 0.1705, 0.2693, 1.0],
-                            colors: [
-                              Color(0xFFFFFFFF), // #FFFFFF 2.14%
-                              Color(0xD6FFFFFF), // rgba(255, 255, 255, 0.839534) 17.05%
-                              Color(0x00FFFFFF), // rgba(255, 255, 255, 0) 26.93%
-                              Color(0x00FFFFFF),
-                            ],
-                          ),
-                        ),
-                      ),
+                      showControls: false,
                     ),
                   ),
 
                   // 7. Header with same previous branding:
-                  // width: 350; height: 36; gap: 16px; top: 56px; left: 20px;
                   Positioned(
-                    top: 56.0,
-                    left: containerWidth >= 390
-                        ? 20.0
-                        : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                    width: containerWidth >= 390
-                        ? 350.0
-                        : (containerWidth - 40.0).clamp(280.0, 350.0),
+                    top: math.max(48.0, mediaQuery.padding.top + 8.0),
+                    left: 20.0,
+                    right: 20.0,
                     height: 36.0,
                     child: SizedBox(
-                      width: containerWidth >= 390
-                          ? 350.0
-                          : (containerWidth - 40.0).clamp(280.0, 350.0),
                       height: 36.0,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -268,7 +237,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                       // angle: 0 deg; opacity: 1; background: #FFFFFF;
                       // box-shadow: 0px -2px 12px 0px #00000014;
                       Container(
-                        width: containerWidth >= 390 ? 390.0 : containerWidth,
+                        width: containerWidth,
                         decoration: const BoxDecoration(
                           color: Color(0xFFFFFFFF),
                           borderRadius: BorderRadius.only(
@@ -284,7 +253,10 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                             ),
                           ],
                         ),
-                        padding: const EdgeInsets.only(top: 12.0, bottom: 20.0),
+                        padding: EdgeInsets.only(
+                          top: 12.0,
+                          bottom: math.max(20.0, mediaQuery.padding.bottom + 8.0),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
@@ -304,17 +276,13 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                             // Content layout branding:
                             // width: 350; angle: 0 deg; opacity: 1; gap: 20px;
                             SizedBox(
-                              width: containerWidth >= 390
-                                  ? 350.0
-                                  : (containerWidth - 40.0).clamp(280.0, 350.0),
+                              width: math.max(280.0, containerWidth - 40.0),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                         // width: 350; height: 41; justify-content: space-between; angle: 0 deg; opacity: 1;
                                         SizedBox(
-                                          width: containerWidth >= 390
-                                              ? 350.0
-                                              : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                          width: math.max(280.0, containerWidth - 40.0),
                                           height: 41.0,
                                           child: Row(
                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -608,9 +576,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                         // 2nd row: Toyota Hilux & Pickup & Delivery:
                                         // width: 350; height: 10; justify-content: space-between; angle: 0 deg; opacity: 1;
                                         SizedBox(
-                                          width: containerWidth >= 390
-                                              ? 350.0
-                                              : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                          width: math.max(280.0, containerWidth - 40.0),
                                           child: Row(
                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -680,9 +646,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                         // 3rd section: metric cards grid:
                                         // width: 350; height: 136; gap: 12px; angle: 0 deg; opacity: 1;
                                         Container(
-                                          width: containerWidth >= 390
-                                              ? 350.0
-                                              : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                          width: math.max(280.0, containerWidth - 40.0),
                                           constraints: const BoxConstraints(minHeight: 136.0),
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -881,9 +845,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                               // width: 350; height: 60; justify-content: space-between; angle: 0 deg; opacity: 1;
                                               // border-radius: 12px; padding: 16px; background: #F2F5F4;
                                               Container(
-                                                width: containerWidth >= 390
-                                                    ? 350.0
-                                                    : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                                width: math.max(280.0, containerWidth - 40.0),
                                                 constraints: const BoxConstraints(minHeight: 58.0),
                                                 padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
                                                 decoration: BoxDecoration(
@@ -1154,9 +1116,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                   // 4th section: Request Sent card layout:
                                   // width: 350; minHeight: 64; gap: 12px; border-radius: 12px; padding: 12px 16px; background: #F2F5F4;
                                   Container(
-                                    width: containerWidth >= 390
-                                        ? 350.0
-                                        : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                    width: math.max(280.0, containerWidth - 40.0),
                                     constraints: const BoxConstraints(minHeight: 64.0),
                                     padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
                                     decoration: BoxDecoration(
@@ -1248,9 +1208,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                         // 5th section: next layout branding (progress timeline):
                                         // width: 350; height: 59; gap: 12px; angle: 0 deg; opacity: 1;
                                         Container(
-                                          width: containerWidth >= 390
-                                              ? 350.0
-                                              : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                          width: math.max(280.0, containerWidth - 40.0),
                                           constraints: const BoxConstraints(minHeight: 59.0),
                                           child: IntrinsicHeight(
                                             child: Row(
@@ -1377,9 +1335,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                             },
                                             behavior: HitTestBehavior.opaque,
                                             child: Container(
-                                              width: containerWidth >= 390
-                                                  ? 350.0
-                                                  : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                              width: math.max(280.0, containerWidth - 40.0),
                                               height: 52.0,
                                               decoration: BoxDecoration(
                                                 color: const Color(0xFFFFF1F0),
@@ -1423,7 +1379,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
 
                             // Bottom Bar Layout: width: 390; height: 24;
                             SizedBox(
-                              width: containerWidth >= 390 ? 390.0 : containerWidth,
+                              width: double.infinity,
                               height: 24.0,
                               child: Center(
                                 child: Container(
@@ -1601,151 +1557,6 @@ class _BackChevronPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Route vector line painter matching Figma specifications:
-class _RouteVectorPainter extends CustomPainter {
-  final Color color;
-  final double strokeWidth;
-
-  const _RouteVectorPainter({
-    this.color = const Color(0xFFB892FF),
-    this.strokeWidth = 4.0,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final path = Path();
-    path.moveTo(12.5, 0.0);
-    path.lineTo(2.0, 18.0);
-    path.quadraticBezierTo(2.0, 24.0, 8.0, 27.0);
-    path.lineTo(size.width - 2.0, size.height - 4.0);
-
-    // Light purple glow casing
-    final glowPaint = Paint()
-      ..color = color.withValues(alpha: 0.35)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth * 2.5
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    canvas.drawPath(path, glowPaint);
-
-    // Main route line in light purple
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    canvas.drawPath(path, paint);
-
-    // Inner white center road stripe
-    final innerPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.85)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    canvas.drawPath(path, innerPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _RouteVectorPainter oldDelegate) =>
-      color != oldDelegate.color || strokeWidth != oldDelegate.strokeWidth;
-}
-
-/// Top-down car graphic painter matching Figma car asset:
-class _CarGraphicPainter extends CustomPainter {
-  final Color roofColor;
-  const _CarGraphicPainter({this.roofColor = const Color(0xFFA67AFE)});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    final bodyPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-
-    final borderPaint = Paint()
-      ..color = const Color(0xFF2C3A36)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8;
-
-    final bodyRRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(1.5, 1.0, w - 3.0, h - 2.0),
-      const Radius.circular(3.5),
-    );
-    canvas.drawRRect(bodyRRect, bodyPaint);
-    canvas.drawRRect(bodyRRect, borderPaint);
-
-    final glassPaint = Paint()
-      ..color = const Color(0xFF1F2937)
-      ..style = PaintingStyle.fill;
-
-    final windshieldRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(3.0, 5.0, w - 6.0, 3.5),
-      const Radius.circular(1.0),
-    );
-    canvas.drawRRect(windshieldRect, glassPaint);
-
-    final roofPaint = Paint()
-      ..color = roofColor
-      ..style = PaintingStyle.fill;
-
-    final roofRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(3.2, 9.0, w - 6.4, 7.0),
-      const Radius.circular(1.0),
-    );
-    canvas.drawRRect(roofRect, roofPaint);
-
-    final rearGlassRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(3.0, 16.5, w - 6.0, 2.5),
-      const Radius.circular(1.0),
-    );
-    canvas.drawRRect(rearGlassRect, glassPaint);
-
-    final tailPaint = Paint()
-      ..color = const Color(0xFFEF4444)
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(2.5, h - 2.5, 2.5, 1.0),
-        const Radius.circular(0.5),
-      ),
-      tailPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w - 5.0, h - 2.5, 2.5, 1.0),
-        const Radius.circular(0.5),
-      ),
-      tailPaint,
-    );
-
-    final headPaint = Paint()
-      ..color = const Color(0xFFE0F2FE)
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(2.5, 1.5, 2.5, 1.2),
-        const Radius.circular(0.5),
-      ),
-      headPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w - 5.0, 1.5, 2.5, 1.2),
-        const Radius.circular(0.5),
-      ),
-      headPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _CarGraphicPainter oldDelegate) =>
-      roofColor != oldDelegate.roofColor;
-}
-
 /// Location pin icon vector matching Figma icon:
 class _LocationPinPainter extends CustomPainter {
   final Color color;
@@ -1780,57 +1591,6 @@ class _LocationPinPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _LocationPinPainter oldDelegate) =>
       color != oldDelegate.color;
-}
-
-/// Distance badge tooltip speech-bubble painter:
-class _DistanceBadgeTooltipPainter extends CustomPainter {
-  final Color color;
-  final double cornerRadius;
-  final double pointerX;
-  final double pointerWidth;
-  final double pointerHeight;
-
-  const _DistanceBadgeTooltipPainter({
-    this.color = const Color(0xFF8B53FE),
-    this.cornerRadius = 4.0,
-    this.pointerX = 10.0,
-    this.pointerWidth = 8.0,
-    this.pointerHeight = 7.0,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-
-    final bodyHeight = size.height - pointerHeight;
-    final rrect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, size.width, bodyHeight),
-      Radius.circular(cornerRadius),
-    );
-
-    final path = Path()..addRRect(rrect);
-
-    final pointerPath = Path();
-    final halfWidth = pointerWidth / 2.0;
-    pointerPath.moveTo(pointerX - halfWidth, bodyHeight - 0.5);
-    pointerPath.lineTo(pointerX + halfWidth, bodyHeight - 0.5);
-    pointerPath.lineTo(pointerX, size.height);
-    pointerPath.close();
-
-    final combined = Path.combine(PathOperation.union, path, pointerPath);
-    canvas.drawPath(combined, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _DistanceBadgeTooltipPainter oldDelegate) =>
-      color != oldDelegate.color ||
-      cornerRadius != oldDelegate.cornerRadius ||
-      pointerX != oldDelegate.pointerX ||
-      pointerWidth != oldDelegate.pointerWidth ||
-      pointerHeight != oldDelegate.pointerHeight;
 }
 
 /// Smooth Rotating Loader Widget (width: 10; height: 10; background: #FFAE00)

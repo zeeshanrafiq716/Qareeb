@@ -48,6 +48,8 @@ class ProviderAdminApprovalContentLayout extends StatefulWidget {
   final Widget? actionButton;
   final Widget? content;
   final List<Widget>? children;
+  final bool? isSuspended;
+  final bool? isRejected;
 
   const ProviderAdminApprovalContentLayout({
     super.key,
@@ -58,6 +60,8 @@ class ProviderAdminApprovalContentLayout extends StatefulWidget {
     this.actionButton,
     this.content,
     this.children,
+    this.isSuspended,
+    this.isRejected,
   });
 
   static const double designWidth = 350.0;
@@ -78,6 +82,24 @@ class _ProviderAdminApprovalContentLayoutState
   bool _isApproved = false;
   Timer? _approvalTimer;
 
+  bool get _isSuspendedOrRejected {
+    if (widget.isSuspended == true || widget.isRejected == true) return true;
+    final currentData = ProviderRegistrationStore.instance.data;
+    return currentData.isSuspended;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final currentData = ProviderRegistrationStore.instance.data;
+    _isApproved = currentData.status == 'APPROVED';
+    if (!currentData.isOnboardingCompleted && !_isSuspendedOrRejected) {
+      ProviderRegistrationStore.instance.update(
+        (data) => data.copyWith(isOnboardingCompleted: true),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _approvalTimer?.cancel();
@@ -89,6 +111,13 @@ class _ProviderAdminApprovalContentLayoutState
 
     if (_isApproved) {
       _navigateToHome();
+      return;
+    }
+
+    if (_isSuspendedOrRejected) {
+      setState(() {
+        _showReviewNotice = true;
+      });
       return;
     }
 
@@ -109,7 +138,10 @@ class _ProviderAdminApprovalContentLayoutState
       });
 
       ProviderRegistrationStore.instance.update(
-        (data) => data.copyWith(status: 'APPROVED'),
+        (data) => data.copyWith(
+          status: 'APPROVED',
+          isOnboardingCompleted: true,
+        ),
       );
 
       // Brief pause to display the completed checkmarks before auto-landing on home screen
@@ -161,7 +193,11 @@ class _ProviderAdminApprovalContentLayoutState
               const SizedBox(height: ProviderAdminApprovalContentLayout.designGap),
 
               // 3. next card widget branding: width: 350; height: 180; padding: 16px; 3 rows
-              widget.statusCard ?? ProviderAdminApprovalStatusCard(isApproved: _isApproved),
+              widget.statusCard ??
+                  ProviderAdminApprovalStatusCard(
+                    isApproved: _isApproved,
+                    isSuspended: _isSuspendedOrRejected,
+                  ),
 
               // Gap: 20px
               const SizedBox(height: ProviderAdminApprovalContentLayout.designGap),
@@ -178,14 +214,16 @@ class _ProviderAdminApprovalContentLayoutState
                     onTap: _onGotItPressed,
                   ),
 
-              // 6. Under Review Notice Box (Animates in when Got It is tapped, then auto-removes after verification)
+              // 6. Under Review Notice Box (Animates in when Got It is tapped, or shown if rejected/suspended)
               AnimatedCrossFade(
                 firstChild: const SizedBox(width: double.infinity, height: 0.0),
-                secondChild: const Padding(
-                  padding: EdgeInsets.only(top: 16.0),
-                  child: ProviderUnderReviewCard(),
+                secondChild: Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  child: ProviderUnderReviewCard(
+                    isRejected: _isSuspendedOrRejected,
+                  ),
                 ),
-                crossFadeState: _showReviewNotice
+                crossFadeState: (_showReviewNotice || _isSuspendedOrRejected)
                     ? CrossFadeState.showSecond
                     : CrossFadeState.showFirst,
                 duration: const Duration(milliseconds: 300),

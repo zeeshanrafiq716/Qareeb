@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'google_maps_service.dart';
 import 'dart:math' as math;
@@ -135,50 +136,64 @@ class LocationService {
       }
     } catch (_) {}
 
-    // 3. Acquire real GPS coordinates from device
+    // 3. Acquire real GPS coordinates from device / browser
     double? lat;
     double? lng;
     double? acc;
 
-    try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 8),
-        ),
-      );
-      lat = position.latitude;
-      lng = position.longitude;
-      acc = position.accuracy;
-    } catch (_) {
-      // Fallback 1: Try last known location or medium accuracy
+    // On Web, direct HTML5 browser geolocation is fastest and triggers prompt smoothly
+    if (kIsWeb) {
       try {
-        final lastKnown = await Geolocator.getLastKnownPosition();
-        if (lastKnown != null) {
-          lat = lastKnown.latitude;
-          lng = lastKnown.longitude;
-          acc = lastKnown.accuracy;
-        } else {
-          final pos = await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.medium,
-              timeLimit: Duration(seconds: 6),
-            ),
-          );
-          lat = pos.latitude;
-          lng = pos.longitude;
-          acc = pos.accuracy;
+        final coords = await getBrowserCoordinates();
+        if (coords != null && coords['latitude'] != null && coords['longitude'] != null) {
+          lat = coords['latitude']!;
+          lng = coords['longitude']!;
+          acc = coords['accuracy'];
         }
+      } catch (_) {}
+    }
+
+    if (lat == null || lng == null) {
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 5),
+          ),
+        );
+        lat = position.latitude;
+        lng = position.longitude;
+        acc = position.accuracy;
       } catch (_) {
-        // Fallback 2: Browser coordinates (for Chrome / Web)
+        // Fallback 1: Try last known location or medium accuracy
         try {
-          final coords = await getBrowserCoordinates();
-          if (coords != null && coords['latitude'] != null && coords['longitude'] != null) {
-            lat = coords['latitude']!;
-            lng = coords['longitude']!;
-            acc = coords['accuracy'];
+          final lastKnown = await Geolocator.getLastKnownPosition();
+          if (lastKnown != null) {
+            lat = lastKnown.latitude;
+            lng = lastKnown.longitude;
+            acc = lastKnown.accuracy;
+          } else {
+            final pos = await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.medium,
+                timeLimit: Duration(seconds: 4),
+              ),
+            );
+            lat = pos.latitude;
+            lng = pos.longitude;
+            acc = pos.accuracy;
           }
-        } catch (_) {}
+        } catch (_) {
+          // Fallback 2: Browser coordinates (for Chrome / Web)
+          try {
+            final coords = await getBrowserCoordinates();
+            if (coords != null && coords['latitude'] != null && coords['longitude'] != null) {
+              lat = coords['latitude']!;
+              lng = coords['longitude']!;
+              acc = coords['accuracy'];
+            }
+          } catch (_) {}
+        }
       }
     }
 
@@ -188,8 +203,17 @@ class LocationService {
       throw const LocationServiceDisabledException();
     }
 
-    // 4. Reverse geocode to resolve city & address
-    final geoInfo = await _reverseGeocode(lat, lng);
+    // 4. Reverse geocode to resolve city & address with safe timeout
+    Map<String, String> geoInfo = {};
+    try {
+      geoInfo = await _reverseGeocode(lat, lng).timeout(const Duration(seconds: 3));
+    } catch (_) {
+      geoInfo = {
+        'city': 'GPS (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})',
+        'address': 'Current Location',
+      };
+    }
+
     final userLoc = UserLocation(
       latitude: lat,
       longitude: lng,

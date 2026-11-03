@@ -4,6 +4,7 @@ import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
 import 'package:mobile/features/provider/auth/presentation/otp_verification_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_country_picker_modal.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
@@ -200,64 +201,86 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
     final fullPhone = '${_selectedCountry.dialCode}$digits';
     final displayPhone = '${_selectedCountry.dialCode} $digits';
 
-    ProviderRegistrationStore.instance.update(
-      (data) => data.copyWith(
-        fullName: rawName.isNotEmpty ? rawName : data.fullName,
-        phone: displayPhone,
-        contactPhone: displayPhone,
-        isWhatsApp: false,
-      ),
-    );
-
     setState(() => _isLoading = true);
 
-    final result = await _backendService.requestOtp(phone: fullPhone);
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    // Show realistic SMS toast notification with received dummy OTP
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF1C2926),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-        content: Row(
-          children: [
-            const Icon(Icons.mark_email_read_outlined, color: ProviderColors.primaryButton, size: 20.0),
-            const SizedBox(width: 10.0),
-            Expanded(
-              child: Text(
-                isArabic
-                    ? 'رمز التحقق (تجريبي): ${result.otp}'
-                    : 'Verification Code (Dummy): ${result.otp}',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
-        duration: const Duration(seconds: 5),
-      ),
-    );
-
-    // Navigate to OTP Screen
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => OtpVerificationScreen(
-          phoneNumber: displayPhone,
-          fullPhone: fullPhone,
-          dummyOtp: result.otp,
-        ),
-        transitionsBuilder: (_, animation, _, child) => FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeInOutCubic,
+    try {
+      try {
+        ProviderRegistrationStore.instance.update(
+          (data) => data.copyWith(
+            fullName: rawName.isNotEmpty ? rawName : data.fullName,
+            phone: displayPhone,
+            contactPhone: displayPhone,
+            isWhatsApp: false,
           ),
-          child: child,
+        );
+      } catch (storeError) {
+        debugPrint('ProviderRegistrationStore update error: $storeError');
+      }
+
+      final result = await _backendService.requestOtp(phone: fullPhone);
+
+      if (!mounted) return;
+
+      // Show realistic SMS toast notification with received dummy OTP
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1C2926),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          content: Row(
+            children: [
+              const Icon(Icons.mark_email_read_outlined, color: ProviderColors.primaryButton, size: 20.0),
+              const SizedBox(width: 10.0),
+              Expanded(
+                child: Text(
+                  isArabic
+                      ? 'رمز التحقق (تجريبي): ${result.otp}'
+                      : 'Verification Code (Dummy): ${result.otp}',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 5),
         ),
-        transitionDuration: const Duration(milliseconds: 350),
-      ),
-    );
+      );
+
+      // Navigate to OTP Screen
+      Navigator.of(context).push(
+        PageRouteBuilder(
+          pageBuilder: (_, _, _) => OtpVerificationScreen(
+            phoneNumber: displayPhone,
+            fullPhone: fullPhone,
+            dummyOtp: result.otp,
+          ),
+          transitionsBuilder: (_, animation, _, child) => FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeInOutCubic,
+            ),
+            child: child,
+          ),
+          transitionDuration: const Duration(milliseconds: 350),
+        ),
+      );
+    } catch (e, stack) {
+      debugPrint('Error in _handleContinue: $e\n$stack');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+            content: Text(
+              isArabic ? 'حدث خطأ، يرجى المحاولة مرة أخرى' : 'An error occurred, please try again',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -320,7 +343,7 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
         child: Container(
           width: 126.0,
           height: ProviderPhoneInputWidget.row1Height,
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 10.0),
           decoration: BoxDecoration(
             color: ProviderColors.inputBackground, // #F2F5F4
             borderRadius: BorderRadius.circular(12.0),
@@ -328,20 +351,24 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               // flag branding: width: 30; height: 20.22;
               _buildCountryFlag(_selectedCountry),
 
-              const SizedBox(width: 6.0), // gap: 6px
+              const SizedBox(width: 4.0), // gap: 4px
 
               // dial code: Inter 500 14px line-height 22px #1C2926
-              Text(
-                _selectedCountry.dialCode,
-                style: ProviderTextStyles.phoneCode,
-                textDirection: TextDirection.ltr,
+              Flexible(
+                child: Text(
+                  _selectedCountry.dialCode,
+                  style: ProviderTextStyles.phoneCode,
+                  textDirection: TextDirection.ltr,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
 
-              const SizedBox(width: 10.0), // gap: 10px
+              const SizedBox(width: 6.0), // gap: 6px
 
               // dropdown icon branding: width: 11; height: 5; border: 1px solid #566663;
               const _DropdownChevronWidget(),
@@ -453,50 +480,14 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
   /// content: Continue (Inter 500 14px line-height 22px #FFFFFF)
   /// arrow icon branding: width: 14; height: 12; border: 1.5px solid #FFFFFF
   Widget _buildContinueButton() {
-    return SizedBox(
-      width: double.infinity,
+    return ProviderAnimatedButton(
       height: ProviderPhoneInputWidget.buttonHeight,
-      child: ElevatedButton(
-        onPressed: _isLoading
-            ? null
-            : (widget.onContinue ?? _handleContinue),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: ProviderColors.primaryButton, // #8B53FE
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-          padding: EdgeInsets.zero,
-        ),
-        child: _isLoading
-            ? const SizedBox(
-                width: 20.0,
-                height: 20.0,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2.0,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // content: Continue (Inter 500 14px #FFFFFF)
-                  Text(
-                    context.l10n.continueButtonText,
-                    style: ProviderTextStyles.continueButtonText,
-                  ),
-
-                  // gap: 12px;
-                  const SizedBox(width: 12.0),
-
-                  // arrow icon branding: width: 14; height: 12; angle: -180 deg; border: 1.5px solid #FFFFFF
-                  const _ContinueArrowWidget(),
-                ],
-              ),
-      ),
+      backgroundColor: ProviderColors.primaryButton, // #8B53FE
+      foregroundColor: Colors.white,
+      isLoading: _isLoading,
+      text: context.l10n.continueButtonText,
+      icon: const _ContinueArrowWidget(),
+      onTap: widget.onContinue ?? _handleContinue,
     );
   }
 }

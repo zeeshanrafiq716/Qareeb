@@ -63,7 +63,7 @@ class ProviderOnlineStatusText extends StatelessWidget {
 
   const ProviderOnlineStatusText({
     super.key,
-    this.isOnline = true,
+    this.isOnline = false,
     this.heading,
     this.subheading,
   });

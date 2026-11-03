@@ -109,97 +109,40 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                 ? math.min(844.0, (screenHeight - 32.0).clamp(520.0, 844.0))
                 : screenHeight;
 
-            final Widget screenContent = ScrollConfiguration(
-              behavior: const MaterialScrollBehavior().copyWith(
-                scrollbars: false,
-                dragDevices: {
-                  PointerDeviceKind.touch,
-                  PointerDeviceKind.mouse,
-                  PointerDeviceKind.trackpad,
-                  PointerDeviceKind.stylus,
-                },
-              ),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
-                child: SizedBox(
-                  width: containerWidth,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Top Map Section (width: containerWidth, height: 508.0, top: 0 to 508px)
-                      SizedBox(
-                        width: containerWidth,
-                        height: 508.0,
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            // 1. Live Step-Aware Dynamic Slippy Map Layer
-                            Positioned(
-                              top: 0.0,
-                              left: 0.0,
-                              width: containerWidth,
-                              height: 540.0,
-                              child: RealMapBackgroundWidget(
-                                enableDrag: true,
-                                zoom: 15.0,
-                                trackingStep: MapTrackingStep.onTheWay,
-                                driverName: widget.providerName,
-                                serviceCategory: widget.serviceCategory,
-                                vehicleName: 'Toyota Hilux',
-                                etaText: widget.duration,
-                                distanceText: widget.distance,
-                                showControls: true,
-                              ),
-                            ),
+            final Widget screenContent = SizedBox(
+              width: containerWidth,
+              height: containerHeight,
+              child: Stack(
+                children: [
+                  // 1. Live Step-Aware Dynamic Slippy Map Layer
+                  Positioned.fill(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 290.0),
+                      child: RealMapBackgroundWidget(
+                        enableDrag: true,
+                        zoom: 15.0,
+                        trackingStep: MapTrackingStep.onTheWay,
+                        driverName: widget.providerName,
+                        serviceCategory: widget.serviceCategory,
+                        vehicleName: 'Toyota Hilux',
+                        etaText: widget.duration,
+                        distanceText: widget.distance,
+                        showControls: true,
+                      ),
+                    ),
+                  ),
 
-                            // 2. Gradient Overlay Layer
-                            Positioned(
-                              top: 1.0,
-                              left: 0.0,
-                              width: containerWidth,
-                              height: 508.0,
-                              child: const IgnorePointer(
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      stops: [0.0214, 0.1705, 0.2693, 1.0],
-                                      colors: [
-                                        Color(0xFFFFFFFF),
-                                        Color(0xD6FFFFFF),
-                                        Color(0x00FFFFFF),
-                                        Color(0x00FFFFFF),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            // 7. Header with same previous branding:
-                            // width: 350; height: 36; gap: 16px; top: 56px; left: 20px;
-                            Positioned(
-                              top: 56.0,
-                              left: containerWidth >= 390
-                                  ? 20.0
-                                  : ((containerWidth - 350.0) / 2)
-                                      .clamp(10.0, 20.0),
-                              width: containerWidth >= 390
-                                  ? 350.0
-                                  : (containerWidth - 40.0).clamp(280.0, 350.0),
-                              height: 36.0,
-                              child: SizedBox(
-                                width: containerWidth >= 390
-                                    ? 350.0
-                                    : (containerWidth - 40.0)
-                                        .clamp(280.0, 350.0),
-                                height: 36.0,
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
+                  // 7. Header with same previous branding:
+                  Positioned(
+                    top: math.max(48.0, mediaQuery.padding.top + 8.0),
+                    left: 20.0,
+                    right: 20.0,
+                    height: 36.0,
+                    child: SizedBox(
+                      height: 36.0,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
                                     // Circular Back Button
                                     MouseRegion(
                                       cursor: SystemMouseCursors.click,
@@ -305,89 +248,72 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                 ),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
 
-                      // 8. Main Card Widget (Live Tracking Card):
-                      // width: 390; height: 336; top: 508px;
-                      // border-top-left-radius: 28px; border-top-right-radius: 28px;
-                      // angle: 0 deg; opacity: 1; background: #FFFFFF;
-                      // box-shadow: 0px -2px 12px 0px #00000014;
-                      Container(
-                        width: containerWidth >= 390 ? 390.0 : containerWidth,
-                        height: 336.0,
-                        constraints: const BoxConstraints(minHeight: 336.0),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFFFFFF),
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(28.0),
-                            topRight: Radius.circular(28.0),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0x14000000), // #00000014
-                              offset: Offset(0, -2),
-                              blurRadius: 12.0,
-                              spreadRadius: 0.0,
-                            ),
-                          ],
+                  // 8. Main Card Widget (Live Tracking Card):
+                  Positioned(
+                    bottom: 0.0,
+                    left: 0.0,
+                    right: 0.0,
+                    height: 336.0 + mediaQuery.padding.bottom,
+                    child: Container(
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFFFFFF),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(28.0),
+                          topRight: Radius.circular(28.0),
                         ),
-                        padding: const EdgeInsets.only(top: 12.0, bottom: 20.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Card top indicator handle (width: 40; height: 4; gap: 20px)
-                            Center(
-                              child: Container(
-                                width: 40.0,
-                                height: 4.0,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE5E7EB),
-                                  borderRadius: BorderRadius.circular(2.0),
-                                ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0x14000000), // #00000014
+                            offset: Offset(0, -2),
+                            blurRadius: 12.0,
+                            spreadRadius: 0.0,
+                          ),
+                        ],
+                      ),
+                      padding: EdgeInsets.only(
+                        top: 12.0,
+                        bottom: math.max(8.0, mediaQuery.padding.bottom),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Card top indicator handle (width: 40; height: 4; gap: 20px)
+                          Center(
+                            child: Container(
+                              width: 40.0,
+                              height: 4.0,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE5E7EB),
+                                borderRadius: BorderRadius.circular(2.0),
                               ),
                             ),
-                            const SizedBox(height: 16.0),
+                          ),
+                          const SizedBox(height: 16.0),
 
-                            // content layout (Scrollable):
-                            Expanded(
-                              child: ScrollConfiguration(
-                                behavior: const MaterialScrollBehavior().copyWith(
-                                  scrollbars: false,
-                                  dragDevices: {
-                                    PointerDeviceKind.touch,
-                                    PointerDeviceKind.mouse,
-                                    PointerDeviceKind.trackpad,
-                                    PointerDeviceKind.stylus,
-                                  },
+                          // content layout (Scrollable):
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                              child: SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(
+                                  parent: BouncingScrollPhysics(),
                                 ),
-                                child: SingleChildScrollView(
-                                  physics: const AlwaysScrollableScrollPhysics(
-                                    parent: BouncingScrollPhysics(),
-                                  ),
-                                  child: SizedBox(
-                                    width: containerWidth >= 390
-                                        ? 350.0
-                                        : (containerWidth - 40.0).clamp(280.0, 350.0),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                  // content inner layout:
-                                  // width: 350; height: 244.8000030517578; gap: 20px;
-                                  SizedBox(
-                                    width: containerWidth >= 390
-                                        ? 350.0
-                                        : (containerWidth - 40.0).clamp(280.0, 350.0),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
                                         // 1st row branding:
                                         // width: 350; height: 38; justify-content: space-between;
                                         SizedBox(
-                                          width: containerWidth >= 390
-                                              ? 350.0
-                                              : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                          width: double.infinity,
                                           height: 38.0,
                                           child: Row(
                                             mainAxisAlignment:
@@ -691,9 +617,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
 
                                         // Divider line matching screenshot
                                         Container(
-                                          width: containerWidth >= 390
-                                              ? 350.0
-                                              : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                          width: double.infinity,
                                           height: 1.0,
                                           color: const Color(0xFFF3F4F6),
                                         ),
@@ -703,9 +627,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                         // 2nd row: Toyota Hilux & Pickup & Delivery
                                         // width: 350; height: 10; justify-content: space-between; angle: 0 deg; opacity: 1;
                                         SizedBox(
-                                          width: containerWidth >= 390
-                                              ? 350.0
-                                              : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                          width: double.infinity,
                                           child: Row(
                                             mainAxisAlignment:
                                                 MainAxisAlignment.spaceBetween,
@@ -772,9 +694,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                         // 3rd section: metric cards row (3.8 km Distance Away & 6 min Estimated time)
                                         // width: 350; height: 64; gap: 12px;
                                         SizedBox(
-                                          width: containerWidth >= 390
-                                              ? 350.0
-                                              : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                          width: double.infinity,
                                           child: Row(
                                             children: [
                                               // 1st card branding: 3.8 km Distance Away
@@ -1012,9 +932,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                         // width: 350; height: 64; angle: 0 deg; opacity: 1; gap: 12px;
                                         // border-radius: 12px; padding: 16px; background: #F2F5F4;
                                         Container(
-                                          width: containerWidth >= 390
-                                              ? 350.0
-                                              : (containerWidth - 40.0).clamp(280.0, 350.0),
+                                          width: double.infinity,
                                           constraints:
                                               const BoxConstraints(minHeight: 64.0),
                                           padding: const EdgeInsets.symmetric(
@@ -1122,11 +1040,9 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                         ),
                       ),
 
-                            // Bottom Bar Layout: width: 390; height: 24;
+                            // Bottom Bar Layout
                             SizedBox(
-                              width: containerWidth >= 390
-                                  ? 390.0
-                                  : containerWidth,
+                              width: double.infinity,
                               height: 24.0,
                               child: Center(
                                 child: Container(
@@ -1144,11 +1060,10 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                           ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ),
-            );
+              );
 
             if (isDesktopWeb) {
               return Container(

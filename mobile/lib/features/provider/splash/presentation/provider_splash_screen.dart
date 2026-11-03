@@ -1,13 +1,15 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile/core/api/api_client.dart';
+import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
+import 'package:mobile/features/provider/auth/presentation/admin_approval_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/phone_verification_screen.dart';
+import 'package:mobile/features/provider/home/presentation/provider_home_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_bottom_content.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_branding_header.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_indicator_bar.dart';
-import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_splash_background.dart';
 
 /// Provider Splash Screen
@@ -39,8 +41,47 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Auto-transition to PhoneVerificationScreen after display (3.2 seconds)
-    _timer = Timer(const Duration(milliseconds: 3200), _navigateToVerification);
+    _startSplashFlow();
+  }
+
+  Future<void> _startSplashFlow() async {
+    // 1. Load persisted registration & session state
+    await ProviderRegistrationStore.instance.loadFromPrefs();
+
+    // 2. If token exists, sync status from backend in background
+    _syncStatusWithBackend();
+
+    // 3. Auto-transition after branding animation completes (2.8s)
+    _timer = Timer(const Duration(milliseconds: 2800), _navigateToNextScreen);
+  }
+
+  Future<void> _syncStatusWithBackend() async {
+    try {
+      final token = ProviderRegistrationStore.instance.data.authToken;
+      if (token != null && token.isNotEmpty) {
+        final client = ApiClient();
+        final response = await client.get('/api/v1/providers/me');
+        if (response.statusCode == 200 && response.data != null) {
+          final resData = response.data;
+          final payload = resData is Map<String, dynamic> && resData['data'] is Map<String, dynamic>
+              ? resData['data'] as Map<String, dynamic>
+              : (resData is Map<String, dynamic> ? resData : null);
+          if (payload != null && payload['status'] != null) {
+            final serverStatus = payload['status'].toString();
+            final isApproved = serverStatus == 'APPROVED';
+            final isPending = serverStatus == 'PENDING_VERIFICATION';
+            ProviderRegistrationStore.instance.update(
+              (data) => data.copyWith(
+                status: serverStatus,
+                isOnboardingCompleted: isApproved || isPending || data.isOnboardingCompleted,
+              ),
+            );
+          }
+        }
+      }
+    } catch (_) {
+      // Offline fallback: keep local persisted status
+    }
   }
 
   @override
@@ -52,12 +93,25 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
     }
   }
 
-  void _navigateToVerification() {
+  void _navigateToNextScreen() {
     if (!mounted) return;
     _timer?.cancel();
+
+    final data = ProviderRegistrationStore.instance.data;
+    final Widget destination;
+
+    // Check if onboarding & signup have been completed
+    if (data.status == 'APPROVED') {
+      destination = const ProviderHomeScreen();
+    } else if (data.isOnboardingCompleted || data.status == 'PENDING_VERIFICATION') {
+      destination = const AdminApprovalScreen();
+    } else {
+      destination = const PhoneVerificationScreen();
+    }
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => const PhoneVerificationScreen(),
+        pageBuilder: (_, _, _) => destination,
         transitionsBuilder: (_, animation, _, child) => FadeTransition(
           opacity: CurvedAnimation(
             parent: animation,
@@ -111,7 +165,7 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
 
             final Widget screenContent = GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: _navigateToVerification,
+              onTap: _navigateToNextScreen,
               child: Container(
                 width: containerWidth,
                 height: containerHeight,

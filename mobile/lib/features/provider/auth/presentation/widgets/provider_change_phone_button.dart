@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -9,33 +10,13 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 /// chnge button layout:
 ///   width: 350;
 ///   height: 52;
-///   angle: 0 deg;
-///   opacity: 1;
 ///   border-radius: 12px;
 ///   background: #F2F5F4;
 ///
-/// button content layout:
-///   width: 182;
-///   height: 12;
-///   angle: 0 deg;
-///   opacity: 1;
-///   gap: 12px;
-///   top: 20px;
-///   left: 84px;
-///
-/// arrow vector branding:
-///   width: 14;
-///   height: 12;
-///   angle: 0 deg;
-///   opacity: 1;
-///   border-width: 1.5px;
-///   border: 1.5px solid #1C2926;
-///
 /// content: Change Phone Number
 ///   font-family: Inter; font-weight: 500 (Medium); font-size: 14px;
-///   leading-trim: CAP_HEIGHT; line-height: 22px; letter-spacing: 0px;
+///   line-height: 22px;
 ///   color: #1C2926;
-///   width: 156; height: 10;
 class ProviderChangePhoneButton extends StatelessWidget {
   final VoidCallback? onTap;
 
@@ -50,41 +31,23 @@ class ProviderChangePhoneButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: 1.0, // opacity: 1
-      child: Transform.rotate(
-        angle: 0.0, // angle: 0 deg
-        child: SizedBox(
-          width: double.infinity,
-          height: designHeight,
-          child: Material(
-            color: ProviderColors.inputBackground, // background: #F2F5F4
-            borderRadius: BorderRadius.circular(12.0), // border-radius: 12px
-            child: InkWell(
-              onTap: onTap ?? () => Navigator.of(context).maybePop(),
-              borderRadius: BorderRadius.circular(12.0),
-              child: Center(
-                // button content layout: width: 182; height: 12; gap: 12px;
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // arrow vector branding: width: 14; height: 12; border: 1.5px solid #1C2926;
-                    const _BackArrowWidget(),
-
-                    const SizedBox(width: designGap), // gap: 12px
-
-                    // content: Change Phone Number (Inter 500 Medium 14px line-height 22px #1C2926)
-                    Text(
-                      context.l10n.changePhoneNumber,
-                      style: ProviderTextStyles.changePhoneButtonText,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+    return ProviderAnimatedButton(
+      height: designHeight,
+      backgroundColor: ProviderColors.inputBackground,
+      foregroundColor: ProviderColors.cardTitle,
+      isPrimary: false,
+      onTap: onTap ?? () => Navigator.of(context).maybePop(),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const _BackArrowWidget(),
+          const SizedBox(width: designGap),
+          Text(
+            context.l10n.changePhoneNumber,
+            style: ProviderTextStyles.changePhoneButtonText,
           ),
-        ),
+        ],
       ),
     );
   }

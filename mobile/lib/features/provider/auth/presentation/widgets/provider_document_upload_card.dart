@@ -52,6 +52,7 @@ class ProviderDocumentUploadCard extends StatelessWidget {
   final VoidCallback? onUpload;
   final bool isUploaded;
   final String? uploadedFileName;
+  final bool isRequired;
 
   const ProviderDocumentUploadCard({
     super.key,
@@ -63,6 +64,7 @@ class ProviderDocumentUploadCard extends StatelessWidget {
     this.onUpload,
     this.isUploaded = false,
     this.uploadedFileName,
+    this.isRequired = true,
   });
 
   static const double designWidth = 350.0;
@@ -144,11 +146,12 @@ class ProviderDocumentUploadCard extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Title: ProviderTextStyles.stepCardTitle
+                          // Title: ProviderTextStyles.stepCardTitle (no stars)
                           Text(
                             context.isArabic ? context.auto(title) : title,
                             style: ProviderTextStyles.stepCardTitle,
                             maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
 
                           const SizedBox(height: 3.0),

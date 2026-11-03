@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui' show PointerDeviceKind;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile/core/localization/app_locale.dart';
@@ -12,6 +13,7 @@ import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 import 'package:mobile/services/backend_service.dart';
 import 'package:mobile/services/location_service.dart';
+import 'package:mobile/services/location/web_location.dart';
 
 /// Provider Location Permission Screen
 /// Follows the exact same branding and visual design as the Customer side LocationPermissionScreen:
@@ -93,85 +95,107 @@ class _ProviderLocationPermissionScreenState
     HapticFeedback.lightImpact();
 
     try {
-      // 1. Check if location is turned ON on the device
-      final bool isServiceEnabled = await _locationService.isLocationServiceEnabled();
-      if (!isServiceEnabled) {
-        if (mounted) {
-          setState(() {
-            _isLocating = false;
-            _statusMessage = null;
-          });
-          _showMobileLocationSettingsDialog();
-        }
-        return;
+      // On native mobile (Android/iOS), check if GPS service switch is completely OFF
+      if (!kIsWeb) {
+        try {
+          final bool isServiceEnabled = await _locationService.isLocationServiceEnabled();
+          if (!isServiceEnabled) {
+            if (mounted) {
+              setState(() {
+                _isLocating = false;
+                _statusMessage = null;
+              });
+              _showMobileLocationSettingsDialog();
+            }
+            return;
+          }
+        } catch (_) {}
       }
 
-      // 2. Location is ON -> Acquire real device GPS/browser coordinates
-      final UserLocation userLocation = await _locationService.acquireDeviceLocation();
+      UserLocation? detectedLocation;
 
-      // 3. Persist real coordinates in ProviderRegistrationStore
+      // 1. Try real GPS/browser coordinate detection with safe 5-second timeout
+      try {
+        detectedLocation = await _locationService
+            .acquireDeviceLocation()
+            .timeout(const Duration(seconds: 5));
+      } catch (locErr) {
+        debugPrint('acquireDeviceLocation error: $locErr, trying browser coordinates fallback');
+      }
+
+      // 2. If primary detection did not resolve, try direct browser coordinates
+      if (detectedLocation == null) {
+        try {
+          final browserCoords = await getBrowserCoordinates().timeout(const Duration(seconds: 4));
+          if (browserCoords != null && browserCoords['latitude'] != null && browserCoords['longitude'] != null) {
+            final lat = browserCoords['latitude']!;
+            final lng = browserCoords['longitude']!;
+            detectedLocation = UserLocation(
+              latitude: lat,
+              longitude: lng,
+              cityName: 'GPS (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})',
+              address: 'Current Location',
+              isGpsDetected: true,
+              accuracy: browserCoords['accuracy'],
+            );
+          }
+        } catch (_) {}
+      }
+
+      // 3. If still null (e.g., desktop browser without GPS hardware), use default coordinates
+      detectedLocation ??= const UserLocation(
+        latitude: 24.7136,
+        longitude: 46.6753,
+        cityName: 'Riyadh',
+        address: 'Riyadh, Saudi Arabia',
+        isGpsDetected: false,
+      );
+
+      // 4. Persist real coordinates in ProviderRegistrationStore
       ProviderRegistrationStore.instance.update(
         (data) => data.copyWith(
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
-          status: 'PENDING_APPROVAL',
+          latitude: detectedLocation!.latitude,
+          longitude: detectedLocation.longitude,
+          status: 'PENDING_VERIFICATION',
+          isOnboardingCompleted: true,
         ),
       );
 
-      // 4. Update backend with real coordinates
-      try {
-        final backend = BackendService(ApiClient());
-        await backend.updateProviderLocation(
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
-          address: userLocation.address,
-        );
-      } catch (_) {}
+      // 5. Update backend asynchronously without blocking navigation
+      _syncLocationToBackend(detectedLocation);
 
       if (!mounted) return;
-      setState(() {
-        _isLocating = false;
-        _statusMessage = null;
-      });
 
-      // 5. Navigate to Admin Approval Screen
+      // 6. Navigate directly to Admin Approval Screen
       _navigateToNextScreen();
-    } on LocationServiceDisabledException {
+    } catch (e) {
+      debugPrint('Unexpected error in _handleAllowLocation: $e');
+      if (mounted) {
+        _navigateToNextScreen();
+      }
+    } finally {
       if (mounted) {
         setState(() {
           _isLocating = false;
           _statusMessage = null;
         });
-        _showMobileLocationSettingsDialog();
-      }
-    } catch (_) {
-      final bool stillEnabled = await _locationService.isLocationServiceEnabled();
-      if (!stillEnabled) {
-        if (mounted) {
-          setState(() {
-            _isLocating = false;
-            _statusMessage = null;
-          });
-          _showMobileLocationSettingsDialog();
-        }
-      } else {
-        // Fallback coordinates if hardware reading timed out
-        ProviderRegistrationStore.instance.update(
-          (data) => data.copyWith(
-            latitude: 24.7136,
-            longitude: 46.6753,
-            status: 'PENDING_APPROVAL',
-          ),
-        );
-        if (mounted) {
-          setState(() {
-            _isLocating = false;
-            _statusMessage = null;
-          });
-          _navigateToNextScreen();
-        }
       }
     }
+  }
+
+  void _syncLocationToBackend(UserLocation location) {
+    Future(() async {
+      try {
+        final backend = BackendService(ApiClient());
+        await backend.updateProviderLocation(
+          latitude: location.latitude,
+          longitude: location.longitude,
+          address: location.address,
+        );
+      } catch (e) {
+        debugPrint('Backend location sync error: $e');
+      }
+    });
   }
 
   void _navigateToNextScreen() {
@@ -573,13 +597,11 @@ class _ProviderLocationPermissionScreenState
                         ),
 
                         // 7. "Nearby Providers" Badges Branding:
-                        // width: 112; height: 54; top: 150px; left: 20px;
+                        // width: 148; height: 54; top: 146px; left: 14px;
                         Positioned(
-                          top: 150.0,
-                          left: containerWidth >= 390
-                              ? 20.0
-                              : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                          width: 112.0,
+                          top: 146.0,
+                          left: 14.0,
+                          width: 148.0,
                           height: 54.0,
                           child: CustomPaint(
                             painter: const _TooltipBubblePainter(
@@ -587,45 +609,48 @@ class _ProviderLocationPermissionScreenState
                               shadowColor: Color(0x0F000000), // #0000000F
                               blurRadius: 8.0,
                               shadowOffset: Offset(0, 1),
-                              tailX: 76.0,
+                              tailX: 110.0,
                             ),
                             child: Align(
                               alignment: Alignment.topLeft,
                               child: Container(
-                                width: 112.0,
+                                width: 148.0,
                                 height: 44.0,
-                                padding: const EdgeInsets.only(
-                                  top: 8.0,
-                                  right: 12.0,
-                                  bottom: 8.0,
-                                  left: 8.0,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10.0,
+                                  vertical: 8.0,
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     Container(
-                                      width: 28.0,
-                                      height: 28.0,
+                                      width: 26.0,
+                                      height: 26.0,
                                       decoration: const BoxDecoration(
                                         shape: BoxShape.circle,
                                         color: Color(0xFFF0EAFE),
                                       ),
                                       child: const Center(
                                         child: CustomPaint(
-                                          size: Size(16.0, 14.0),
+                                          size: Size(15.0, 13.0),
                                           painter: _NearbyPinPainter(
                                             color: Color(0xFF8B53FE),
                                           ),
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 10.0),
-                                    SizedBox(
-                                      width: 54.0,
-                                      height: 24.0,
+                                    const SizedBox(width: 8.0),
+                                    Expanded(
                                       child: Text(
                                         context.l10n.nearbyProviders,
-                                        style: ProviderTextStyles.securityNotice,
+                                        style: ProviderTextStyles.securityNotice.copyWith(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: const Color(0xFF1C2926),
+                                        ),
+                                        maxLines: 1,
+                                        softWrap: false,
+                                        overflow: TextOverflow.visible,
                                       ),
                                     ),
                                   ],
@@ -636,13 +661,11 @@ class _ProviderLocationPermissionScreenState
                         ),
 
                         // 8. "Fast Delivery" Badges Branding (2nd badge):
-                        // width: 105; height: 54; top: 130px; left: 265px;
+                        // width: 124; height: 54; top: 126px; right: 14px;
                         Positioned(
-                          top: 130.0,
-                          left: containerWidth >= 390
-                              ? 265.0
-                              : (containerWidth - 105.0 - 15.0).clamp(160.0, 265.0),
-                          width: 105.0,
+                          top: 126.0,
+                          right: 14.0,
+                          width: 124.0,
                           height: 54.0,
                           child: CustomPaint(
                             painter: const _TooltipBubblePainter(
@@ -655,40 +678,43 @@ class _ProviderLocationPermissionScreenState
                             child: Align(
                               alignment: Alignment.topLeft,
                               child: Container(
-                                width: 105.0,
+                                width: 124.0,
                                 height: 44.0,
-                                padding: const EdgeInsets.only(
-                                  top: 8.0,
-                                  right: 12.0,
-                                  bottom: 8.0,
-                                  left: 8.0,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10.0,
+                                  vertical: 8.0,
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     Container(
-                                      width: 28.0,
-                                      height: 28.0,
+                                      width: 26.0,
+                                      height: 26.0,
                                       decoration: const BoxDecoration(
                                         shape: BoxShape.circle,
                                         color: Color(0xFFF0EAFE),
                                       ),
                                       child: const Center(
                                         child: CustomPaint(
-                                          size: Size(16.0, 12.0),
+                                          size: Size(15.0, 11.0),
                                           painter: _FastDeliveryCarPainter(
                                             color: Color(0xFF8B53FE),
                                           ),
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 10.0),
-                                    SizedBox(
-                                      width: 47.0,
-                                      height: 24.0,
+                                    const SizedBox(width: 8.0),
+                                    Expanded(
                                       child: Text(
                                         context.l10n.fastDelivery,
-                                        style: ProviderTextStyles.securityNotice,
+                                        style: ProviderTextStyles.securityNotice.copyWith(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: const Color(0xFF1C2926),
+                                        ),
+                                        maxLines: 1,
+                                        softWrap: false,
+                                        overflow: TextOverflow.visible,
                                       ),
                                     ),
                                   ],
@@ -699,13 +725,11 @@ class _ProviderLocationPermissionScreenState
                         ),
 
                         // 9. "Real-time Tracking" Badges Branding (3rd badge):
-                        // width: 113; height: 54; top: 270px; left: 251px;
+                        // width: 154; height: 54; top: 268px; right: 14px;
                         Positioned(
-                          top: 270.0,
-                          left: containerWidth >= 390
-                              ? 251.0
-                              : (containerWidth - 113.0 - 20.0).clamp(140.0, 251.0),
-                          width: 113.0,
+                          top: 268.0,
+                          right: 14.0,
+                          width: 154.0,
                           height: 54.0,
                           child: CustomPaint(
                             painter: const _TooltipBubblePainter(
@@ -718,20 +742,18 @@ class _ProviderLocationPermissionScreenState
                             child: Align(
                               alignment: Alignment.topLeft,
                               child: Container(
-                                width: 113.0,
+                                width: 154.0,
                                 height: 44.0,
-                                padding: const EdgeInsets.only(
-                                  top: 8.0,
-                                  right: 12.0,
-                                  bottom: 8.0,
-                                  left: 8.0,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10.0,
+                                  vertical: 8.0,
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     Container(
-                                      width: 28.0,
-                                      height: 28.0,
+                                      width: 26.0,
+                                      height: 26.0,
                                       decoration: const BoxDecoration(
                                         shape: BoxShape.circle,
                                         color: Color(0xFFF0EAFE),
@@ -745,13 +767,18 @@ class _ProviderLocationPermissionScreenState
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 10.0),
-                                    SizedBox(
-                                      width: 55.0,
-                                      height: 24.0,
+                                    const SizedBox(width: 8.0),
+                                    Expanded(
                                       child: Text(
                                         context.l10n.realtimeTracking,
-                                        style: ProviderTextStyles.securityNotice,
+                                        style: ProviderTextStyles.securityNotice.copyWith(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: const Color(0xFF1C2926),
+                                        ),
+                                        maxLines: 1,
+                                        softWrap: false,
+                                        overflow: TextOverflow.visible,
                                       ),
                                     ),
                                   ],

@@ -106,6 +106,30 @@ providerRoutes.put(
   }),
 );
 
+providerRoutes.get(
+  "/me/documents",
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    const docStatus = await providerService.getProviderDocumentsStatus(
+      req.provider.client || null,
+      req.provider.id,
+    );
+    ok(res, docStatus);
+  }),
+);
+
+providerRoutes.post(
+  "/me/verification/check-all",
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    const docStatus = await providerService.assertAllCompulsoryDocumentsSubmitted(
+      req.provider.client || null,
+      req.provider.id,
+    );
+    ok(res, { success: true, ...docStatus });
+  }),
+);
+
 providerRoutes.post(
   "/me/verification",
   requireProvider,

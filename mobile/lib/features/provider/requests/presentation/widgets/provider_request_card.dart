@@ -218,25 +218,25 @@ class ProviderRequestCard extends StatelessWidget {
               onTap: onTap,
               borderRadius: BorderRadius.circular(12.0),
               child: Padding(
-                padding: const EdgeInsets.all(16.0), // padding: 16px
+                padding: const EdgeInsets.all(14.0), // equal content padding: 14px
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // 1. img layout: width: 92; height: 92; angle: 0 deg; opacity: 1; border-radius: 12px;
+                    // 1. img layout: 88 x 88; border-radius: 10px;
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(12.0),
+                      borderRadius: BorderRadius.circular(10.0),
                       child: Image.asset(
                         effectiveImage,
-                        width: 92.0,
-                        height: 92.0,
+                        width: 88.0,
+                        height: 88.0,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return Container(
-                            width: 92.0,
-                            height: 92.0,
+                            width: 88.0,
+                            height: 88.0,
                             decoration: BoxDecoration(
                               color: const Color(0xFFF3F2F5),
-                              borderRadius: BorderRadius.circular(12.0),
+                              borderRadius: BorderRadius.circular(10.0),
                             ),
                             child: const Center(
                               child: Icon(
@@ -250,238 +250,242 @@ class ProviderRequestCard extends StatelessWidget {
                       ),
                     ),
 
-                    // gap: 16px;
-                    const SizedBox(width: 16.0),
+                    // equal gap: 14px
+                    const SizedBox(width: 14.0),
 
-                    // 2. content layout: width: 210; height: 92; justify-content: space-between;
+                    // 2. content layout: equal gap between all 4 content rows
                     Expanded(
-                      child: SizedBox(
-                        height: 92.0,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Text columns: 1st, 2nd, 3rd, 4th row layouts
-                            Expanded(
-                              child: Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // 1st row content layout: width: 203; height: 19; gap: 76px;
-                                  SizedBox(
-                                    height: 19.0,
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        // Badge Pill: height: 19; border-radius: 20px;
-                                        Container(
-                                          height: 19.0,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8.0,
-                                            vertical: 2.0,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: effectiveBadgeBgColor,
-                                            borderRadius:
-                                                BorderRadius.circular(20.0),
-                                          ),
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            effectiveBadge,
-                                            style: (isArabic
-                                                ? GoogleFonts.cairo
-                                                : GoogleFonts.inter)(
-                                              fontSize: isArabic ? 10.0 : 10.5,
-                                              fontWeight: FontWeight.w500,
-                                              color: effectiveBadgeTextColor,
-                                              height: 1.0,
-                                            ),
-                                          ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Text columns with equal 7px vertical gaps
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // 1st row content layout: Badge + Time
+                                SizedBox(
+                                  height: 19.0,
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      // Badge Pill: height: 19; border-radius: 20px;
+                                      Container(
+                                        height: 19.0,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8.0,
+                                          vertical: 2.0,
                                         ),
-
-                                        // Time Text (e.g. 10:24 PM):
-                                        Text(
-                                          effectiveTime,
+                                        decoration: BoxDecoration(
+                                          color: effectiveBadgeBgColor,
+                                          borderRadius:
+                                              BorderRadius.circular(20.0),
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          effectiveBadge,
                                           style: (isArabic
                                               ? GoogleFonts.cairo
                                               : GoogleFonts.inter)(
-                                            fontSize: 11.0,
-                                            fontWeight: FontWeight.w400,
-                                            color: const Color(0xFF616166),
+                                            fontSize: isArabic ? 10.0 : 10.5,
+                                            fontWeight: FontWeight.w500,
+                                            color: effectiveBadgeTextColor,
                                             height: 1.0,
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ),
+                                      ),
 
-                                  // 2nd row content layout:
-                                  // Battery Jump Start: font-family: Inter; font-weight: 500; font-size: 12px;
-                                  // line-height: 24px; color: #252527;
-                                  Text(
+                                      // Time Text (e.g. Just now / 5 min ago):
+                                      Text(
+                                        effectiveTime,
+                                        style: (isArabic
+                                            ? GoogleFonts.cairo
+                                            : GoogleFonts.inter)(
+                                          fontSize: 11.0,
+                                          fontWeight: FontWeight.w400,
+                                          color: const Color(0xFF616166),
+                                          height: 1.0,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                const SizedBox(height: 7.0), // equal gap: 7px
+
+                                // 2nd row: Service Title (no ellipsis / ...)
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: AlignmentDirectional.centerStart,
+                                  child: Text(
                                     effectiveTitle,
                                     maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                     style: (isArabic
                                         ? GoogleFonts.cairo
                                         : GoogleFonts.inter)(
-                                      fontSize: isArabic ? 12.5 : 12.0,
+                                      fontSize: isArabic ? 13.0 : 12.5,
                                       fontWeight: FontWeight.w600,
                                       color: const Color(0xFF252527),
-                                      height: 1.2,
+                                      height: 1.15,
                                     ),
                                   ),
+                                ),
 
-                                  // 3rd row layout: width: 203; height: 20; gap: 8px;
-                                  SizedBox(
-                                    height: 20.0,
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        // 3rd row img layout: width: 20; height: 20;
-                                        ClipOval(
-                                          child: Image.asset(
-                                            effectiveAvatar,
-                                            width: 20.0,
-                                            height: 20.0,
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
-                                              return Container(
-                                                width: 20.0,
-                                                height: 20.0,
-                                                decoration: const BoxDecoration(
-                                                  color: Color(0xFFE5E7EB),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: const Icon(
-                                                  Icons.person_rounded,
-                                                  size: 13.0,
-                                                  color: Color(0xFF616166),
-                                                ),
-                                              );
-                                            },
-                                          ),
+                                const SizedBox(height: 7.0), // equal gap: 7px
+
+                                // 3rd row layout: Avatar + Customer Name (no ellipsis / ...)
+                                SizedBox(
+                                  height: 20.0,
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      ClipOval(
+                                        child: Image.asset(
+                                          effectiveAvatar,
+                                          width: 20.0,
+                                          height: 20.0,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                            return Container(
+                                              width: 20.0,
+                                              height: 20.0,
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFFE5E7EB),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.person_rounded,
+                                                size: 13.0,
+                                                color: Color(0xFF616166),
+                                              ),
+                                            );
+                                          },
                                         ),
+                                      ),
 
-                                        // gap: 8px;
-                                        const SizedBox(width: 8.0),
+                                      const SizedBox(width: 8.0),
 
-                                        // Ahmed Khan: width: 73; height: 9; font-family: Inter;
-                                        // font-weight: 400; font-size: 12px; color: #252527;
-                                        Expanded(
+                                      Expanded(
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          alignment: AlignmentDirectional.centerStart,
                                           child: Text(
                                             effectiveCustomer,
                                             maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
                                             style: (isArabic
                                                 ? GoogleFonts.cairo
                                                 : GoogleFonts.inter)(
-                                              fontSize: isArabic ? 11.5 : 12.0,
+                                              fontSize: isArabic ? 12.0 : 12.0,
                                               fontWeight: FontWeight.w400,
                                               color: const Color(0xFF252527),
-                                              height: 1.2,
+                                              height: 1.15,
                                             ),
                                           ),
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
+                                ),
 
-                                  // 4th row layout: width: 203; height: 10; gap: 8px;
-                                  SizedBox(
-                                    height: 12.0,
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        // location vector layout: width: 9; height: 10; background: #616166;
-                                        const SizedBox(
-                                          width: 9.0,
-                                          height: 10.0,
-                                          child: CustomPaint(
-                                            painter: _LocationPinPainter(
-                                              color: Color(0xFF616166),
-                                            ),
+                                const SizedBox(height: 7.0), // equal gap: 7px
+
+                                // 4th row layout: Location Pin + Location + Bullet + Distance (no ellipsis / ...)
+                                SizedBox(
+                                  height: 14.0,
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      // location vector
+                                      const SizedBox(
+                                        width: 9.0,
+                                        height: 10.0,
+                                        child: CustomPaint(
+                                          painter: _LocationPinPainter(
+                                            color: Color(0xFF616166),
                                           ),
                                         ),
+                                      ),
 
-                                        const SizedBox(width: 4.0),
+                                      const SizedBox(width: 4.0),
 
-                                        // King Abdullah Rd, Riyadh: font-family: Inter; font-weight: 400; font-size: 10px; color: #616166;
-                                        Flexible(
+                                      // Location text without ellipsis
+                                      Flexible(
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          alignment: AlignmentDirectional.centerStart,
                                           child: Text(
                                             effectiveLocation,
                                             maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
                                             style: (isArabic
                                                 ? GoogleFonts.cairo
                                                 : GoogleFonts.inter)(
-                                              fontSize: 10.0,
+                                              fontSize: 10.5,
                                               fontWeight: FontWeight.w400,
                                               color: const Color(0xFF616166),
                                               height: 1.0,
                                             ),
                                           ),
                                         ),
+                                      ),
 
-                                        // gap: 8px;
-                                        const SizedBox(width: 6.0),
+                                      const SizedBox(width: 6.0),
 
-                                        // ellipse branding: width: 4; height: 4; background: #616166;
-                                        Container(
-                                          width: 4.0,
-                                          height: 4.0,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFF616166),
-                                            shape: BoxShape.circle,
-                                          ),
+                                      // bullet point
+                                      Container(
+                                        width: 3.5,
+                                        height: 3.5,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFF616166),
+                                          shape: BoxShape.circle,
                                         ),
+                                      ),
 
-                                        // gap: 8px;
-                                        const SizedBox(width: 6.0),
+                                      const SizedBox(width: 6.0),
 
-                                        // 4.1km: font-family: Inter; font-weight: 400; font-size: 10px; color: #616166;
-                                        Text(
-                                          effectiveDistance,
-                                          style: (isArabic
-                                              ? GoogleFonts.cairo
-                                              : GoogleFonts.inter)(
-                                            fontSize: 10.0,
-                                            fontWeight: FontWeight.w400,
-                                            color: const Color(0xFF616166),
-                                            height: 1.0,
-                                          ),
+                                      // Distance text
+                                      Text(
+                                        effectiveDistance,
+                                        style: (isArabic
+                                            ? GoogleFonts.cairo
+                                            : GoogleFonts.inter)(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w400,
+                                          color: const Color(0xFF616166),
+                                          height: 1.0,
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
+                          ),
 
-                            // Right Side > Chevron (matching screenshot)
-                            if (showChevron) ...[
-                              const SizedBox(width: 6.0),
-                              Transform.flip(
-                                flipX: isArabic || Directionality.of(context) == TextDirection.rtl,
-                                child: const SizedBox(
-                                  width: 6.5,
-                                  height: 13.0,
-                                  child: CustomPaint(
-                                    painter: _CardChevronPainter(
-                                      color: Color(0xFF616166),
-                                    ),
+                          // Right Side > Chevron
+                          if (showChevron) ...[
+                            const SizedBox(width: 8.0),
+                            Transform.flip(
+                              flipX: isArabic || Directionality.of(context) == TextDirection.rtl,
+                              child: const SizedBox(
+                                width: 6.5,
+                                height: 13.0,
+                                child: CustomPaint(
+                                  painter: _CardChevronPainter(
+                                    color: Color(0xFF616166),
                                   ),
                                 ),
                               ),
-                            ],
+                            ),
                           ],
-                        ),
+                        ],
                       ),
                     ),
                   ],

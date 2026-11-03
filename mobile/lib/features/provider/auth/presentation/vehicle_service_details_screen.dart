@@ -5,8 +5,6 @@ import 'package:mobile/features/provider/auth/presentation/widgets/provider_vehi
 import 'package:mobile/features/provider/auth/presentation/widgets/vehicle_service_details_form_layout.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 
-import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
-
 /// Vehicle & Service Details Screen (Screen 6)
 /// Appears when user taps "Continue" on the Provider Profile Details Screen.
 /// Follows exact previous screen header branding and layout:
@@ -32,8 +30,7 @@ class VehicleServiceDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TEMPORARY: Screen 1 & 2 hidden per user request; directly presenting UploadDocumentsScreen.
-    return const UploadDocumentsScreen();
+    return _buildOriginal(context);
   }
 
   Widget _buildOriginal(BuildContext context) {

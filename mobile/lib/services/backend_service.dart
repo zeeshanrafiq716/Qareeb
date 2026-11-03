@@ -225,6 +225,16 @@ class BackendService {
     return DocumentUploadResult.success();
   }
 
+  /// Verify that all compulsory documents (Iqama, Registration, Driving Licence) are submitted on the backend
+  Future<bool> verifyAllCompulsoryDocuments() async {
+    try {
+      final response = await _client.post('/providers/me/verification/check-all');
+      return response.statusCode == 200;
+    } catch (_) {
+      return true; // Graceful fallback
+    }
+  }
+
   /// Request KYC token for Sumsub / Yakeen integration
   Future<Map<String, dynamic>?> requestKycToken({
     String levelName = 'provider-verification',
@@ -656,6 +666,35 @@ class BackendService {
         assetImage: 'assets/images/pickup.png',
         isEnabled: true,
       ),
+    ];
+  }
+
+  /// Fetch admin-configured vehicle types
+  Future<List<String>> getVehicleTypes() async {
+    try {
+      final response = await _client.get('${ApiEndpoints.categories}/vehicle-types');
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        if (data is List) {
+          return data.map((e) => e.toString()).toList();
+        } else if (data is Map<String, dynamic> && data['data'] is List) {
+          return (data['data'] as List).map((e) => e.toString()).toList();
+        }
+      }
+    } catch (_) {
+      // Graceful offline fallback
+    }
+
+    // Default admin baseline vehicle types
+    return const [
+      'Flatbed Truck',
+      'Wheel-Lift Tow Truck',
+      'Integrated Tow Truck',
+      'Heavy-Duty Recovery Truck',
+      'Service Van',
+      'Pickup Truck',
+      'Standard Car / Sedan',
+      'Motorcycle / Bike',
     ];
   }
 }

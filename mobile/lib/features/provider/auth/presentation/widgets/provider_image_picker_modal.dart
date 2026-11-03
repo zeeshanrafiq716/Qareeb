@@ -87,6 +87,7 @@ class ProviderImagePickerModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isArabic = context.isArabic;
+    final double bottomInset = MediaQuery.of(context).padding.bottom;
 
     return Container(
       decoration: const BoxDecoration(
@@ -100,8 +101,17 @@ class ProviderImagePickerModal extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 28.0),
-      child: Column(
+      child: SafeArea(
+        top: false,
+        bottom: true,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            20.0,
+            12.0,
+            20.0,
+            bottomInset > 0 ? 20.0 : 32.0,
+          ),
+          child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -202,7 +212,9 @@ class ProviderImagePickerModal extends StatelessWidget {
           ],
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 }
 

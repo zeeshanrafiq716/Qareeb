@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -48,6 +49,7 @@ class RealMapBackgroundWidget extends ConsumerStatefulWidget {
   final Widget? overlay;
   final BorderRadius? borderRadius;
   final Color? tintColor;
+  final double blurSigma;
   final MapTrackingStep trackingStep;
   final String? driverName;
   final String? serviceCategory;
@@ -67,6 +69,7 @@ class RealMapBackgroundWidget extends ConsumerStatefulWidget {
     this.overlay,
     this.borderRadius,
     this.tintColor,
+    this.blurSigma = 0.0,
     this.trackingStep = MapTrackingStep.none,
     this.driverName,
     this.serviceCategory,
@@ -280,7 +283,7 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
 
         final Offset userScreenPos = toScreen(userLat, userLng);
 
-        return Stack(
+        Widget baseMapLayer = Stack(
           children: [
             // Baseline background image while tiles load
             Positioned.fill(
@@ -300,6 +303,23 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
                 ),
               ),
             ),
+          ],
+        );
+
+        if (widget.blurSigma > 0) {
+          baseMapLayer = ImageFiltered(
+            imageFilter: ui.ImageFilter.blur(
+              sigmaX: widget.blurSigma,
+              sigmaY: widget.blurSigma,
+              tileMode: TileMode.decal,
+            ),
+            child: baseMapLayer,
+          );
+        }
+
+        return Stack(
+          children: [
+            Positioned.fill(child: baseMapLayer),
 
             // Step-based Functional Map Tracking Layers
             if (widget.trackingStep == MapTrackingStep.onTheWay ||

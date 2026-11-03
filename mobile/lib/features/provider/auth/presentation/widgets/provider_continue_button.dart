@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/vehicle_service_details_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -62,56 +63,17 @@ class ProviderContinueButton extends StatelessWidget {
         ? ProviderTextStyles.continueButtonText
         : ProviderTextStyles.backToHomeDarkButtonText;
 
-    return Opacity(
-      opacity: 1.0, // opacity: 1
-      child: Transform.rotate(
-        angle: 0.0, // angle: 0 deg
-        child: SizedBox(
-          width: width,
-          height: height,
-          child: ElevatedButton(
-            onPressed: isLoading
-                ? null
-                : (onTap ?? () => _defaultOnTap(context)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: backgroundColor,
-              foregroundColor: foregroundColor,
-              elevation: 0,
-              shadowColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.0), // border-radius: 12px
-              ),
-              padding: EdgeInsets.zero,
-            ),
-            child: isLoading
-                ? SizedBox(
-                    width: 20.0,
-                    height: 20.0,
-                    child: CircularProgressIndicator(
-                      color: foregroundColor,
-                      strokeWidth: 2.0,
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // content: Continue
-                      Text(
-                        title ?? context.l10n.continueButtonText,
-                        style: textStyle,
-                      ),
-
-                      // gap: 12px;
-                      const SizedBox(width: designGap),
-
-                      // arrow icon branding: width: 14; height: 12; border: 1.5px solid #FFFFFF
-                      icon ?? _ContinueArrowWidget(color: foregroundColor),
-                    ],
-                  ),
-          ),
-        ),
-      ),
+    return ProviderAnimatedButton(
+      width: width,
+      height: height,
+      backgroundColor: backgroundColor,
+      foregroundColor: foregroundColor,
+      isLoading: isLoading,
+      isPrimary: isPrimary,
+      text: title ?? context.l10n.continueButtonText,
+      textStyle: textStyle,
+      icon: icon ?? _ContinueArrowWidget(color: foregroundColor),
+      onTap: onTap ?? () => _defaultOnTap(context),
     );
   }
 

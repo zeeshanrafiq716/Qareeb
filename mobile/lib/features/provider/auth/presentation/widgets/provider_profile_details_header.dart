@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_header_back_button.dart';
@@ -19,8 +20,8 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 /// follow previous screen header branding:
 ///   - 36x36 circular white back button with subtle shadow and `<` vector
 ///   - gap: 16px
-///   - Title: "Provider Profile Details" (Inter 600 SemiBold 16px #1C2926)
-///   - Subtitle: "Enter your personal details to continue." (Inter 400 Regular 12px #566663)
+///   - Title: "Personal Information"
+///   - Animated language toggle on top right
 class ProviderProfileDetailsHeader extends StatelessWidget {
   final String? title;
   final String? subtitle;
@@ -58,7 +59,7 @@ class ProviderProfileDetailsHeader extends StatelessWidget {
               // gap: 12px;
               const SizedBox(width: designGap),
 
-              // 2. Content: Title + Subtitle
+              // 2. Content: Title (+ optional Subtitle)
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -69,25 +70,33 @@ class ProviderProfileDetailsHeader extends StatelessWidget {
                       fit: BoxFit.scaleDown,
                       alignment: AlignmentDirectional.centerStart,
                       child: Text(
-                        title != null ? (context.isArabic ? context.auto(title) : title!) : context.l10n.providerProfileDetails,
-                        style: ProviderTextStyles.profileDetailsHeaderTitle,
+                        title != null
+                            ? (context.isArabic ? context.auto(title) : title!)
+                            : (context.isArabic ? 'المعلومات الشخصية' : 'Personal Information'),
+                        style: GoogleFonts.inter(
+                          fontSize: 18.0,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1C2926),
+                        ),
                         maxLines: 1,
                       ),
                     ),
-                    const SizedBox(height: 2.0),
-                    Text(
-                      subtitle != null ? (context.isArabic ? context.auto(subtitle) : subtitle!) : context.l10n.enterPersonalDetailsToContinue,
-                      style: ProviderTextStyles.profileDetailsHeaderSubtitle,
-                      maxLines: 2,
-                      softWrap: true,
-                    ),
+                    if (subtitle != null && subtitle!.isNotEmpty) ...[
+                      const SizedBox(height: 2.0),
+                      Text(
+                        context.isArabic ? context.auto(subtitle) : subtitle!,
+                        style: ProviderTextStyles.profileDetailsHeaderSubtitle,
+                        maxLines: 2,
+                        softWrap: true,
+                      ),
+                    ],
                   ],
                 ),
               ),
 
               const SizedBox(width: 12.0),
 
-              // 3. Animated Language Toggle in header
+              // 3. Animated Language Toggle in header (strictly preserved)
               const ProviderAnimatedLanguageToggle.compact(),
             ],
           ),

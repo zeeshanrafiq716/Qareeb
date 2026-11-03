@@ -211,18 +211,16 @@ class _ProviderStatCard extends StatelessWidget {
               onTap: onTap,
               borderRadius: BorderRadius.circular(12.0),
               child: Padding(
-                padding: const EdgeInsets.all(16.0), // padding: 16px
+                padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 16.0),
                 child: SizedBox(
-                  width: 137.0, // card inner branding width: 137
-                  height: 36.0, // card inner branding height: 36
+                  width: double.infinity,
+                  height: 36.0,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween, // justify-content: space-between
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // content layout branding: width: 119; height: 36; gap: 10px;
-                      SizedBox(
-                        width: 119.0,
-                        height: 36.0,
+                      // content layout
+                      Expanded(
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
@@ -252,68 +250,71 @@ class _ProviderStatCard extends StatelessWidget {
                             // gap: 10px
                             const SizedBox(width: 10.0),
 
-                            // Text column
+                            // Text column with explicit right padding to separate from chevron
                             Expanded(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: AlignmentDirectional.centerStart,
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // content: value (32 / 19)
-                                    // width: 18; height: 10; font-family: Inter; font-weight: 500; font-size: 14px;
-                                    // leading-trim: CAP_HEIGHT; line-height: 22px; color: #252527
-                                    Opacity(
-                                      opacity: 1.0, // opacity: 1
-                                      child: Transform.rotate(
-                                        angle: 0.0, // angle: 0 deg
-                                        child: Text(
-                                          value,
-                                          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                            fontSize: 14.0,
-                                            fontWeight: FontWeight.w500,
-                                            color: const Color(0xFF252527),
-                                            height: isArabic ? 1.05 : 1.15,
-                                            letterSpacing: 0.0,
+                              child: Padding(
+                                padding: const EdgeInsetsDirectional.only(end: 10.0),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: AlignmentDirectional.centerStart,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // content: value (32 / 19)
+                                      // width: 18; height: 10; font-family: Inter; font-weight: 500; font-size: 14px;
+                                      // leading-trim: CAP_HEIGHT; line-height: 22px; color: #252527
+                                      Opacity(
+                                        opacity: 1.0, // opacity: 1
+                                        child: Transform.rotate(
+                                          angle: 0.0, // angle: 0 deg
+                                          child: Text(
+                                            value,
+                                            style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                                              fontSize: 14.0,
+                                              fontWeight: FontWeight.w500,
+                                              color: const Color(0xFF252527),
+                                              height: isArabic ? 1.05 : 1.15,
+                                              letterSpacing: 0.0,
+                                            ),
+                                            textHeightBehavior: const TextHeightBehavior(
+                                              applyHeightToFirstAscent: false,
+                                              applyHeightToLastDescent: false,
+                                            ),
+                                            maxLines: 1,
                                           ),
-                                          textHeightBehavior: const TextHeightBehavior(
-                                            applyHeightToFirstAscent: false,
-                                            applyHeightToLastDescent: false,
-                                          ),
-                                          maxLines: 1,
                                         ),
                                       ),
-                                    ),
 
-                                    SizedBox(height: isArabic ? 0.0 : 1.0),
+                                      SizedBox(height: isArabic ? 0.0 : 1.0),
 
-                                    // content: label (Views today / Contacts today)
-                                    // width: 73; height: 7; font-family: Inter; font-weight: 400; font-size: 10px;
-                                    // leading-trim: CAP_HEIGHT; line-height: 22px; color: #616166
-                                    Opacity(
-                                      opacity: 1.0, // opacity: 1
-                                      child: Transform.rotate(
-                                        angle: 0.0, // angle: 0 deg
-                                        child: Text(
-                                          label,
-                                          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                            fontSize: 10.0,
-                                            fontWeight: FontWeight.w400,
-                                            color: const Color(0xFF616166),
-                                            height: isArabic ? 0.95 : 1.1,
-                                            letterSpacing: 0.0,
+                                      // content: label (Views today / Contacts today)
+                                      // width: 73; height: 7; font-family: Inter; font-weight: 400; font-size: 10px;
+                                      // leading-trim: CAP_HEIGHT; line-height: 22px; color: #616166
+                                      Opacity(
+                                        opacity: 1.0, // opacity: 1
+                                        child: Transform.rotate(
+                                          angle: 0.0, // angle: 0 deg
+                                          child: Text(
+                                            label,
+                                            style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                                              fontSize: 10.0,
+                                              fontWeight: FontWeight.w400,
+                                              color: const Color(0xFF616166),
+                                              height: isArabic ? 0.95 : 1.1,
+                                              letterSpacing: 0.0,
+                                            ),
+                                            textHeightBehavior: const TextHeightBehavior(
+                                              applyHeightToFirstAscent: false,
+                                              applyHeightToLastDescent: false,
+                                            ),
+                                            maxLines: 1,
                                           ),
-                                          textHeightBehavior: const TextHeightBehavior(
-                                            applyHeightToFirstAscent: false,
-                                            applyHeightToLastDescent: false,
-                                          ),
-                                          maxLines: 1,
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),

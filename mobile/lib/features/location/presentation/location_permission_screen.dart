@@ -533,18 +533,11 @@ class _LocationPermissionScreenState
                   ),
 
                   // 7. "Nearby Providers" Badges Branding:
-                  // badges branding: width: 112; height: 54; top: 150px; left: 20px;
-                  // background: #FFFFFF; box-shadow: 0px 1px 8px 0px #0000000F;
-                  // inner layout branding: width: 112; height: 44; top: 150px; left: 20px; gap: 10px;
-                  // border-radius: 8px; padding: 8px 12px 8px 8px; background: #FFFFFF;
-                  // content: Nearby Providers; width: 54; height: 24; 12px Inter Regular 400; color: #566663;
-                  // icon branding: width: 28; height: 28; inner branding: width: 16; height: 14; color: #8B53FE;
+                  // width: 148; height: 54; top: 146px; left: 14px;
                   Positioned(
-                    top: 150.0,
-                    left: containerWidth >= 390
-                        ? 20.0
-                        : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                    width: 112.0,
+                    top: 146.0,
+                    left: 14.0,
+                    width: 148.0,
                     height: 54.0,
                     child: CustomPaint(
                       painter: const _TooltipBubblePainter(
@@ -552,55 +545,49 @@ class _LocationPermissionScreenState
                         shadowColor: Color(0x0F000000), // #0000000F
                         blurRadius: 8.0,
                         shadowOffset: Offset(0, 1),
+                        tailX: 110.0,
                       ),
                       child: Align(
                         alignment: Alignment.topLeft,
                         child: Container(
-                          width: 112.0,
+                          width: 148.0,
                           height: 44.0,
-                          padding: const EdgeInsets.only(
-                            top: 8.0,
-                            right: 12.0,
-                            bottom: 8.0,
-                            left: 8.0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10.0,
+                            vertical: 8.0,
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // Icon container: width: 28; height: 28; circular
                               Container(
-                                width: 28.0,
-                                height: 28.0,
+                                width: 26.0,
+                                height: 26.0,
                                 decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: Color(0xFFF0EAFE),
                                 ),
                                 child: const Center(
                                   child: CustomPaint(
-                                    size: Size(16.0, 14.0),
+                                    size: Size(15.0, 13.0),
                                     painter: _NearbyPinPainter(
                                       color: Color(0xFF8B53FE),
                                     ),
                                   ),
                                 ),
                               ),
-
-                              // gap: 10px;
-                              const SizedBox(width: 10.0),
-
-                              // content: Nearby Providers
-                              // width: 54; height: 24; font-family: Inter; font-weight: 400; font-size: 12px; line-height: 100%; color: #566663;
-                              Flexible(
+                              const SizedBox(width: 8.0),
+                              Expanded(
                                 child: Text(
                                   tr.nearbyProvidersBadge,
                                   style: tr.font(
-                                    fontSize: 11.0,
+                                    fontSize: 11.5,
                                     fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF566663),
+                                    color: const Color(0xFF1C2926),
                                     height: 1.15,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.visible,
                                 ),
                               ),
                             ],
@@ -611,17 +598,11 @@ class _LocationPermissionScreenState
                   ),
 
                   // 8. "Fast Delivery" Badges Branding (2nd badge):
-                  // width: 105; height: 54; top: 130px; left: 265px;
-                  // inner branding: width: 105; height: 44; top: 130px; left: 265px; gap: 10px;
-                  // border-radius: 8px; padding: 8px 12px 8px 8px; background: #FFFFFF;
-                  // content: Fast\nDelivery; width: 47; height: 24; font-family: Inter; font-weight: 400; font-size: 12px; color: #566663;
-                  // icon car branding: width: 28; height: 28; icon inner branding: width: 16; height: 12; color: #8B53FE;
+                  // width: 124; height: 54; top: 126px; right: 14px;
                   Positioned(
-                    top: 130.0,
-                    left: containerWidth >= 390
-                        ? 265.0
-                        : (containerWidth - 105.0 - 15.0).clamp(160.0, 265.0),
-                    width: 105.0,
+                    top: 126.0,
+                    right: 14.0,
+                    width: 124.0,
                     height: 54.0,
                     child: CustomPaint(
                       painter: const _TooltipBubblePainter(
@@ -629,56 +610,49 @@ class _LocationPermissionScreenState
                         shadowColor: Color(0x0F000000), // #0000000F
                         blurRadius: 8.0,
                         shadowOffset: Offset(0, 1),
-                        tailX: 24.0, // bottom-left pointer towards center beacon
+                        tailX: 24.0,
                       ),
                       child: Align(
                         alignment: Alignment.topLeft,
                         child: Container(
-                          width: 105.0,
+                          width: 124.0,
                           height: 44.0,
-                          padding: const EdgeInsets.only(
-                            top: 8.0,
-                            right: 12.0,
-                            bottom: 8.0,
-                            left: 8.0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10.0,
+                            vertical: 8.0,
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // Icon container: width: 28; height: 28; circular
                               Container(
-                                width: 28.0,
-                                height: 28.0,
+                                width: 26.0,
+                                height: 26.0,
                                 decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: Color(0xFFF0EAFE),
                                 ),
                                 child: const Center(
                                   child: CustomPaint(
-                                    size: Size(16.0, 12.0),
+                                    size: Size(15.0, 11.0),
                                     painter: _FastDeliveryCarPainter(
                                       color: Color(0xFF8B53FE),
                                     ),
                                   ),
                                 ),
                               ),
-
-                              // gap: 10px;
-                              const SizedBox(width: 10.0),
-
-                              // content: Fast Delivery
-                              // width: 47; height: 24; font-family: Inter; font-weight: 400; font-size: 12px; line-height: 100%; color: #566663;
-                              Flexible(
+                              const SizedBox(width: 8.0),
+                              Expanded(
                                 child: Text(
                                   tr.fastDeliveryBadge,
                                   style: tr.font(
-                                    fontSize: 11.0,
+                                    fontSize: 11.5,
                                     fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF566663),
+                                    color: const Color(0xFF1C2926),
                                     height: 1.15,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.visible,
                                 ),
                               ),
                             ],
@@ -689,17 +663,11 @@ class _LocationPermissionScreenState
                   ),
 
                   // 9. "Real-time Tracking" Badges Branding (3rd badge):
-                  // width: 113; height: 54; top: 270px; left: 251px;
-                  // inner branding: width: 113; height: 44; top: 270px; left: 251px; gap: 10px;
-                  // border-radius: 8px; padding: 8px 12px 8px 8px; background: #FFFFFF;
-                  // content: Real-time\nTracking; width: 55; height: 24; font-family: Inter; font-weight: 400; font-size: 12px; color: #566663;
-                  // icon tracking branding: width: 28; height: 28; icon inner branding: width: 14; height: 14; color: #8B53FE;
+                  // width: 154; height: 54; top: 268px; right: 14px;
                   Positioned(
-                    top: 270.0,
-                    left: containerWidth >= 390
-                        ? 251.0
-                        : (containerWidth - 113.0 - 20.0).clamp(140.0, 251.0),
-                    width: 113.0,
+                    top: 268.0,
+                    right: 14.0,
+                    width: 154.0,
                     height: 54.0,
                     child: CustomPaint(
                       painter: const _TooltipBubblePainter(
@@ -707,26 +675,23 @@ class _LocationPermissionScreenState
                         shadowColor: Color(0x0F000000), // #0000000F
                         blurRadius: 8.0,
                         shadowOffset: Offset(0, 1),
-                        tailX: 24.0, // bottom-left pointer under icon
+                        tailX: 24.0,
                       ),
                       child: Align(
                         alignment: Alignment.topLeft,
                         child: Container(
-                          width: 113.0,
+                          width: 154.0,
                           height: 44.0,
-                          padding: const EdgeInsets.only(
-                            top: 8.0,
-                            right: 12.0,
-                            bottom: 8.0,
-                            left: 8.0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10.0,
+                            vertical: 8.0,
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // Icon container: width: 28; height: 28; circular
                               Container(
-                                width: 28.0,
-                                height: 28.0,
+                                width: 26.0,
+                                height: 26.0,
                                 decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: Color(0xFFF0EAFE),
@@ -740,23 +705,19 @@ class _LocationPermissionScreenState
                                   ),
                                 ),
                               ),
-
-                              // gap: 10px;
-                              const SizedBox(width: 10.0),
-
-                              // content: Real-time Tracking
-                              // width: 55; height: 24; font-family: Inter; font-weight: 400; font-size: 12px; line-height: 100%; color: #566663;
-                              Flexible(
+                              const SizedBox(width: 8.0),
+                              Expanded(
                                 child: Text(
                                   tr.realTimeTrackingBadge,
                                   style: tr.font(
-                                    fontSize: 11.0,
+                                    fontSize: 11.5,
                                     fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF566663),
+                                    color: const Color(0xFF1C2926),
                                     height: 1.15,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.visible,
                                 ),
                               ),
                             ],

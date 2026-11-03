@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_image_picker_modal.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_vehicle_photo_card.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
@@ -49,6 +50,16 @@ class _ProviderVehiclePhotosSectionState
   bool _rearUploaded = false;
   bool _leftSideUploaded = false;
   bool _rightSideUploaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final data = ProviderRegistrationStore.instance.data;
+    _frontUploaded = data.vehicleFrontUploaded;
+    _rearUploaded = data.vehicleRearUploaded;
+    _leftSideUploaded = data.vehicleLeftUploaded;
+    _rightSideUploaded = data.vehicleRightUploaded;
+  }
 
   Future<void> _handleCardTap({
     required String viewKey,

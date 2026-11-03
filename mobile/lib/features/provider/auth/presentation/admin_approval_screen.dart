@@ -19,10 +19,12 @@ import 'package:mobile/features/provider/theme/provider_colors.dart';
 ///   title: "Admin Approval"; (Inter 500 Medium 16px line-height 24px #1C2926)
 class AdminApprovalScreen extends StatelessWidget {
   final Widget? body;
+  final bool? isSuspended;
 
   const AdminApprovalScreen({
     super.key,
     this.body,
+    this.isSuspended,
   });
 
   static const double designWidth = 390.0;
@@ -89,7 +91,10 @@ class AdminApprovalScreen extends StatelessWidget {
                               top: 12.0,
                               bottom: 24.0,
                             ),
-                            child: body ?? const ProviderAdminApprovalContentLayout(),
+                            child: body ??
+                                ProviderAdminApprovalContentLayout(
+                                  isSuspended: isSuspended,
+                                ),
                           ),
                         ),
                       ),

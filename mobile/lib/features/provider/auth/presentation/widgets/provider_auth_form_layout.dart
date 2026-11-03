@@ -44,7 +44,6 @@ class ProviderAuthFormLayout extends StatefulWidget {
 }
 
 class _ProviderAuthFormLayoutState extends State<ProviderAuthFormLayout> {
-  late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
   CountryModel _selectedCountry = CountryModel.defaultCountry;
   late final BackendService _backendService;
@@ -53,15 +52,12 @@ class _ProviderAuthFormLayoutState extends State<ProviderAuthFormLayout> {
   @override
   void initState() {
     super.initState();
-    final existingData = ProviderRegistrationStore.instance.data;
-    _nameController = TextEditingController(text: existingData.fullName);
     _phoneController = TextEditingController();
     _backendService = BackendService(ApiClient());
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
@@ -70,7 +66,6 @@ class _ProviderAuthFormLayoutState extends State<ProviderAuthFormLayout> {
     if (_isWhatsAppLoading) return;
 
     final isArabic = context.isArabic;
-    final rawName = _nameController.text.trim();
     final rawPhone = _phoneController.text.trim();
     String digits = rawPhone.replaceAll(RegExp(r'\D'), '');
     if (digits.startsWith('0')) {
@@ -119,13 +114,9 @@ class _ProviderAuthFormLayoutState extends State<ProviderAuthFormLayout> {
 
     final fullPhone = '${_selectedCountry.dialCode}$digits';
     final displayPhone = '${_selectedCountry.dialCode} $digits';
-    final nameToSave = rawName.isNotEmpty
-        ? rawName
-        : (isArabic ? 'مزود الخدمة' : 'Service Provider');
 
     ProviderRegistrationStore.instance.update(
       (data) => data.copyWith(
-        fullName: nameToSave,
         phone: displayPhone,
         contactPhone: displayPhone,
         whatsappNumber: displayPhone,
@@ -228,58 +219,7 @@ class _ProviderAuthFormLayoutState extends State<ProviderAuthFormLayout> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Label: "Full Name" / "الاسم الكامل"
-              SizedBox(
-                width: double.infinity,
-                child: Text(
-                  isArabic ? 'الاسم الكامل' : 'Full Name',
-                  textAlign: isArabic ? TextAlign.right : TextAlign.left,
-                  style: ProviderTextStyles.phoneInputLabel,
-                ),
-              ),
-
-              const SizedBox(height: 8.0),
-
-              // 2. Full Name Input Card (52px height, #F2F5F4 background, 12px radius)
-              Container(
-                width: double.infinity,
-                height: 52.0,
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                decoration: BoxDecoration(
-                  color: ProviderColors.inputBackground, // #F2F5F4
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
-                alignment: Alignment.centerLeft,
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.person_outline_rounded,
-                      color: Color(0xFF566663),
-                      size: 20.0,
-                    ),
-                    const SizedBox(width: 10.0),
-                    Expanded(
-                      child: TextField(
-                        controller: _nameController,
-                        textCapitalization: TextCapitalization.words,
-                        style: ProviderTextStyles.phoneInput,
-                        cursorColor: ProviderColors.primaryButton,
-                        decoration: InputDecoration(
-                          hintText: isArabic ? 'أدخل اسمك الكامل' : 'Enter your full name',
-                          hintStyle: ProviderTextStyles.phonePlaceholder,
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16.0),
-
-              // 3. Label: "Phone Number" / "رقم الهاتف" (14px, Medium 500, #1C2926)
+              // 1. Label: "Phone Number" / "رقم الهاتف" (14px, Medium 500, #1C2926)
               SizedBox(
                 width: double.infinity,
                 child: Text(
@@ -291,10 +231,9 @@ class _ProviderAuthFormLayoutState extends State<ProviderAuthFormLayout> {
 
               const SizedBox(height: 8.0),
 
-              // 4. Phone Number Widget Layout with complete digit security
+              // 2. Phone Number Widget Layout with complete digit security
               widget.phoneInputSlot ??
                   ProviderPhoneInputWidget(
-                    nameController: _nameController,
                     controller: _phoneController,
                     selectedCountry: _selectedCountry,
                     onCountryChanged: (picked) {

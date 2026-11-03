@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/localization/app_locale.dart';
-import 'widgets/top_down_car_widget.dart';
 import 'widgets/real_map_background_widget.dart';
 
 /// Screen displayed when user clicks 'Send My Location' on the Provider Detail screen.
@@ -101,53 +100,24 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                         child: RealMapBackgroundWidget(
                           enableDrag: true,
                           zoom: 15.0,
-                          trackingStep: MapTrackingStep.onTheWay,
+                          trackingStep: MapTrackingStep.none,
+                          blurSigma: 0.0,
                           driverName: widget.providerName,
                           serviceCategory: widget.serviceCategory,
                           vehicleName: 'Toyota Hilux',
                           etaText: tr.isArabic ? '6 د' : '6 min',
                           distanceText: widget.distance,
-                          showControls: true,
+                          showControls: false,
                         ),
                       ),
-
-                      // 2. Gradient Overlay Layer ("pickup & delivery screen layout branding"):
-                      Positioned.fill(
-                        child: const IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                stops: [0.0214, 0.1705, 0.2693, 1.0],
-                                colors: [
-                                  Color(0xFFFFFFFF), // #FFFFFF 2.14%
-                                  Color(0xD6FFFFFF), // rgba(255, 255, 255, 0.839534) 17.05%
-                                  Color(0x00FFFFFF), // rgba(255, 255, 255) 26.93%
-                                  Color(0x00FFFFFF),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
 
                       // 7. Header with same previous branding:
-                      // width: 350; height: 36; gap: 16px; top: 56px; left: 20px;
                       Positioned(
-                        top: 56.0,
-                        left: containerWidth >= 390
-                            ? 20.0
-                            : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                        width: containerWidth >= 390
-                            ? 350.0
-                            : (containerWidth - 40.0).clamp(280.0, 350.0),
+                        top: math.max(48.0, mediaQuery.padding.top + 8.0),
+                        left: 20.0,
+                        right: 20.0,
                         height: 36.0,
                         child: SizedBox(
-                          width: containerWidth >= 390
-                              ? 350.0
-                              : (containerWidth - 40.0).clamp(280.0, 350.0),
                           height: 36.0,
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -226,17 +196,15 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                       // width: 390; height: 561; angle: 0 deg; opacity: 1; top: 283px;
                       // Reduced border radius from corners (16px / 12px) for sleek, refined modern look
                       Container(
-                        width: containerWidth >= 390 ? 390.0 : containerWidth,
+                        width: containerWidth,
                         constraints: _isCardExpanded
                             ? const BoxConstraints(minHeight: 561.0)
                             : null,
                         decoration: const BoxDecoration(
                           color: Color(0xFFFFFFFF),
                           borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(16.0),
-                            topRight: Radius.circular(16.0),
-                            bottomRight: Radius.circular(16.0),
-                            bottomLeft: Radius.circular(12.0),
+                            topLeft: Radius.circular(24.0),
+                            topRight: Radius.circular(24.0),
                           ),
                           boxShadow: [
                             BoxShadow(
@@ -247,7 +215,10 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                             ),
                           ],
                         ),
-                        padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
+                        padding: EdgeInsets.only(
+                          top: 8.0,
+                          bottom: math.max(16.0, mediaQuery.padding.bottom + 8.0),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
@@ -316,9 +287,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
 
   /// Card top header with centered drag handle
   Widget _buildCardHeader(double containerWidth) {
-    final double targetWidth = (containerWidth >= 390)
-        ? 350.0
-        : (containerWidth - 40.0).clamp(280.0, 350.0);
+    final double targetWidth = math.max(280.0, containerWidth - 40.0);
 
     return SizedBox(
       width: targetWidth,
@@ -347,9 +316,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
 
   /// Collapsed mini card body for maximum map visibility
   Widget _buildCollapsedCardBody(double containerWidth) {
-    final double targetWidth = (containerWidth >= 390)
-        ? 350.0
-        : (containerWidth - 40.0).clamp(280.0, 350.0);
+    final double targetWidth = math.max(280.0, containerWidth - 40.0);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -451,9 +418,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
 
   /// Full expanded card body with all sharing options and action buttons
   Widget _buildExpandedCardBody(double containerWidth) {
-    final double targetWidth = (containerWidth >= 390)
-        ? 350.0
-        : (containerWidth - 40.0).clamp(280.0, 350.0);
+    final double targetWidth = math.max(280.0, containerWidth - 40.0);
 
     return SizedBox(
       width: targetWidth,
@@ -793,9 +758,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
   /// Location Details card & Action buttons (Cancel / Send Location)
   /// width: 350; height: 132.82666015625; gap: 20px;
   Widget _buildLocationDetailsAndActions(double containerWidth) {
-    final double targetWidth = (containerWidth >= 390)
-        ? 350.0
-        : (containerWidth - 40.0).clamp(280.0, 350.0);
+    final double targetWidth = math.max(280.0, containerWidth - 40.0);
 
     return SizedBox(
       width: targetWidth,

@@ -7,10 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../models/provider_model.dart';
 import '../../../providers/backend_provider.dart';
-import '../../../services/location_service.dart';
 import 'provider_detail_screen.dart';
-import 'widgets/provider_detail_card_widget.dart';
-import 'widgets/top_down_car_widget.dart';
 
 /// Custom scroll behavior enabling smooth mouse dragging, trackpad gestures, and touch on all devices:
 class _EasyScrollBehavior extends MaterialScrollBehavior {
@@ -658,44 +655,6 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   int _selectedProviderCount = 10;
-  double _zoom = 14.5;
-  double? _centerPixelX;
-  double? _centerPixelY;
-  bool _isDraggingMap = false;
-  double _mapScaleBase = 1.0;
-  int? _selectedProviderId;
-
-  void _zoomIn() {
-    HapticFeedback.selectionClick();
-    if (_zoom >= 18.0) return;
-    setState(() {
-      if (_centerPixelX != null && _centerPixelY != null) {
-        final curLng = MercatorProjection.xToLng(_centerPixelX!, _zoom);
-        final curLat = MercatorProjection.yToLat(_centerPixelY!, _zoom);
-        _zoom = (_zoom + 1.0).clamp(10.0, 18.0);
-        _centerPixelX = MercatorProjection.lngToX(curLng, _zoom);
-        _centerPixelY = MercatorProjection.latToY(curLat, _zoom);
-      } else {
-        _zoom = (_zoom + 1.0).clamp(10.0, 18.0);
-      }
-    });
-  }
-
-  void _zoomOut() {
-    HapticFeedback.selectionClick();
-    if (_zoom <= 10.0) return;
-    setState(() {
-      if (_centerPixelX != null && _centerPixelY != null) {
-        final curLng = MercatorProjection.xToLng(_centerPixelX!, _zoom);
-        final curLat = MercatorProjection.yToLat(_centerPixelY!, _zoom);
-        _zoom = (_zoom - 1.0).clamp(10.0, 18.0);
-        _centerPixelX = MercatorProjection.lngToX(curLng, _zoom);
-        _centerPixelY = MercatorProjection.latToY(curLat, _zoom);
-      } else {
-        _zoom = (_zoom - 1.0).clamp(10.0, 18.0);
-      }
-    });
-  }
 
   AppTranslations get tr => ref.read(translationsProvider);
 
@@ -738,22 +697,8 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                 : constraints.maxHeight;
 
             final tr = ref.watch(translationsProvider);
-            final userLocAsync = ref.watch(userLocationProvider);
-            final userLoc = userLocAsync.value ?? UserLocation.defaultLocation;
-
             final nearbyProvidersAsync = ref.watch(nearbyProvidersProvider);
             final List<ProviderMarkerModel> liveProviders = nearbyProvidersAsync.value ?? [];
-
-            _centerPixelX ??= MercatorProjection.lngToX(userLoc.longitude, _zoom);
-            _centerPixelY ??= MercatorProjection.latToY(userLoc.latitude, _zoom) + 15.0;
-
-            final double mapWidth = containerWidth;
-            final double mapHeight = 220.0;
-            final double leftPx = _centerPixelX! - (mapWidth / 2.0);
-            final double topPx = _centerPixelY! - (mapHeight / 2.0);
-
-            final double userScreenX = MercatorProjection.lngToX(userLoc.longitude, _zoom) - leftPx;
-            final double userScreenY = MercatorProjection.latToY(userLoc.latitude, _zoom) - topPx;
 
             final String searchQuery = _searchController.text.trim().toLowerCase();
             final List<_NearbyProviderItem> searchedProviders = searchQuery.isEmpty
@@ -770,366 +715,21 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                 .take(_selectedProviderCount)
                 .toList();
 
+            final double statusBarHeight = MediaQuery.of(context).padding.top;
+            final double topInset = statusBarHeight > 0 ? statusBarHeight + 12.0 : 44.0;
+
             final screenContent = Container(
               width: containerWidth,
               height: containerHeight,
-              color: Colors.white,
-              child: Stack(
+              color: const Color(0xFFF8F9FA),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 1. Real Slippy Map Layer at Top behind card ("in bg map hoga"):
-                  Positioned(
-                    top: 0.0,
-                    left: 0.0,
-                    width: mapWidth,
-                    height: mapHeight,
-                    child: Listener(
-                      onPointerSignal: (pointerSignal) {
-                        if (pointerSignal is PointerScrollEvent) {
-                          if (pointerSignal.scrollDelta.dy < 0) {
-                            _zoomIn();
-                          } else if (pointerSignal.scrollDelta.dy > 0) {
-                            _zoomOut();
-                          }
-                        }
-                      },
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onDoubleTap: _zoomIn,
-                        onScaleStart: (details) {
-                          _mapScaleBase = 1.0;
-                          setState(() => _isDraggingMap = true);
-                        },
-                        onScaleUpdate: (details) {
-                          setState(() {
-                            _centerPixelX = (_centerPixelX ?? 0) - details.focalPointDelta.dx;
-                            _centerPixelY = (_centerPixelY ?? 0) - details.focalPointDelta.dy;
+                  SizedBox(height: topInset),
 
-                            if (details.scale != 1.0) {
-                              final double ratio = details.scale / _mapScaleBase;
-                              if (ratio > 1.25 && _zoom < 18.0) {
-                                _zoomIn();
-                                _mapScaleBase = details.scale;
-                              } else if (ratio < 0.8 && _zoom > 10.0) {
-                                _zoomOut();
-                                _mapScaleBase = details.scale;
-                              }
-                            }
-                          });
-                        },
-                        onScaleEnd: (details) {
-                          setState(() => _isDraggingMap = false);
-                        },
-                      child: MouseRegion(
-                        cursor: _isDraggingMap
-                            ? SystemMouseCursors.grabbing
-                            : SystemMouseCursors.grab,
-                        child: Stack(
-                          clipBehavior: Clip.hardEdge,
-                          children: [
-                            // A. Slippy Tile Layer with Google/OSM tiles
-                            _DynamicMapTileLayer(
-                              centerPixelX: _centerPixelX!,
-                              centerPixelY: _centerPixelY!,
-                              zoom: _zoom,
-                              width: mapWidth,
-                              height: mapHeight,
-                            ),
-
-                            // B. Customer Location Center Beacon
-                            Positioned(
-                              left: userScreenX - 14.0,
-                              top: userScreenY - 14.0,
-                              child: Tooltip(
-                                message: tr.isArabic
-                                    ? 'موقعك: ${userLoc.cityName}'
-                                    : 'Your Location: ${userLoc.cityName}',
-                                child: Container(
-                                  key: const Key('find_provider_gps_center_marker'),
-                                  width: 28.0,
-                                  height: 28.0,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: const Color(0xFF8B53FE),
-                                    border: Border.all(color: Colors.white, width: 2.5),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0x408B53FE),
-                                        blurRadius: 10.0,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.person_pin_circle_rounded,
-                                      size: 16.0,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            // C. Providers cars plotted on real map according to filter (10, 20, 30)
-                            ...activeProviders.map((p) {
-                              final double pLat = userLoc.latitude + p.latOffset;
-                              final double pLng = userLoc.longitude + p.lngOffset;
-                              final double carScreenX = MercatorProjection.lngToX(pLng, _zoom) - leftPx;
-                              final double carScreenY = MercatorProjection.latToY(pLat, _zoom) - topPx;
-
-                              return Positioned(
-                                left: carScreenX - 45.0,
-                                top: carScreenY - 37.0,
-                                width: 90.0,
-                                height: 74.0,
-                                child: TopDownCarWidget(
-                                  key: ValueKey('find_provider_car_${p.id}'),
-                                  width: 17.0,
-                                  height: 29.0,
-                                  angle: p.heading,
-                                  driverName: (tr.isArabic ? p.nameAr : p.name).split(' ').first,
-                                  distanceKm: p.distanceKm,
-                                  bodyColor: p.carColor,
-                                  showBadge: true,
-                                  isSelected: _selectedProviderId == p.id,
-                                  isInsideRadius: true,
-                                  onTap: () {
-                                    HapticFeedback.selectionClick();
-                                    setState(() {
-                                      _selectedProviderId = p.id;
-                                    });
-                                    ProviderDetailCardWidget.showAsBottomSheet(
-                                      context: context,
-                                      providerName: tr.isArabic ? p.nameAr : p.name,
-                                      serviceCategory: tr.categoryName(widget.serviceCategory),
-                                      vehicleName: tr.isArabic ? p.vehicleAr : p.vehicle,
-                                      distance: tr.isArabic ? '${p.distanceKm} كم' : '${p.distanceKm} km',
-                                      estimatedTime: tr.isArabic ? p.etaAr : p.eta,
-                                      rating: p.rating,
-                                      tripsCount: p.reviews,
-                                      phoneNumber: p.phone,
-                                    );
-                                  },
-                                ),
-                              );
-                            }),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                  // 2. Subtle Gradient Overlay Layer ("after header"):
-                  Positioned(
-                    top: 0.0,
-                    left: 0.0,
-                    width: containerWidth,
-                    height: 96.0,
-                    child: const IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            stops: [0.0, 0.65, 1.0],
-                            colors: [
-                              Color(0xDDFFFFFF),
-                              Color(0x77FFFFFF),
-                              Color(0x00FFFFFF),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // 3. Floating Map Controls: Zoom In, Zoom Out, Location Button:
-                  Positioned(
-                    top: 106.0,
-                    right: horizontalPadding,
-                    width: 36.0,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Zoom In Button (+)
-                        GestureDetector(
-                          key: const Key('find_provider_zoom_in_button'),
-                          onTap: _zoomIn,
-                          behavior: HitTestBehavior.opaque,
-                          child: Container(
-                            width: 36.0,
-                            height: 36.0,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFFFFF),
-                              borderRadius: BorderRadius.circular(8.0),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x0F000000),
-                                  blurRadius: 8.0,
-                                  offset: Offset(0, 1),
-                                  spreadRadius: 0.0,
-                                ),
-                              ],
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.add_rounded,
-                                size: 20.0,
-                                color: Color(0xFF1C2926),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8.0),
-                        // Zoom Out Button (-)
-                        GestureDetector(
-                          key: const Key('find_provider_zoom_out_button'),
-                          onTap: _zoomOut,
-                          behavior: HitTestBehavior.opaque,
-                          child: Container(
-                            width: 36.0,
-                            height: 36.0,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFFFFF),
-                              borderRadius: BorderRadius.circular(8.0),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x0F000000),
-                                  blurRadius: 8.0,
-                                  offset: Offset(0, 1),
-                                  spreadRadius: 0.0,
-                                ),
-                              ],
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.remove_rounded,
-                                size: 20.0,
-                                color: Color(0xFF1C2926),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8.0),
-                        // Current Location Button
-                        GestureDetector(
-                          key: const Key('find_provider_location_button'),
-                          onTap: () async {
-                            HapticFeedback.lightImpact();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  tr.gpsDetecting,
-                                  style: tr.font(
-                                    fontSize: 12.0,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                backgroundColor: const Color(0xFF8B53FE),
-                                duration: const Duration(milliseconds: 1000),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-
-                            final freshLoc = await ref.read(locationServiceProvider).getCurrentLocation();
-                            ref.refresh(userLocationProvider);
-                            ref.refresh(nearbyProvidersProvider);
-
-                            if (!freshLoc.isGpsDetected) {
-                              if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.location_off_rounded,
-                                        size: 16.0,
-                                        color: Colors.white,
-                                      ),
-                                      const SizedBox(width: 8.0),
-                                      Expanded(
-                                        child: Text(
-                                          tr.isArabic
-                                              ? 'خدمة الموقع غير مفعلة في جهازك'
-                                              : 'Device location is OFF. Please turn ON location in device settings.',
-                                          style: tr.font(
-                                            fontSize: 12.0,
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  backgroundColor: const Color(0xFFE11D48),
-                                  duration: const Duration(seconds: 3),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                              return;
-                            }
-
-                            setState(() {
-                              _centerPixelX = MercatorProjection.lngToX(freshLoc.longitude, _zoom);
-                              _centerPixelY = MercatorProjection.latToY(freshLoc.latitude, _zoom) + 15.0;
-                            });
-
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  tr.isArabic
-                                      ? 'تحديد تلقائي: ${freshLoc.coordinatesDisplay} (${freshLoc.cityName})'
-                                      : 'GPS: ${freshLoc.coordinatesDisplay} (${freshLoc.cityName})',
-                                  style: tr.font(
-                                    fontSize: 12.0,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                backgroundColor: const Color(0xFF8B53FE),
-                                duration: const Duration(seconds: 2),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                          behavior: HitTestBehavior.opaque,
-                          child: Container(
-                            width: 36.0,
-                            height: 36.0,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFFFFF),
-                              borderRadius: BorderRadius.circular(8.0),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x0F000000), // #0000000F
-                                  blurRadius: 8.0,
-                                  offset: Offset(0, 1),
-                                  spreadRadius: 0.0,
-                                ),
-                              ],
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.my_location_rounded,
-                                size: 20.0,
-                                color: Color(0xFF8B53FE),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // 4. Header Branding (Symmetrical margins matching cards exactly):
-                  Positioned(
-                    top: 56.0,
-                    left: horizontalPadding,
-                    right: horizontalPadding,
-                    height: 36.0,
+                  // 1. Header Branding (Back Button, Nearby Providers, Search Button):
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                     child: SizedBox(
                       width: cardWidth,
                       height: 36.0,
@@ -1219,7 +819,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                                     : null,
                                 boxShadow: const [
                                   BoxShadow(
-                                    color: Color(0x0F000000), // #0000000F
+                                    color: Color(0x0F000000),
                                     blurRadius: 8.0,
                                     offset: Offset(0, 1),
                                     spreadRadius: 0.0,
@@ -1243,188 +843,146 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                     ),
                   ),
 
-                  // 5. Card Styling:
-                  Positioned(
-                    top: 162.0,
-                    left: 0.0,
-                    width: containerWidth,
-                    height: containerHeight > 162.0 ? (containerHeight - 162.0) : 520.0,
-                    child: Container(
-                      key: const Key('nearby_providers_card_layout'),
-                      width: containerWidth,
-                      height: containerHeight > 162.0 ? (containerHeight - 162.0) : 520.0,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFFFFFF),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(28.0),
-                          topRight: Radius.circular(28.0),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Color(0x14000000), // #00000014
-                            offset: Offset(0, -2),
-                            blurRadius: 12.0,
-                            spreadRadius: 0.0,
-                          ),
-                        ],
+                  // 2. Animated Search Bar:
+                  AnimatedCrossFade(
+                    duration: const Duration(milliseconds: 220),
+                    crossFadeState: _isSearchOpen ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                    firstChild: const SizedBox(width: double.infinity, height: 0.0),
+                    secondChild: Padding(
+                      padding: EdgeInsets.only(
+                        top: 12.0,
+                        left: horizontalPadding,
+                        right: horizontalPadding,
                       ),
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(28.0),
-                          topRight: Radius.circular(28.0),
+                      child: Container(
+                        key: const Key('header_search_bar_container'),
+                        width: cardWidth,
+                        height: 48.0,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFFFF),
+                          borderRadius: BorderRadius.circular(12.0),
+                          border: Border.all(
+                            color: const Color(0xFFEDF0EF),
+                            width: 1.2,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x0F000000),
+                              blurRadius: 10.0,
+                              offset: Offset(0, 2),
+                              spreadRadius: 0.0,
+                            ),
+                          ],
                         ),
-                        child: ScrollConfiguration(
-                          behavior: const _EasyScrollBehavior(),
-                          child: ListView(
-                            padding: EdgeInsets.only(
-                              top: 24.0,
-                              left: horizontalPadding,
-                              right: horizontalPadding,
-                              bottom: 80.0,
-                            ),
-                            physics: const AlwaysScrollableScrollPhysics(
-                              parent: BouncingScrollPhysics(),
-                            ),
-                            children: [
-                              // 1. Header controls (Providers to show, buttons):
-                              Center(child: _buildProvidersInnerCard(cardWidth)),
-
-                              const SizedBox(height: 16.0),
-
-                              // 2. Services cards:
-                              ...activeProviders.asMap().entries.map(
-                                (entry) {
-                                  final index = entry.key;
-                                  final item = entry.value;
-                                  final liveItem = (index < liveProviders.length) ? liveProviders[index] : null;
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 12.0),
-                                    child: Center(
-                                      child: _buildServiceCard(cardWidth, item, liveItem),
-                                    ),
-                                  );
-                                },
+                        padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const CustomPaint(
+                              size: Size(16.0, 16.0),
+                              painter: _SearchVectorPainter(
+                                color: Color(0xFF566663),
                               ),
-
-                              const SizedBox(height: 16.0),
-
-                              // 3. Bottom bar indicator after last card:
-                              Center(
-                                child: Container(
-                                  key: const Key('bottom_bar_indicator'),
-                                  width: 134.0,
-                                  height: 4.0,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1C2926),
-                                    borderRadius: BorderRadius.circular(100.0),
+                            ),
+                            const SizedBox(width: 10.0),
+                            Expanded(
+                              child: TextField(
+                                controller: _searchController,
+                                focusNode: _searchFocusNode,
+                                style: tr.font(
+                                  fontSize: 14.0,
+                                  fontWeight: FontWeight.w400,
+                                  color: const Color(0xFF1C2926),
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: tr.isArabic ? 'ابحث عن مزودي الخدمة...' : 'Search nearby providers...',
+                                  hintStyle: tr.font(
+                                    fontSize: 14.0,
+                                    fontWeight: FontWeight.w400,
+                                    color: const Color(0xFF8F9E9B),
                                   ),
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
                                 ),
                               ),
-                              const SizedBox(height: 24.0),
-                            ],
-                          ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                if (_searchController.text.isNotEmpty) {
+                                  _searchController.clear();
+                                } else {
+                                  setState(() {
+                                    _isSearchOpen = false;
+                                  });
+                                }
+                              },
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                padding: const EdgeInsets.all(4.0),
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  size: 18.0,
+                                  color: Color(0xFF566663),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
 
-                  // 6. Search Bar opening below header on search icon tap:
-                  // width: 350; height: 48; top: 104px; left: 20px;
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 240),
-                    curve: Curves.easeOutCubic,
-                    top: _isSearchOpen ? 104.0 : 76.0,
-                    left: containerWidth >= 390
-                        ? 20.0
-                        : ((containerWidth - 350.0) / 2).clamp(10.0, 20.0),
-                    width: containerWidth >= 390
-                        ? 350.0
-                        : (containerWidth - 40.0).clamp(280.0, 350.0),
-                    height: 48.0,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeInOut,
-                      opacity: _isSearchOpen ? 1.0 : 0.0,
-                      child: IgnorePointer(
-                        ignoring: !_isSearchOpen,
-                        child: Container(
-                          key: const Key('header_search_bar_container'),
-                          width: containerWidth >= 390
-                              ? 350.0
-                              : (containerWidth - 40.0).clamp(280.0, 350.0),
-                          height: 48.0,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFFFFF),
-                            borderRadius: BorderRadius.circular(12.0),
-                            border: Border.all(
-                              color: const Color(0xFFEDF0EF),
-                              width: 1.2,
-                            ),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x0F000000), // #0000000F
-                                blurRadius: 10.0,
-                                offset: Offset(0, 2),
-                                spreadRadius: 0.0,
-                              ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const CustomPaint(
-                                size: Size(16.0, 16.0),
-                                painter: _SearchVectorPainter(
-                                  color: Color(0xFF566663),
-                                ),
-                              ),
-                              const SizedBox(width: 10.0),
-                              Expanded(
-                                child: TextField(
-                                  controller: _searchController,
-                                  focusNode: _searchFocusNode,
-                                  style: tr.font(
-                                    fontSize: 14.0,
-                                    fontWeight: FontWeight.w400,
-                                    color: const Color(0xFF1C2926),
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: tr.isArabic ? 'ابحث عن مزودي الخدمة...' : 'Search nearby providers...',
-                                    hintStyle: tr.font(
-                                      fontSize: 14.0,
-                                      fontWeight: FontWeight.w400,
-                                      color: const Color(0xFF8F9E9B),
-                                    ),
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  if (_searchController.text.isNotEmpty) {
-                                    _searchController.clear();
-                                  } else {
-                                    setState(() {
-                                      _isSearchOpen = false;
-                                    });
-                                  }
-                                },
-                                behavior: HitTestBehavior.opaque,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4.0),
-                                  child: const Icon(
-                                    Icons.close_rounded,
-                                    size: 18.0,
-                                    color: Color(0xFF566663),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                  const SizedBox(height: 16.0),
+
+                  // 3. Provider List with smooth scrolling:
+                  Expanded(
+                    child: ScrollConfiguration(
+                      behavior: const _EasyScrollBehavior(),
+                      child: ListView(
+                        padding: EdgeInsets.only(
+                          top: 4.0,
+                          left: horizontalPadding,
+                          right: horizontalPadding,
+                          bottom: 40.0,
                         ),
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        children: [
+                          Center(child: _buildProvidersInnerCard(cardWidth)),
+
+                          const SizedBox(height: 16.0),
+
+                          ...activeProviders.asMap().entries.map(
+                            (entry) {
+                              final index = entry.key;
+                              final item = entry.value;
+                              final liveItem = (index < liveProviders.length) ? liveProviders[index] : null;
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12.0),
+                                child: Center(
+                                  child: _buildServiceCard(cardWidth, item, liveItem),
+                                ),
+                              );
+                            },
+                          ),
+
+                          const SizedBox(height: 16.0),
+
+                          Center(
+                            child: Container(
+                              key: const Key('bottom_bar_indicator'),
+                              width: 134.0,
+                              height: 4.0,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1C2926),
+                                borderRadius: BorderRadius.circular(100.0),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24.0),
+                        ],
                       ),
                     ),
                   ),
@@ -1530,7 +1088,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                     Transform.translate(
                       offset: Offset(0, tr.isArabic ? -3.5 : 0.0),
                       child: Text(
-                        tr.isArabic ? 'حدد عدد المزودين الظاهرين على الخريطة.' : 'Adjust the number of providers on the map.',
+                        tr.isArabic ? 'حدد عدد المزودين المعروضين في القائمة.' : 'Adjust the number of providers to show.',
                         textHeightBehavior: const TextHeightBehavior(
                           applyHeightToFirstAscent: false,
                           applyHeightToLastDescent: false,
@@ -2096,203 +1654,5 @@ class _ProviderGroupVectorPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ProviderGroupVectorPainter oldDelegate) =>
       color != oldDelegate.color || backgroundColor != oldDelegate.backgroundColor;
-}
-
-/// Vector arrow up and down branding matching Figma specifications:
-/// width: 12; height: 10; angle: 0 deg; opacity: 1; background: #1C2926;
-class _ArrowUpDownVectorPainter extends CustomPainter {
-  final Color color;
-  const _ArrowUpDownVectorPainter({this.color = const Color(0xFF1C2926)});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final strokePaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    // Up arrow on left (x = 3.0):
-    canvas.drawLine(const Offset(3.0, 9.0), const Offset(3.0, 1.5), strokePaint);
-    final upHead = Path()
-      ..moveTo(0.8, 3.8)
-      ..lineTo(3.0, 1.5)
-      ..lineTo(5.2, 3.8);
-    canvas.drawPath(upHead, strokePaint);
-
-    // Down arrow on right (x = 9.0):
-    canvas.drawLine(const Offset(9.0, 1.0), const Offset(9.0, 8.5), strokePaint);
-    final downHead = Path()
-      ..moveTo(6.8, 6.2)
-      ..lineTo(9.0, 8.5)
-      ..lineTo(11.2, 6.2);
-    canvas.drawPath(downHead, strokePaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _ArrowUpDownVectorPainter oldDelegate) => color != oldDelegate.color;
-}
-
-/// Vector chevron right matching Figma specifications:
-/// width: 4; height: 8; angle: -180 deg; opacity: 1; border-width: 0.6px; border: 0.6px solid #1C2926;
-class _ChevronRightVectorPainter extends CustomPainter {
-  final Color color;
-  const _ChevronRightVectorPainter({this.color = const Color(0xFF1C2926)});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final path = Path()
-      ..moveTo(0.5, 0.5)
-      ..lineTo(size.width - 0.5, size.height / 2.0)
-      ..lineTo(0.5, size.height - 0.5);
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Standard Web Mercator (EPSG:3857) projection matching Google Maps & OpenStreetMap
-class MercatorProjection {
-  static double latToY(double lat, double zoom) {
-    final double latRad = lat * math.pi / 180.0;
-    final double sinLat = math.sin(latRad).clamp(-0.9999, 0.9999);
-    return (128.0 / math.pi) * (1 << zoom.toInt()) * (math.pi - math.log((1.0 + sinLat) / (1.0 - sinLat)) / 2.0);
-  }
-
-  static double lngToX(double lng, double zoom) {
-    return (128.0 / math.pi) * (1 << zoom.toInt()) * ((lng * math.pi / 180.0) + math.pi);
-  }
-
-  static double xToLng(double x, double zoom) {
-    final double n = 256.0 * (1 << zoom.toInt());
-    return (x / n) * 360.0 - 180.0;
-  }
-
-  static double yToLat(double y, double zoom) {
-    final double n = 256.0 * (1 << zoom.toInt());
-    final double u = math.pi * (1.0 - 2.0 * y / n);
-    final double latRad = 2.0 * math.atan(math.exp(u)) - (math.pi / 2.0);
-    return latRad * 180.0 / math.pi;
-  }
-}
-
-/// Dynamic Slippy Map Layer supporting unlimited viewport dragging & Google/OSM tile rendering
-class _DynamicMapTileLayer extends StatelessWidget {
-  final double centerPixelX;
-  final double centerPixelY;
-  final double zoom;
-  final double width;
-  final double height;
-
-  const _DynamicMapTileLayer({
-    required this.centerPixelX,
-    required this.centerPixelY,
-    required this.zoom,
-    required this.width,
-    required this.height,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const double tileSize = 256.0;
-    final int z = zoom.toInt();
-
-    final double leftPx = centerPixelX - (width / 2.0);
-    final double topPx = centerPixelY - (height / 2.0);
-    final double rightPx = leftPx + width;
-    final double bottomPx = topPx + height;
-
-    final int minTileX = (leftPx / tileSize).floor() - 1;
-    final int maxTileX = (rightPx / tileSize).ceil() + 1;
-    final int minTileY = (topPx / tileSize).floor() - 1;
-    final int maxTileY = (bottomPx / tileSize).ceil() + 1;
-
-    final int maxIndex = (1 << z) - 1;
-    final List<Widget> tileWidgets = [];
-
-    for (int tx = minTileX; tx <= maxTileX; tx++) {
-      for (int ty = minTileY; ty <= maxTileY; ty++) {
-        final int wrappedTileX = (tx % (maxIndex + 1) + (maxIndex + 1)) % (maxIndex + 1);
-        if (ty < 0 || ty > maxIndex) continue;
-
-        final double tileLeft = (tx * tileSize) - leftPx;
-        final double tileTop = (ty * tileSize) - topPx;
-
-        final int serverIdx = (wrappedTileX.abs() + ty.abs()) % 4;
-        final String lang = Localizations.localeOf(context).languageCode;
-        final String topoSub = ['a', 'b', 'c'][(wrappedTileX.abs() + ty.abs()) % 3];
-        final String googleTileUrl =
-            'https://mt$serverIdx.google.com/vt/lyrs=p&hl=$lang&x=$wrappedTileX&y=$ty&z=$z';
-        final String osmTileUrl =
-            'https://$topoSub.tile.opentopomap.org/$z/$wrappedTileX/$ty.png';
-
-        tileWidgets.add(
-          Positioned(
-            key: ValueKey('find_tile_${wrappedTileX}_${ty}_$z'),
-            left: tileLeft,
-            top: tileTop,
-            width: tileSize,
-            height: tileSize,
-            child: Image.network(
-              googleTileUrl,
-              fit: BoxFit.cover,
-              gaplessPlayback: true,
-              filterQuality: FilterQuality.low,
-              errorBuilder: (context, error, stackTrace) {
-                return Image.network(
-                  osmTileUrl,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                  filterQuality: FilterQuality.low,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Image.asset(
-                      'assets/images/BG image.png',
-                      fit: BoxFit.cover,
-                      gaplessPlayback: true,
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        );
-      }
-    }
-
-    return ClipRect(
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Image.asset(
-                'assets/images/BG image.png',
-                fit: BoxFit.cover,
-              ),
-            ),
-            ...tileWidgets,
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF8B53FE).withValues(alpha: 0.03),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 

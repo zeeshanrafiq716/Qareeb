@@ -3,19 +3,33 @@ import 'package:dio/dio.dart';
 import '../config/app_config.dart';
 
 class ApiClient {
+  static String? _globalAuthToken;
+
+  static void setGlobalToken(String? token) {
+    _globalAuthToken = token;
+  }
+
+  static String? get globalAuthToken => _globalAuthToken;
+
   late final Dio _dio;
 
-  ApiClient({String? baseUrl}) {
+  ApiClient({String? baseUrl, String? authToken}) {
     final effectiveBaseUrl = baseUrl ?? AppConfig.baseUrl;
+    final token = authToken ?? _globalAuthToken;
+    final initialHeaders = <String, dynamic>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+    if (token != null && token.isNotEmpty) {
+      initialHeaders['Authorization'] = 'Bearer $token';
+    }
+
     _dio = Dio(
       BaseOptions(
         baseUrl: effectiveBaseUrl,
         connectTimeout: const Duration(milliseconds: AppConfig.connectTimeoutMs),
         receiveTimeout: const Duration(milliseconds: AppConfig.receiveTimeoutMs),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: initialHeaders,
       ),
     );
 
@@ -38,6 +52,15 @@ class ApiClient {
   }
 
   Dio get dio => _dio;
+
+  void setAuthToken(String? token) {
+    setGlobalToken(token);
+    if (token != null && token.isNotEmpty) {
+      _dio.options.headers['Authorization'] = 'Bearer $token';
+    } else {
+      _dio.options.headers.remove('Authorization');
+    }
+  }
 
   void updateBaseUrl(String newBaseUrl) {
     _dio.options.baseUrl = newBaseUrl;

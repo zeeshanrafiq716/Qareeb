@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_content_layout.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_handle_bar.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
@@ -84,7 +83,7 @@ class ProviderAuthCard extends StatelessWidget {
                       top: 24.0,
                       left: horizontalPadding,
                       right: horizontalPadding,
-                      bottom: bottomSafeArea > 0 ? (bottomSafeArea + 24.0) : 26.0,
+                      bottom: bottomSafeArea > 0 ? (bottomSafeArea + 24.0) : 28.0,
                     ),
                     child: child ?? const ProviderCardContentLayout(),
                   ),
@@ -95,16 +94,6 @@ class ProviderAuthCard extends StatelessWidget {
                   top: ProviderCardHandleBar.designTop, // 12.0px
                   child: IgnorePointer(
                     child: ProviderCardHandleBar(),
-                  ),
-                ),
-
-                // 3. Pinned Bottom Indicator Bar: with safe-area offset so it never gets stuck in bottom
-                Positioned(
-                  bottom: bottomSafeArea > 0 ? (bottomSafeArea + 8.0) : 14.0,
-                  left: 0,
-                  right: 0,
-                  child: const IgnorePointer(
-                    child: ProviderCardBottomIndicator(),
                   ),
                 ),
               ],

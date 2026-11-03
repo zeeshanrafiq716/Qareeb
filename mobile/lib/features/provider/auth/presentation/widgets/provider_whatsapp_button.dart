@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -57,52 +58,38 @@ class ProviderWhatsAppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: 1.0, // opacity: 1
-      child: Transform.rotate(
-        angle: 0.0, // angle: 0 deg
-        child: SizedBox(
-          width: double.infinity,
-          height: designHeight,
-          child: Material(
-            color: ProviderColors.inputBackground, // background: #F2F5F4
-            borderRadius: BorderRadius.circular(12.0), // border-radius: 12px
-            child: InkWell(
-              onTap: onTap ?? () {},
-              borderRadius: BorderRadius.circular(12.0),
-              child: Center(
-                // button inner content branding: width: 236; height: 20; gap: 12px;
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // inner content branding: width: 201; height: 22; gap: 12px;
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // whatsap icon branding: width: 22; height: 22; background: #25D366;
-                        const _WhatsAppIconWidget(),
+    return ProviderAnimatedButton(
+      height: designHeight,
+      backgroundColor: ProviderColors.inputBackground, // #F2F5F4
+      foregroundColor: ProviderColors.cardTitle, // #1C2926
+      isPrimary: false,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // whatsap icon branding: width: 22; height: 22; background: #25D366;
+            const _WhatsAppIconWidget(),
 
-                        const SizedBox(width: 12.0), // gap: 12px
+            const SizedBox(width: 12.0),
 
-                        // content: Continue with WhatsApp (Inter 500 Medium 14px #1C2926)
-                        Text(
-                          context.l10n.continueWithWhatsApp,
-                          style: ProviderTextStyles.whatsappButtonText,
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(width: 12.0), // gap: 12px
-
-                    // > branding: width: 5; height: 10; border: 1px solid #566663;
-                    const _RightChevronWidget(),
-                  ],
-                ),
+            // content: Continue with WhatsApp (Inter 500 Medium 14px #1C2926)
+            Flexible(
+              child: Text(
+                context.l10n.continueWithWhatsApp,
+                style: ProviderTextStyles.whatsappButtonText,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-          ),
+
+            const SizedBox(width: 8.0),
+
+            // > branding: width: 5; height: 10; border: 1px solid #566663;
+            const _RightChevronWidget(),
+          ],
         ),
       ),
     );

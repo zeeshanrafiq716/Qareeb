@@ -1,11 +1,23 @@
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/localization/app_locale.dart';
+import '../../../services/profile_stats_service.dart';
 import '../../home/presentation/widgets/bottom_nav_bar_widget.dart';
+import '../../provider/auth/data/provider_registration_state.dart';
+import '../../provider/auth/presentation/provider_profile_details_screen.dart';
+import '../../provider/auth/presentation/vehicle_service_details_screen.dart';
+import '../../provider/splash/presentation/provider_splash_screen.dart';
+import '../../splash/presentation/splash_screen.dart';
+import 'customer_feedback_support_screen.dart';
+import 'notifications_screen.dart';
+import 'privacy_security_screen.dart';
+import 'provider_help_support_screen.dart';
 
 /// Profile Tab screen designed strictly following Figma tokens:
 /// - Background gradient: linear-gradient(180deg, #9FFFCB -36.97%, rgba(159, 255, 203, 0) 100%)
@@ -16,12 +28,14 @@ class ProfileScreen extends ConsumerStatefulWidget {
   final VoidCallback? onBackTap;
   final ValueChanged<int>? onTabSelected;
   final bool showBottomNav;
+  final bool isProvider;
 
   const ProfileScreen({
     super.key,
     this.onBackTap,
     this.onTabSelected,
     this.showBottomNav = true,
+    this.isProvider = false,
   });
 
   @override
@@ -33,10 +47,204 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   ScrollController get _scrollController =>
       _scrollControllerInstance ??= ScrollController();
 
+  ProfileStatsData _stats = const ProfileStatsData(
+    totalRequests: 128,
+    completedRequests: 107,
+    rating: 4.8,
+    reviewsCount: 120,
+  );
+
   @override
   void initState() {
     super.initState();
     _scrollControllerInstance ??= ScrollController();
+    _loadProfileData();
+  }
+
+  @override
+  void didUpdateWidget(ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isProvider != widget.isProvider) {
+      _loadProfileData();
+    }
+  }
+
+  Future<void> _loadProfileData() async {
+    final stats = await ProfileStatsService.instance.getStats(
+      isProvider: widget.isProvider,
+    );
+    if (!mounted) return;
+    setState(() {
+      _stats = stats;
+    });
+  }
+
+  Future<void> _showPhotoOptionsSheet(BuildContext context, AppTranslations tr, bool isArabic) async {
+    HapticFeedback.lightImpact();
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (bottomSheetContext) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24.0),
+              topRight: Radius.circular(24.0),
+            ),
+          ),
+          padding: EdgeInsets.only(
+            left: 20.0,
+            right: 20.0,
+            top: 16.0,
+            bottom: MediaQuery.of(bottomSheetContext).padding.bottom + 20.0,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40.0,
+                  height: 4.0,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5E7EB),
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16.0),
+
+              // Title
+              Text(
+                isArabic ? 'الصورة الشخصية' : 'Profile Photo',
+                style: tr.font(
+                  fontSize: 18.0,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1C2926),
+                ),
+              ),
+              const SizedBox(height: 18.0),
+
+              // Option: Take Photo
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                leading: Container(
+                  width: 42.0,
+                  height: 42.0,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0EAFE),
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  child: const Icon(
+                    Icons.camera_alt_rounded,
+                    color: Color(0xFF8B53FE),
+                    size: 22.0,
+                  ),
+                ),
+                title: Text(
+                  isArabic ? 'التقاط صورة (الكاميرا)' : 'Take Photo (Camera)',
+                  style: tr.font(
+                    fontSize: 15.0,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1C2926),
+                  ),
+                ),
+                onTap: () async {
+                  Navigator.of(bottomSheetContext).pop();
+                  final newPath = await ProfileStatsService.instance.pickAndSavePhoto(
+                    source: ImageSource.camera,
+                    isProvider: widget.isProvider,
+                  );
+                  if (newPath != null && mounted) {
+                    setState(() {
+                      _stats = _stats.copyWith(photoPath: newPath);
+                    });
+                  }
+                },
+              ),
+
+              // Option: Choose from Gallery
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                leading: Container(
+                  width: 42.0,
+                  height: 42.0,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0EAFE),
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  child: const Icon(
+                    Icons.photo_library_rounded,
+                    color: Color(0xFF8B53FE),
+                    size: 22.0,
+                  ),
+                ),
+                title: Text(
+                  isArabic ? 'اختيار من المعرض' : 'Choose from Gallery',
+                  style: tr.font(
+                    fontSize: 15.0,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1C2926),
+                  ),
+                ),
+                onTap: () async {
+                  Navigator.of(bottomSheetContext).pop();
+                  final newPath = await ProfileStatsService.instance.pickAndSavePhoto(
+                    source: ImageSource.gallery,
+                    isProvider: widget.isProvider,
+                  );
+                  if (newPath != null && mounted) {
+                    setState(() {
+                      _stats = _stats.copyWith(photoPath: newPath);
+                    });
+                  }
+                },
+              ),
+
+              // Option: Remove Photo (if set)
+              if (_stats.photoPath != null && _stats.photoPath!.isNotEmpty)
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                  leading: Container(
+                    width: 42.0,
+                    height: 42.0,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF0F0),
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Color(0xFFDC2626),
+                      size: 22.0,
+                    ),
+                  ),
+                  title: Text(
+                    isArabic ? 'إزالة الصورة الحالية' : 'Remove Current Photo',
+                    style: tr.font(
+                      fontSize: 15.0,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFFDC2626),
+                    ),
+                  ),
+                  onTap: () async {
+                    Navigator.of(bottomSheetContext).pop();
+                    await ProfileStatsService.instance.removePhoto(
+                      isProvider: widget.isProvider,
+                    );
+                    if (mounted) {
+                      setState(() {
+                        _stats = _stats.copyWith(photoPath: null);
+                      });
+                    }
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -144,11 +352,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           PointerDeviceKind.stylus,
                         },
                       ),
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
-                        ),
+                      child: RefreshIndicator(
+                        color: const Color(0xFF8B53FE),
+                        onRefresh: _loadProfileData,
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
+                          ),
                         child: Padding(
                           padding: EdgeInsets.symmetric(
                             horizontal: cardHorizontalMargin,
@@ -159,15 +370,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               // Top headroom spacing (balanced for English & Arabic, respecting status bar)
                               SizedBox(height: headerTopPadding),
 
-                              // Header: Back Button + Profile Title & Subtitle + Symmetrical right spacer
+                              // Header: Back Button + Profile Title (Centered) + Symmetrical right spacer
                               _buildHeader(context, tr, isArabic),
-                              const SizedBox(height: 22.0),
+                              const SizedBox(height: 20.0),
 
-                              // User Profile Card (Equal left-to-right margins)
-                              _buildUserProfileCard(context, tr, isArabic),
-                              const SizedBox(height: 12.0),
+                              // Centered User Profile Top Section (Avatar + Name + Verified Badge + Rating)
+                              _buildTopProfileSection(context, tr, isArabic),
+                              const SizedBox(height: 20.0),
 
-                              // Metric Cards Row: Total Requests & Average Rating
+                              // Metric Cards Row: Real Total Requests & Real Completed
                               IntrinsicHeight(
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -176,12 +387,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       child: _buildMetricCard(
                                         tr: tr,
                                         title: tr.totalRequests,
-                                        value: '12',
-                                        iconBgColor: const Color(0xFFF0EAFE),
-                                        icon: const CustomPaint(
-                                          size: Size(18.0, 16.0),
-                                          painter: _TotalRequestsIconPainter(
-                                            color: Color(0xFF8B53FE),
+                                        value: '${_stats.totalRequests}',
+                                        icon: Container(
+                                          width: 38.0,
+                                          height: 38.0,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF0EAFE),
+                                            borderRadius: BorderRadius.circular(10.0),
+                                          ),
+                                          child: const Center(
+                                            child: CustomPaint(
+                                              size: Size(18.0, 16.0),
+                                              painter: _TotalRequestsIconPainter(
+                                                color: Color(0xFF8B53FE),
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -190,33 +410,78 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     Expanded(
                                       child: _buildMetricCard(
                                         tr: tr,
-                                        title: tr.averageRating,
-                                        value: '4.8',
-                                        iconBgColor: const Color(0xFFFFF6E9),
-                                        icon: const Icon(
-                                          Icons.star_rounded,
-                                          size: 20.0,
-                                          color: Color(0xFFF59E0B),
+                                        title: tr.completed,
+                                        value: '${_stats.completedRequests}',
+                                        icon: Container(
+                                          width: 38.0,
+                                          height: 38.0,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFFF0EAFE),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Center(
+                                            child: Container(
+                                              width: 22.0,
+                                              height: 22.0,
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFF8B53FE),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Center(
+                                                child: Icon(
+                                                  Icons.check_rounded,
+                                                  size: 14.0,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 12.0),
+                              const SizedBox(height: 14.0),
 
                               // Menu Options Cards (Each item with equal left/right margins)
-                              // 1. Personal Information
-                              _buildProfileMenuCard(
-                                tr: tr,
-                                icon: Icons.person_rounded,
-                                title: tr.personalInfo,
-                                subtitle: tr.personalInfoSubtitle,
-                                onTap: () {
-                                  // Navigate / handle personal information
-                                },
-                              ),
-                              const SizedBox(height: 10.0),
+                              // 1. Personal Information (Only displayed on Provider side)
+                              if (widget.isProvider) ...[
+                                _buildProfileMenuCard(
+                                  tr: tr,
+                                  icon: Icons.person_rounded,
+                                  title: tr.personalInfo,
+                                  subtitle: tr.personalInfoSubtitle,
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const ProviderProfileDetailsScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 10.0),
+
+                                // 1b. Vehicle & Service Details (Provider side onboarding screen 2)
+                                _buildProfileMenuCard(
+                                  tr: tr,
+                                  icon: Icons.directions_car_rounded,
+                                  title: isArabic
+                                      ? 'تفاصيل المركبة والخدمة'
+                                      : 'Vehicle & Service Details',
+                                  subtitle: isArabic
+                                      ? 'نوع المركبة ورقم اللوحة والفئة'
+                                      : 'Vehicle, plate number & category',
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const VehicleServiceDetailsScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 10.0),
+                              ],
 
                               // 2. Notifications
                               _buildProfileMenuCard(
@@ -225,7 +490,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 title: tr.notifications,
                                 subtitle: tr.notificationsSubtitle,
                                 onTap: () {
-                                  // Navigate / handle notifications
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const NotificationsScreen(),
+                                    ),
+                                  );
                                 },
                               ),
                               const SizedBox(height: 10.0),
@@ -241,28 +510,69 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               ),
                               const SizedBox(height: 10.0),
 
-                              // 4. Saved Locations
-                              _buildProfileMenuCard(
-                                tr: tr,
-                                icon: Icons.location_on_rounded,
-                                title: tr.savedLocations,
-                                subtitle: tr.savedLocationsSubtitle,
-                                onTap: () {
-                                  // Navigate / handle saved locations
-                                },
-                              ),
-                              const SizedBox(height: 10.0),
-
-                              // 5. Payment Methods
-                              _buildProfileMenuCard(
-                                tr: tr,
-                                icon: Icons.credit_card_rounded,
-                                title: tr.paymentMethods,
-                                subtitle: tr.paymentMethodsSubtitle,
-                                onTap: () {
-                                  // Navigate / handle payment methods
-                                },
-                              ),
+                              // Switch Mode Card:
+                              // On Provider side: "Login as Customer"
+                              // On Customer side: "Login as Service Provider"
+                              if (widget.isProvider)
+                                _buildProfileMenuCard(
+                                  tr: tr,
+                                  icon: Icons.person_pin_circle_rounded,
+                                  title: isArabic
+                                      ? 'تسجيل الدخول كعميل'
+                                      : 'Login as Customer',
+                                  subtitle: isArabic
+                                      ? 'التبديل إلى حساب العميل وطلب الخدمات'
+                                      : 'Switch to customer mode & request services',
+                                  onTap: () async {
+                                    await ProviderRegistrationStore.instance
+                                        .setActiveAppMode('customer');
+                                    if (!context.mounted) return;
+                                    Navigator.of(context).pushAndRemoveUntil(
+                                      PageRouteBuilder(
+                                        pageBuilder: (_, _, _) => const SplashScreen(),
+                                        transitionsBuilder: (_, animation, _, child) => FadeTransition(
+                                          opacity: CurvedAnimation(
+                                            parent: animation,
+                                            curve: Curves.easeInOutCubic,
+                                          ),
+                                          child: child,
+                                        ),
+                                        transitionDuration: const Duration(milliseconds: 350),
+                                      ),
+                                      (route) => false,
+                                    );
+                                  },
+                                )
+                              else
+                                _buildProfileMenuCard(
+                                  tr: tr,
+                                  icon: Icons.handyman_rounded,
+                                  title: isArabic
+                                      ? 'تسجيل الدخول كمزود خدمة'
+                                      : 'Login as Service Provider',
+                                  subtitle: isArabic
+                                      ? 'التبديل إلى وضع مزود الخدمة وتقديم الخدمات'
+                                      : 'Switch to partner mode & offer services',
+                                  onTap: () async {
+                                    await ProviderRegistrationStore.instance
+                                        .setActiveAppMode('provider');
+                                    if (!context.mounted) return;
+                                    Navigator.of(context).pushAndRemoveUntil(
+                                      PageRouteBuilder(
+                                        pageBuilder: (_, _, _) => const ProviderSplashScreen(),
+                                        transitionsBuilder: (_, animation, _, child) => FadeTransition(
+                                          opacity: CurvedAnimation(
+                                            parent: animation,
+                                            curve: Curves.easeInOutCubic,
+                                          ),
+                                          child: child,
+                                        ),
+                                        transitionDuration: const Duration(milliseconds: 350),
+                                      ),
+                                      (route) => false,
+                                    );
+                                  },
+                                ),
                               const SizedBox(height: 10.0),
 
                               // 6. Privacy & Security
@@ -272,7 +582,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 title: tr.privacySecurity,
                                 subtitle: tr.privacySecuritySubtitle,
                                 onTap: () {
-                                  // Navigate / handle privacy & security
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const PrivacySecurityScreen(),
+                                    ),
+                                  );
                                 },
                               ),
                               const SizedBox(height: 10.0),
@@ -284,9 +598,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 title: tr.helpSupport,
                                 subtitle: tr.helpSupportSubtitle,
                                 onTap: () {
-                                  // Navigate / handle help & support
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => widget.isProvider
+                                          ? const ProviderHelpSupportScreen()
+                                          : const CustomerFeedbackSupportScreen(),
+                                    ),
+                                  );
                                 },
                               ),
+
+                              // 8. Logout Button (Only on Provider Side after card tabs)
+                              if (widget.isProvider) ...[
+                                const SizedBox(height: 12.0),
+                                _buildLogoutButton(context, tr, isArabic),
+                              ],
+
                               const SizedBox(height: 120.0), // Generous clearance for bottom nav bar
                             ],
                           ),
@@ -294,6 +621,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                   ),
+                ),
 
                   // Floating Bottom Navigation Bar (Profile tab active: index 2)
                   if (widget.showBottomNav)
@@ -361,7 +689,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  /// Header widget: Back Button + Profile Title & Subtitle + Optical Alignment Spacer
+  /// Header widget: Back Button + Centered Profile Title + Symmetrical Spacer
   Widget _buildHeader(BuildContext context, AppTranslations tr, bool isArabic) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -402,58 +730,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
 
-        // Centered Title & Subtitle
+        // Centered Title
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Profile Title
-                Text(
-                  tr.profileTitle,
-                  textAlign: TextAlign.center,
-                  style: isArabic
-                      ? GoogleFonts.cairo(
-                          fontSize: 20.0,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1C2926),
-                          height: 1.2,
-                        )
-                      : tr.font(
-                          fontSize: 20.0,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1C2926),
-                          height: 1.2,
-                        ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 3.0),
-                // Profile Subtitle (comfortably spaced below heading)
-                Text(
-                  tr.profileSubtitle,
-                  textAlign: TextAlign.center,
-                  style: isArabic
-                      ? GoogleFonts.cairo(
-                          fontSize: 12.0,
-                          fontWeight: FontWeight.w400,
-                          color: const Color(0xFF566663),
-                          height: 1.15,
-                        )
-                      : tr.font(
-                          fontSize: 12.0,
-                          fontWeight: FontWeight.w400,
-                          color: const Color(0xFF566663),
-                          height: 1.2,
-                        ),
-                  softWrap: true,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+          child: Text(
+            tr.profileTitle,
+            textAlign: TextAlign.center,
+            style: isArabic
+                ? GoogleFonts.cairo(
+                    fontSize: 20.0,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1C2926),
+                    height: 1.2,
+                  )
+                : tr.font(
+                    fontSize: 20.0,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1C2926),
+                    height: 1.2,
+                  ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
 
@@ -466,22 +762,202 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  /// User Profile Card with verified badge and avatar
-  Widget _buildUserProfileCard(
-    BuildContext context,
-    AppTranslations tr,
-    bool isArabic,
-  ) {
+  /// Top Profile Section with large centered avatar, photo picker, name, verified badge, and real reviews rating
+  Widget _buildTopProfileSection(BuildContext context, AppTranslations tr, bool isArabic) {
+    final String providerName = ProviderRegistrationStore.instance.data.fullName.trim();
+    final String displayName = providerName.isNotEmpty
+        ? providerName
+        : (isArabic ? 'حسن رضا' : 'Hassan Raza');
+
+    final bool hasCustomPhoto = _stats.photoPath != null &&
+        _stats.photoPath!.isNotEmpty &&
+        File(_stats.photoPath!).existsSync();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Large Centered Circular Avatar with Camera Edit Badge
+        GestureDetector(
+          onTap: () => _showPhotoOptionsSheet(context, tr, isArabic),
+          behavior: HitTestBehavior.opaque,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 86.0,
+                height: 86.0,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFC1CC),
+                  shape: BoxShape.circle,
+                ),
+                child: ClipOval(
+                  child: hasCustomPhoto
+                      ? Image.file(
+                          File(_stats.photoPath!),
+                          width: 86.0,
+                          height: 86.0,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset(
+                              'assets/images/driver_avatar.png',
+                              width: 86.0,
+                              height: 86.0,
+                              fit: BoxFit.cover,
+                            );
+                          },
+                        )
+                      : Image.asset(
+                          'assets/images/driver_avatar.png',
+                          width: 86.0,
+                          height: 86.0,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Center(
+                              child: Text(
+                                displayName.isNotEmpty ? displayName[0].toUpperCase() : 'H',
+                                style: tr.font(
+                                  fontSize: 32.0,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF1C2926),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ),
+
+              // Small Camera Add/Edit Badge Button
+              Positioned(
+                bottom: 0.0,
+                right: isArabic ? null : 0.0,
+                left: isArabic ? 0.0 : null,
+                child: Container(
+                  width: 28.0,
+                  height: 28.0,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B53FE),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white,
+                      width: 2.0,
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x26000000),
+                        blurRadius: 6.0,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.camera_alt_rounded,
+                      size: 14.0,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12.0),
+
+        // Centered Name + Verified Badge
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Text(
+                displayName,
+                style: isArabic
+                    ? GoogleFonts.cairo(
+                        fontSize: 20.0,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1C2926),
+                        height: 1.2,
+                      )
+                    : tr.font(
+                        fontSize: 20.0,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1C2926),
+                        height: 1.2,
+                      ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 6.0),
+            const Icon(
+              Icons.verified_rounded,
+              size: 20.0,
+              color: Color(0xFF8B53FE),
+            ),
+          ],
+        ),
+
+        // Real Rating & Reviews row: ★ 4.8 (120 reviews) - Only visible on Provider side
+        if (widget.isProvider) ...[
+          const SizedBox(height: 6.0),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.star_rounded,
+                size: 18.0,
+                color: Color(0xFFF59E0B),
+              ),
+              const SizedBox(width: 4.0),
+              Text(
+                _stats.rating.toStringAsFixed(1),
+                style: tr.font(
+                  fontSize: 14.0,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1C2926),
+                ),
+              ),
+              Text(
+                isArabic ? ' (${_stats.reviewsCount} تقييم)' : ' (${_stats.reviewsCount} reviews)',
+                style: tr.font(
+                  fontSize: 13.0,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF566663),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Helper widget for the Profile Overview Metric Cards (e.g. Total Requests, Completed)
+  Widget _buildMetricCard({
+    required AppTranslations tr,
+    required String title,
+    required String value,
+    required Widget icon,
+    VoidCallback? onTap,
+  }) {
     return Container(
-      width: double.infinity,
-      height: 86.0,
+      constraints: const BoxConstraints(minHeight: 68.0),
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(
+          color: const Color(0xFFF1F2EF),
+          width: 1.0,
+        ),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x14000000), // #00000014
-            blurRadius: 12.0,
+            color: Color(0x0A000000), // subtle soft card shadow
+            blurRadius: 10.0,
             offset: Offset(0, 2),
             spreadRadius: 0.0,
           ),
@@ -489,229 +965,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: BorderRadius.circular(16.0),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12.0),
-          onTap: () {
-            HapticFeedback.lightImpact();
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 12.0,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Avatar with camera icon badge
-                      SizedBox(
-                        width: 48.0,
-                        height: 51.0,
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Positioned(
-                              top: 0.0,
-                              left: 0.0,
-                              width: 48.0,
-                              height: 48.0,
-                              child: ClipOval(
-                                child: Image.asset(
-                                  'assets/images/driver_avatar.png',
-                                  width: 48.0,
-                                  height: 48.0,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      width: 48.0,
-                                      height: 48.0,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFFFC1CC),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          'A',
-                                          style: tr.font(
-                                            fontSize: 18.0,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF1C2926),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              top: 31.0,
-                              left: 27.0,
-                              width: 20.0,
-                              height: 20.0,
-                              child: Container(
-                                width: 20.0,
-                                height: 20.0,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFFFFFF),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: const Color(0xFFF1F2EF),
-                                    width: 0.8,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x1A000000),
-                                      blurRadius: 4.0,
-                                      offset: Offset(0, 1),
-                                    ),
-                                  ],
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.camera_alt_rounded,
-                                    size: 11.0,
-                                    color: Color(0xFF000000),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12.0),
-
-                      // User name & handle
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    tr.isArabic ? 'عبد الأحد عمر' : 'Abdul Ahad Omar',
-                                    style: isArabic
-                                        ? GoogleFonts.cairo(
-                                            fontSize: 15.0,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF1C2926),
-                                            height: 1.1,
-                                          )
-                                        : tr.font(
-                                            fontSize: 15.0,
-                                            fontWeight: FontWeight.w500,
-                                            color: const Color(0xFF1C2926),
-                                            height: 1.1,
-                                          ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: 6.0),
-                                const Icon(
-                                  Icons.verified_rounded,
-                                  size: 16.0,
-                                  color: Color(0xFF8B53FE),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 1.0),
-                            Text(
-                              '@abdulahadomar132',
-                              textDirection: TextDirection.ltr,
-                              style: tr.font(
-                                fontSize: 12.0,
-                                fontWeight: FontWeight.w400,
-                                color: const Color(0xFF566663),
-                                height: 1.1,
-                                letterSpacing: 0.0,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8.0),
-
-                // Trailing chevron (direction sensitive)
-                _ProfileChevron(
-                  width: 6.0,
-                  height: 11.0,
-                  color: const Color(0xFF566663),
-                  strokeWidth: 1.6,
-                  isLeft: isArabic || Directionality.of(context) == TextDirection.rtl,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Helper widget for the Profile Overview Metric Cards (e.g. Total Requests, Average Rating)
-  Widget _buildMetricCard({
-    required AppTranslations tr,
-    required String title,
-    required String value,
-    required Color iconBgColor,
-    required Widget icon,
-    VoidCallback? onTap,
-  }) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 64.0),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(12.0),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1A000000), // #0000001A
-            blurRadius: 12.0,
-            offset: Offset(0, 1),
-            spreadRadius: 0.0,
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12.0),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12.0),
+          borderRadius: BorderRadius.circular(16.0),
           onTap: () {
             HapticFeedback.lightImpact();
             onTap?.call();
           },
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Icon container
-                Container(
-                  width: 32.0,
-                  height: 32.0,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: iconBgColor,
-                  ),
-                  child: Center(
-                    child: icon,
-                  ),
-                ),
+                icon,
                 const SizedBox(width: 10.0),
                 Expanded(
                   child: Column(
@@ -719,28 +985,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        title,
-                        style: tr.font(
-                          fontSize: 10.0,
-                          fontWeight: FontWeight.w400,
-                          color: const Color(0xFF566663),
-                          height: 1.1,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          title,
+                          style: tr.font(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w400,
+                            color: const Color(0xFF566663),
+                            height: 1.15,
+                          ),
+                          maxLines: 1,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 1.0),
-                      Text(
-                        value,
-                        style: tr.font(
-                          fontSize: 14.0,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF1C2926),
-                          height: 1.1,
+                      const SizedBox(height: 4.0),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          value,
+                          style: tr.font(
+                            fontSize: 18.0,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF1C2926),
+                            height: 1.15,
+                          ),
+                          maxLines: 1,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -821,28 +1093,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        title,
-                        style: tr.font(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF1C2926),
-                          height: 1.1,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          title,
+                          style: tr.font(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF1C2926),
+                            height: 1.15,
+                          ),
+                          maxLines: 1,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 1.0),
-                      Text(
-                        subtitle,
-                        style: tr.font(
-                          fontSize: 11.0,
-                          fontWeight: FontWeight.w400,
-                          color: const Color(0xFF566663),
-                          height: 1.1,
+                      const SizedBox(height: 4.0),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          subtitle,
+                          style: tr.font(
+                            fontSize: 11.0,
+                            fontWeight: FontWeight.w400,
+                            color: const Color(0xFF566663),
+                            height: 1.15,
+                          ),
+                          maxLines: 1,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -873,6 +1151,186 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Logout Button widget exclusively for the Provider side
+  Widget _buildLogoutButton(BuildContext context, AppTranslations tr, bool isArabic) {
+    final String logoutText = isArabic ? 'تسجيل الخروج' : 'Log Out';
+    final String logoutSubtitle = isArabic
+        ? 'تسجيل الخروج من حساب مزود الخدمة'
+        : 'Sign out from provider account';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF5F5),
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(
+          color: const Color(0xFFFCA5A5).withValues(alpha: 0.5),
+          width: 1.0,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 10.0,
+            offset: Offset(0, 2),
+            spreadRadius: 0.0,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: const Key('provider_profile_logout_button'),
+          borderRadius: BorderRadius.circular(16.0),
+          onTap: () => _showLogoutConfirmation(context, tr, isArabic),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Red Logout Icon container
+                Container(
+                  width: 38.0,
+                  height: 38.0,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEE2E2),
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.logout_rounded,
+                      size: 20.0,
+                      color: Color(0xFFEF4444),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14.0),
+
+                // Text Content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        logoutText,
+                        style: tr.font(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFDC2626),
+                          height: 1.1,
+                        ),
+                        maxLines: 1,
+                      ),
+                      const SizedBox(height: 2.0),
+                      Text(
+                        logoutSubtitle,
+                        style: tr.font(
+                          fontSize: 11.0,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF991B1B),
+                          height: 1.1,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Chevron arrow matching profile style
+                Icon(
+                  isArabic ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                  size: 22.0,
+                  color: const Color(0xFFEF4444),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Confirmation dialog before logging out from provider account
+  void _showLogoutConfirmation(BuildContext context, AppTranslations tr, bool isArabic) {
+    HapticFeedback.lightImpact();
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+        title: Text(
+          isArabic ? 'تسجيل الخروج' : 'Log Out',
+          style: tr.font(
+            fontSize: 18.0,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF1C2926),
+          ),
+        ),
+        content: Text(
+          isArabic
+              ? 'هل أنت متأكد من رغبتك في تسجيل الخروج من حساب مزود الخدمة؟'
+              : 'Are you sure you want to log out from your provider account?',
+          style: tr.font(
+            fontSize: 14.0,
+            color: const Color(0xFF566663),
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: Text(
+              isArabic ? 'إلغاء' : 'Cancel',
+              style: tr.font(
+                fontSize: 14.0,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF566663),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(dialogCtx).pop();
+              await ProviderRegistrationStore.instance.clear();
+              await ProviderRegistrationStore.instance.setActiveAppMode('customer');
+              if (!context.mounted) return;
+              Navigator.of(context).pushAndRemoveUntil(
+                PageRouteBuilder(
+                  pageBuilder: (_, _, _) => const SplashScreen(),
+                  transitionsBuilder: (_, animation, _, child) => FadeTransition(
+                    opacity: CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeInOutCubic,
+                    ),
+                    child: child,
+                  ),
+                  transitionDuration: const Duration(milliseconds: 350),
+                ),
+                (route) => false,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+            ),
+            child: Text(
+              isArabic ? 'تسجيل الخروج' : 'Log Out',
+              style: tr.font(
+                fontSize: 14.0,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

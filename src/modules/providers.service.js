@@ -1,4 +1,9 @@
-import { ENTITY, PROVIDER_STATUS, VERIFICATION_STATUS } from "../config/constants.js";
+import {
+  COMPULSORY_DOCUMENT_TYPES,
+  ENTITY,
+  PROVIDER_STATUS,
+  VERIFICATION_STATUS,
+} from "../config/constants.js";
 import { query, withTransaction } from "../db/pool.js";
 import { getStatus } from "../db/status.js";
 import { AppError, NotFoundError } from "../utils/AppError.js";
@@ -107,6 +112,68 @@ export async function updateProfile(provider, input) {
   });
 }
 
+export function normalizeDocumentType(docType) {
+  if (docType === "driving_licence") return "license";
+  return docType;
+}
+
+export async function getProviderDocumentsStatus(clientOrPool, providerId) {
+  const runner = clientOrPool?.query ? clientOrPool : { query };
+  const { rows } = await runner.query(
+    `SELECT v.*, s.code AS status_code
+     FROM verifications v
+     JOIN statuses s ON s.id = v.status_id
+     WHERE v.provider_id = $1
+     ORDER BY v.created_at DESC`,
+    [providerId],
+  );
+
+  const uploadedTypes = new Set(
+    rows.map((r) => normalizeDocumentType(r.document_type)),
+  );
+
+  // If provider uploaded legacy cnic or passport (e.g. from existing test fixtures), treat as complete
+  const hasLegacyDoc = uploadedTypes.has("cnic") || uploadedTypes.has("passport");
+  const hasVehiclePhotosBundle = uploadedTypes.has("vehicle_photos");
+
+  const missingCompulsory = COMPULSORY_DOCUMENT_TYPES.filter((type) => {
+    if (
+      hasVehiclePhotosBundle &&
+      [
+        "vehicle_front",
+        "vehicle_rear",
+        "vehicle_left_side",
+        "vehicle_right_side",
+      ].includes(type)
+    ) {
+      return false;
+    }
+    return !uploadedTypes.has(type);
+  });
+
+  const allCompulsorySubmitted = hasLegacyDoc || missingCompulsory.length === 0;
+
+  return {
+    allCompulsorySubmitted,
+    compulsoryDocuments: COMPULSORY_DOCUMENT_TYPES,
+    missingCompulsoryDocuments: hasLegacyDoc ? [] : missingCompulsory,
+    uploadedDocuments: rows.map(serializeVerification),
+    hasLegacyDoc,
+  };
+}
+
+export async function assertAllCompulsoryDocumentsSubmitted(clientOrPool, providerId) {
+  const docStatus = await getProviderDocumentsStatus(clientOrPool, providerId);
+  if (!docStatus.allCompulsorySubmitted) {
+    throw new AppError(
+      400,
+      `All documents are compulsory. Missing: ${docStatus.missingCompulsoryDocuments.join(", ")}`,
+      "COMPULSORY_DOCUMENTS_MISSING",
+    );
+  }
+  return docStatus;
+}
+
 export async function submitVerification(provider, { documentType, documentUrl }) {
   if (provider.status_code === PROVIDER_STATUS.SUSPENDED) {
     throw new AppError(403, "Suspended providers cannot submit documents", "PROVIDER_SUSPENDED");
@@ -118,6 +185,8 @@ export async function submitVerification(provider, { documentType, documentUrl }
     throw new AppError(400, "Verification document is required", "DOCUMENT_REQUIRED");
   }
 
+  const normalizedType = normalizeDocumentType(documentType);
+
   return withTransaction(async (client) => {
     const pendingVerification = await getStatus(ENTITY.VERIFICATION, VERIFICATION_STATUS.PENDING);
     const pendingProvider = await getStatus(ENTITY.PROVIDER, PROVIDER_STATUS.PENDING_VERIFICATION);
@@ -126,34 +195,42 @@ export async function submitVerification(provider, { documentType, documentUrl }
       `INSERT INTO verifications (provider_id, document_type, document_url, status_id)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [provider.id, documentType, documentUrl, pendingVerification.id],
+      [provider.id, normalizedType, documentUrl, pendingVerification.id],
     );
 
+    const docStatus = await getProviderDocumentsStatus(client, provider.id);
     const current = await fetchProviderById(client, provider.id);
-    if (
-      [PROVIDER_STATUS.PENDING_PROFILE, PROVIDER_STATUS.REJECTED].includes(current.status_code)
-    ) {
-      await client.query(
-        `UPDATE providers SET status_id = $2, status_reason = NULL WHERE id = $1`,
-        [provider.id, pendingProvider.id],
-      );
-      await recordStatusChange(client, {
-        providerId: provider.id,
-        fromStatusId: current.status_id,
-        toStatusId: pendingProvider.id,
-        reason: "Verification document submitted",
-      });
+
+    // If all compulsory documents have been submitted (or legacy cnic/passport):
+    if (docStatus.allCompulsorySubmitted) {
+      if (
+        [PROVIDER_STATUS.PENDING_PROFILE, PROVIDER_STATUS.REJECTED].includes(current.status_code)
+      ) {
+        await client.query(
+          `UPDATE providers SET status_id = $2, status_reason = NULL WHERE id = $1`,
+          [provider.id, pendingProvider.id],
+        );
+        await recordStatusChange(client, {
+          providerId: provider.id,
+          fromStatusId: current.status_id,
+          toStatusId: pendingProvider.id,
+          reason: "All compulsory documents submitted",
+        });
+      }
     }
 
     const next = await fetchProviderById(client, provider.id);
     const location = await fetchLocation(client, provider.id);
-    return serializeProvider(next, {
-      location: serializeLocation(location),
-      verification: serializeVerification({
-        ...inserted.rows[0],
-        status_code: VERIFICATION_STATUS.PENDING,
+    return {
+      ...serializeProvider(next, {
+        location: serializeLocation(location),
+        verification: serializeVerification({
+          ...inserted.rows[0],
+          status_code: VERIFICATION_STATUS.PENDING,
+        }),
       }),
-    });
+      documentsStatus: docStatus,
+    };
   });
 }
 

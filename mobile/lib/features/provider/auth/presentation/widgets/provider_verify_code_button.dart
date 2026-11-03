@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/phone_verified_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -10,10 +11,8 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 /// button layout:
 ///   width: 350;
 ///   height: 52;
-///   angle: 0 deg;
-///   opacity: 1;
 ///   border-radius: 12px;
-///   background: #1D8070;
+///   background: #1D8070 / #8B53FE;
 ///
 /// content: Verify Code
 ///   font-family: Inter; font-weight: 500 (Medium); font-size: 14px;
@@ -37,71 +36,29 @@ class ProviderVerifyCodeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: 1.0, // opacity: 1
-      child: Transform.rotate(
-        angle: 0.0, // angle: 0 deg
-        child: SizedBox(
-          width: double.infinity,
-          height: designHeight,
-          child: ElevatedButton(
-            onPressed: isLoading
-                ? null
-                : (onVerify ??
-                    () {
-                      Navigator.of(context).push(
-                        PageRouteBuilder(
-                          pageBuilder: (_, _, _) => const PhoneVerifiedScreen(),
-                          transitionsBuilder: (_, animation, _, child) => FadeTransition(
-                            opacity: CurvedAnimation(
-                              parent: animation,
-                              curve: Curves.easeInOutCubic,
-                            ),
-                            child: child,
-                          ),
-                          transitionDuration: const Duration(milliseconds: 350),
-                        ),
-                      );
-                    }),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: ProviderColors.primaryButton, // #1D8070
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shadowColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.0), // border-radius: 12px
-              ),
-              padding: EdgeInsets.zero,
-            ),
-            child: isLoading
-                ? const SizedBox(
-                    width: 20.0,
-                    height: 20.0,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2.0,
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // content: Verify Code (Inter 500 Medium 14px line-height 22px #FFFFFF)
-                      Text(
-                        context.l10n.verifyCode,
-                        style: ProviderTextStyles.continueButtonText,
-                      ),
-
-                      // gap: 12px;
-                      const SizedBox(width: designGap),
-
-                      // arrow icon: width: 14; height: 12; border: 1.5px solid #FFFFFF
-                      const _VerifyArrowWidget(),
-                    ],
+    return ProviderAnimatedButton(
+      height: designHeight,
+      isLoading: isLoading,
+      backgroundColor: ProviderColors.primaryButton,
+      onTap: onVerify ??
+          () {
+            Navigator.of(context).push(
+              PageRouteBuilder(
+                pageBuilder: (_, _, _) => const PhoneVerifiedScreen(),
+                transitionsBuilder: (_, animation, _, child) => FadeTransition(
+                  opacity: CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOutCubic,
                   ),
-          ),
-        ),
-      ),
+                  child: child,
+                ),
+                transitionDuration: const Duration(milliseconds: 350),
+              ),
+            );
+          },
+      text: context.l10n.verifyCode,
+      textStyle: ProviderTextStyles.continueButtonText,
+      icon: const _VerifyArrowWidget(),
     );
   }
 }

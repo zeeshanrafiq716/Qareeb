@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
+import '../../../services/profile_stats_service.dart';
 
 /// Screen displayed automatically after provider arrives.
 /// Contains the standard branding header and the success status layout,
@@ -731,8 +732,18 @@ class _ServiceInProgressScreenState
                             cursor: SystemMouseCursors.click,
                             child: GestureDetector(
                               key: const Key('service_completed_done_button'),
-                              onTap: () {
+                              onTap: () async {
                                 HapticFeedback.mediumImpact();
+                                if (_userRating > 0) {
+                                  await ProfileStatsService.instance.recordReview(
+                                    isProvider: false,
+                                    newRating: _userRating.toDouble(),
+                                  );
+                                }
+                                await ProfileStatsService.instance.recordCompletedRequest(
+                                  isProvider: false,
+                                );
+                                if (!context.mounted) return;
                                 Navigator.of(context).popUntil((route) => route.isFirst);
                               },
                               behavior: HitTestBehavior.opaque,

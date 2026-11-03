@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../providers/backend_provider.dart';
 import '../../home/presentation/home_screen.dart';
+import '../../provider/auth/data/provider_registration_state.dart';
+import '../../provider/splash/presentation/provider_splash_screen.dart';
 import 'widgets/animated_route_widget.dart';
 import 'widgets/branding_header_widget.dart';
 import 'widgets/loading_indicator_widget.dart';
@@ -43,12 +45,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     // 3. Perform backend health & category sync in background
     _syncWithBackend();
 
-    // 4. Auto-transition to HomeScreen after splash animation completes
+    // 4. Ensure provider mode goes strictly to ProviderSplashScreen without showing customer splash
+    _checkModeAndScheduleNavigation();
+  }
+
+  Future<void> _checkModeAndScheduleNavigation() async {
+    final mode = await ProviderRegistrationStore.instance.getActiveAppMode();
+    if (!mounted) return;
+
+    if (mode == 'provider') {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (_, _, _) => const ProviderSplashScreen(),
+          transitionDuration: Duration.zero,
+        ),
+      );
+      return;
+    }
+
     _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToHome);
   }
 
   void _navigateToHome() {
     if (!mounted) return;
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (_, _, _) => const HomeScreen(),

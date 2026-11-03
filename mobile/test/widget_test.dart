@@ -15,6 +15,7 @@ import 'package:mobile/features/location/presentation/pickup_delivery_screen.dar
 import 'package:mobile/features/profile/presentation/profile_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/admin_approval_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/provider_location_permission_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_admin_approval_badge.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_admin_approval_header.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_admin_approval_heading.dart';

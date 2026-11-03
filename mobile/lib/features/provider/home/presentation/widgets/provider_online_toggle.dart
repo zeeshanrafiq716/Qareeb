@@ -92,7 +92,7 @@ class ProviderOnlineToggle extends StatefulWidget {
 
   const ProviderOnlineToggle({
     super.key,
-    this.isOnline = true,
+    this.isOnline = false,
     this.onChanged,
   });
 

@@ -5,8 +5,6 @@ import 'package:mobile/features/provider/auth/presentation/widgets/provider_prof
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_profile_details_header.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 
-import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
-
 /// Provider Profile Details Screen (Screen 5)
 /// Appears when user taps "Back to Home" (or profile setup action).
 /// Implements exact Figma branding specifications:
@@ -34,8 +32,7 @@ class ProviderProfileDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TEMPORARY: Screen 1 & 2 hidden per user request; directly presenting UploadDocumentsScreen.
-    return const UploadDocumentsScreen();
+    return _buildOriginal(context);
   }
 
   Widget _buildOriginal(BuildContext context) {

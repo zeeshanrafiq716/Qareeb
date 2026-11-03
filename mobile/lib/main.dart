@@ -2,13 +2,17 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/localization/app_locale.dart';
 import 'core/theme/app_theme.dart';
 import 'features/emergency/presentation/emergency_services_screen.dart';
 import 'features/home/presentation/home_screen.dart';
+import 'features/profile/presentation/customer_feedback_support_screen.dart';
+import 'features/profile/presentation/notifications_screen.dart';
+import 'features/profile/presentation/privacy_security_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
+import 'features/profile/presentation/provider_help_support_screen.dart';
+import 'features/provider/auth/data/provider_registration_state.dart';
 import 'features/provider/auth/presentation/admin_approval_screen.dart';
 import 'features/provider/auth/presentation/otp_verification_screen.dart';
 import 'features/provider/auth/presentation/phone_verification_screen.dart';
@@ -23,8 +27,13 @@ import 'features/provider/theme/provider_text_styles.dart';
 import 'features/requests/presentation/requests_screen.dart';
 import 'features/splash/presentation/splash_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Pre-load active mode from persistence before app boots up
+  // Ensures provider side directly launches ProviderSplashScreen, never flashing customer splash
+  await ProviderRegistrationStore.instance.loadFromPrefs();
+  final initialMode = await ProviderRegistrationStore.instance.getActiveAppMode();
 
   // Gracefully handle font loading network errors so offline/CORS issues never crash the app
   PlatformDispatcher.instance.onError = (error, stack) {
@@ -58,14 +67,19 @@ void main() {
   ]);
 
   runApp(
-    const ProviderScope(
-      child: QareebApp(),
+    ProviderScope(
+      child: QareebApp(initialMode: initialMode),
     ),
   );
 }
 
 class QareebApp extends ConsumerWidget {
-  const QareebApp({super.key});
+  final String initialMode;
+
+  const QareebApp({
+    super.key,
+    this.initialMode = 'customer',
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -87,21 +101,26 @@ class QareebApp extends ConsumerWidget {
           child: child ?? const SizedBox(),
         );
       },
-      initialRoute: '/',
+      home: initialMode == 'provider'
+          ? const ProviderSplashScreen()
+          : const SplashScreen(),
       routes: {
-        '/': (context) => const SplashScreen(),
+        '/splash': (context) => const SplashScreen(),
         '/home': (context) => const HomeScreen(),
         '/requests': (context) => const RequestsScreen(),
         '/profile': (context) => const ProfileScreen(),
+        '/notifications': (context) => const NotificationsScreen(),
+        '/privacy-security': (context) => const PrivacySecurityScreen(),
+        '/help-support': (context) => const CustomerFeedbackSupportScreen(),
         '/emergency': (context) => const EmergencyServicesScreen(),
         '/provider': (context) => const ProviderSplashScreen(),
         '/provider/splash': (context) => const ProviderSplashScreen(),
+        '/provider/help-support': (context) => const ProviderHelpSupportScreen(),
         '/provider/verification': (context) => const PhoneVerificationScreen(),
         '/provider/otp': (context) => const OtpVerificationScreen(),
         '/provider/verified': (context) => const PhoneVerifiedScreen(),
-        // First 2 screens temporarily hidden - routing directly to UploadDocumentsScreen
-        '/provider/profile-details': (context) => const UploadDocumentsScreen(),
-        '/provider/vehicle-service-details': (context) => const UploadDocumentsScreen(),
+        '/provider/profile-details': (context) => const ProviderProfileDetailsScreen(),
+        '/provider/vehicle-service-details': (context) => const VehicleServiceDetailsScreen(),
         '/provider/upload-documents': (context) => const UploadDocumentsScreen(),
         '/provider/location-permission': (context) => const ProviderLocationPermissionScreen(),
         '/provider/admin-approval': (context) => const AdminApprovalScreen(),

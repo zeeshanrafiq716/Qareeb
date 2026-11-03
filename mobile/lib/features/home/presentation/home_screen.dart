@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
-import '../../emergency/presentation/emergency_services_screen.dart';
 import '../../location/presentation/location_permission_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../requests/presentation/requests_screen.dart';
@@ -176,7 +175,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // 1. Branding Header Layout (width: 390, height: 246, ends at 246px)
+                            // 1. Branding Header Layout
                             HomeHeaderWidget(
                               location: locationText,
                               locationLabel: locationLabel,
@@ -184,39 +183,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 HapticFeedback.lightImpact();
                                 ref.refresh(userLocationProvider);
                               },
-                              onCardTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const EmergencyServicesScreen(),
-                                  ),
-                                );
-                              },
                             ),
 
-                            // 20px vertical spacing (brings top coordinate from 246px to exactly 266px)
-                            const SizedBox(height: 20.0),
+                            // Vertical spacing between header and services section
+                            const SizedBox(height: 16.0),
 
                             // 2. Services Section (All Category Cards with real images & exact branding)
                             ServicesSectionWidget(
                               onCategoryTap: (category) {
-                                if (category.slug == 'emergency') {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const EmergencyServicesScreen(),
+                                final String displayName = category.name == 'Pickup'
+                                    ? 'Pickup & Delivery'
+                                    : category.name;
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => LocationPermissionScreen(
+                                      serviceName: displayName,
                                     ),
-                                  );
-                                } else {
-                                  final String displayName = category.name == 'Pickup'
-                                      ? 'Pickup & Delivery'
-                                      : category.name;
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => LocationPermissionScreen(
-                                        serviceName: displayName,
-                                      ),
-                                    ),
-                                  );
-                                }
+                                  ),
+                                );
                               },
                             ),
 

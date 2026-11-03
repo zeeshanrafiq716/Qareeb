@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_header_back_button.dart';
@@ -19,8 +20,8 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 /// branding:
 ///   - 36x36 circular white back button with subtle shadow and `<` vector icon
 ///   - gap: 16px
-///   - Title: "Vehicle & Service Details" (Inter 600 SemiBold 16px line-height 22px #1C2926)
-///   - Subtitle: "Select a service category and enter\nyour vehicle details." (Inter 400 Regular 12px line-height 16px #566663)
+///   - Title: "Vehicle & Service Details"
+///   - Animated Language Toggle on right
 class ProviderVehicleServiceDetailsHeader extends StatelessWidget {
   final String? title;
   final String? subtitle;
@@ -48,7 +49,7 @@ class ProviderVehicleServiceDetailsHeader extends StatelessWidget {
         child: SizedBox(
           width: double.infinity,
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // 1. Icon layout: 36x36 circular white back button matching previous branding
               ProviderHeaderBackButton(
@@ -58,28 +59,37 @@ class ProviderVehicleServiceDetailsHeader extends StatelessWidget {
               // gap: 12px;
               const SizedBox(width: designGap),
 
-              // 2. Content: Title + 2-line Subtitle
+              // 2. Content: Title (+ optional Subtitle)
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: AlignmentDirectional.centerStart,
                       child: Text(
-                        title != null ? (context.isArabic ? context.auto(title) : title!) : context.l10n.vehicleServiceDetailsTitle,
-                        style: ProviderTextStyles.profileDetailsHeaderTitle,
+                        title != null
+                            ? (context.isArabic ? context.auto(title) : title!)
+                            : (context.isArabic ? 'تفاصيل المركبة والخدمة' : 'Vehicle & Service Details'),
+                        style: GoogleFonts.inter(
+                          fontSize: 18.0,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1C2926),
+                        ),
                         maxLines: 1,
                       ),
                     ),
-                    const SizedBox(height: 4.0),
-                    Text(
-                      subtitle != null ? (context.isArabic ? context.auto(subtitle) : subtitle!) : context.l10n.vehicleServiceSubtitle,
-                      style: ProviderTextStyles.profileDetailsHeaderSubtitle,
-                      maxLines: 2,
-                      softWrap: true,
-                    ),
+                    if (subtitle != null && subtitle!.isNotEmpty) ...[
+                      const SizedBox(height: 2.0),
+                      Text(
+                        context.isArabic ? context.auto(subtitle) : subtitle!,
+                        style: ProviderTextStyles.profileDetailsHeaderSubtitle,
+                        maxLines: 2,
+                        softWrap: true,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -87,10 +97,7 @@ class ProviderVehicleServiceDetailsHeader extends StatelessWidget {
               const SizedBox(width: 12.0),
 
               // 3. Animated Language Toggle in header
-              const Padding(
-                padding: EdgeInsets.only(top: 2.0),
-                child: ProviderAnimatedLanguageToggle.compact(),
-              ),
+              const ProviderAnimatedLanguageToggle.compact(),
             ],
           ),
         ),

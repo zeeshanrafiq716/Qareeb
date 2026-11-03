@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
-import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_onboarding_details_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -84,63 +85,23 @@ class ProviderBackToHomeButton extends StatelessWidget {
         ? ProviderTextStyles.backToHomeButtonText
         : ProviderTextStyles.backToHomeDarkButtonText;
 
-    return Opacity(
-      opacity: 1.0, // opacity: 1
-      child: Transform.rotate(
-        angle: 0.0, // angle: 0 deg
-        child: SizedBox(
-          width: double.infinity,
-          height: designHeight,
-          child: ElevatedButton(
-            onPressed: isLoading
-                ? null
-                : (onTap ?? () => _defaultNavigation(context)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: backgroundColor,
-              foregroundColor: foregroundColor,
-              elevation: 0,
-              shadowColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.0), // border-radius: 12px
-              ),
-              padding: EdgeInsets.zero,
-            ),
-            child: isLoading
-                ? SizedBox(
-                    width: 20.0,
-                    height: 20.0,
-                    child: CircularProgressIndicator(
-                      color: foregroundColor,
-                      strokeWidth: 2.0,
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // content: Back to Home / العودة للرئيسية
-                      Text(
-                        displayTitle,
-                        style: textStyle,
-                      ),
-
-                      // gap: 12px;
-                      const SizedBox(width: designGap),
-
-                      // arrow icon: width: 16; height: 12; border: 1.5px solid #FFFFFF
-                      icon ?? _BackToHomeArrowWidget(color: foregroundColor),
-                    ],
-                  ),
-          ),
-        ),
-      ),
+    return ProviderAnimatedButton(
+      height: designHeight,
+      backgroundColor: backgroundColor,
+      foregroundColor: foregroundColor,
+      isLoading: isLoading,
+      isPrimary: isPrimary,
+      text: displayTitle,
+      textStyle: textStyle,
+      icon: icon ?? _BackToHomeArrowWidget(color: foregroundColor),
+      onTap: onTap ?? () => _defaultNavigation(context),
     );
   }
 
   void _defaultNavigation(BuildContext context) {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => const UploadDocumentsScreen(),
+        pageBuilder: (_, _, _) => const ProviderOnboardingDetailsScreen(),
         transitionsBuilder: (_, animation, _, child) => FadeTransition(
           opacity: CurvedAnimation(
             parent: animation,

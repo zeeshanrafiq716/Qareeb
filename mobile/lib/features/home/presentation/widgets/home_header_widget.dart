@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/localization/app_locale.dart';
 import '../../../../providers/notifications_provider.dart';
 import 'language_toggle_widget.dart';
@@ -21,6 +20,7 @@ class HomeHeaderWidget extends ConsumerWidget {
   final VoidCallback? onLocationTap;
   final VoidCallback? onProfileTap;
   final VoidCallback? onCardTap;
+  final bool showUrgentCard;
 
   const HomeHeaderWidget({
     super.key,
@@ -33,6 +33,7 @@ class HomeHeaderWidget extends ConsumerWidget {
     this.onLocationTap,
     this.onProfileTap,
     this.onCardTap,
+    this.showUrgentCard = false,
   });
 
   @override
@@ -56,7 +57,7 @@ class HomeHeaderWidget extends ConsumerWidget {
             top: 0,
             left: 0,
             right: 0,
-            height: 256.0,
+            height: showUrgentCard ? 256.0 : (effectiveTopPadding + 84.0),
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -221,18 +222,21 @@ class HomeHeaderWidget extends ConsumerWidget {
             ),
           ),
 
-              // Spacing between Profile row and Urgent Assistance Card
-              const SizedBox(height: 16.0),
+              if (showUrgentCard) ...[
+                // Spacing between Profile row and Urgent Assistance Card
+                const SizedBox(height: 16.0),
 
-              // 3. Urgent Assistance Card Container:
-              // width: 350; height: 70; top: 176px; left: 20px; angle: 0 deg; opacity: 1; gap: 10px; border-width: 1px; border-radius: 12px; padding: 16px; background: #FFFFFF;
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: UrgentAssistanceCard(
-                  onTap: onCardTap,
-                  child: cardContent,
+                // 3. Urgent Assistance Card Container:
+                // width: 350; height: 70; top: 176px; left: 20px; angle: 0 deg; opacity: 1; gap: 10px; border-width: 1px; border-radius: 12px; padding: 16px; background: #FFFFFF;
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: UrgentAssistanceCard(
+                    onTap: onCardTap,
+                    child: cardContent,
+                  ),
                 ),
-              ),
+              ] else
+                const SizedBox(height: 12.0),
             ],
           ),
         ],

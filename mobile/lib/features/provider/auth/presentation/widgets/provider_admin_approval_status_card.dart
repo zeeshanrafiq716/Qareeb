@@ -24,10 +24,12 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 ///   Row 3: Admin Approval (Pending / Waiting)
 class ProviderAdminApprovalStatusCard extends StatelessWidget {
   final bool isApproved;
+  final bool isSuspended;
 
   const ProviderAdminApprovalStatusCard({
     super.key,
     this.isApproved = false,
+    this.isSuspended = false,
   });
 
   static const double designWidth = 350.0;
@@ -85,30 +87,38 @@ class ProviderAdminApprovalStatusCard extends StatelessWidget {
 
               const SizedBox(height: rowGap), // gap: 20px
 
-              // 2nd row branding: Document Verification (In Progress -> Completed when approved)
+              // 2nd row branding: Document Verification (In Progress -> Completed when approved / Suspended if rejected)
               _buildRow(
                 leftIcon: const _IdCardLeftIcon(),
                 title: l10n.documentVerificationItem,
                 subtitle: isApproved
                     ? (context.isArabic ? 'تم التحقق من جميع المستندات بنجاح' : 'All documents verified successfully')
-                    : docSubtitle,
+                    : (isSuspended
+                        ? (context.isArabic ? 'تم تعليق المستندات من قبل الإدارة' : 'Documents suspended or rejected')
+                        : docSubtitle),
                 statusBadge: isApproved
                     ? const _CompletedStatusBadge()
-                    : const _InProgressStatusBadge(),
+                    : (isSuspended
+                        ? const _RejectedStatusBadge()
+                        : const _InProgressStatusBadge()),
               ),
 
               const SizedBox(height: rowGap), // gap: 20px
 
-              // 3rd row branding: Admin Approval (Pending -> Completed when approved)
+              // 3rd row branding: Admin Approval (Pending -> Completed when approved / Suspended if rejected)
               _buildRow(
                 leftIcon: const _ApprovalCheckLeftIcon(),
                 title: l10n.adminApprovalItem,
                 subtitle: isApproved
                     ? (context.isArabic ? 'تم اعتماد الحساب من قبل الإدارة' : 'Account approved by Admin')
-                    : approvalSubtitle,
+                    : (isSuspended
+                        ? (context.isArabic ? 'تم تعليق الموافقة من قبل الإدارة' : 'Approval suspended or rejected')
+                        : approvalSubtitle),
                 statusBadge: isApproved
                     ? const _CompletedStatusBadge()
-                    : const _PendingStatusBadge(),
+                    : (isSuspended
+                        ? const _RejectedStatusBadge()
+                        : const _PendingStatusBadge()),
               ),
             ],
           ),
@@ -464,6 +474,40 @@ class _PendingStatusBadge extends StatelessWidget {
                 hourAngle: 0.0, // pointing up to 12
                 minuteAngle: 0.25 * math.pi, // pointing to 1:30
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Rejected / Suspended Status Badge: red circle with white close icon
+class _RejectedStatusBadge extends StatelessWidget {
+  const _RejectedStatusBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 20.0,
+      height: 20.0,
+      decoration: const BoxDecoration(
+        color: Color(0xFFFEE2E2), // soft red ring
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Container(
+          width: 15.12,
+          height: 15.12,
+          decoration: const BoxDecoration(
+            color: Color(0xFFEF4444), // red circle
+            shape: BoxShape.circle,
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.close_rounded,
+              size: 9.5,
+              color: Colors.white,
             ),
           ),
         ),

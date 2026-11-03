@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
 import 'package:mobile/features/provider/auth/presentation/phone_verified_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_handle_bar.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_change_phone_button.dart';
@@ -161,8 +162,29 @@ class _ProviderOtpInnerContentLayoutState extends State<ProviderOtpInnerContentL
     setState(() => _isVerifying = false);
 
     if (result.success) {
+      if (result.token != null) {
+        ApiClient.setGlobalToken(result.token);
+      }
+
+      final providerStatus = result.provider?['status']?.toString();
+      final isAlreadyApproved = providerStatus == 'APPROVED';
+      final isPendingVerification = providerStatus == 'PENDING_VERIFICATION';
+
+      ProviderRegistrationStore.instance.update(
+        (data) => data.copyWith(
+          phone: phone,
+          authToken: result.token ?? data.authToken,
+          status: providerStatus ?? data.status,
+          isOnboardingCompleted: isAlreadyApproved || isPendingVerification || data.isOnboardingCompleted,
+        ),
+      );
+
       if (widget.onVerified != null) {
         widget.onVerified!();
+      } else if (isAlreadyApproved) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/provider/home', (route) => false);
+      } else if (isPendingVerification) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/provider/admin-approval', (route) => false);
       } else {
         Navigator.of(context).push(
           PageRouteBuilder(

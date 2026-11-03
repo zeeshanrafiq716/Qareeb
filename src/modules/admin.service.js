@@ -21,6 +21,7 @@ import { buildProviderSearchFilter, resolveLookupKeys } from "./admin.search.js"
 import { presenceStore } from "../redis/presenceStore.js";
 import { isLocationFresh } from "./location.service.js";
 import { buildPresence } from "./presence.service.js";
+import { assertAllCompulsoryDocumentsSubmitted } from "./providers.service.js";
 
 export async function adminLogin(email, password) {
   const { rows } = await query(
@@ -130,6 +131,10 @@ async function changeProviderStatus(providerId, admin, { fromCodes, toCode, reas
         `Cannot change status from ${provider.status_code} to ${toCode}`,
         "INVALID_STATUS_TRANSITION",
       );
+    }
+
+    if (toCode === PROVIDER_STATUS.APPROVED) {
+      await assertAllCompulsoryDocumentsSubmitted(client, providerId);
     }
 
     const nextStatus = await getStatus(ENTITY.PROVIDER, toCode);

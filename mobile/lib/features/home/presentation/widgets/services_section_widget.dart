@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/localization/app_locale.dart';
 import '../../../../models/category_model.dart';
 import '../../../../providers/backend_provider.dart';
@@ -147,15 +146,15 @@ class ServicesSectionWidget extends ConsumerWidget {
     // 3. Default preset categories (Row 1: Ride, Pickup; Row 2: Delivery, Moto)
     List<CategoryModel> activeCategories;
     if (categories != null && categories!.isNotEmpty) {
-      activeCategories = categories!.where((c) => c.isEnabled).toList();
+      activeCategories = categories!.where((c) => c.isEnabled && c.slug != 'emergency').toList();
     } else {
       final backendCategories = ref.watch(categoriesProvider);
       activeCategories = backendCategories.maybeWhen(
         data: (items) {
-          final enabled = items.where((c) => c.isEnabled).toList();
-          return enabled.isNotEmpty ? enabled : defaultCategories;
+          final enabled = items.where((c) => c.isEnabled && c.slug != 'emergency').toList();
+          return enabled.isNotEmpty ? enabled : defaultCategories.where((c) => c.slug != 'emergency').toList();
         },
-        orElse: () => defaultCategories,
+        orElse: () => defaultCategories.where((c) => c.slug != 'emergency').toList(),
       );
     }
 
