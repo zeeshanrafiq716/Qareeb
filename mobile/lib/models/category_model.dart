@@ -23,7 +23,19 @@ class CategoryModel {
   String get displaySubtitle {
     if (subtitle != null && subtitle!.isNotEmpty) return subtitle!;
     final s = slug.toLowerCase();
-    if (s == 'ride' || s == 'transport') {
+    if (s.contains('tyre') || s.contains('tire')) {
+      return 'Vehicle tyre & replacements';
+    } else if (s.contains('battery')) {
+      return 'Emergency jump start';
+    } else if (s.contains('tow')) {
+      return 'Safe vehicle towing';
+    } else if (s.contains('fuel')) {
+      return 'On-demand fuel delivery';
+    } else if (s.contains('mechanic')) {
+      return 'On-site vehicle repairs';
+    } else if (s.contains('lockout') || s.contains('key')) {
+      return 'Vehicle lockout assistance';
+    } else if (s == 'ride' || s == 'transport') {
       return 'City & local rides';
     } else if (s == 'pickup') {
       return 'Goods & deliveries';
@@ -31,27 +43,29 @@ class CategoryModel {
       return 'Fast & convenient';
     } else if (s == 'van') {
       return 'Group & family travel';
-    } else if (s.contains('rickshaw') || s.contains('auto') || s.contains('tuk')) {
-      return 'Affordable local travel';
-    } else if (s.contains('delivery') || s.contains('courier')) {
-      return 'Courier & parcels';
-    } else if (s.contains('home') || s.contains('clean')) {
-      return 'Cleaning & repairs';
-    } else if (s.contains('electric') || s.contains('ac')) {
-      return 'AC & wiring repairs';
-    } else if (s.contains('plumb')) {
-      return 'Pipe & water fixes';
     } else if (s.contains('emergency')) {
       return 'Urgent roadside aid';
     }
-    return 'Available services';
+    return 'Roadside assistance service';
   }
 
   /// Preset asset image matching brand assets
   String? get displayAssetImage {
     if (assetImage != null && assetImage!.isNotEmpty) return assetImage;
     final s = slug.toLowerCase();
-    if (s == 'ride' || s == 'transport') {
+    if (s.contains('tow')) {
+      return 'assets/images/towing.png';
+    } else if (s.contains('tyre') || s.contains('tire')) {
+      return 'assets/images/car_ride.png';
+    } else if (s.contains('fuel')) {
+      return 'assets/images/truk.png';
+    } else if (s.contains('battery')) {
+      return 'assets/images/emergency_beacon.png';
+    } else if (s.contains('mechanic')) {
+      return 'assets/images/flatbed_truck.png';
+    } else if (s.contains('lockout')) {
+      return 'assets/images/car_ride.png';
+    } else if (s == 'ride' || s == 'transport') {
       return 'assets/images/car_ride.png';
     } else if (s == 'pickup') {
       return 'assets/images/pickup.png';
@@ -60,7 +74,7 @@ class CategoryModel {
     } else if (s == 'van') {
       return 'assets/images/van.png';
     }
-    return null;
+    return 'assets/images/car_ride.png';
   }
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {

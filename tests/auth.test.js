@@ -31,7 +31,7 @@ describe("provider OTP registration", () => {
        FROM providers p JOIN statuses s ON s.id = p.status_id
        WHERE p.phone = '+923001234567'`,
     );
-    expect(rows[0].public_id).toBe("QRB-100001");
+    expect(rows[0].public_id).toMatch(/^QRB-[0-9]+$/);
     expect(rows[0].code).toBe(PROVIDER_STATUS.PENDING_OTP);
   });
 

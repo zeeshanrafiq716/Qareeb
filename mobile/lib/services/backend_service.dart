@@ -384,11 +384,11 @@ class BackendService {
   ];
 
   static const List<ProviderMarkerModel> defaultProviders = [
-    // 1. Specified in user prompt: width: 15, height: 24, top: 174px, left: 82px, angle: 60 deg
+    // 1. Ahmed Raza: Tyre Repair - Riyadh (matching exact prompt layout)
     ProviderMarkerModel(
       id: 1,
-      publicId: 'prov_uzair',
-      name: 'Uzair Ahmed',
+      publicId: 'QRB-100001',
+      name: 'Ahmed Raza',
       distanceKm: 0.6,
       ratingAvg: 4.9,
       ratingCount: 142,
@@ -398,11 +398,11 @@ class BackendService {
       screenLeft: 82.0,
       carAngle: 60.0,
     ),
-    // 2. Adnan Said: 0.7 km
+    // 2. Ali Ahmad: Battery Jump Start - Riyadh
     ProviderMarkerModel(
       id: 2,
-      publicId: 'prov_adnan',
-      name: 'Adnan Said',
+      publicId: 'QRB-100002',
+      name: 'Ali Ahmad',
       distanceKm: 0.7,
       ratingAvg: 4.8,
       ratingCount: 98,
@@ -412,10 +412,10 @@ class BackendService {
       screenLeft: 122.0,
       carAngle: 45.0,
     ),
-    // 3. Abdul Ahad: 0.8 km
+    // 3. Abdul Ahad: Vehicle Towing
     ProviderMarkerModel(
       id: 3,
-      publicId: 'prov_abdul',
+      publicId: 'QRB-100003',
       name: 'Abdul Ahad',
       distanceKm: 0.8,
       ratingAvg: 5.0,
@@ -426,11 +426,11 @@ class BackendService {
       screenLeft: 215.0,
       carAngle: -50.0,
     ),
-    // 4. Mehmood Ali: 0.5 km
+    // 4. M Ibrahim: Fuel Delivery
     ProviderMarkerModel(
       id: 4,
-      publicId: 'prov_mehmood',
-      name: 'Mehmood Ali',
+      publicId: 'QRB-100004',
+      name: 'M Ibrahim',
       distanceKm: 0.5,
       ratingAvg: 4.9,
       ratingCount: 88,
@@ -440,11 +440,11 @@ class BackendService {
       screenLeft: 95.0,
       carAngle: 45.0,
     ),
-    // 5. Ubaid Raza: 0.3 km
+    // 5. Awais Ali: Tyre Repair
     ProviderMarkerModel(
       id: 5,
-      publicId: 'prov_ubaid',
-      name: 'Ubaid Raza',
+      publicId: 'QRB-100005',
+      name: 'Awais Ali',
       distanceKm: 0.3,
       ratingAvg: 4.9,
       ratingCount: 160,
@@ -454,11 +454,11 @@ class BackendService {
       screenLeft: 40.0,
       carAngle: 70.0,
     ),
-    // 6. Rayan Sajjad: 0.5 km
+    // 6. Usman Khan: Car Lockout Assistance
     ProviderMarkerModel(
       id: 6,
-      publicId: 'prov_rayan',
-      name: 'Rayan Sajjad',
+      publicId: 'QRB-100006',
+      name: 'Usman Khan',
       distanceKm: 0.5,
       ratingAvg: 4.8,
       ratingCount: 75,
@@ -468,11 +468,11 @@ class BackendService {
       screenLeft: 285.0,
       carAngle: -35.0,
     ),
-    // 7. Omar Shahid: 0.7 km
+    // 7. Khalid Al-Otaibi: Vehicle Towing
     ProviderMarkerModel(
       id: 7,
-      publicId: 'prov_omar',
-      name: 'Omar Shahid',
+      publicId: 'QRB-100007',
+      name: 'Khalid Al-Otaibi',
       distanceKm: 0.7,
       ratingAvg: 4.9,
       ratingCount: 130,
@@ -482,11 +482,11 @@ class BackendService {
       screenLeft: 280.0,
       carAngle: -45.0,
     ),
-    // 8. Saad Malik: 0.4 km
+    // 8. Tariq Mansoor: Fuel Delivery
     ProviderMarkerModel(
       id: 8,
-      publicId: 'prov_saad',
-      name: 'Saad Malik',
+      publicId: 'QRB-100008',
+      name: 'Tariq Mansoor',
       distanceKm: 0.4,
       ratingAvg: 4.9,
       ratingCount: 112,
@@ -496,11 +496,11 @@ class BackendService {
       screenLeft: 248.0,
       carAngle: -50.0,
     ),
-    // 9. Hassan Ali: 0.5 km
+    // 9. Fahad Al-Harbi: Battery Jump Start
     ProviderMarkerModel(
       id: 9,
-      publicId: 'prov_hassan',
-      name: 'Hassan Ali',
+      publicId: 'QRB-100009',
+      name: 'Fahad Al-Harbi',
       distanceKm: 0.5,
       ratingAvg: 4.7,
       ratingCount: 64,
@@ -510,11 +510,11 @@ class BackendService {
       screenLeft: 105.0,
       carAngle: 50.0,
     ),
-    // 10. Ahmed Raza: 0.8 km
+    // 10. Sultan Al-Ghamdi: Tyre Repair
     ProviderMarkerModel(
       id: 10,
-      publicId: 'prov_ahmed',
-      name: 'Ahmed Raza',
+      publicId: 'QRB-100010',
+      name: 'Sultan Al-Ghamdi',
       distanceKm: 0.8,
       ratingAvg: 5.0,
       ratingCount: 310,
@@ -569,101 +569,54 @@ class BackendService {
       // Fallback default categories if server is initializing
     }
 
-    // Default pre-populated categories matching Qareeb service domains
+    // Default real roadside assistance categories matching Qareeb service domains
     return const [
       CategoryModel(
         id: 1,
-        name: 'Ride',
-        slug: 'ride',
-        subtitle: 'City & local rides',
+        name: 'Tyre Repair',
+        slug: 'tyre-repair',
+        subtitle: 'Vehicle tyre & replacements',
         assetImage: 'assets/images/car_ride.png',
         isEnabled: true,
       ),
       CategoryModel(
         id: 2,
-        name: 'Pickup',
-        slug: 'pickup',
-        subtitle: 'Goods & deliveries',
-        assetImage: 'assets/images/pickup.png',
+        name: 'Battery Jump Start',
+        slug: 'battery-jump-start',
+        subtitle: 'Emergency jump start',
+        assetImage: 'assets/images/emergency_beacon.png',
         isEnabled: true,
       ),
       CategoryModel(
         id: 3,
-        name: 'Rider',
-        slug: 'rider',
-        subtitle: 'Fast & convenient',
-        assetImage: 'assets/images/rider_bike.png',
+        name: 'Vehicle Towing',
+        slug: 'vehicle-towing',
+        subtitle: 'Safe vehicle towing',
+        assetImage: 'assets/images/towing.png',
         isEnabled: true,
       ),
       CategoryModel(
         id: 4,
-        name: 'Van',
-        slug: 'van',
-        subtitle: 'Group & family travel',
-        assetImage: 'assets/images/van.png',
+        name: 'Fuel Delivery',
+        slug: 'fuel-delivery',
+        subtitle: 'On-demand fuel delivery',
+        assetImage: 'assets/images/truk.png',
         isEnabled: true,
       ),
       CategoryModel(
         id: 5,
-        name: 'Home Care',
-        slug: 'home-maintenance',
-        subtitle: 'Cleaning & repairs',
+        name: 'Mobile Mechanic',
+        slug: 'mobile-mechanic',
+        subtitle: 'On-site vehicle repairs',
+        assetImage: 'assets/images/flatbed_truck.png',
         isEnabled: true,
       ),
       CategoryModel(
         id: 6,
-        name: 'Emergency',
-        slug: 'emergency',
-        subtitle: 'Urgent roadside aid',
-        isEnabled: true,
-      ),
-      // 6 Additional category cards copied from the first 4 cards
-      CategoryModel(
-        id: 7,
-        name: 'Ride',
-        slug: 'ride',
-        subtitle: 'City & local rides',
+        name: 'Car Lockout Assistance',
+        slug: 'car-lockout',
+        subtitle: 'Vehicle lockout assistance',
         assetImage: 'assets/images/car_ride.png',
-        isEnabled: true,
-      ),
-      CategoryModel(
-        id: 8,
-        name: 'Pickup',
-        slug: 'pickup',
-        subtitle: 'Goods & deliveries',
-        assetImage: 'assets/images/pickup.png',
-        isEnabled: true,
-      ),
-      CategoryModel(
-        id: 9,
-        name: 'Rider',
-        slug: 'rider',
-        subtitle: 'Fast & convenient',
-        assetImage: 'assets/images/rider_bike.png',
-        isEnabled: true,
-      ),
-      CategoryModel(
-        id: 10,
-        name: 'Van',
-        slug: 'van',
-        subtitle: 'Group & family travel',
-        assetImage: 'assets/images/van.png',
-        isEnabled: true,
-      ),
-      CategoryModel(
-        id: 11,
-        name: 'Ride',
-        slug: 'ride',
-        subtitle: 'City & local rides',
-        assetImage: 'assets/images/car_ride.png',
-        isEnabled: true,
-      ),
-      CategoryModel(
-        id: 12,
-        name: 'Pickup',
-        slug: 'pickup',
-        subtitle: 'Goods & deliveries',
-        assetImage: 'assets/images/pickup.png',
         isEnabled: true,
       ),
     ];

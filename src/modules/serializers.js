@@ -1,4 +1,15 @@
 export function serializeProvider(row, extras = {}) {
+  const loc =
+    extras.location ??
+    (row.city != null || row.latitude != null
+      ? {
+          city: row.city,
+          latitude: row.latitude === null ? null : Number(row.latitude),
+          longitude: row.longitude === null ? null : Number(row.longitude),
+          address: row.address,
+        }
+      : null);
+
   return {
     id: row.id,
     providerId: row.public_id,
@@ -16,7 +27,7 @@ export function serializeProvider(row, extras = {}) {
           enabled: row.category_enabled ?? true,
         }
       : null,
-    location: extras.location ?? null,
+    location: loc,
     verification: extras.verification ?? extras.latestVerification ?? null,
     presence: extras.presence ?? null,
     createdAt: row.created_at,
@@ -72,10 +83,15 @@ const PROVIDER_SELECT = `
          s.code AS status_code,
          s.label AS status_label,
          c.name AS category_name,
-         c.is_enabled AS category_enabled
+         c.is_enabled AS category_enabled,
+         loc.city AS city,
+         loc.latitude AS latitude,
+         loc.longitude AS longitude,
+         loc.address AS address
   FROM providers p
   JOIN statuses s ON s.id = p.status_id
   LEFT JOIN categories c ON c.id = p.category_id
+  LEFT JOIN locations loc ON loc.provider_id = p.id
 `;
 
 export async function fetchProviderById(client, id) {

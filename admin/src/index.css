@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand Core Purple */
+  --color-brand-primary: #8B53FE;
+  --color-brand-primary-light: #A67AFE;
+  --color-brand-primary-dark: #7032F0;
+  --color-brand-primary-glow: #DECFFC;
+  --color-brand-primary-surface: #F0EAFE;
+
+  /* Brand Dark Canvas */
+  --color-brand-canvas-dark: #1F2927;
+  --color-brand-surface-dark: #253330;
+  --color-brand-card-dark: #23312E;
+
+  /* Brand Light Canvas */
+  --color-brand-canvas-light: #F8FAFC;
+  --color-brand-surface-light: #FFFFFF;
+  --color-brand-input-bg: #F2F5F4;
+  --color-brand-border: #EFF0ED;
+
+  /* Brand Typography Colors */
+  --color-brand-heading: #1C2926;
+  --color-brand-subtitle: #566663;
+  --color-brand-muted: #616166;
+  --color-brand-disabled: #9EAFA9;
+
+  /* Status Tokens */
+  --color-brand-success: #22C55E;
+  --color-brand-success-bg: #E9FBF0;
+  --color-brand-warning: #FFAE00;
+  --color-brand-warning-bg: #FEF3E2;
+  --color-brand-danger: #DC2626;
+  --color-brand-danger-bg: #FEF2F2;
+  --color-brand-info: #3B82F6;
+  --color-brand-info-bg: #EFF6FF;
+
+  /* Fonts */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-arabic: 'Cairo', 'Tajawal', system-ui, sans-serif;
+
+  /* Radius */
+  --radius-brand-sm: 8px;
+  --radius-brand-md: 12px;
+  --radius-brand-lg: 16px;
+  --radius-brand-xl: 20px;
+
+  /* Shadows */
+  --shadow-brand-card: 0px 1px 12px 0px rgba(0, 0, 0, 0.1);
+  --shadow-brand-modal: 0px -2px 12px 0px rgba(0, 0, 0, 0.08);
+}
+
+:root {
+  font-family: var(--font-sans);
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-brand-canvas-light);
+  color: var(--color-brand-heading);
+  min-height: 100vh;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Hide native scrollbars when custom separate scrollbar is used */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Animated Thin Scrollbar */
+.sidebar-thin-scrollbar::-webkit-scrollbar {
+  width: 3.5px;
+}
+
+.sidebar-thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 9999px;
+  margin: 8px 0;
+}
+
+.sidebar-thin-scrollbar::-webkit-scrollbar-thumb {
+  background: #DECFFC;
+  border-radius: 9999px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #8B53FE;
+  box-shadow: 0 0 10px rgba(139, 83, 254, 0.6);
+}
+
+/* Keyframe for subtle animated glow on the separate scrollbar thumb */
+@keyframes scrollbarGlow {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(139, 83, 254, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(139, 83, 254, 0.8), 0 0 14px rgba(174, 122, 254, 0.4);
+  }
+}
+
+.animate-thumb-glow {
+  animation: scrollbarGlow 2.4s infinite ease-in-out;
+}
+
+/* Custom Visible Thin Scrollbar for Cards & Drawers */
+.custom-card-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #8B53FE #F4F2F7;
+}
+
+.custom-card-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-card-scrollbar::-webkit-scrollbar-track {
+  background: #F4F2F7;
+  border-radius: 9999px;
+  margin: 12px 0;
+}
+
+.custom-card-scrollbar::-webkit-scrollbar-thumb {
+  background: #8B53FE;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+}
+
+.custom-card-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #7032F0;
+  box-shadow: 0 0 8px rgba(139, 83, 254, 0.7);
+}

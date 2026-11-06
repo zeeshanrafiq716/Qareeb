@@ -13,7 +13,9 @@
     "setup": "node src/db/setup.js",
     "test": "vitest run --reporter=verbose",
     "test:api": "vitest run --reporter=verbose",
-    "test:staging": "node scripts/staging-smoke.mjs"
+    "test:staging": "node scripts/staging-smoke.mjs",
+    "admin": "npm --prefix admin run dev",
+    "admin:build": "npm --prefix admin run build"
   },
   "engines": {
     "node": ">=20"

@@ -1,0 +1,53 @@
+export const translations = {
+  en: {
+    language: 'English',
+    welcomeBack: 'Welcome Back',
+    signInSubtitle: 'Sign in to your Qareeb admin panel.',
+    emailLabel: 'Email Address',
+    emailPlaceholder: 'Enter your email address',
+    passwordLabel: 'Password',
+    passwordPlaceholder: 'Enter your password',
+    rememberMe: 'Remember me',
+    forgotPassword: 'Forgot password?',
+    signInButton: 'Sign In',
+    signingIn: 'Signing in...',
+    secureAccessTitle: 'Secure Administrative Access',
+    secureAccessSubtitle: 'Restricted to authorized Qareeb team members.',
+    brandHeading: 'Manage Qareeb Operations',
+    brandSubheading: 'Qareeb Admin Panel',
+    brandDescription:
+      'Access your admin workspace to review provider applications manage service providers and oversee platform operations.',
+    invalidCredentials: 'Invalid admin email or password. Please try again.',
+    connectionError: 'Unable to connect to Qareeb server. Please make sure the backend is running.',
+    forgotPasswordTitle: 'Reset Admin Credentials',
+    forgotPasswordMessage:
+      'To reset admin credentials, please contact your systems administrator at admin@qareeb.app or reset via database seed script.',
+    close: 'Close',
+  },
+  ar: {
+    language: 'العربية',
+    welcomeBack: 'مرحباً بعودتك',
+    signInSubtitle: 'تسجيل الدخول إلى لوحة تحكم قريب الإدارية.',
+    emailLabel: 'البريد الإلكتروني',
+    emailPlaceholder: 'أدخل بريدك الإلكتروني',
+    passwordLabel: 'كلمة المرور',
+    passwordPlaceholder: 'أدخل كلمة المرور',
+    rememberMe: 'تذكرني',
+    forgotPassword: 'نسيت كلمة المرور؟',
+    signInButton: 'تسجيل الدخول',
+    signingIn: 'جاري تسجيل الدخول...',
+    secureAccessTitle: 'وصول إداري آمن ومحمي',
+    secureAccessSubtitle: 'مخصص لأعضاء فريق عمل قريب المصرح لهم فقط.',
+    brandHeading: 'إدارة عمليات وتطبيقات قريب',
+    brandSubheading: 'لوحة تحكم قريب الإدارية',
+    brandDescription:
+      'الوصول إلى مساحة عمل الإدارة لمراجعة طلبات الانضمام، وإدارة مقدمي الخدمة والإشراف المباشر على العمليات.',
+    invalidCredentials: 'البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.',
+    connectionError: 'تعذر الاتصال بخادم قريب. يرجى التأكد من تشغيل الخادم.',
+    forgotPasswordTitle: 'استعادة بيانات الدخول',
+    forgotPasswordMessage:
+      'لاستعادة كلمة المرور، يرجى التواصل مع مسؤول النظام عبر admin@qareeb.app أو إعادة ضبطها من قاعدة البيانات.',
+    close: 'إغلاق',
+  },
+}
+
