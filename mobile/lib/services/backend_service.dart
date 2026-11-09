@@ -4,6 +4,7 @@ import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
 import '../models/auth_model.dart';
 import '../models/category_model.dart';
+import '../models/vehicle_type_model.dart';
 import '../models/health_status_model.dart';
 import '../models/provider_model.dart';
 import '../models/provider_dashboard_model.dart';
@@ -26,6 +27,31 @@ class DocumentUploadResult {
 
   factory DocumentUploadResult.failure(String message) =>
       DocumentUploadResult(success: false, errorMessage: message);
+}
+
+enum ProviderAccountStatus {
+  approved,
+  pendingVerification,
+  pendingProfile,
+  suspended,
+  blocked,
+  resubmissionRequested,
+  deleted,
+  networkError,
+}
+
+class ProviderAccountState {
+  final ProviderAccountStatus status;
+  final String rawStatus;
+  final String statusReason;
+  final Map<String, dynamic>? profile;
+
+  const ProviderAccountState({
+    required this.status,
+    this.rawStatus = '',
+    this.statusReason = '',
+    this.profile,
+  });
 }
 
 class BackendService {
@@ -137,10 +163,19 @@ class BackendService {
     );
   }
 
-  /// Update provider profile (name, category, address, city)
+  /// Update provider profile with all onboarding details
   Future<bool> updateProviderProfile({
     required String name,
     required String categoryId,
+    String? categoryName,
+    String? whatsappNumber,
+    String? iqamaNumber,
+    String? iqamaExpiry,
+    String? vehicleType,
+    String? vehicleTypeId,
+    String? vehicleModel,
+    String? plateNumber,
+    String? vehicleColor,
     String? address,
     String? city,
   }) async {
@@ -150,6 +185,15 @@ class BackendService {
         data: {
           'name': name,
           'categoryId': categoryId,
+          if (categoryName != null && categoryName.isNotEmpty) 'categoryName': categoryName,
+          if (whatsappNumber != null && whatsappNumber.isNotEmpty) 'whatsappNumber': whatsappNumber,
+          if (iqamaNumber != null && iqamaNumber.isNotEmpty) 'iqamaNumber': iqamaNumber,
+          if (iqamaExpiry != null && iqamaExpiry.isNotEmpty) 'iqamaExpiry': iqamaExpiry,
+          if (vehicleType != null && vehicleType.isNotEmpty) 'vehicleType': vehicleType,
+          if (vehicleTypeId != null && vehicleTypeId.isNotEmpty) 'vehicleTypeId': vehicleTypeId,
+          if (vehicleModel != null && vehicleModel.isNotEmpty) 'vehicleModel': vehicleModel,
+          if (plateNumber != null && plateNumber.isNotEmpty) 'plateNumber': plateNumber,
+          if (vehicleColor != null && vehicleColor.isNotEmpty) 'vehicleColor': vehicleColor,
           if (address != null) 'address': address,
           if (city != null) 'city': city,
         },
@@ -158,6 +202,100 @@ class BackendService {
     } catch (_) {
       return true;
     }
+  }
+
+  /// Fetch authenticated provider's real profile & review status from backend
+  Future<Map<String, dynamic>?> getMe() async {
+    try {
+      final response = await _client.get('/api/v1/provider/me');
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          if (data.containsKey('data') && data['data'] is Map<String, dynamic>) {
+            return data['data'] as Map<String, dynamic>;
+          }
+          return data;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Unified account status check for providers:
+  /// Reacts in real time when admin approves, suspends, blocks, or deletes a provider.
+  Future<ProviderAccountState> checkProviderAccountState() async {
+    try {
+      final response = await _client.get('/api/v1/provider/me');
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data;
+        final profile = resData is Map<String, dynamic> && resData['data'] is Map<String, dynamic>
+            ? resData['data'] as Map<String, dynamic>
+            : (resData is Map<String, dynamic> ? resData : <String, dynamic>{});
+
+        final rawStatus = profile['status']?.toString().toUpperCase() ?? '';
+        final statusReason = profile['statusReason']?.toString() ?? '';
+
+        if (rawStatus == 'BLOCKED') {
+          return ProviderAccountState(
+            status: ProviderAccountStatus.blocked,
+            rawStatus: rawStatus,
+            statusReason: statusReason,
+            profile: profile,
+          );
+        } else if (rawStatus == 'SUSPENDED') {
+          return ProviderAccountState(
+            status: ProviderAccountStatus.suspended,
+            rawStatus: rawStatus,
+            statusReason: statusReason,
+            profile: profile,
+          );
+        } else if (rawStatus == 'APPROVED') {
+          return ProviderAccountState(
+            status: ProviderAccountStatus.approved,
+            rawStatus: rawStatus,
+            statusReason: statusReason,
+            profile: profile,
+          );
+        } else if (rawStatus == 'REJECTED' || rawStatus == 'DECLINED') {
+          final isResubmission = statusReason.toLowerCase().contains('resubmi');
+          return ProviderAccountState(
+            status: isResubmission
+                ? ProviderAccountStatus.resubmissionRequested
+                : ProviderAccountStatus.suspended,
+            rawStatus: rawStatus,
+            statusReason: statusReason,
+            profile: profile,
+          );
+        } else if (rawStatus == 'PENDING_VERIFICATION') {
+          return ProviderAccountState(
+            status: ProviderAccountStatus.pendingVerification,
+            rawStatus: rawStatus,
+            statusReason: statusReason,
+            profile: profile,
+          );
+        } else {
+          return ProviderAccountState(
+            status: ProviderAccountStatus.pendingProfile,
+            rawStatus: rawStatus,
+            statusReason: statusReason,
+            profile: profile,
+          );
+        }
+      }
+    } on DioException catch (dioErr) {
+      final code = dioErr.response?.statusCode;
+      if (code == 401 || code == 404) {
+        return const ProviderAccountState(
+          status: ProviderAccountStatus.deleted,
+          rawStatus: 'DELETED',
+          statusReason: 'Account was removed or deleted by administration',
+        );
+      }
+    } catch (_) {}
+
+    return const ProviderAccountState(
+      status: ProviderAccountStatus.networkError,
+    );
   }
 
   /// Submit real verification document with optional file bytes & automated clarity checking
@@ -228,10 +366,20 @@ class BackendService {
   /// Verify that all compulsory documents (Iqama, Registration, Driving Licence) are submitted on the backend
   Future<bool> verifyAllCompulsoryDocuments() async {
     try {
-      final response = await _client.post('/providers/me/verification/check-all');
+      final response = await _client.post('/api/v1/providers/me/verification/check-all');
       return response.statusCode == 200;
     } catch (_) {
       return true; // Graceful fallback
+    }
+  }
+
+  /// Complete onboarding flow and submit provider for admin approval
+  Future<bool> completeOnboarding() async {
+    try {
+      final response = await _client.post('/api/v1/provider/me/complete-onboarding');
+      return response.statusCode == 200;
+    } catch (_) {
+      return true;
     }
   }
 
@@ -264,9 +412,10 @@ class BackendService {
         ApiEndpoints.providerStats,
         queryParameters: {
           if (providerId != null) 'providerId': providerId,
+          '_t': DateTime.now().millisecondsSinceEpoch,
         },
       );
-      if (response.statusCode == 200 && response.data != null) {
+      if ((response.statusCode == 200 || response.statusCode == 304) && response.data != null) {
         final data = response.data;
         if (data is Map<String, dynamic>) {
           return ProviderQuickStatsModel.fromJson(data);
@@ -283,9 +432,10 @@ class BackendService {
         ApiEndpoints.providerDashboard,
         queryParameters: {
           if (providerId != null) 'providerId': providerId,
+          '_t': DateTime.now().millisecondsSinceEpoch,
         },
       );
-      if (response.statusCode == 200 && response.data != null) {
+      if ((response.statusCode == 200 || response.statusCode == 304) && response.data != null) {
         final data = response.data;
         if (data is Map<String, dynamic>) {
           return ProviderDashboardModel.fromJson(data);
@@ -295,11 +445,50 @@ class BackendService {
     return ProviderDashboardModel.defaults;
   }
 
+  /// Record customer discovery & engagement funnel event (profile_view, call_click, whatsapp_click)
+  Future<bool> trackCustomerEvent({
+    required String event,
+    required String providerPublicId,
+    String? sessionId,
+    double? latitude,
+    double? longitude,
+  }) async {
+    try {
+      final response = await _client.post(
+        ApiEndpoints.discoveryEvents,
+        data: {
+          'event': event,
+          'providerPublicId': providerPublicId,
+          if (sessionId != null) 'sessionId': sessionId,
+          if (latitude != null) 'latitude': latitude,
+          if (longitude != null) 'longitude': longitude,
+        },
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Update provider online/offline presence status
+  Future<bool> updateProviderPresence(bool isOnline) async {
+    try {
+      final response = await _client.put(
+        '/api/v1/provider/me/presence',
+        data: {'isOnline': isOnline},
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Update provider location
   Future<bool> updateProviderLocation({
     required double latitude,
     required double longitude,
     String? address,
+    String? city,
   }) async {
     try {
       final response = await _client.put(
@@ -308,6 +497,7 @@ class BackendService {
           'latitude': latitude,
           'longitude': longitude,
           if (address != null) 'address': address,
+          if (city != null) 'city': city,
         },
       );
       return response.statusCode == 200;
@@ -364,10 +554,10 @@ class BackendService {
         }
       }
     } catch (_) {
-      // Backend offline or unreachable — fallback to default seeded providers matching Figma
+      // Backend offline or unreachable
     }
 
-    return defaultProviders;
+    return const [];
   }
 
   static const List<Map<String, double>> defaultProviderLayouts = [
@@ -383,148 +573,7 @@ class BackendService {
     {'top': 345.0, 'left': 168.0, 'angle': 0.0},
   ];
 
-  static const List<ProviderMarkerModel> defaultProviders = [
-    // 1. Ahmed Raza: Tyre Repair - Riyadh (matching exact prompt layout)
-    ProviderMarkerModel(
-      id: 1,
-      publicId: 'QRB-100001',
-      name: 'Ahmed Raza',
-      distanceKm: 0.6,
-      ratingAvg: 4.9,
-      ratingCount: 142,
-      latitude: 24.7685,
-      longitude: 46.7142,
-      screenTop: 174.0,
-      screenLeft: 82.0,
-      carAngle: 60.0,
-    ),
-    // 2. Ali Ahmad: Battery Jump Start - Riyadh
-    ProviderMarkerModel(
-      id: 2,
-      publicId: 'QRB-100002',
-      name: 'Ali Ahmad',
-      distanceKm: 0.7,
-      ratingAvg: 4.8,
-      ratingCount: 98,
-      latitude: 24.7672,
-      longitude: 46.7148,
-      screenTop: 200.0,
-      screenLeft: 122.0,
-      carAngle: 45.0,
-    ),
-    // 3. Abdul Ahad: Vehicle Towing
-    ProviderMarkerModel(
-      id: 3,
-      publicId: 'QRB-100003',
-      name: 'Abdul Ahad',
-      distanceKm: 0.8,
-      ratingAvg: 5.0,
-      ratingCount: 215,
-      latitude: 24.7690,
-      longitude: 46.7170,
-      screenTop: 172.0,
-      screenLeft: 215.0,
-      carAngle: -50.0,
-    ),
-    // 4. M Ibrahim: Fuel Delivery
-    ProviderMarkerModel(
-      id: 4,
-      publicId: 'QRB-100004',
-      name: 'M Ibrahim',
-      distanceKm: 0.5,
-      ratingAvg: 4.9,
-      ratingCount: 88,
-      latitude: 24.7710,
-      longitude: 46.7135,
-      screenTop: 42.0,
-      screenLeft: 95.0,
-      carAngle: 45.0,
-    ),
-    // 5. Awais Ali: Tyre Repair
-    ProviderMarkerModel(
-      id: 5,
-      publicId: 'QRB-100005',
-      name: 'Awais Ali',
-      distanceKm: 0.3,
-      ratingAvg: 4.9,
-      ratingCount: 160,
-      latitude: 24.7698,
-      longitude: 46.7120,
-      screenTop: 110.0,
-      screenLeft: 40.0,
-      carAngle: 70.0,
-    ),
-    // 6. Usman Khan: Car Lockout Assistance
-    ProviderMarkerModel(
-      id: 6,
-      publicId: 'QRB-100006',
-      name: 'Usman Khan',
-      distanceKm: 0.5,
-      ratingAvg: 4.8,
-      ratingCount: 75,
-      latitude: 24.7705,
-      longitude: 46.7185,
-      screenTop: 105.0,
-      screenLeft: 285.0,
-      carAngle: -35.0,
-    ),
-    // 7. Khalid Al-Otaibi: Vehicle Towing
-    ProviderMarkerModel(
-      id: 7,
-      publicId: 'QRB-100007',
-      name: 'Khalid Al-Otaibi',
-      distanceKm: 0.7,
-      ratingAvg: 4.9,
-      ratingCount: 130,
-      latitude: 24.7675,
-      longitude: 46.7188,
-      screenTop: 205.0,
-      screenLeft: 280.0,
-      carAngle: -45.0,
-    ),
-    // 8. Tariq Mansoor: Fuel Delivery
-    ProviderMarkerModel(
-      id: 8,
-      publicId: 'QRB-100008',
-      name: 'Tariq Mansoor',
-      distanceKm: 0.4,
-      ratingAvg: 4.9,
-      ratingCount: 112,
-      latitude: 24.7655,
-      longitude: 46.7175,
-      screenTop: 295.0,
-      screenLeft: 248.0,
-      carAngle: -50.0,
-    ),
-    // 9. Fahad Al-Harbi: Battery Jump Start
-    ProviderMarkerModel(
-      id: 9,
-      publicId: 'QRB-100009',
-      name: 'Fahad Al-Harbi',
-      distanceKm: 0.5,
-      ratingAvg: 4.7,
-      ratingCount: 64,
-      latitude: 24.7650,
-      longitude: 46.7138,
-      screenTop: 310.0,
-      screenLeft: 105.0,
-      carAngle: 50.0,
-    ),
-    // 10. Sultan Al-Ghamdi: Tyre Repair
-    ProviderMarkerModel(
-      id: 10,
-      publicId: 'QRB-100010',
-      name: 'Sultan Al-Ghamdi',
-      distanceKm: 0.8,
-      ratingAvg: 5.0,
-      ratingCount: 310,
-      latitude: 24.7640,
-      longitude: 46.7155,
-      screenTop: 345.0,
-      screenLeft: 168.0,
-      carAngle: 0.0,
-    ),
-  ];
+  static const List<ProviderMarkerModel> defaultProviders = [];
 
   /// Check backend server health status
   Future<HealthStatusModel> checkHealth() async {
@@ -551,7 +600,10 @@ class BackendService {
   /// Fetch active service categories
   Future<List<CategoryModel>> getCategories() async {
     try {
-      final response = await _client.get(ApiEndpoints.categories);
+      final response = await _client.get(
+        ApiEndpoints.categories,
+        queryParameters: {'_t': DateTime.now().millisecondsSinceEpoch},
+      );
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
         List<dynamic> items = [];
@@ -566,88 +618,72 @@ class BackendService {
             .toList();
       }
     } catch (_) {
-      // Fallback default categories if server is initializing
+      // Server error or offline
     }
 
-    // Default real roadside assistance categories matching Qareeb service domains
-    return const [
-      CategoryModel(
-        id: 1,
-        name: 'Tyre Repair',
-        slug: 'tyre-repair',
-        subtitle: 'Vehicle tyre & replacements',
-        assetImage: 'assets/images/car_ride.png',
-        isEnabled: true,
-      ),
-      CategoryModel(
-        id: 2,
-        name: 'Battery Jump Start',
-        slug: 'battery-jump-start',
-        subtitle: 'Emergency jump start',
-        assetImage: 'assets/images/emergency_beacon.png',
-        isEnabled: true,
-      ),
-      CategoryModel(
-        id: 3,
-        name: 'Vehicle Towing',
-        slug: 'vehicle-towing',
-        subtitle: 'Safe vehicle towing',
-        assetImage: 'assets/images/towing.png',
-        isEnabled: true,
-      ),
-      CategoryModel(
-        id: 4,
-        name: 'Fuel Delivery',
-        slug: 'fuel-delivery',
-        subtitle: 'On-demand fuel delivery',
-        assetImage: 'assets/images/truk.png',
-        isEnabled: true,
-      ),
-      CategoryModel(
-        id: 5,
-        name: 'Mobile Mechanic',
-        slug: 'mobile-mechanic',
-        subtitle: 'On-site vehicle repairs',
-        assetImage: 'assets/images/flatbed_truck.png',
-        isEnabled: true,
-      ),
-      CategoryModel(
-        id: 6,
-        name: 'Car Lockout Assistance',
-        slug: 'car-lockout',
-        subtitle: 'Vehicle lockout assistance',
-        assetImage: 'assets/images/car_ride.png',
-        isEnabled: true,
-      ),
-    ];
+    return const [];
   }
 
-  /// Fetch admin-configured vehicle types
+  /// Fetch admin-configured vehicle types (models with bilingual names)
+  Future<List<VehicleTypeModel>> getVehicleTypeModels() async {
+    try {
+      final response = await _client.get(
+        '${ApiEndpoints.categories}/vehicle-types',
+        queryParameters: {
+          '_t': DateTime.now().millisecondsSinceEpoch,
+          'details': '1',
+        },
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        List<dynamic> items = [];
+        if (data is List) {
+          items = data;
+        } else if (data is Map<String, dynamic> && data['data'] is List) {
+          items = data['data'] as List<dynamic>;
+        }
+
+        return items.map((e) {
+          if (e is Map<String, dynamic>) {
+            return VehicleTypeModel.fromJson(e);
+          } else if (e is Map) {
+            return VehicleTypeModel.fromJson(Map<String, dynamic>.from(e));
+          } else {
+            return VehicleTypeModel.fromString(e.toString());
+          }
+        }).toList();
+      }
+    } catch (_) {
+      // Graceful offline fallback
+    }
+
+    return const [];
+  }
+
+  /// Fetch admin-configured vehicle types (names only)
   Future<List<String>> getVehicleTypes() async {
     try {
-      final response = await _client.get('${ApiEndpoints.categories}/vehicle-types');
+      final response = await _client.get(
+        '${ApiEndpoints.categories}/vehicle-types',
+        queryParameters: {'_t': DateTime.now().millisecondsSinceEpoch},
+      );
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
         if (data is List) {
-          return data.map((e) => e.toString()).toList();
+          return data
+              .map((e) => e is Map && e['name'] != null ? e['name'].toString() : e.toString())
+              .toList();
         } else if (data is Map<String, dynamic> && data['data'] is List) {
-          return (data['data'] as List).map((e) => e.toString()).toList();
+          return (data['data'] as List)
+              .map((e) => e is Map && e['name'] != null ? e['name'].toString() : e.toString())
+              .toList();
         }
       }
     } catch (_) {
       // Graceful offline fallback
     }
 
-    // Default admin baseline vehicle types
-    return const [
-      'Flatbed Truck',
-      'Wheel-Lift Tow Truck',
-      'Integrated Tow Truck',
-      'Heavy-Duty Recovery Truck',
-      'Service Van',
-      'Pickup Truck',
-      'Standard Car / Sedan',
-      'Motorcycle / Bike',
-    ];
+    // Return empty list if no custom types returned by server (no hardcoded seed data)
+    return const [];
   }
 }

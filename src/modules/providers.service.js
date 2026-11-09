@@ -17,16 +17,32 @@ import {
   serializeVerification,
 } from "./serializers.js";
 
-async function assertEnabledCategory(client, categoryId) {
-  const { rows } = await client.query(
-    `SELECT id, name, is_enabled FROM categories WHERE id = $1`,
-    [categoryId],
-  );
-  if (!rows[0]) throw new NotFoundError("Category not found");
-  if (!rows[0].is_enabled) {
+async function assertEnabledCategory(client, categoryId, categoryName) {
+  let cat = null;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(categoryId || ""));
+  if (isUuid) {
+    const res = await client.query(`SELECT id, name, is_enabled FROM categories WHERE id = $1`, [categoryId]);
+    if (res.rows[0]) cat = res.rows[0];
+  }
+  if (!cat && (categoryName || categoryId)) {
+    const term = categoryName || categoryId;
+    const res = await client.query(
+      `SELECT id, name, is_enabled FROM categories WHERE LOWER(name) = LOWER($1) OR slug = $1 LIMIT 1`,
+      [term],
+    );
+    if (res.rows[0]) cat = res.rows[0];
+  }
+  if (!cat) {
+    const res = await client.query(
+      `SELECT id, name, is_enabled FROM categories WHERE is_enabled = true ORDER BY sort_order ASC, name ASC LIMIT 1`,
+    );
+    if (res.rows[0]) cat = res.rows[0];
+  }
+  if (!cat) throw new NotFoundError("Category not found");
+  if (!cat.is_enabled) {
     throw new AppError(400, "Category is disabled", "CATEGORY_DISABLED");
   }
-  return rows[0];
+  return cat;
 }
 
 async function upsertLocation(client, providerId, input) {
@@ -36,20 +52,31 @@ async function upsertLocation(client, providerId, input) {
     return fetchLocation(client, providerId);
   }
 
+  const lat = input.latitude !== undefined && input.latitude !== null ? Number(input.latitude) : null;
+  const lng = input.longitude !== undefined && input.longitude !== null ? Number(input.longitude) : null;
+  let city = input.city || null;
+  if (!city && lat && lng) {
+    if (lat >= 24.0 && lat <= 25.5 && lng >= 46.0 && lng <= 47.5) city = "Riyadh";
+    else if (lat >= 21.0 && lat <= 22.0 && lng >= 38.8 && lng <= 39.8) city = "Jeddah";
+    else if (lat >= 26.0 && lat <= 26.8 && lng >= 49.5 && lng <= 50.5) city = "Dammam";
+    else city = "Riyadh";
+  }
+
   await client.query(
-    `INSERT INTO locations (provider_id, latitude, longitude, address, city)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO locations (provider_id, latitude, longitude, address, city, location_updated_at)
+     VALUES ($1, $2, $3, $4, $5, now())
      ON CONFLICT (provider_id) DO UPDATE
-     SET latitude = EXCLUDED.latitude,
-         longitude = EXCLUDED.longitude,
-         address = EXCLUDED.address,
-         city = EXCLUDED.city`,
+     SET latitude = COALESCE(EXCLUDED.latitude, locations.latitude),
+         longitude = COALESCE(EXCLUDED.longitude, locations.longitude),
+         address = COALESCE(EXCLUDED.address, locations.address),
+         city = COALESCE(EXCLUDED.city, locations.city),
+         location_updated_at = now()`,
     [
       providerId,
-      input.latitude ?? null,
-      input.longitude ?? null,
-      input.address || null,
-      input.city || null,
+      lat,
+      lng,
+      input.address || (city ? `${city}, Saudi Arabia` : null),
+      city,
     ],
   );
   return fetchLocation(client, providerId);
@@ -65,13 +92,62 @@ export async function updateProfile(provider, input) {
   }
 
   return withTransaction(async (client) => {
-    await assertEnabledCategory(client, input.categoryId);
+    const category = await assertEnabledCategory(client, input.categoryId, input.categoryName);
+
+    let resolvedVehicleTypeId = null;
+    let resolvedVehicleTypeName = input.vehicleType || null;
+    if (input.vehicleTypeId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.vehicleTypeId)) {
+      const vtRow = await client.query(`SELECT id, name FROM vehicle_types WHERE id = $1`, [input.vehicleTypeId]);
+      if (vtRow.rows[0]) {
+        resolvedVehicleTypeId = vtRow.rows[0].id;
+        resolvedVehicleTypeName = vtRow.rows[0].name;
+      }
+    } else if (input.vehicleType) {
+      const vtRow = await client.query(
+        `SELECT id, name FROM vehicle_types WHERE LOWER(name) = LOWER($1) OR slug = $1 LIMIT 1`,
+        [input.vehicleType],
+      );
+      if (vtRow.rows[0]) {
+        resolvedVehicleTypeId = vtRow.rows[0].id;
+        resolvedVehicleTypeName = vtRow.rows[0].name;
+      }
+    }
+
+    const whatsappNumber = input.whatsappNumber || input.whatsapp || null;
+    const iqamaNumber = input.iqamaNumber || input.nationalId || null;
+    const iqamaExpiry = input.iqamaExpiry || null;
+    const vehicleModel = input.vehicleModel || null;
+    const plateNumber = input.plateNumber || null;
+    const vehicleColor = input.vehicleColor || null;
 
     await client.query(
       `UPDATE providers
-       SET name = $2, category_id = $3, photo_url = COALESCE($4, photo_url)
+       SET name = $2,
+           category_id = $3,
+           photo_url = COALESCE($4, photo_url),
+           whatsapp_number = COALESCE($5, whatsapp_number),
+           iqama_number = COALESCE($6, iqama_number),
+           iqama_expiry = COALESCE($7, iqama_expiry),
+           vehicle_type_id = COALESCE($8, vehicle_type_id),
+           vehicle_type_name = COALESCE($9, vehicle_type_name),
+           vehicle_model = COALESCE($10, vehicle_model),
+           plate_number = COALESCE($11, plate_number),
+           vehicle_color = COALESCE($12, vehicle_color)
        WHERE id = $1`,
-      [provider.id, input.name, input.categoryId, input.photoUrl || null],
+      [
+        provider.id,
+        input.name,
+        category.id,
+        input.photoUrl || null,
+        whatsappNumber,
+        iqamaNumber,
+        iqamaExpiry,
+        resolvedVehicleTypeId,
+        resolvedVehicleTypeName,
+        vehicleModel,
+        plateNumber,
+        vehicleColor,
+      ],
     );
 
     await upsertLocation(client, provider.id, input);
@@ -236,7 +312,31 @@ export async function submitVerification(provider, { documentType, documentUrl }
 
 export async function listEnabledCategories() {
   const { rows } = await query(
-    `SELECT * FROM categories WHERE is_enabled = true ORDER BY name`,
+    `SELECT * FROM categories WHERE is_enabled = true ORDER BY sort_order ASC, name ASC`,
   );
   return rows;
+}
+
+export async function completeProviderOnboarding(provider) {
+  return withTransaction(async (client) => {
+    const current = await fetchProviderById(client, provider.id);
+    const pending = await getStatus(ENTITY.PROVIDER, PROVIDER_STATUS.PENDING_VERIFICATION);
+    await client.query(
+      `UPDATE providers SET status_id = $2, status_reason = NULL WHERE id = $1`,
+      [provider.id, pending.id],
+    );
+    await recordStatusChange(client, {
+      providerId: provider.id,
+      fromStatusId: current.status_id,
+      toStatusId: pending.id,
+      reason: "Onboarding completed",
+    });
+    const next = await fetchProviderById(client, provider.id);
+    const location = await fetchLocation(client, provider.id);
+    const verification = await fetchLatestVerification(client, provider.id);
+    return serializeProvider(next, {
+      location: serializeLocation(location),
+      verification: serializeVerification(verification),
+    });
+  });
 }

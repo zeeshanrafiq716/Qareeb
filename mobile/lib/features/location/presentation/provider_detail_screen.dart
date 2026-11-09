@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
+import '../../../providers/backend_provider.dart';
 import 'send_location_screen.dart';
 import 'send_request_screen.dart';
 import 'widgets/real_map_background_widget.dart';
@@ -13,11 +14,13 @@ import 'widgets/real_map_background_widget.dart';
 class ProviderDetailScreen extends ConsumerStatefulWidget {
   final String serviceCategory;
   final String providerName;
+  final String? providerPublicId;
 
   const ProviderDetailScreen({
     super.key,
     this.serviceCategory = 'Fire Brigade',
     this.providerName = 'Usman Ali',
+    this.providerPublicId,
   });
 
   @override
@@ -26,6 +29,19 @@ class ProviderDetailScreen extends ConsumerStatefulWidget {
 
 class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
   AppTranslations get tr => ref.read(translationsProvider);
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(backendServiceProvider).trackCustomerEvent(
+          event: 'profile_view',
+          providerPublicId: widget.providerPublicId!,
+        );
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -409,6 +425,12 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                 key: const Key('provider_detail_whatsapp_button'),
                                                 onTap: () {
                                                   HapticFeedback.lightImpact();
+                                                  if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
+                                                    ref.read(backendServiceProvider).trackCustomerEvent(
+                                                      event: 'whatsapp_click',
+                                                      providerPublicId: widget.providerPublicId!,
+                                                    );
+                                                  }
                                                   ScaffoldMessenger.of(context).showSnackBar(
                                                     SnackBar(
                                                       content: Text(
@@ -446,6 +468,12 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                 key: const Key('provider_detail_call_button'),
                                                 onTap: () {
                                                   HapticFeedback.lightImpact();
+                                                  if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
+                                                    ref.read(backendServiceProvider).trackCustomerEvent(
+                                                      event: 'call_click',
+                                                      providerPublicId: widget.providerPublicId!,
+                                                    );
+                                                  }
                                                   ScaffoldMessenger.of(context).showSnackBar(
                                                     SnackBar(
                                                       content: Text(

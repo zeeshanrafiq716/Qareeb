@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/services/task_service.dart';
 import 'package:mobile/features/location/presentation/widgets/top_down_car_widget.dart';
 import 'package:mobile/features/location/presentation/widgets/real_map_background_widget.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_scroll_behavior.dart';
@@ -78,6 +79,15 @@ class _ProviderActiveRequestScreenState
   bool _isSheetExpanded = false;
 
   final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    final task = TaskService.instance.activeTask;
+    if (task != null) {
+      _currentStep = task.step.clamp(0, 4);
+    }
+  }
 
   @override
   void dispose() {
@@ -1302,12 +1312,15 @@ class _ProviderActiveRequestScreenState
 
                                   // 3g. Primary Action Button: "I've Arrived ->" (Exact previous button branding)
                                   GestureDetector(
-                              onTap: () {
+                              onTap: () async {
                                 HapticFeedback.mediumImpact();
                                 if (_currentStep < 3) {
                                   setState(() {
                                     _currentStep++;
                                   });
+                                  final String newStatus = _currentStep == 2 ? 'arrived' : 'in_progress';
+                                  await TaskService.instance.updateTaskStatus(status: newStatus, step: _currentStep);
+                                  if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       backgroundColor: const Color(0xFF8B53FE),
@@ -1323,6 +1336,8 @@ class _ProviderActiveRequestScreenState
                                   setState(() {
                                     _currentStep = 4;
                                   });
+                                  await TaskService.instance.completeTask();
+                                  if (!context.mounted) return;
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (_) => ProviderServiceCompletedScreen(

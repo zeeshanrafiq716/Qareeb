@@ -25,11 +25,15 @@ import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 class ProviderAdminApprovalStatusCard extends StatelessWidget {
   final bool isApproved;
   final bool isSuspended;
+  final bool isRejected;
+  final bool isResubmission;
 
   const ProviderAdminApprovalStatusCard({
     super.key,
     this.isApproved = false,
     this.isSuspended = false,
+    this.isRejected = false,
+    this.isResubmission = false,
   });
 
   static const double designWidth = 350.0;
@@ -41,6 +45,7 @@ class ProviderAdminApprovalStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final data = ProviderRegistrationStore.instance.data;
+    final bool effectiveRejected = isRejected || isSuspended;
 
     final String accountSubtitle = data.fullName.isNotEmpty
         ? (data.phone.isNotEmpty ? '${data.fullName} • ${data.phone}' : data.fullName)
@@ -87,38 +92,48 @@ class ProviderAdminApprovalStatusCard extends StatelessWidget {
 
               const SizedBox(height: rowGap), // gap: 20px
 
-              // 2nd row branding: Document Verification (In Progress -> Completed when approved / Suspended if rejected)
+              // 2nd row branding: Document Verification
               _buildRow(
                 leftIcon: const _IdCardLeftIcon(),
                 title: l10n.documentVerificationItem,
                 subtitle: isApproved
                     ? (context.isArabic ? 'تم التحقق من جميع المستندات بنجاح' : 'All documents verified successfully')
-                    : (isSuspended
-                        ? (context.isArabic ? 'تم تعليق المستندات من قبل الإدارة' : 'Documents suspended or rejected')
-                        : docSubtitle),
+                    : (isResubmission
+                        ? (context.isArabic ? 'مطلوب إعادة تقديم بعض المستندات' : 'Resubmission requested by admin')
+                        : (effectiveRejected
+                            ? (context.isArabic ? 'تم رفض المستندات من قبل الإدارة' : 'Documents rejected by admin')
+                            : docSubtitle)),
                 statusBadge: isApproved
                     ? const _CompletedStatusBadge()
-                    : (isSuspended
-                        ? const _RejectedStatusBadge()
-                        : const _InProgressStatusBadge()),
+                    : (isResubmission
+                        ? const _ResubmitStatusBadge()
+                        : (effectiveRejected
+                            ? const _RejectedStatusBadge()
+                            : const _InProgressStatusBadge())),
               ),
 
               const SizedBox(height: rowGap), // gap: 20px
 
-              // 3rd row branding: Admin Approval (Pending -> Completed when approved / Suspended if rejected)
+              // 3rd row branding: Admin Approval
               _buildRow(
                 leftIcon: const _ApprovalCheckLeftIcon(),
                 title: l10n.adminApprovalItem,
                 subtitle: isApproved
                     ? (context.isArabic ? 'تم اعتماد الحساب من قبل الإدارة' : 'Account approved by Admin')
                     : (isSuspended
-                        ? (context.isArabic ? 'تم تعليق الموافقة من قبل الإدارة' : 'Approval suspended or rejected')
-                        : approvalSubtitle),
+                        ? (context.isArabic ? 'تم تعليق الحساب من قبل الإدارة' : 'Account suspended by Admin')
+                        : (isResubmission
+                            ? (context.isArabic ? 'في انتظار إعادة تقديم المستندات' : 'Waiting for document resubmission')
+                            : (effectiveRejected
+                                ? (context.isArabic ? 'تم رفض طلب الاعتماد من قبل الإدارة' : 'Application rejected by admin')
+                                : approvalSubtitle))),
                 statusBadge: isApproved
                     ? const _CompletedStatusBadge()
-                    : (isSuspended
-                        ? const _RejectedStatusBadge()
-                        : const _PendingStatusBadge()),
+                    : (isResubmission
+                        ? const _PendingStatusBadge()
+                        : (effectiveRejected
+                            ? const _RejectedStatusBadge()
+                            : const _PendingStatusBadge())),
               ),
             ],
           ),
@@ -507,6 +522,40 @@ class _RejectedStatusBadge extends StatelessWidget {
             child: Icon(
               Icons.close_rounded,
               size: 9.5,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Resubmit Status Badge: amber circle with white rotate icon
+class _ResubmitStatusBadge extends StatelessWidget {
+  const _ResubmitStatusBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 20.0,
+      height: 20.0,
+      decoration: const BoxDecoration(
+        color: Color(0xFFFEF3E2), // soft amber ring
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Container(
+          width: 15.12,
+          height: 15.12,
+          decoration: const BoxDecoration(
+            color: Color(0xFFD97706), // amber circle
+            shape: BoxShape.circle,
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.refresh_rounded,
+              size: 10.0,
               color: Colors.white,
             ),
           ),

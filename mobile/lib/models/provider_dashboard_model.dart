@@ -4,8 +4,8 @@ class ProviderQuickStatsModel {
   final int contactsToday;
 
   const ProviderQuickStatsModel({
-    this.viewsToday = 32,
-    this.contactsToday = 19,
+    this.viewsToday = 0,
+    this.contactsToday = 0,
   });
 
   factory ProviderQuickStatsModel.fromJson(Map<String, dynamic> json) {
@@ -18,8 +18,8 @@ class ProviderQuickStatsModel {
             : json);
 
     return ProviderQuickStatsModel(
-      viewsToday: (stats['viewsToday'] as num?)?.toInt() ?? 32,
-      contactsToday: (stats['contactsToday'] as num?)?.toInt() ?? 19,
+      viewsToday: (stats['viewsToday'] as num?)?.toInt() ?? 0,
+      contactsToday: (stats['contactsToday'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -38,9 +38,9 @@ class ProviderViewsCardData {
   final List<int> barValues;
 
   const ProviderViewsCardData({
-    this.counts = const [24, 21, 184, 268, 345],
-    this.trends = const ['+12%', '+5%', '+18%', '+22%', '+15%'],
-    this.barValues = const [1, 3, 4, 7, 4, 2, 3],
+    this.counts = const [0, 0, 0, 0, 0],
+    this.trends = const ['0%', '0%', '0%', '0%', '0%'],
+    this.barValues = const [0, 0, 0, 0, 0, 0, 0],
   });
 
   factory ProviderViewsCardData.fromJson(Map<String, dynamic> json) {
@@ -48,14 +48,14 @@ class ProviderViewsCardData {
       if (list is List) {
         return list.map((e) => (e as num).toInt()).toList();
       }
-      return const [24, 21, 184, 268, 345];
+      return const [0, 0, 0, 0, 0];
     }
 
     List<String> parseStrings(dynamic list) {
       if (list is List) {
         return list.map((e) => e.toString()).toList();
       }
-      return const ['+12%', '+5%', '+18%', '+22%', '+15%'];
+      return const ['0%', '0%', '0%', '0%', '0%'];
     }
 
     return ProviderViewsCardData(
@@ -77,11 +77,11 @@ class ProviderContactsCardData {
   final List<int> barValues;
 
   const ProviderContactsCardData({
-    this.counts = const [19, 14, 128, 195, 260],
-    this.callsCounts = const [11, 8, 74, 112, 150],
-    this.whatsAppCounts = const [8, 6, 54, 83, 110],
-    this.trends = const ['+33%', '+10%', '+25%', '+18%', '+20%'],
-    this.barValues = const [2, 3, 4, 3, 4, 1, 2],
+    this.counts = const [0, 0, 0, 0, 0],
+    this.callsCounts = const [0, 0, 0, 0, 0],
+    this.whatsAppCounts = const [0, 0, 0, 0, 0],
+    this.trends = const ['0%', '0%', '0%', '0%', '0%'],
+    this.barValues = const [0, 0, 0, 0, 0, 0, 0],
   });
 
   factory ProviderContactsCardData.fromJson(Map<String, dynamic> json) {
@@ -96,15 +96,15 @@ class ProviderContactsCardData {
       if (list is List && list.isNotEmpty) {
         return list.map((e) => e.toString()).toList();
       }
-      return const ['+33%', '+10%', '+25%', '+18%', '+20%'];
+      return const ['0%', '0%', '0%', '0%', '0%'];
     }
 
     return ProviderContactsCardData(
-      counts: parseCounts(json['counts'], const [19, 14, 128, 195, 260]),
-      callsCounts: parseCounts(json['callsCounts'], const [11, 8, 74, 112, 150]),
-      whatsAppCounts: parseCounts(json['whatsAppCounts'], const [8, 6, 54, 83, 110]),
+      counts: parseCounts(json['counts'], const [0, 0, 0, 0, 0]),
+      callsCounts: parseCounts(json['callsCounts'], const [0, 0, 0, 0, 0]),
+      whatsAppCounts: parseCounts(json['whatsAppCounts'], const [0, 0, 0, 0, 0]),
       trends: parseStrings(json['trends']),
-      barValues: parseCounts(json['barValues'], const [2, 3, 4, 3, 4, 1, 2]),
+      barValues: parseCounts(json['barValues'], const [0, 0, 0, 0, 0, 0, 0]),
     );
   }
 

@@ -5,8 +5,10 @@ import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
 import 'package:mobile/features/provider/auth/presentation/admin_approval_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/phone_verification_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_blocked_screen.dart';
 import 'package:mobile/features/provider/home/presentation/provider_home_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
+import 'package:mobile/services/backend_service.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_bottom_content.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_branding_header.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_indicator_bar.dart';
@@ -59,24 +61,34 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
     try {
       final token = ProviderRegistrationStore.instance.data.authToken;
       if (token != null && token.isNotEmpty) {
-        final client = ApiClient();
-        final response = await client.get('/api/v1/providers/me');
-        if (response.statusCode == 200 && response.data != null) {
-          final resData = response.data;
-          final payload = resData is Map<String, dynamic> && resData['data'] is Map<String, dynamic>
-              ? resData['data'] as Map<String, dynamic>
-              : (resData is Map<String, dynamic> ? resData : null);
-          if (payload != null && payload['status'] != null) {
-            final serverStatus = payload['status'].toString();
-            final isApproved = serverStatus == 'APPROVED';
-            final isPending = serverStatus == 'PENDING_VERIFICATION';
-            ProviderRegistrationStore.instance.update(
-              (data) => data.copyWith(
-                status: serverStatus,
-                isOnboardingCompleted: isApproved || isPending || data.isOnboardingCompleted,
-              ),
-            );
-          }
+        final backend = BackendService(ApiClient());
+        final accountState = await backend.checkProviderAccountState();
+
+        if (accountState.status == ProviderAccountStatus.deleted) {
+          await ProviderRegistrationStore.instance.clear();
+          return;
+        }
+
+        if (accountState.status == ProviderAccountStatus.blocked) {
+          ProviderRegistrationStore.instance.update(
+            (data) => data.copyWith(
+              status: 'BLOCKED',
+              isOnline: false,
+            ),
+          );
+          return;
+        }
+
+        final serverStatus = accountState.rawStatus;
+        if (serverStatus.isNotEmpty) {
+          final isApproved = accountState.status == ProviderAccountStatus.approved;
+          final isPending = accountState.status == ProviderAccountStatus.pendingVerification;
+          ProviderRegistrationStore.instance.update(
+            (data) => data.copyWith(
+              status: serverStatus,
+              isOnboardingCompleted: isApproved || isPending || data.isOnboardingCompleted,
+            ),
+          );
         }
       }
     } catch (_) {
@@ -100,9 +112,13 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
     final data = ProviderRegistrationStore.instance.data;
     final Widget destination;
 
-    // Check if onboarding & signup have been completed
-    if (data.status == 'APPROVED') {
+    // Check account status and route appropriately
+    if (data.isBlocked || data.status == 'BLOCKED') {
+      destination = const ProviderBlockedScreen();
+    } else if (data.status == 'APPROVED') {
       destination = const ProviderHomeScreen();
+    } else if (data.status == 'SUSPENDED') {
+      destination = const AdminApprovalScreen(isSuspended: true);
     } else if (data.isOnboardingCompleted || data.status == 'PENDING_VERIFICATION') {
       destination = const AdminApprovalScreen();
     } else {

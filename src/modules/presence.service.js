@@ -1,6 +1,7 @@
 import { env } from "../config/env.js";
 import { PROVIDER_STATUS } from "../config/constants.js";
 import { query } from "../db/pool.js";
+import { ForbiddenError } from "../utils/AppError.js";
 import { hasLiveConnection } from "../realtime/connections.js";
 import { presenceStore } from "../redis/presenceStore.js";
 import { PROVIDER_SELECT, serializeProvider } from "./serializers.js";
@@ -33,6 +34,17 @@ export function buildPresence(row, extras = {}) {
 }
 
 export async function setOnline(providerId, socketId) {
+  const { rows } = await query(
+    `SELECT p.id, s.code AS status_code FROM providers p JOIN statuses s ON s.id = p.status_id WHERE p.id = $1`,
+    [providerId],
+  );
+  if (
+    rows[0] &&
+    (rows[0].status_code === PROVIDER_STATUS.SUSPENDED ||
+      rows[0].status_code === PROVIDER_STATUS.BLOCKED)
+  ) {
+    throw new ForbiddenError(`Cannot go online while account is ${rows[0].status_code}`);
+  }
   if (socketId) await presenceStore.addSession(providerId, socketId);
   await presenceStore.setOnline(providerId);
   await query(
@@ -50,6 +62,19 @@ export async function setOffline(providerId) {
 }
 
 export async function touchLastSeen(providerId) {
+  const { rows } = await query(
+    `SELECT p.id, s.code AS status_code FROM providers p JOIN statuses s ON s.id = p.status_id WHERE p.id = $1`,
+    [providerId],
+  );
+  if (
+    rows[0] &&
+    (rows[0].status_code === PROVIDER_STATUS.SUSPENDED ||
+      rows[0].status_code === PROVIDER_STATUS.BLOCKED)
+  ) {
+    await presenceStore.setOffline(providerId);
+    await query(`UPDATE providers SET is_online = false WHERE id = $1`, [providerId]);
+    return;
+  }
   await presenceStore.touch(providerId);
   await query(
     `UPDATE providers SET is_online = true, last_seen_at = now() WHERE id = $1`,
@@ -111,16 +136,15 @@ export async function listOnlineProviders({ page = 1, limit = 20 } = {}) {
     `SELECT COUNT(*)::int AS total
      FROM providers p
      JOIN statuses s ON s.id = p.status_id
-     WHERE s.code = $1 AND p.is_online = true`,
-    [PROVIDER_STATUS.APPROVED],
+     WHERE s.code NOT IN ('pending_otp', 'pending_profile', 'suspended', 'blocked', 'rejected') AND p.is_online = true`,
   );
 
   const { rows } = await query(
     `${PROVIDER_SELECT}
-     WHERE s.code = $1 AND p.is_online = true
+     WHERE s.code NOT IN ('pending_otp', 'pending_profile', 'suspended', 'blocked', 'rejected') AND p.is_online = true
      ORDER BY p.last_seen_at DESC NULLS LAST
-     LIMIT $2 OFFSET $3`,
-    [PROVIDER_STATUS.APPROVED, safeLimit, offset],
+     LIMIT $1 OFFSET $2`,
+    [safeLimit, offset],
   );
 
   return {

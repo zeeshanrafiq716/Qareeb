@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/services/task_service.dart';
 import 'package:mobile/features/home/presentation/widgets/bottom_nav_bar_widget.dart';
 import 'package:mobile/features/provider/requests/presentation/provider_active_request_screen.dart';
 import 'package:mobile/features/provider/requests/presentation/provider_request_details_screen.dart';
@@ -99,200 +100,22 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
   int _selectedFilterIndex = 0; // 0: New (10), 1: Active (2), 2: Completed, 3: Cancelled
   int _selectedCardIndex = 0; // Selected card index (default 0)
 
+  void _onTasksChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
     _selectedFilterIndex = widget.initialFilterIndex;
+    TaskService.instance.activeTaskNotifier.addListener(_onTasksChanged);
+    TaskService.instance.historyNotifier.addListener(_onTasksChanged);
   }
-
-  final List<_ProviderRequestItem> _sampleRequests = const [
-    // Card 1 (Selected): Battery Jump Start
-    _ProviderRequestItem(
-      id: 'REQ-101',
-      serviceTypeEn: 'Battery Jump Start',
-      serviceTypeAr: 'شحن وتبديل بطارية',
-      locationEn: 'King Abdullah Rd',
-      locationAr: 'طريق الملك عبدالله',
-      distanceEn: '4.1 km away',
-      distanceAr: 'على بعد ٤.١ كم',
-      timeEn: 'Just now',
-      timeAr: 'الآن',
-      badgeEn: 'New Request',
-      badgeAr: 'طلب جديد',
-      imageAsset: 'assets/images/img.png',
-      status: 'new',
-    ),
-
-    // Card 2: Tyre Repair (5 min ago)
-    _ProviderRequestItem(
-      id: 'REQ-102',
-      serviceTypeEn: 'Tyre Repair',
-      serviceTypeAr: 'إصلاح إطارات',
-      locationEn: 'Al Malaz',
-      locationAr: 'الملز',
-      distanceEn: '3.2 km away',
-      distanceAr: 'على بعد ٣.٢ كم',
-      timeEn: '5 min ago',
-      timeAr: 'منذ ٥ دقائق',
-      badgeEn: 'New Request',
-      badgeAr: 'طلب جديد',
-      imageAsset: 'assets/images/img.png',
-      status: 'new',
-    ),
-
-    // Card 3: Vehicle Towing
-    _ProviderRequestItem(
-      id: 'REQ-103',
-      serviceTypeEn: 'Vehicle Towing',
-      serviceTypeAr: 'سحب ونقل سيارة',
-      locationEn: 'King Fahd Rd',
-      locationAr: 'طريق الملك فهد',
-      distanceEn: '2.4 km away',
-      distanceAr: 'على بعد ٢.٤ كم',
-      timeEn: '12 min ago',
-      timeAr: 'منذ ١٢ دقيقة',
-      badgeEn: 'New Request',
-      badgeAr: 'طلب جديد',
-      imageAsset: 'assets/images/img.png',
-      status: 'new',
-    ),
-
-    // Card 4: Emergency Fuel Delivery
-    _ProviderRequestItem(
-      id: 'REQ-104',
-      serviceTypeEn: 'Emergency Fuel Delivery',
-      serviceTypeAr: 'توصيل وقود طارئ',
-      locationEn: 'Al Olaya',
-      locationAr: 'العليا',
-      distanceEn: '5.0 km away',
-      distanceAr: 'على بعد ٥.٠ كم',
-      timeEn: '18 min ago',
-      timeAr: 'منذ ١٨ دقيقة',
-      badgeEn: 'New Request',
-      badgeAr: 'طلب جديد',
-      imageAsset: 'assets/images/img.png',
-      status: 'new',
-    ),
-
-    // Card 5: Car Lockout Assistance
-    _ProviderRequestItem(
-      id: 'REQ-105',
-      serviceTypeEn: 'Car Lockout Assistance',
-      serviceTypeAr: 'فتح أقفال سيارات',
-      locationEn: 'Al Nakheel',
-      locationAr: 'النخيل',
-      distanceEn: '6.8 km away',
-      distanceAr: 'على بعد ٦.٨ كم',
-      timeEn: '25 min ago',
-      timeAr: 'منذ ٢٥ دقيقة',
-      badgeEn: 'New Request',
-      badgeAr: 'طلب جديد',
-      imageAsset: 'assets/images/img.png',
-      status: 'new',
-    ),
-
-    // Active Requests Tab
-    _ProviderRequestItem(
-      id: 'REQ-201',
-      serviceTypeEn: 'Car Lockout Assistance',
-      serviceTypeAr: 'فتح أقفال سيارات',
-      locationEn: 'Al Malaz',
-      locationAr: 'الملز',
-      distanceEn: '5.6 km away',
-      distanceAr: 'على بعد ٥.٦ كم',
-      timeEn: 'In progress',
-      timeAr: 'جاري التنفيذ',
-      badgeEn: 'Active',
-      badgeAr: 'نشط',
-      imageAsset: 'assets/images/img.png',
-      status: 'active',
-    ),
-    _ProviderRequestItem(
-      id: 'REQ-202',
-      serviceTypeEn: 'Emergency Fuel Delivery',
-      serviceTypeAr: 'توصيل وقود طارئ',
-      locationEn: 'Al Sahafa',
-      locationAr: 'الصحافة',
-      distanceEn: '6.2 km away',
-      distanceAr: 'على بعد ٦.٢ كم',
-      timeEn: 'In progress',
-      timeAr: 'جاري التنفيذ',
-      badgeEn: 'Active',
-      badgeAr: 'نشط',
-      imageAsset: 'assets/images/img.png',
-      status: 'active',
-    ),
-
-    // Completed Requests Tab
-    _ProviderRequestItem(
-      id: 'REQ-300',
-      serviceTypeEn: 'Battery Jump Start',
-      serviceTypeAr: 'شحن وتبديل بطارية',
-      locationEn: 'King Abdullah Rd, Riyadh',
-      locationAr: 'طريق الملك عبدالله، الرياض',
-      distanceEn: '4.1km',
-      distanceAr: '٤.١ كم',
-      timeEn: '10:24 PM',
-      timeAr: '١٠:٢٤ م',
-      badgeEn: 'Completed',
-      badgeAr: 'مكتمل',
-      customerNameEn: 'Ahmed Khan',
-      customerNameAr: 'أحمد خان',
-      customerAvatarAsset: 'assets/images/ahmed_khan.jpg',
-      imageAsset: 'assets/images/img.png',
-      status: 'completed',
-    ),
-    _ProviderRequestItem(
-      id: 'REQ-301',
-      serviceTypeEn: 'Vehicle Towing',
-      serviceTypeAr: 'سحب ونقل سيارة',
-      locationEn: 'Northern Ring Rd, Riyadh',
-      locationAr: 'الطريق الدائري الشمالي، الرياض',
-      distanceEn: '8.2 km away',
-      distanceAr: 'على بعد ٨.٢ كم',
-      timeEn: 'Yesterday',
-      timeAr: 'أمس',
-      badgeEn: 'Completed',
-      badgeAr: 'مكتمل',
-      imageAsset: 'assets/images/img.png',
-      status: 'completed',
-    ),
-    _ProviderRequestItem(
-      id: 'REQ-302',
-      serviceTypeEn: 'Battery Replacement',
-      serviceTypeAr: 'تبديل بطارية جديدة',
-      locationEn: 'Al Yasmin, Riyadh',
-      locationAr: 'الياسمين، الرياض',
-      distanceEn: '11.0 km away',
-      distanceAr: 'على بعد ١١.٠ كم',
-      timeEn: '2 days ago',
-      timeAr: 'منذ يومين',
-      badgeEn: 'Completed',
-      badgeAr: 'مكتمل',
-      imageAsset: 'assets/images/img.png',
-      status: 'completed',
-    ),
-
-    // Cancelled Requests Tab
-    _ProviderRequestItem(
-      id: 'REQ-401',
-      serviceTypeEn: 'Flat Tire Repair',
-      serviceTypeAr: 'إصلاح إطار',
-      locationEn: 'Al Murabba, Riyadh',
-      locationAr: 'المربع، الرياض',
-      distanceEn: '7.5 km away',
-      distanceAr: 'على بعد ٧.٥ كم',
-      timeEn: '3 days ago',
-      timeAr: 'منذ ٣ أيام',
-      badgeEn: 'Cancelled',
-      badgeAr: 'ملغي',
-      imageAsset: 'assets/images/img.png',
-      status: 'cancelled',
-    ),
-  ];
 
   @override
   void dispose() {
+    TaskService.instance.activeTaskNotifier.removeListener(_onTasksChanged);
+    TaskService.instance.historyNotifier.removeListener(_onTasksChanged);
     _scrollControllerInstance?.dispose();
     super.dispose();
   }
@@ -310,42 +133,96 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
     }
   }
 
+  List<_ProviderRequestItem> get _allRequests {
+    final List<_ProviderRequestItem> list = [];
+    final active = TaskService.instance.activeTask;
+    if (active != null) {
+      final bool isNew = active.status == 'new' || active.status == 'pending';
+      list.add(
+        _ProviderRequestItem(
+          id: active.id,
+          serviceTypeEn: active.serviceCategory,
+          serviceTypeAr: active.serviceCategory,
+          locationEn: active.customerLocation,
+          locationAr: active.customerLocation,
+          distanceEn: '${active.distance} away',
+          distanceAr: 'على بعد ${active.distance}',
+          timeEn: active.dateTime,
+          timeAr: active.dateTime,
+          badgeEn: isNew ? 'New Request' : (active.status == 'arrived' ? 'Arrived' : 'Active'),
+          badgeAr: isNew ? 'طلب جديد' : (active.status == 'arrived' ? 'تم الوصول' : 'نشط'),
+          imageAsset: 'assets/images/img.png',
+          status: active.status,
+          customerNameEn: active.customerName,
+          customerNameAr: active.customerName,
+          customerAvatarAsset: 'assets/images/ahmed_khan.jpg',
+        ),
+      );
+    }
+
+    for (final h in TaskService.instance.historyTasks) {
+      final bool isCancelled = h.status == 'cancelled';
+      list.add(
+        _ProviderRequestItem(
+          id: h.id,
+          serviceTypeEn: h.serviceCategory,
+          serviceTypeAr: h.serviceCategory,
+          locationEn: h.customerLocation,
+          locationAr: h.customerLocation,
+          distanceEn: h.distance,
+          distanceAr: h.distance,
+          timeEn: h.dateTime,
+          timeAr: h.dateTime,
+          badgeEn: isCancelled ? 'Cancelled' : 'Completed',
+          badgeAr: isCancelled ? 'ملغي' : 'مكتمل',
+          imageAsset: 'assets/images/img.png',
+          status: h.status,
+          customerNameEn: h.customerName,
+          customerNameAr: h.customerName,
+          customerAvatarAsset: 'assets/images/ahmed_khan.jpg',
+        ),
+      );
+    }
+    return list;
+  }
+
   List<_ProviderRequestItem> get _filteredRequests {
+    final all = _allRequests;
     if (widget.isHistoryMode) {
       // History Mode Tabs: 0: Completed, 1: Pending, 2: In Progress, 3: Cancelled
       switch (_selectedFilterIndex) {
         case 0:
-          return _sampleRequests.where((r) => r.status == 'completed').toList();
+          return all.where((r) => r.status == 'completed').toList();
         case 1:
-          return _sampleRequests
+          return all
               .where((r) => r.status == 'new' || r.status == 'pending')
               .toList();
         case 2:
-          return _sampleRequests
-              .where((r) => r.status == 'active' || r.status == 'in_progress')
+          return all
+              .where((r) => r.status == 'active' || r.status == 'in_progress' || r.status == 'arrived')
               .toList();
         case 3:
-          return _sampleRequests.where((r) => r.status == 'cancelled').toList();
+          return all.where((r) => r.status == 'cancelled').toList();
         default:
-          return _sampleRequests;
+          return all;
       }
     } else {
       // Main Requests Tab Screen: 0: New, 1: Active, 2: Completed, 3: Cancelled
       switch (_selectedFilterIndex) {
         case 0:
-          return _sampleRequests
+          return all
               .where((r) => r.status == 'new' || r.status == 'pending')
               .toList();
         case 1:
-          return _sampleRequests
-              .where((r) => r.status == 'active' || r.status == 'in_progress')
+          return all
+              .where((r) => r.status == 'active' || r.status == 'in_progress' || r.status == 'arrived')
               .toList();
         case 2:
-          return _sampleRequests.where((r) => r.status == 'completed').toList();
+          return all.where((r) => r.status == 'completed').toList();
         case 3:
-          return _sampleRequests.where((r) => r.status == 'cancelled').toList();
+          return all.where((r) => r.status == 'cancelled').toList();
         default:
-          return _sampleRequests;
+          return all;
       }
     }
   }
@@ -652,18 +529,56 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
   /// 3rd tab: width: 82; height: 37; Completed - Inter 400 12px #616166
   /// 4th tab: width: 82; height: 37; Cancelled - Inter 400 12px #616166
   Widget _buildFilterTabsRow(bool isArabic) {
+    final all = _allRequests;
+    final newCount = all.where((r) => r.status == 'new' || r.status == 'pending').length;
+    final activeCount = all.where((r) => r.status == 'active' || r.status == 'in_progress' || r.status == 'arrived').length;
+    final completedCount = all.where((r) => r.status == 'completed').length;
+    final cancelledCount = all.where((r) => r.status == 'cancelled').length;
+
     final List<Map<String, dynamic>> tabs = widget.isHistoryMode
         ? [
-            {'labelEn': 'Completed', 'labelAr': 'مكتمل', 'flex': 88},
-            {'labelEn': 'Pending', 'labelAr': 'معلق', 'flex': 80},
-            {'labelEn': 'In Progress', 'labelAr': 'جاري التنفيذ', 'flex': 96},
-            {'labelEn': 'Cancelled', 'labelAr': 'ملغي', 'flex': 80},
+            {
+              'labelEn': completedCount > 0 ? 'Completed ($completedCount)' : 'Completed',
+              'labelAr': completedCount > 0 ? 'مكتمل ($completedCount)' : 'مكتمل',
+              'flex': 88,
+            },
+            {
+              'labelEn': newCount > 0 ? 'Pending ($newCount)' : 'Pending',
+              'labelAr': newCount > 0 ? 'معلق ($newCount)' : 'معلق',
+              'flex': 80,
+            },
+            {
+              'labelEn': activeCount > 0 ? 'In Progress ($activeCount)' : 'In Progress',
+              'labelAr': activeCount > 0 ? 'جاري التنفيذ ($activeCount)' : 'جاري التنفيذ',
+              'flex': 96,
+            },
+            {
+              'labelEn': cancelledCount > 0 ? 'Cancelled ($cancelledCount)' : 'Cancelled',
+              'labelAr': cancelledCount > 0 ? 'ملغي ($cancelledCount)' : 'ملغي',
+              'flex': 80,
+            },
           ]
         : [
-            {'labelEn': 'New (10)', 'labelAr': 'جديد (10)', 'flex': 96},
-            {'labelEn': 'Active (2)', 'labelAr': 'نشط (2)', 'flex': 82},
-            {'labelEn': 'Completed', 'labelAr': 'مكتمل', 'flex': 82},
-            {'labelEn': 'Cancelled', 'labelAr': 'ملغي', 'flex': 82},
+            {
+              'labelEn': newCount > 0 ? 'New ($newCount)' : 'New',
+              'labelAr': newCount > 0 ? 'جديد ($newCount)' : 'جديد',
+              'flex': 96,
+            },
+            {
+              'labelEn': activeCount > 0 ? 'Active ($activeCount)' : 'Active',
+              'labelAr': activeCount > 0 ? 'نشط ($activeCount)' : 'نشط',
+              'flex': 82,
+            },
+            {
+              'labelEn': completedCount > 0 ? 'Completed ($completedCount)' : 'Completed',
+              'labelAr': completedCount > 0 ? 'مكتمل ($completedCount)' : 'مكتمل',
+              'flex': 82,
+            },
+            {
+              'labelEn': cancelledCount > 0 ? 'Cancelled ($cancelledCount)' : 'Cancelled',
+              'labelAr': cancelledCount > 0 ? 'ملغي ($cancelledCount)' : 'ملغي',
+              'flex': 82,
+            },
           ];
 
     return Container(

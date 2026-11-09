@@ -6,10 +6,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/localization/app_locale.dart';
+import '../../../providers/notifications_provider.dart';
+import '../../../services/task_service.dart';
 import '../../home/presentation/widgets/bottom_nav_bar_widget.dart';
+import '../../home/presentation/widgets/notification_bell_button.dart';
+import '../../home/presentation/widgets/notification_popup_card.dart';
+import '../../location/presentation/live_tracking_screen.dart';
 import '../../location/presentation/widgets/top_down_car_widget.dart';
 import '../../location/presentation/widgets/map_tracking_step.dart';
 import '../../location/presentation/widgets/real_map_background_widget.dart';
+import '../../profile/presentation/notifications_screen.dart';
 
 /// Requests Tab screen with branding header layout.
 /// Hosts the request management view and floating bottom navigation bar.
@@ -44,15 +50,25 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
   late AppTranslations _tr;
   AppTranslations get tr => _tr;
 
+  void _onTasksChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _scrollControllerInstance ??= ScrollController();
     _searchControllerInstance ??= TextEditingController();
+    TaskService.instance.activeTaskNotifier.addListener(_onTasksChanged);
+    TaskService.instance.historyNotifier.addListener(_onTasksChanged);
   }
 
   @override
   void dispose() {
+    TaskService.instance.activeTaskNotifier.removeListener(_onTasksChanged);
+    TaskService.instance.historyNotifier.removeListener(_onTasksChanged);
     _scrollControllerInstance?.dispose();
     _searchControllerInstance?.dispose();
     super.dispose();
@@ -62,6 +78,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
   Widget build(BuildContext context) {
     _tr = ref.watch(translationsProvider);
     final tr = _tr;
+    final notifState = ref.watch(notificationsProvider);
 
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -135,7 +152,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                               containerHeight + 140.0,
                               _activeFilterIndex == 1
                                   ? math.max(containerHeight + 140.0, 260.0 + _filteredHistoryItems.length * 135.0 + 140.0)
-                                  : 840.0,
+                                  : (TaskService.instance.activeTask != null ? 840.0 : containerHeight),
                             ),
                             child: Stack(
                               clipBehavior: Clip.none,
@@ -198,46 +215,27 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                       ),
                                     ),
 
-                                    // Right Icon Branding:
-                                    // width: 36; height: 36; border: 1px solid #525252; box-shadow: 0px -2px 12px 0px #00000014;
-                                    MouseRegion(
-                                      cursor: SystemMouseCursors.click,
-                                      child: GestureDetector(
-                                        key: const Key(
-                                            'requests_header_notification_button'),
-                                        onTap: () {
-                                          HapticFeedback.lightImpact();
-                                          widget.onNotificationTap?.call();
-                                        },
-                                        behavior: HitTestBehavior.opaque,
-                                        child: Container(
-                                          width: 36.0,
-                                          height: 36.0,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: const Color(0xFFFFFFFF),
-                                            border: Border.all(
-                                              color: const Color(0xFF525252),
-                                              width: 1.0,
-                                            ),
-                                            boxShadow: const [
-                                              BoxShadow(
-                                                color: Color(0x14000000), // #00000014
-                                                blurRadius: 12.0,
-                                                offset: Offset(0, -2),
-                                                spreadRadius: 0.0,
+                                    // Right Icon Branding: Notification Bell Button with live unread indicator
+                                    NotificationBellButton(
+                                      key: const Key(
+                                          'requests_header_notification_button'),
+                                      hasNotification: notifState.hasCustomerUnread,
+                                      onTap: () {
+                                        HapticFeedback.lightImpact();
+                                        if (widget.onNotificationTap != null) {
+                                          widget.onNotificationTap!();
+                                        } else {
+                                          if (notifState.customerNotification != null) {
+                                            ref.read(notificationsProvider.notifier).toggleCustomerCard();
+                                          } else {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) => const NotificationsScreen(),
                                               ),
-                                            ],
-                                          ),
-                                          child: const Center(
-                                            child: Icon(
-                                              Icons.notifications_none_rounded,
-                                              size: 18.0,
-                                              color: Color(0xFF525252),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
+                                            );
+                                          }
+                                        }
+                                      },
                                     ),
                                   ],
                                 ),
@@ -292,68 +290,22 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                 });
                                               },
                                               child: Center(
-                                                child: Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.center,
-                                                  children: [
-                                                    // content: Active (width: 43, height: 10, Inter Medium 14px, #FFFFFF)
-                                                    Text(
-                                                      tr.activeFilter,
-                                                      style: tr.font(
-                                                        fontSize: 14.0,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        color:
-                                                            _activeFilterIndex ==
-                                                                    0
-                                                                ? const Color(
-                                                                    0xFFFFFFFF)
-                                                                : const Color(
-                                                                    0xFF1C2926),
-                                                        height: 1.15,
-                                                        letterSpacing: 0.0,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 6.0),
-
-                                                    // circle branding: width: 20, height: 20, border-radius: 20px, padding: 4px, background: #FFFFFF
-                                                    // content: 1 (font: Inter 400 12px, #1D8070)
-                                                    Container(
-                                                      width: 20.0,
-                                                      height: 20.0,
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            _activeFilterIndex ==
-                                                                    0
-                                                                ? const Color(
-                                                                    0xFFFFFFFF)
-                                                                : const Color(
-                                                                    0xFF1C2926),
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                      child: Center(
-                                                        child: Text(
-                                                          '1',
-                                                          style: tr.font(
-                                                            fontSize: 12.0,
-                                                            fontWeight:
-                                                                FontWeight.w400,
-                                                            color:
-                                                                _activeFilterIndex ==
-                                                                        0
-                                                                    ? const Color(
-                                                                        0xFF8B53FE)
-                                                                    : const Color(
-                                                                        0xFFFFFFFF),
-                                                            height: 1.0,
-                                                            letterSpacing: 0.0,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
+                                                child: Text(
+                                                  tr.activeFilter,
+                                                  style: tr.font(
+                                                    fontSize: 14.0,
+                                                    fontWeight:
+                                                        FontWeight.w500,
+                                                    color:
+                                                        _activeFilterIndex ==
+                                                                0
+                                                            ? const Color(
+                                                                0xFFFFFFFF)
+                                                            : const Color(
+                                                                0xFF1C2926),
+                                                    height: 1.15,
+                                                    letterSpacing: 0.0,
+                                                  ),
                                                 ),
                                               ),
                                             ),
@@ -405,69 +357,22 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                 });
                                               },
                                               child: Center(
-                                                child: Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.center,
-                                                  children: [
-                                                    // content layout: width: 75, height: 20, gap: 6px
-                                                    // history layout: width: 49, height: 10, content: History (Inter Medium 14px, #1C2926)
-                                                    Text(
-                                                      tr.historyFilter,
-                                                      style: tr.font(
-                                                        fontSize: 14.0,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        color:
-                                                            _activeFilterIndex ==
-                                                                    1
-                                                                ? const Color(
-                                                                    0xFFFFFFFF)
-                                                                : const Color(
-                                                                    0xFF1C2926),
-                                                        height: 1.15,
-                                                        letterSpacing: 0.0,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 6.0),
-
-                                                    // circle branding: width: 20, height: 20, border-radius: 20px, padding: 4px, background: #1C2926
-                                                    // content: 12 (width: 13, height: 9, Inter 400 12px, #FFFFFF)
-                                                    Container(
-                                                      width: 20.0,
-                                                      height: 20.0,
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            _activeFilterIndex ==
-                                                                    1
-                                                                ? const Color(
-                                                                    0xFFFFFFFF)
-                                                                : const Color(
-                                                                    0xFF1C2926),
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                      child: Center(
-                                                        child: Text(
-                                                          '12',
-                                                          style: tr.font(
-                                                            fontSize: 11.5,
-                                                            fontWeight:
-                                                                FontWeight.w400,
-                                                            color:
-                                                                _activeFilterIndex ==
-                                                                        1
-                                                                    ? const Color(
-                                                                        0xFF8B53FE)
-                                                                    : const Color(
-                                                                        0xFFFFFFFF),
-                                                            height: 1.0,
-                                                            letterSpacing: 0.0,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
+                                                child: Text(
+                                                  tr.historyFilter,
+                                                  style: tr.font(
+                                                    fontSize: 14.0,
+                                                    fontWeight:
+                                                        FontWeight.w500,
+                                                    color:
+                                                        _activeFilterIndex ==
+                                                                1
+                                                            ? const Color(
+                                                                0xFFFFFFFF)
+                                                            : const Color(
+                                                                0xFF1C2926),
+                                                    height: 1.15,
+                                                    letterSpacing: 0.0,
+                                                  ),
                                                 ),
                                               ),
                                             ),
@@ -479,9 +384,11 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                 ),
                               ),
 
-                              // 3. Active Request Card:
-                              // width: 350; height: 336; border-radius: 16px; background: #FFFFFF; box-shadow: 0px 1px 12px 0px #0000001A;
-                              if (_activeFilterIndex == 0)
+                              // 3. Active Request Card or Empty State:
+                              if (_activeFilterIndex == 0 && TaskService.instance.activeTask == null)
+                                _buildEmptyActiveState(containerWidth, horizontalPadding),
+
+                              if (_activeFilterIndex == 0 && TaskService.instance.activeTask != null)
                                 Positioned(
                                   top: 184.0,
                                   left: horizontalPadding,
@@ -547,9 +454,9 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                     CrossAxisAlignment.start,
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  // content: Your provider is on the way
+                                                  // content: Dynamic provider status
                                                   Text(
-                                                    tr.providerOnTheWay,
+                                                    _getActiveStatusTitle(TaskService.instance.activeTask!.step, tr),
                                                     style: tr.font(
                                                       fontSize: 14.0,
                                                       fontWeight:
@@ -565,9 +472,9 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                   ),
                                                   const SizedBox(height: 2.0),
 
-                                                  // content: Almost there! Your provider will arrive soon.
+                                                  // content: Dynamic subtitle
                                                   Text(
-                                                    tr.providerArrivingSoon,
+                                                    _getActiveStatusSubtitle(TaskService.instance.activeTask!.step, tr),
                                                     style: tr.font(
                                                       fontSize: 12.0,
                                                       fontWeight:
@@ -602,13 +509,16 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                             zoom: 15.0,
                                             borderRadius:
                                                 BorderRadius.circular(12.0),
-                                            trackingStep:
-                                                MapTrackingStep.onTheWay,
-                                            driverName: 'Ahmad Transport',
-                                            etaText: tr.isArabic
-                                                ? '8 د'
-                                                : '8 min away',
-                                            distanceText: '1.8 km',
+                                            trackingStep: TaskService.instance.activeTask!.step == 1
+                                                ? MapTrackingStep.onTheWay
+                                                : (TaskService.instance.activeTask!.step >= 2
+                                                    ? MapTrackingStep.arrived
+                                                    : MapTrackingStep.requestSent),
+                                            driverName: TaskService.instance.activeTask!.providerName,
+                                            serviceCategory: TaskService.instance.activeTask!.serviceCategory,
+                                            vehicleName: TaskService.instance.activeTask!.vehicleName,
+                                            etaText: TaskService.instance.activeTask!.eta,
+                                            distanceText: TaskService.instance.activeTask!.distance,
                                             showControls: true,
                                           ),
                                         ),
@@ -676,9 +586,9 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                         mainAxisSize:
                                                             MainAxisSize.min,
                                                         children: [
-                                                          // 1st row: content: Ahmad Transport
+                                                          // 1st row: content: Real Provider Name
                                                           Text(
-                                                            tr.formatProviderName('Ahmad Transport'),
+                                                            tr.formatProviderName(TaskService.instance.activeTask!.providerName),
                                                             style: tr.font(
                                                               fontSize: 12.0,
                                                               fontWeight:
@@ -795,7 +705,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                           const SizedBox(
                                                               width: 4.0),
                                                           Text(
-                                                            tr.formatVehicleName('Toyota Hilux'),
+                                                            tr.formatVehicleName(TaskService.instance.activeTask!.vehicleName),
                                                             style: tr.font(
                                                               fontSize: 10.0,
                                                               fontWeight:
@@ -822,7 +732,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                                 0xFFE5E7EB),
                                                           ),
 
-                                                          // right side content: vector (width: 10, height: 10) + ABC-123
+                                                          // right side content: vector (width: 10, height: 10) + plate
                                                           Container(
                                                             width: 10.0,
                                                             height: 10.0,
@@ -860,7 +770,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                           const SizedBox(
                                                               width: 4.0),
                                                           Text(
-                                                            'ABC-123',
+                                                            TaskService.instance.activeTask!.plateNumber,
                                                             style: tr.font(
                                                               fontSize: 10.0,
                                                               fontWeight:
@@ -901,7 +811,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
 
                               // 4. Status Progress Stepper Card:
                               // width: 350; height: 88; border-radius: 12px; background: #F2F5F4;
-                              if (_activeFilterIndex == 0)
+                              if (_activeFilterIndex == 0 && TaskService.instance.activeTask != null)
                                 Positioned(
                                   top: 532.0,
                                   left: horizontalPadding,
@@ -940,7 +850,9 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                 Expanded(
                                                   child: _buildStepperItem(
                                                     title: tr.requestSent,
-                                                    time: '9:20 AM',
+                                                    time: TaskService.instance.activeTask!.dateTime.contains(',')
+                                                        ? TaskService.instance.activeTask!.dateTime.split(',').last.trim()
+                                                        : TaskService.instance.activeTask!.dateTime,
                                                     state: _RequestStepState
                                                         .completed,
                                                   ),
@@ -948,33 +860,45 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                 Expanded(
                                                   child: _buildStepperItem(
                                                     title: tr.accepted,
-                                                    time: '9:22 AM',
-                                                    state: _RequestStepState
-                                                        .completed,
+                                                    time: null,
+                                                    state: TaskService.instance.activeTask!.step >= 1
+                                                        ? _RequestStepState.completed
+                                                        : (TaskService.instance.activeTask!.step == 0
+                                                            ? _RequestStepState.active
+                                                            : _RequestStepState.pending),
                                                   ),
                                                 ),
                                                 Expanded(
                                                   child: _buildStepperItem(
                                                     title: tr.onTheWay,
-                                                    time: '9:28 AM',
-                                                    state: _RequestStepState
-                                                        .active,
+                                                    time: null,
+                                                    state: TaskService.instance.activeTask!.step > 1
+                                                        ? _RequestStepState.completed
+                                                        : (TaskService.instance.activeTask!.step == 1
+                                                            ? _RequestStepState.active
+                                                            : _RequestStepState.pending),
                                                   ),
                                                 ),
                                                 Expanded(
                                                   child: _buildStepperItem(
                                                     title: tr.arrived,
                                                     time: null,
-                                                    state: _RequestStepState
-                                                        .pending,
+                                                    state: TaskService.instance.activeTask!.step > 2
+                                                        ? _RequestStepState.completed
+                                                        : (TaskService.instance.activeTask!.step == 2
+                                                            ? _RequestStepState.active
+                                                            : _RequestStepState.pending),
                                                   ),
                                                 ),
                                                 Expanded(
                                                   child: _buildStepperItem(
                                                     title: tr.completed,
                                                     time: null,
-                                                    state: _RequestStepState
-                                                        .pending,
+                                                    state: TaskService.instance.activeTask!.step >= 4
+                                                        ? _RequestStepState.completed
+                                                        : (TaskService.instance.activeTask!.step == 3
+                                                            ? _RequestStepState.active
+                                                            : _RequestStepState.pending),
                                                   ),
                                                 ),
                                               ],
@@ -986,9 +910,9 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                   ),
                                 ),
 
-                              // 5. Metric cards row: 1.8 km Distance Away & 8 min Estimated time
+                              // 5. Metric cards row: Distance Away & Estimated time
                               // width: 350; height: 64; gap: 12px;
-                              if (_activeFilterIndex == 0)
+                              if (_activeFilterIndex == 0 && TaskService.instance.activeTask != null)
                                 Positioned(
                                   top: 632.0,
                                   left: horizontalPadding,
@@ -1043,13 +967,13 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                     mainAxisAlignment:
                                                         MainAxisAlignment.center,
                                                     children: [
-                                                      // content: 1.8 km
+                                                      // content: real distance
                                                       FittedBox(
                                                         fit: BoxFit.scaleDown,
                                                         alignment: AlignmentDirectional
                                                             .centerStart,
                                                         child: Text(
-                                                          tr.onePointEightKm,
+                                                          TaskService.instance.activeTask!.distance,
                                                           style:
                                                               tr.font(
                                                             fontSize: 14.0,
@@ -1142,13 +1066,13 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                     mainAxisAlignment:
                                                         MainAxisAlignment.center,
                                                     children: [
-                                                      // content: 8 min
+                                                      // content: ETA
                                                       FittedBox(
                                                         fit: BoxFit.scaleDown,
                                                         alignment: AlignmentDirectional
                                                             .centerStart,
                                                         child: Text(
-                                                          tr.isArabic ? '8 د' : '8 min',
+                                                          TaskService.instance.activeTask!.eta,
                                                           style:
                                                               tr.font(
                                                             fontSize: 14.0,
@@ -1193,6 +1117,74 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                       ],
                                     ),
                                   ),
+
+                              // 6. Action Button: Cancel Request (before arrival/completion)
+                              if (_activeFilterIndex == 0 &&
+                                  TaskService.instance.activeTask != null &&
+                                  TaskService.instance.activeTask!.step < 3)
+                                Positioned(
+                                  top: 710.0,
+                                  left: horizontalPadding,
+                                  right: horizontalPadding,
+                                  height: 48.0,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: Text(tr.isArabic ? 'إلغاء الطلب' : 'Cancel Request'),
+                                          content: Text(
+                                            tr.isArabic
+                                                ? 'هل أنت متأكد من رغبتك في إلغاء هذا الطلب؟'
+                                                : 'Are you sure you want to cancel this request?',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.of(ctx).pop(false),
+                                              child: Text(tr.isArabic ? 'تراجع' : 'No, Keep'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () => Navigator.of(ctx).pop(true),
+                                              child: Text(
+                                                tr.isArabic ? 'نعم، إلغاء' : 'Yes, Cancel',
+                                                style: const TextStyle(color: Color(0xFFDC2626)),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true) {
+                                        await TaskService.instance.cancelTask();
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              backgroundColor: const Color(0xFF1C2926),
+                                              content: Text(
+                                                tr.isArabic ? 'تم إلغاء الطلب' : 'Request cancelled successfully',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    icon: const Icon(Icons.close_rounded, size: 18.0, color: Color(0xFFDC2626)),
+                                    label: Text(
+                                      tr.isArabic ? 'إلغاء الطلب' : 'Cancel Request',
+                                      style: tr.font(
+                                        fontSize: 13.0,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFFDC2626),
+                                      ),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: Color(0xFFFFD1D1)),
+                                      backgroundColor: const Color(0xFFFFF5F5),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12.0),
+                                      ),
+                                    ),
+                                  ),
+                                ),
 
                               // -------------------------------------------------------------
                               // HISTORY TAB LAYOUT (_activeFilterIndex == 1)
@@ -1426,6 +1418,71 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                         },
                       ),
                     ),
+
+                  // Notification Card Overlay after clicking bell icon
+                  if (notifState.isCustomerCardVisible &&
+                      notifState.customerNotification != null) ...[
+                    Positioned.fill(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () {
+                          ref
+                              .read(notificationsProvider.notifier)
+                              .hideCustomerCard();
+                        },
+                      ),
+                    ),
+                    Positioned(
+                      top: 106.0,
+                      left: horizontalPadding,
+                      right: horizontalPadding,
+                      child: NotificationPopupCard(
+                        badgeText: tr.isArabic
+                            ? (notifState.customerNotification?.badgeTextAr ?? '')
+                            : (notifState.customerNotification?.badgeTextEn ?? ''),
+                        title: tr.isArabic
+                            ? (notifState.customerNotification?.titleAr ?? '')
+                            : (notifState.customerNotification?.titleEn ?? ''),
+                        location: tr.isArabic
+                            ? (notifState.customerNotification?.locationAr ?? '')
+                            : (notifState.customerNotification?.locationEn ?? ''),
+                        distance: tr.isArabic
+                            ? (notifState.customerNotification?.distanceAr ?? '')
+                            : (notifState.customerNotification?.distanceEn ?? ''),
+                        time: tr.isArabic
+                            ? (notifState.customerNotification?.timeAr ?? '')
+                            : (notifState.customerNotification?.timeEn ?? ''),
+                        imageAsset: notifState.customerNotification?.imageAsset,
+                        onTap: () {
+                          ref.read(notificationsProvider.notifier).hideCustomerCard();
+                          final task = TaskService.instance.activeTask;
+                          if (task != null) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => LiveTrackingScreen(
+                                  serviceCategory: task.serviceCategory,
+                                  providerName: task.providerName,
+                                  distance: task.distance,
+                                  duration: task.eta,
+                                ),
+                              ),
+                            );
+                          } else {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationsScreen(),
+                              ),
+                            );
+                          }
+                        },
+                        onDismiss: () {
+                          ref
+                              .read(notificationsProvider.notifier)
+                              .dismissCustomerNotification();
+                        },
+                      ),
+                    ),
+                  ],
                 ],
               ),
             );
@@ -1613,77 +1670,158 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
   }
 
   // -------------------------------------------------------------
-  // HISTORY TAB STATE & CARDS BUILDER
+  // ACTIVE & HISTORY TAB STATE & CARDS BUILDER
   // -------------------------------------------------------------
-  static const List<_HistoryRequestItem> _allHistoryItems = [
-    _HistoryRequestItem(
-      providerName: 'Ahmad Transport',
-      statusText: 'Completed',
-      statusBgColor: Color(0xFFF0EAFE),
-      statusTextColor: Color(0xFF8B53FE),
-      rating: '4.9',
-      trips: '(120 trips)',
-      serviceCategory: 'Pickup',
-      vehicleName: 'Toyota Hilux',
-      vehicleIcon: Icons.local_shipping_outlined,
-      plateNumber: 'ABC-123',
-      dateTime: '10 Sep 2026, 2:15 PM',
-      avatarPath: 'assets/images/history_avatar_1.png',
-      avatarFallbackColor: Color(0xFFFFC1CC),
-    ),
-    _HistoryRequestItem(
-      providerName: 'Babar Logistics',
-      statusText: 'Cancelled',
-      statusBgColor: Color(0xFFFFF0F0),
-      statusTextColor: Color(0xFFDC2626),
-      rating: '4.9',
-      trips: '(120 trips)',
-      serviceCategory: 'Truck',
-      vehicleName: 'Suzuki Ravi',
-      vehicleIcon: Icons.airport_shuttle_outlined,
-      plateNumber: 'XYZ-789',
-      dateTime: '5 Sep 2026, 11:00 PM',
-      avatarPath: 'assets/images/history_avatar_2.png',
-      avatarFallbackColor: Color(0xFFDBEAFE),
-    ),
-    _HistoryRequestItem(
-      providerName: 'Hassan Rider',
-      statusText: 'Completed',
-      statusBgColor: Color(0xFFF0EAFE),
-      statusTextColor: Color(0xFF8B53FE),
-      rating: '4.9',
-      trips: '(120 trips)',
-      serviceCategory: 'Rider',
-      vehicleName: 'Honda 125',
-      vehicleIcon: Icons.two_wheeler_rounded,
-      plateNumber: 'RID-456',
-      dateTime: '2 Sep 2026, 4:15 PM',
-      avatarPath: 'assets/images/history_avatar_3.png',
-      avatarFallbackColor: Color(0xFFD1FAE5),
-    ),
-    _HistoryRequestItem(
-      providerName: 'Ali Transport',
-      statusText: 'Completed',
-      statusBgColor: Color(0xFFF0EAFE),
-      statusTextColor: Color(0xFF8B53FE),
-      rating: '4.9',
-      trips: '(120 trips)',
-      serviceCategory: 'Ride',
-      vehicleName: 'Toyota Corolla',
-      vehicleIcon: Icons.directions_car_rounded,
-      plateNumber: 'CAR-654',
-      dateTime: '28 Aug 2026, 6:15 PM',
-      avatarPath: 'assets/images/history_avatar_4.png',
-      avatarFallbackColor: Color(0xFFE2E8F0),
-    ),
-  ];
+  Widget _buildEmptyActiveState(double containerWidth, double horizontalPadding) {
+    return Positioned(
+      top: 184.0,
+      left: horizontalPadding,
+      right: horizontalPadding,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 20.0),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.circular(16.0),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1A000000), // #0000001A
+              blurRadius: 12.0,
+              offset: Offset(0, 1),
+              spreadRadius: 0.0,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 72.0,
+              height: 72.0,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF0EAFE),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.assignment_outlined,
+                size: 36.0,
+                color: Color(0xFF8B53FE),
+              ),
+            ),
+            const SizedBox(height: 16.0),
+            Text(
+              tr.isArabic ? 'لا توجد طلبات نشطة' : 'No Active Requests',
+              textAlign: TextAlign.center,
+              style: tr.font(
+                fontSize: 16.0,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1C2926),
+              ),
+            ),
+            const SizedBox(height: 8.0),
+            Text(
+              tr.isArabic
+                  ? 'ليس لديك أي طلب خدمة نشط حالياً. اطلب خدمة من الخريطة أو الشاشة الرئيسية لمتابعة حالتها هنا مباشرة.'
+                  : 'You have no active service requests right now. Book a service to track real-time provider arrival and progress here.',
+              textAlign: TextAlign.center,
+              style: tr.font(
+                fontSize: 12.0,
+                fontWeight: FontWeight.w400,
+                color: const Color(0xFF566663),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20.0),
+            SizedBox(
+              height: 44.0,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  if (widget.onTabSelected != null) {
+                    widget.onTabSelected!(0);
+                  }
+                },
+                icon: const Icon(Icons.explore_outlined, size: 18.0, color: Colors.white),
+                label: Text(
+                  tr.isArabic ? 'استكشف الخدمات' : 'Explore Services',
+                  style: tr.font(
+                    fontSize: 13.0,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8B53FE),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getActiveStatusTitle(int step, AppTranslations tr) {
+    switch (step) {
+      case 0:
+        return tr.isArabic ? 'تم قبول طلبك' : 'Request Accepted';
+      case 1:
+        return tr.providerOnTheWay;
+      case 2:
+        return tr.isArabic ? 'وصل المزود لموقعك' : 'Provider Arrived';
+      case 3:
+        return tr.isArabic ? 'جاري تنفيذ الخدمة' : 'Service In Progress';
+      case 4:
+      default:
+        return tr.isArabic ? 'اكتملت الخدمة' : 'Service Completed';
+    }
+  }
+
+  String _getActiveStatusSubtitle(int step, AppTranslations tr) {
+    switch (step) {
+      case 0:
+        return tr.isArabic ? 'المزود يستعد للتحرك' : 'Provider is preparing to depart.';
+      case 1:
+        return tr.providerArrivingSoon;
+      case 2:
+        return tr.isArabic ? 'المزود بانتظارك في الموقع' : 'Provider has reached your location.';
+      case 3:
+        return tr.isArabic ? 'الفني يباشر العمل على طلبك' : 'Technician is actively working on your request.';
+      case 4:
+      default:
+        return tr.isArabic ? 'تمت الخدمة بنجاح' : 'Service completed successfully.';
+    }
+  }
 
   List<_HistoryRequestItem> get _filteredHistoryItems {
     final query = _searchController.text.trim().toLowerCase();
-    if (query.isEmpty) {
-      return _allHistoryItems;
-    }
-    return _allHistoryItems.where((item) {
+    final rawTasks = TaskService.instance.historyTasks;
+    final mapped = rawTasks.map((t) {
+      final isCancelled = t.status == 'cancelled';
+      return _HistoryRequestItem(
+        providerName: t.providerName,
+        statusText: isCancelled ? (tr.isArabic ? 'ملغي' : 'Cancelled') : (tr.isArabic ? 'مكتمل' : 'Completed'),
+        statusBgColor: isCancelled ? const Color(0xFFFFF0F0) : const Color(0xFFF0EAFE),
+        statusTextColor: isCancelled ? const Color(0xFFDC2626) : const Color(0xFF8B53FE),
+        rating: '5.0',
+        trips: tr.isArabic ? '(مزود معتمد)' : '(Verified)',
+        serviceCategory: t.serviceCategory,
+        vehicleName: t.vehicleName,
+        vehicleIcon: Icons.local_shipping_outlined,
+        plateNumber: t.plateNumber,
+        dateTime: t.dateTime,
+        avatarPath: t.providerAvatar ?? 'assets/images/driver_avatar.png',
+        avatarFallbackColor: const Color(0xFFE2E8F0),
+      );
+    }).toList();
+
+    if (query.isEmpty) return mapped;
+    return mapped.where((item) {
       return item.providerName.toLowerCase().contains(query) ||
           item.serviceCategory.toLowerCase().contains(query) ||
           item.vehicleName.toLowerCase().contains(query) ||
@@ -1694,6 +1832,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
   }
 
   Widget _buildEmptyHistoryState(double containerWidth) {
+    final bool isSearch = _searchController.text.trim().isNotEmpty;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 20.0),
@@ -1713,14 +1852,16 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.search_off_rounded,
+            Icon(
+              isSearch ? Icons.search_off_rounded : Icons.history_rounded,
               size: 36.0,
-              color: Color(0xFF566663),
+              color: const Color(0xFF8B53FE),
             ),
             const SizedBox(height: 10.0),
             Text(
-              tr.noRequestsFound,
+              isSearch
+                  ? tr.noRequestsFound
+                  : (tr.isArabic ? 'لا توجد طلبات سابقة' : 'No Past Requests'),
               style: tr.font(
                 fontSize: 14.0,
                 fontWeight: FontWeight.w500,
@@ -1729,7 +1870,11 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
             ),
             const SizedBox(height: 4.0),
             Text(
-              tr.trySearchingDifferent,
+              isSearch
+                  ? tr.trySearchingDifferent
+                  : (tr.isArabic
+                      ? 'ستظهر هنا سجلات طلبات الخدمة المكتملة والسابقة.'
+                      : 'Completed and past service requests will appear here.'),
               style: tr.font(
                 fontSize: 11.0,
                 fontWeight: FontWeight.w400,

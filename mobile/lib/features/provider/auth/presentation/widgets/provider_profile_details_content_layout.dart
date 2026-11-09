@@ -66,9 +66,9 @@ class _ProviderProfileDetailsContentLayoutState
     super.initState();
     final savedData = ProviderRegistrationStore.instance.data;
     _nameCtrl = TextEditingController(
-      text: savedData.fullName.isNotEmpty ? savedData.fullName : 'Hassan Raza',
+      text: savedData.fullName,
     );
-    _registeredPhone = savedData.phone.isNotEmpty ? savedData.phone : '+966 50 123 4567';
+    _registeredPhone = savedData.phone.isNotEmpty ? savedData.phone : '';
     _whatsappCtrl = TextEditingController(
       text: savedData.whatsappNumber.isNotEmpty
           ? savedData.whatsappNumber

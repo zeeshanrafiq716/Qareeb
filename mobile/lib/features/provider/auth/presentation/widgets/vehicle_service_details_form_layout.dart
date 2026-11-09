@@ -42,23 +42,39 @@ class _VehicleServiceDetailsFormLayoutState
   late final TextEditingController _vehicleColorCtrl;
   bool _isLoading = false;
   late final BackendService _backendService;
+  List<String> _liveServiceCategories = [];
+  List<String> _liveVehicleTypes = [];
 
-  static const List<String> serviceCategories = [
-    'Vehicle Towing',
-    'Flatbed Towing',
-    'Battery Jumpstart',
-    'Tire Assistance',
-    'Fuel Delivery',
-    'Emergency Recovery',
-  ];
+  Future<void> _loadLiveCategoriesAndTypes() async {
+    try {
+      final results = await Future.wait([
+        _backendService.getCategories(),
+        _backendService.getVehicleTypes(),
+      ]);
 
-  static const List<String> vehicleTypes = [
-    'Flatbed Truck',
-    'Wheel-Lift Tow Truck',
-    'Integrated Tow Truck',
-    'Heavy-Duty Recovery Truck',
-    'Service Van',
-  ];
+      final cats = results[0] as List<dynamic>;
+      final types = results[1] as List<String>;
+
+      if (mounted) {
+        setState(() {
+          if (cats.isNotEmpty) {
+            _liveServiceCategories = cats.map((c) => c.name.toString()).toList();
+            if (_serviceCategoryCtrl.text.isEmpty ||
+                !_liveServiceCategories.contains(_serviceCategoryCtrl.text)) {
+              _serviceCategoryCtrl.text = _liveServiceCategories.first;
+            }
+          }
+          if (types.isNotEmpty) {
+            _liveVehicleTypes = types;
+            if (_vehicleTypeCtrl.text.isEmpty ||
+                !_liveVehicleTypes.contains(_vehicleTypeCtrl.text)) {
+              _vehicleTypeCtrl.text = types.first;
+            }
+          }
+        });
+      }
+    } catch (_) {}
+  }
 
   static const List<String> vehicleColors = [
     'White',
@@ -76,18 +92,19 @@ class _VehicleServiceDetailsFormLayoutState
     super.initState();
     final data = ProviderRegistrationStore.instance.data;
     _serviceCategoryCtrl = TextEditingController(
-      text: data.serviceCategory.isNotEmpty ? data.serviceCategory : 'Vehicle Towing',
+      text: data.serviceCategory,
     );
     _vehicleTypeCtrl = TextEditingController(
-      text: data.vehicleType.isNotEmpty ? data.vehicleType : 'Flatbed Truck',
+      text: data.vehicleType,
     );
     _plateNumberCtrl = TextEditingController(
-      text: data.plateNumber.isNotEmpty ? data.plateNumber : 'ABC 1234',
+      text: data.plateNumber,
     );
     _vehicleColorCtrl = TextEditingController(
       text: data.vehicleColor.isNotEmpty ? data.vehicleColor : 'White',
     );
     _backendService = BackendService(ApiClient());
+    _loadLiveCategoriesAndTypes();
   }
 
   @override
@@ -139,8 +156,21 @@ class _VehicleServiceDetailsFormLayoutState
                   ),
                 ),
                 const SizedBox(height: 12.0),
-                Flexible(
-                  child: ListView.separated(
+                if (options.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24.0),
+                    child: Text(
+                      'No options available',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 14.0,
+                        color: const Color(0xFF6B7280),
+                      ),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: options.length,
                     separatorBuilder: (_, _) => const Divider(
@@ -153,7 +183,7 @@ class _VehicleServiceDetailsFormLayoutState
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(
-                          item,
+                          context.auto(item),
                           style: GoogleFonts.inter(
                             fontSize: 14.5,
                             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
@@ -317,7 +347,11 @@ class _VehicleServiceDetailsFormLayoutState
               HapticFeedback.lightImpact();
               _showSelectionModal(
                 title: isArabic ? 'اختر نوع المركبة' : 'Select Vehicle Type',
-                options: vehicleTypes,
+                options: _liveVehicleTypes.isNotEmpty
+                    ? _liveVehicleTypes
+                    : (_vehicleTypeCtrl.text.isNotEmpty
+                        ? [_vehicleTypeCtrl.text]
+                        : <String>[]),
                 selectedValue: _vehicleTypeCtrl.text,
                 onSelected: (val) {
                   setState(() => _vehicleTypeCtrl.text = val);
@@ -341,11 +375,15 @@ class _VehicleServiceDetailsFormLayoutState
                   const SizedBox(width: 14.0),
                   Expanded(
                     child: Text(
-                      _vehicleTypeCtrl.text,
+                      _vehicleTypeCtrl.text.isNotEmpty
+                          ? context.auto(_vehicleTypeCtrl.text)
+                          : (isArabic ? 'اختر نوع المركبة' : 'Select Vehicle Type'),
                       style: GoogleFonts.inter(
                         fontSize: 14.0,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFF1C2926),
+                        color: _vehicleTypeCtrl.text.isNotEmpty
+                            ? const Color(0xFF1C2926)
+                            : const Color(0xFF9CA3AF),
                       ),
                     ),
                   ),
@@ -499,7 +537,11 @@ class _VehicleServiceDetailsFormLayoutState
               HapticFeedback.lightImpact();
               _showSelectionModal(
                 title: isArabic ? 'اختر فئة الخدمة' : 'Select Service Category',
-                options: serviceCategories,
+                options: _liveServiceCategories.isNotEmpty
+                    ? _liveServiceCategories
+                    : (_serviceCategoryCtrl.text.isNotEmpty
+                        ? [_serviceCategoryCtrl.text]
+                        : ['Service']),
                 selectedValue: _serviceCategoryCtrl.text,
                 onSelected: (val) {
                   setState(() => _serviceCategoryCtrl.text = val);
@@ -523,11 +565,15 @@ class _VehicleServiceDetailsFormLayoutState
                   const SizedBox(width: 14.0),
                   Expanded(
                     child: Text(
-                      _serviceCategoryCtrl.text,
+                      _serviceCategoryCtrl.text.isNotEmpty
+                          ? context.auto(_serviceCategoryCtrl.text)
+                          : (isArabic ? 'اختر فئة الخدمة' : 'Select Service Category'),
                       style: GoogleFonts.inter(
                         fontSize: 14.0,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFF1C2926),
+                        color: _serviceCategoryCtrl.text.isNotEmpty
+                            ? const Color(0xFF1C2926)
+                            : const Color(0xFF9CA3AF),
                       ),
                     ),
                   ),

@@ -50,12 +50,14 @@ import 'package:mobile/core/localization/app_locale.dart';
 ///   color: #616166;
 class ProviderUnderReviewCard extends StatelessWidget {
   final bool isRejected;
+  final bool isResubmission;
   final String? title;
   final String? subtitle;
 
   const ProviderUnderReviewCard({
     super.key,
     this.isRejected = false,
+    this.isResubmission = false,
     this.title,
     this.subtitle,
   });
@@ -63,6 +65,15 @@ class ProviderUnderReviewCard extends StatelessWidget {
   const ProviderUnderReviewCard.rejected({
     super.key,
     this.isRejected = true,
+    this.isResubmission = false,
+    this.title,
+    this.subtitle,
+  });
+
+  const ProviderUnderReviewCard.resubmission({
+    super.key,
+    this.isRejected = false,
+    this.isResubmission = true,
     this.title,
     this.subtitle,
   });
@@ -76,42 +87,52 @@ class ProviderUnderReviewCard extends StatelessWidget {
 
     // Card background:
     // When review: #F7F3EB (soft cream)
+    // When resubmission: #FFFBEB (amber-50) with subtle amber border #FDE68A
     // When rejected/suspended: #FEF2F2 (soft light red) with subtle border #FEE2E2
-    final Color bgColor =
-        isRejected ? const Color(0xFFFEF2F2) : const Color(0xFFF7F3EB);
-    final Border? cardBorder = isRejected
-        ? Border.all(color: const Color(0xFFFEE2E2), width: 1.0)
-        : null;
+    final Color bgColor = isResubmission
+        ? const Color(0xFFFFFBEB)
+        : (isRejected ? const Color(0xFFFEF2F2) : const Color(0xFFF7F3EB));
+    final Border? cardBorder = isResubmission
+        ? Border.all(color: const Color(0xFFFDE68A), width: 1.0)
+        : (isRejected
+            ? Border.all(color: const Color(0xFFFEE2E2), width: 1.0)
+            : null);
 
     // Icon circle branding:
     // When review: outer #FAEAC8, inner #FFAE00 with clock hands
+    // When resubmission: outer #FEF3C7, inner #D97706 with refresh icon
     // When rejected: outer #FEE2E2, inner #EF4444 with white close icon
-    final Color outerCircleColor =
-        isRejected ? const Color(0xFFFEE2E2) : const Color(0xFFFAEAC8);
-    final Color innerCircleColor =
-        isRejected ? const Color(0xFFEF4444) : const Color(0xFFFFAE00);
+    final Color outerCircleColor = isResubmission
+        ? const Color(0xFFFEF3C7)
+        : (isRejected ? const Color(0xFFFEE2E2) : const Color(0xFFFAEAC8));
+    final Color innerCircleColor = isResubmission
+        ? const Color(0xFFD97706)
+        : (isRejected ? const Color(0xFFEF4444) : const Color(0xFFFFAE00));
 
     // Title:
-    // When review: "Your Application Is Under Review" (#FFAE00)
-    // When rejected: "Your approval is rejected" (in red #DC2626)
     final String effectiveTitle = title ??
-        (isRejected
-            ? (isArabic ? 'تم رفض طلب اعتمادك' : 'Your approval is rejected')
-            : (isArabic ? 'طلبك قيد المراجعة' : 'Your Application Is Under Review'));
-    final Color titleColor =
-        isRejected ? const Color(0xFFDC2626) : const Color(0xFFFFAE00);
+        (isResubmission
+            ? (isArabic ? 'مطلوب إعادة تقديم المستندات' : 'Resubmission Requested')
+            : (isRejected
+                ? (isArabic ? 'تم رفض طلب اعتمادك' : 'Your approval is rejected')
+                : (isArabic ? 'طلبك قيد المراجعة' : 'Your Application Is Under Review')));
+    final Color titleColor = isResubmission
+        ? const Color(0xFFD97706)
+        : (isRejected ? const Color(0xFFDC2626) : const Color(0xFFFFAE00));
 
-    // Subtitle (paragraph text maintained according to rejection):
-    // When review: "Your account is still pending approval. We'll notify you when it's approved."
-    // When rejected: "Your account documents were not approved by admin. Please review your submitted documents or contact support."
+    // Subtitle:
     final String effectiveSubtitle = subtitle ??
-        (isRejected
+        (isResubmission
             ? (isArabic
-                ? 'لم يتم اعتماد مستندات حسابك من قبل الإدارة. يرجى مراجعة المستندات أو التواصل مع الدعم.'
-                : "Your account documents were not approved by admin. Please review your submitted documents or contact support.")
-            : (isArabic
-                ? 'حسابك لا يزال قيد انتظار الموافقة. سنقوم بإشعارك فور اعتماده.'
-                : "Your account is still pending approval. We'll notify you when it's approved."));
+                ? 'طلب المشرف إعادة تقديم بعض المستندات. يرجى التحديث والمتابعة.'
+                : 'Admin requested document resubmission. Please update and re-submit.')
+            : (isRejected
+                ? (isArabic
+                    ? 'لم يتم اعتماد مستندات حسابك من قبل الإدارة. يرجى مراجعة المستندات أو التواصل مع الدعم.'
+                    : "Your account documents were not approved by admin. Please review your submitted documents or contact support.")
+                : (isArabic
+                    ? 'حسابك لا يزال قيد انتظار الموافقة. سنقوم بإشعارك فور اعتماده.'
+                    : "Your account is still pending approval. We'll notify you when it's approved.")));
 
     return Opacity(
       opacity: 1.0,
@@ -146,16 +167,22 @@ class ProviderUnderReviewCard extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: Center(
-                      child: isRejected
+                      child: isResubmission
                           ? const Icon(
-                              Icons.close_rounded,
+                              Icons.refresh_rounded,
                               size: 15.0,
                               color: Colors.white,
                             )
-                          : const CustomPaint(
-                              size: Size(15.0, 15.0),
-                              painter: _ReviewClockHandsPainter(),
-                            ),
+                          : (isRejected
+                              ? const Icon(
+                                  Icons.close_rounded,
+                                  size: 15.0,
+                                  color: Colors.white,
+                                )
+                              : const CustomPaint(
+                                  size: Size(15.0, 15.0),
+                                  painter: _ReviewClockHandsPainter(),
+                                )),
                     ),
                   ),
                 ),

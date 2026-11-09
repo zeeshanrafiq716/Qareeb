@@ -7,49 +7,45 @@ import {
   MapPin,
 } from 'lucide-react'
 
+const Y_TICKS = [100, 80, 60, 40, 20, 0]
+const TIME_OPTIONS = ['This Week', 'This Month', 'Last Month', 'This Year']
+const DEFAULT_CHART_DATA = [
+  { day: 'Sun', value: 0, active: false },
+  { day: 'Mon', value: 0, active: false },
+  { day: 'Tue', value: 0, active: false },
+  { day: 'Wed', value: 0, active: true },
+  { day: 'Thu', value: 0, active: false },
+  { day: 'Fri', value: 0, active: false },
+  { day: 'Sat', value: 0, active: false },
+]
+
 export function DashboardSecondRow({
   onViewLiveMap,
   overviewStats = {
-    approved: 124,
-    rejected: 28,
-    resubmission: 16,
+    approved: 0,
+    rejected: 0,
+    resubmission: 0,
   },
+  chartData: propChartData,
+  mapPins: propMapPins,
 }) {
   const [timeRange, setTimeRange] = useState('This Month')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [hoveredBar, setHoveredBar] = useState(null)
-  const [selectedProvider, setSelectedProvider] = useState({
-    name: 'Ahmad Raza',
-    category: 'Tyre Repair',
-    status: 'Online',
-    distance: '3.2km away',
-    location: 'Al Rabwah',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80',
-  })
+  const [selectedProvider, setSelectedProvider] = useState(null)
 
-  const timeOptions = ['This Week', 'This Month', 'Last Month', 'This Year']
-
-  // Verification weekly breakdown data matching Figma
-  const chartData = [
-    { day: 'Sun', value: 40, active: false },
-    { day: 'Mon', value: 30, active: false },
-    { day: 'Tue', value: 60, active: false },
-    { day: 'Wed', value: 86, active: true },
-    { day: 'Thu', value: 70, active: false },
-    { day: 'Fri', value: 50, active: false },
-    { day: 'Sat', value: 40, active: false },
+  const chartData = propChartData && propChartData.length > 0 ? propChartData : DEFAULT_CHART_DATA
+  const mapPins = propMapPins || []
+  const maxBarValue = Math.max(10, ...chartData.map((d) => Number(d.value) || 0))
+  const yTicks = [
+    maxBarValue,
+    Math.round(maxBarValue * 0.8),
+    Math.round(maxBarValue * 0.6),
+    Math.round(maxBarValue * 0.4),
+    Math.round(maxBarValue * 0.2),
+    0,
   ]
-
-  const yTicks = [100, 80, 60, 40, 20, 0]
-
-  // Online provider pins on the map
-  const mapPins = [
-    { id: 1, top: '27%', left: '66%', label: 'Al Aziziyah North' },
-    { id: 2, top: '51%', left: '63%', label: 'Central Makkah' },
-    { id: 3, top: '37%', left: '80%', label: 'Al Aziziyah South' },
-    { id: 4, top: '78%', left: '62%', label: 'Al Taneem' },
-    { id: 5, top: '68%', left: '85%', label: 'Al Rabwah', active: true },
-  ]
+  const timeOptions = TIME_OPTIONS
 
   return (
     <div
@@ -176,7 +172,7 @@ export function DashboardSecondRow({
             {/* Bars Container */}
             <div className="absolute inset-0 flex items-end justify-between px-3">
               {chartData.map((item, idx) => {
-                const heightPercent = (item.value / 100) * 100
+                const heightPercent = maxBarValue > 0 ? Math.min(100, (Number(item.value || 0) / maxBarValue) * 100) : 0
                 const isHovered = hoveredBar === idx
                 const isActive = item.active
 
@@ -389,46 +385,39 @@ export function DashboardSecondRow({
             </div>
           ))}
 
-          {/* Active Provider Callout Card (Ahmad Raza) */}
-          <div
-            style={{
-              top: '38%',
-              left: '60%',
-            }}
-            className="absolute z-20 bg-white rounded-[16px] p-3 shadow-lg border border-[#EBEBEB] w-[210px] flex items-center justify-between animate-in fade-in zoom-in-95 duration-200"
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              {/* Provider Photo */}
-              <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-[#8B53FE]/20">
-                <img
-                  src={selectedProvider.avatar}
-                  alt={selectedProvider.name}
-                  className="w-full h-full object-cover"
-                />
+          {/* Active Provider Callout Card (shown when provider selected) */}
+          {selectedProvider && (
+            <div
+              style={{
+                top: '38%',
+                left: '60%',
+              }}
+              className="absolute z-20 bg-white rounded-[16px] p-3 shadow-lg border border-[#EBEBEB] w-[210px] flex items-center justify-between animate-in fade-in zoom-in-95 duration-200"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                {/* Provider Info */}
+                <div className="min-w-0 flex flex-col">
+                  <span className="text-[9px] font-semibold text-[#8B53FE] leading-tight">
+                    {selectedProvider.status}
+                  </span>
+                  <span className="text-[12px] font-bold text-[#1C2926] truncate leading-snug">
+                    {selectedProvider.name}
+                  </span>
+                  <span className="text-[10px] text-[#616166] truncate leading-tight">
+                    {selectedProvider.category}
+                  </span>
+                  <span className="text-[9px] text-[#9EAFA9] truncate mt-0.5">
+                    {selectedProvider.distance} • {selectedProvider.location}
+                  </span>
+                </div>
               </div>
 
-              {/* Provider Info */}
-              <div className="min-w-0 flex flex-col">
-                <span className="text-[9px] font-semibold text-[#8B53FE] leading-tight">
-                  {selectedProvider.status}
-                </span>
-                <span className="text-[12px] font-bold text-[#1C2926] truncate leading-snug">
-                  {selectedProvider.name}
-                </span>
-                <span className="text-[10px] text-[#616166] truncate leading-tight">
-                  {selectedProvider.category}
-                </span>
-                <span className="text-[9px] text-[#9EAFA9] truncate mt-0.5">
-                  {selectedProvider.distance} • {selectedProvider.location}
-                </span>
+              {/* Chevron Right */}
+              <div className="text-[#9EAFA9] pl-1 shrink-0">
+                <ChevronRight className="w-4 h-4 text-[#9EAFA9]" />
               </div>
             </div>
-
-            {/* Chevron Right */}
-            <div className="text-[#9EAFA9] pl-1 shrink-0">
-              <ChevronRight className="w-4 h-4 text-[#9EAFA9]" />
-            </div>
-          </div>
+          )}
 
           {/* Location Pin Indicator Below the Card */}
           <div

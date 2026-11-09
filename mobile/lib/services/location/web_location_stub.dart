@@ -1,6 +1,6 @@
 /// Non-web fallback stub for platform GPS
-Future<Map<String, double>?> getPlatformCoordinates() async {
+Future<Map<String, dynamic>?> getPlatformCoordinates() async {
   return null;
 }
 
-Stream<Map<String, double>> watchPlatformCoordinates() => const Stream.empty();
+Stream<Map<String, dynamic>> watchPlatformCoordinates() => const Stream.empty();

@@ -34,6 +34,46 @@ describe("provider profile and verification", () => {
     expect(res.body.data.status).toBe(PROVIDER_STATUS.PENDING_PROFILE);
   });
 
+  it("saves full onboarding details including vehicle and iqama info", async () => {
+    const { token, provider } = await registerProvider("03020000099");
+    const res = await api()
+      .put("/api/v1/providers/me/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        name: "Hassan Raza",
+        categoryId: "11111111-1111-1111-1111-111111111111",
+        categoryName: "Tow Truck",
+        whatsappNumber: "+966509998877",
+        iqamaNumber: "2487654321",
+        iqamaExpiry: "12/03/2026",
+        vehicleType: "Flatbed Tow Truck",
+        vehicleModel: "Isuzu NPR 2023",
+        plateNumber: "ABC 1234",
+        vehicleColor: "White",
+        city: "Riyadh",
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.name).toBe("Hassan Raza");
+    expect(res.body.data.whatsapp).toBe("+966509998877");
+    expect(res.body.data.nationalId).toBe("2487654321");
+    expect(res.body.data.iqamaExpiry).toBe("12/03/2026");
+    expect(res.body.data.vehicleType).toBe("Flatbed Tow Truck");
+    expect(res.body.data.vehicleModel).toBe("Isuzu NPR 2023");
+    expect(res.body.data.plateNumber).toBe("ABC 1234");
+    expect(res.body.data.vehicleColor).toBe("White");
+
+    // Also verify GET /me returns all these details
+    const meRes = await api()
+      .get("/api/v1/providers/me")
+      .set("Authorization", `Bearer ${token}`);
+    expect(meRes.status).toBe(200);
+    expect(meRes.body.data.name).toBe("Hassan Raza");
+    expect(meRes.body.data.whatsapp).toBe("+966509998877");
+    expect(meRes.body.data.nationalId).toBe("2487654321");
+    expect(meRes.body.data.plateNumber).toBe("ABC 1234");
+  });
+
   it("rejects verification before profile is complete", async () => {
     const { token } = await registerProvider("03020000003");
     const res = await submitDocument(token);

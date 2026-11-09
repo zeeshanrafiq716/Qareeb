@@ -9,7 +9,6 @@ import '../../../models/provider_model.dart';
 import '../../../providers/backend_provider.dart';
 import '../../../services/location_service.dart';
 import 'find_provider_screen.dart';
-import 'send_request_screen.dart';
 import 'widgets/provider_detail_card_widget.dart';
 import 'widgets/top_down_car_widget.dart';
 
@@ -193,7 +192,7 @@ class RoadPath {
 
 /// Model representing a nearby driver patrolling a designated road corridor
 class NearbyDriverRoute {
-  final int id;
+  final String id;
   final String name;
   final String vehicle;
   final double rating;
@@ -249,7 +248,9 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
   late final AnimationController _carMotionController;
   late final AnimationController _recenterController;
 
-  int? _selectedCarId;
+  String? _selectedCarId;
+  final Set<String> _clickedCarIds = <String>{};
+  Set<String> get _safeClickedCarIds => _clickedCarIds;
   bool _isDraggingMap = false;
   bool _isFullViewMode = false;
 
@@ -268,8 +269,6 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
   double _mapScaleBase = 1.0;
 
   List<NearbyDriverRoute>? _driverRoutes;
-  double? _lastBuiltLat;
-  double? _lastBuiltLng;
 
   @override
   void initState() {
@@ -303,198 +302,75 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     super.dispose();
   }
 
-  /// Generates realistic linear road corridors for each service provider (single road line, no closed boxes)
-  /// Distributed naturally within 5 km and 10 km so radius filters dynamically highlight nearby vs distant providers.
-  List<NearbyDriverRoute> _generateDriverRoutes(double centerLat, double centerLng) {
-    return [
-      // 1. Uzair Ahmed (~0.4 km - incoming car heading to customer)
-      NearbyDriverRoute(
-        id: 1,
-        name: 'Uzair Ahmed',
-        vehicle: 'Toyota Corolla • AC',
-        rating: 4.9,
-        reviews: 142,
-        initialDistanceKm: 0.4,
-        roofColor: const Color(0xFFA67AFE),
-        speedFactor: 0.85,
-        startPhase: 0.2,
-        waypoints: [
-          MapLatLng(centerLat + 0.0032, centerLng + 0.0020),
-          MapLatLng(centerLat + 0.0008, centerLng + 0.0020),
-          MapLatLng(centerLat + 0.0008, centerLng),
-          MapLatLng(centerLat, centerLng),
-        ],
-      ),
-      // 2. Muhammad Bilal (~0.8 km)
-      NearbyDriverRoute(
-        id: 2,
-        name: 'Muhammad Bilal',
-        vehicle: 'Honda Civic • AC',
-        rating: 4.8,
-        reviews: 95,
-        initialDistanceKm: 0.8,
-        roofColor: const Color(0xFF8B53FE),
-        speedFactor: 0.80,
-        startPhase: 0.7,
-        waypoints: [
-          MapLatLng(centerLat - 0.0055, centerLng + 0.0036),
-          MapLatLng(centerLat - 0.0014, centerLng + 0.0036),
-          MapLatLng(centerLat - 0.0014, centerLng),
-          MapLatLng(centerLat, centerLng),
-        ],
-      ),
-      // 3. Adnan Said (~1.2 km)
-      NearbyDriverRoute(
-        id: 3,
-        name: 'Adnan Said',
-        vehicle: 'Toyota Hilux • Pickup',
-        rating: 4.9,
-        reviews: 118,
-        initialDistanceKm: 1.2,
-        roofColor: const Color(0xFF7C3AED),
-        speedFactor: 0.90,
-        startPhase: 0.4,
-        waypoints: [
-          MapLatLng(centerLat + 0.0080, centerLng - 0.0052),
-          MapLatLng(centerLat + 0.0022, centerLng - 0.0052),
-          MapLatLng(centerLat + 0.0022, centerLng),
-          MapLatLng(centerLat, centerLng),
-        ],
-      ),
-      // 4. Abdul Ahad (~1.8 km)
-      NearbyDriverRoute(
-        id: 4,
-        name: 'Abdul Ahad',
-        vehicle: 'Hyundai Elantra • AC',
-        rating: 5.0,
-        reviews: 215,
-        initialDistanceKm: 1.8,
-        roofColor: const Color(0xFF6D28D9),
-        speedFactor: 0.80,
-        startPhase: 0.9,
-        waypoints: [
-          MapLatLng(centerLat - 0.0110, centerLng - 0.0080),
-          MapLatLng(centerLat - 0.0028, centerLng - 0.0080),
-          MapLatLng(centerLat - 0.0028, centerLng),
-          MapLatLng(centerLat, centerLng),
-        ],
-      ),
-      // 5. Mehmood Ali (~2.5 km)
-      NearbyDriverRoute(
-        id: 5,
-        name: 'Mehmood Ali',
-        vehicle: 'Toyota HiAce • Van',
-        rating: 4.9,
-        reviews: 88,
-        initialDistanceKm: 2.5,
-        roofColor: const Color(0xFF9333EA),
-        speedFactor: 0.85,
-        startPhase: 0.1,
-        waypoints: [
-          MapLatLng(centerLat + 0.0145, centerLng + 0.0110),
-          MapLatLng(centerLat + 0.0038, centerLng + 0.0110),
-          MapLatLng(centerLat + 0.0038, centerLng),
-          MapLatLng(centerLat, centerLng),
-        ],
-      ),
-      // 6. Hamza Sheikh (~3.3 km)
-      NearbyDriverRoute(
-        id: 6,
-        name: 'Hamza Sheikh',
-        vehicle: 'Suzuki Swift • Sedan',
-        rating: 4.7,
-        reviews: 80,
-        initialDistanceKm: 3.3,
-        roofColor: const Color(0xFFA855F7),
-        speedFactor: 0.85,
-        startPhase: 0.6,
-        waypoints: [
-          MapLatLng(centerLat - 0.0210, centerLng + 0.0160),
-          MapLatLng(centerLat - 0.0050, centerLng + 0.0160),
-          MapLatLng(centerLat - 0.0050, centerLng),
-          MapLatLng(centerLat, centerLng),
-        ],
-      ),
-      // 7. Zeeshan Tariq (~4.1 km)
-      NearbyDriverRoute(
-        id: 7,
-        name: 'Zeeshan Tariq',
-        vehicle: 'Kia Sportage • SUV',
-        rating: 4.9,
-        reviews: 164,
-        initialDistanceKm: 4.1,
-        roofColor: const Color(0xFF7E22CE),
-        speedFactor: 0.85,
-        startPhase: 0.3,
-        waypoints: [
-          MapLatLng(centerLat + 0.0260, centerLng - 0.0195),
-          MapLatLng(centerLat + 0.0062, centerLng - 0.0195),
-          MapLatLng(centerLat + 0.0062, centerLng),
-          MapLatLng(centerLat, centerLng),
-        ],
-      ),
-      // 8. Usman Farooq (~5.0 km)
-      NearbyDriverRoute(
-        id: 8,
-        name: 'Usman Farooq',
-        vehicle: 'Honda City • AC',
-        rating: 4.8,
-        reviews: 110,
-        initialDistanceKm: 5.0,
-        roofColor: const Color(0xFF8B5CF6),
-        speedFactor: 0.80,
-        startPhase: 0.8,
-        waypoints: [
-          MapLatLng(centerLat - 0.0320, centerLng - 0.0240),
-          MapLatLng(centerLat - 0.0075, centerLng - 0.0240),
-          MapLatLng(centerLat - 0.0075, centerLng),
-          MapLatLng(centerLat, centerLng),
-        ],
-      ),
-      // 9. Kashif Raza (~5.9 km)
-      NearbyDriverRoute(
-        id: 9,
-        name: 'Kashif Raza',
-        vehicle: 'Suzuki Cultus • AC',
-        rating: 4.6,
-        reviews: 72,
-        initialDistanceKm: 5.9,
-        roofColor: const Color(0xFF6B21A8),
-        speedFactor: 0.85,
-        startPhase: 0.5,
-        waypoints: [
-          MapLatLng(centerLat + 0.0380, centerLng + 0.0280),
-          MapLatLng(centerLat + 0.0090, centerLng + 0.0280),
-          MapLatLng(centerLat + 0.0090, centerLng),
-          MapLatLng(centerLat, centerLng),
-        ],
-      ),
-      // 10. Farhan Malik (~6.9 km)
-      NearbyDriverRoute(
-        id: 10,
-        name: 'Farhan Malik',
-        vehicle: 'Hyundai Tucson • SUV',
-        rating: 4.9,
-        reviews: 135,
-        initialDistanceKm: 6.9,
-        roofColor: const Color(0xFF581C87),
-        speedFactor: 0.85,
-        startPhase: 0.4,
-        waypoints: [
-          MapLatLng(centerLat - 0.0440, centerLng + 0.0330),
-          MapLatLng(centerLat - 0.0105, centerLng + 0.0330),
-          MapLatLng(centerLat - 0.0105, centerLng),
-          MapLatLng(centerLat, centerLng),
-        ],
-      ),
-    ];
-  }
+  /// Builds dynamic routes for real providers returned by the backend.
+  /// If no providers exist in the database, returns an empty list (no seed/mock cars).
+  List<NearbyDriverRoute> _buildDriverRoutesFromProviders(
+    List<ProviderMarkerModel> providers,
+    double centerLat,
+    double centerLng,
+  ) {
+    if (providers.isEmpty) return const [];
 
-  void _onCarTapped(int carId) {
-    HapticFeedback.selectionClick();
-    setState(() {
-      _selectedCarId = (_selectedCarId == carId) ? null : carId;
-    });
+    final colors = [
+      const Color(0xFF8B53FE),
+      const Color(0xFF7C3AED),
+      const Color(0xFF6D28D9),
+      const Color(0xFF9333EA),
+      const Color(0xFFA855F7),
+      const Color(0xFF7E22CE),
+      const Color(0xFF8B5CF6),
+      const Color(0xFF6B21A8),
+    ];
+
+    // 8 distinct street avenue vectors to separate patrolling cars along different roads
+    final avenueVectors = [
+      (dLat1: 0.0050, dLng1: 0.0010, dLat2: 0.0015, dLng2: 0.0010), // North avenue
+      (dLat1: 0.0010, dLng1: 0.0055, dLat2: 0.0010, dLng2: 0.0016), // East boulevard
+      (dLat1: -0.0042, dLng1: 0.0048, dLat2: -0.0012, dLng2: 0.0020), // South-East highway
+      (dLat1: -0.0055, dLng1: -0.0010, dLat2: -0.0018, dLng2: -0.0010), // South boulevard
+      (dLat1: -0.0008, dLng1: -0.0058, dLat2: -0.0008, dLng2: -0.0018), // West avenue
+      (dLat1: 0.0045, dLng1: -0.0048, dLat2: 0.0014, dLng2: -0.0016), // North-West road
+      (dLat1: -0.0045, dLng1: -0.0045, dLat2: -0.0016, dLng2: -0.0020), // South-West avenue
+      (dLat1: 0.0052, dLng1: 0.0040, dLat2: 0.0018, dLng2: 0.0016), // North-East road
+    ];
+
+    return providers.asMap().entries.map((entry) {
+      final index = entry.key;
+      final p = entry.value;
+      final double dist = p.distanceKm > 0 ? p.distanceKm : 1.0;
+      final Color roofCol = colors[index % colors.length];
+      final String provId = p.publicId.isNotEmpty
+          ? p.publicId
+          : (p.id != 0 ? '${p.id}' : 'driver_${p.name}_$index');
+
+      final vec = avenueVectors[index % avenueVectors.length];
+      final bool hasGps = p.latitude != 0 && p.latitude != 24.7681;
+      final double baseLat = hasGps ? p.latitude : centerLat;
+      final double baseLng = hasGps ? p.longitude : centerLng;
+
+      final List<MapLatLng> corridorWaypoints = hasGps
+          ? [
+              MapLatLng(baseLat + vec.dLat1 * 0.35, baseLng + vec.dLng1 * 0.35),
+              MapLatLng(baseLat - vec.dLat1 * 0.35, baseLng - vec.dLng1 * 0.35),
+            ]
+          : [
+              MapLatLng(centerLat + vec.dLat1, centerLng + vec.dLng1),
+              MapLatLng(centerLat + vec.dLat2, centerLng + vec.dLng2),
+            ];
+
+      return NearbyDriverRoute(
+        id: provId,
+        name: p.name,
+        vehicle: '${p.categoryName.isNotEmpty ? p.categoryName : 'Vehicle'} • AC',
+        rating: p.ratingAvg > 0 ? p.ratingAvg : 5.0,
+        reviews: p.ratingCount > 0 ? p.ratingCount : 1,
+        initialDistanceKm: dist,
+        roofColor: roofCol,
+        speedFactor: 0.82 + (index % 3) * 0.06,
+        startPhase: (index * 0.25) % 1.0,
+        waypoints: corridorWaypoints,
+      );
+    }).toList();
   }
 
   void _recenterMap(double centerLat, double centerLng) {
@@ -604,18 +480,15 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
 
       setState(() {
         _exactTracedLocation = freshLoc;
-        _driverRoutes = _generateDriverRoutes(freshLoc.latitude, freshLoc.longitude);
-        _lastBuiltLat = freshLoc.latitude;
-        _lastBuiltLng = freshLoc.longitude;
         _isTracingGps = false;
       });
 
       // Smoothly animate map camera directly to exact traced GPS
       _recenterMap(freshLoc.latitude, freshLoc.longitude);
 
-      // Refresh global providers so other screens stay updated
-      ref.refresh(userLocationProvider);
-      ref.refresh(nearbyProvidersProvider);
+      // Invalidate global providers so other screens stay updated
+      ref.invalidate(userLocationProvider);
+      ref.invalidate(nearbyProvidersProvider);
 
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -834,13 +707,10 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
               final userPos = MapLatLng(userLoc.latitude, userLoc.longitude);
               final double targetCircleRadiusMeters = _calculateRadiusForCount(_selectedProviderCount, userPos);
 
-              if (_driverRoutes == null ||
-                  _lastBuiltLat != userLoc.latitude ||
-                  _lastBuiltLng != userLoc.longitude) {
-                _driverRoutes = _generateDriverRoutes(userLoc.latitude, userLoc.longitude);
-                _lastBuiltLat = userLoc.latitude;
-                _lastBuiltLng = userLoc.longitude;
-              }
+              // Build routes strictly from real live providers
+              final providersAsync = ref.watch(nearbyProvidersProvider);
+              final liveProviders = providersAsync.value ?? const <ProviderMarkerModel>[];
+              _driverRoutes = _buildDriverRoutesFromProviders(liveProviders, userLoc.latitude, userLoc.longitude);
 
               // Initialize or sync center pixel coordinates to user location
               _centerPixelX ??= MercatorProjection.lngToX(userLoc.longitude, _zoom);
@@ -856,8 +726,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
             final double userScreenX = MercatorProjection.lngToX(userLoc.longitude, _zoom) - leftPx;
             final double userScreenY = MercatorProjection.latToY(userLoc.latitude, _zoom) - topPx;
 
-            final providersAsync = ref.watch(nearbyProvidersProvider);
-            final liveProviders = providersAsync.value ?? const <ProviderModel>[];
+            // Real providers synced with map layer
 
             final screenContent = Container(
               width: containerWidth,
@@ -938,13 +807,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                               _isDraggingMap = false;
                             });
                           },
-                          onTap: () {
-                            if (_selectedCarId != null) {
-                              setState(() {
-                                _selectedCarId = null;
-                              });
-                            }
-                          },
+
                         child: MouseRegion(
                           cursor: _isDraggingMap
                               ? SystemMouseCursors.grabbing
@@ -962,6 +825,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                               ),
 
                               // B. Light Purple Route Line Tracking & Covering Road to Customer
+                              if (_driverRoutes != null && _driverRoutes!.isNotEmpty)
                               Positioned.fill(
                                 child: AnimatedBuilder(
                                   animation: _carMotionController,
@@ -982,6 +846,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                               ),
 
                               // B2. Complete Road Distance Badge Marked on the Route Line
+                              if (_driverRoutes != null && _driverRoutes!.isNotEmpty)
                               () {
                                 final activeDriver = (_selectedCarId != null)
                                     ? _driverRoutes!.firstWhere(
@@ -1172,11 +1037,28 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                 animation: _carMotionController,
                                 builder: (context, _) {
                                   final double animProgress = _carMotionController.value;
+                                  final routes = _driverRoutes ?? [];
+                                  if (routes.isEmpty) return const SizedBox.shrink();
+
+                                  // Sort drivers so clicked & active drivers are drawn last (highest z-index on map)
+                                  final sortedRoutes = List<NearbyDriverRoute>.from(routes);
+                                  final clicked = _safeClickedCarIds;
+                                  if (_selectedCarId != null || clicked.isNotEmpty) {
+                                    sortedRoutes.sort((a, b) {
+                                      if (a.id == _selectedCarId) return 2;
+                                      if (b.id == _selectedCarId) return -2;
+                                      final aClicked = clicked.contains(a.id);
+                                      final bClicked = clicked.contains(b.id);
+                                      if (aClicked && !bClicked) return 1;
+                                      if (!aClicked && bClicked) return -1;
+                                      return 0;
+                                    });
+                                  }
 
                                   return Stack(
                                     clipBehavior: Clip.none,
                                     children: [
-                                      for (final driver in _driverRoutes!)
+                                      for (final driver in sortedRoutes)
                                         () {
                                           final double p = (animProgress * driver.speedFactor * 2.0 + driver.startPhase);
                                           final live = driver.roadPath.evaluatePatrol(p);
@@ -1185,30 +1067,35 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                           final double carY = MercatorProjection.latToY(live.position.latitude, _zoom) - topPx;
 
                                           final bool isSelected = _selectedCarId == driver.id;
-                                          final double distMeters = RoadPath.haversineDistance(live.position, userPos);
-                                          final double realDistKm = double.parse((distMeters / 1000.0).toStringAsFixed(1));
-                                          final bool isInsideRadius = distMeters <= targetCircleRadiusMeters;
+                                          final bool isWhite = _safeClickedCarIds.contains(driver.id);
+                                          final double realDistKm = driver.liveDistanceKm(live.position, userPos);
+                                          final bool isInsideRadius = (realDistKm * 1000.0) <= targetCircleRadiusMeters;
 
-                                          // Render exact aerodynamic car with Name & Real Distance Badge!
+                                          // Render luxury executive car with Compact Speech Bubble Badge!
                                           return Positioned(
-                                            left: carX - 45.0, // center horizontally (width = 90.0)
-                                            top: carY - 51.5, // center vertically on car (height = 74.0)
-                                            width: 90.0,
-                                            height: 74.0,
+                                            left: carX - 33.0, // center horizontally on car (width = 66.0)
+                                            top: carY - 45.0,  // center vertically on car (height = 68.0)
+                                            width: 66.0,
+                                            height: 68.0,
                                             child: TopDownCarWidget(
                                               key: ValueKey('driver_car_${driver.id}'),
                                               width: 18.0,
-                                              height: 31.0,
+                                              height: 35.0,
                                               angle: live.heading, // dynamic road bearing along street
-                                              opacity: isInsideRadius ? 1.0 : 0.76,
+                                              opacity: isInsideRadius ? 1.0 : 0.72,
                                               driverName: driver.name.split(' ').first,
                                               distanceKm: realDistKm,
                                               bodyColor: driver.roofColor,
                                               showBadge: true,
                                               isSelected: isSelected,
+                                              isWhite: isWhite,
                                               isInsideRadius: isInsideRadius,
                                               onTap: () {
-                                                _onCarTapped(driver.id);
+                                                HapticFeedback.selectionClick();
+                                                setState(() {
+                                                  _selectedCarId = driver.id;
+                                                  _clickedCarIds.add(driver.id);
+                                                });
                                                 ProviderDetailCardWidget.showAsBottomSheet(
                                                   context: context,
                                                   providerName: driver.name,
@@ -1289,7 +1176,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
 
                               // H. Floating Map Controls (Zoom in, Zoom out, Recenter)
                               Positioned(
-                                bottom: (_isFullViewMode && _selectedCarId != null) ? 150.0 : 16.0,
+                                bottom: 16.0,
                                 right: 14.0,
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
@@ -1438,16 +1325,11 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                           children: [
                             Padding(
                               padding: const EdgeInsets.fromLTRB(20.0, 24.0, 20.0, 12.0),
-                              child: _selectedCarId != null
-                                  ? _buildSelectedDriverCard(
-                                      containerWidth,
-                                      liveProviders,
-                                    )
-                                  : _buildProvidersInnerCard(
-                                      containerWidth,
-                                      liveProviders,
-                                      userLoc,
-                                    ),
+                              child: _buildProvidersInnerCard(
+                                containerWidth,
+                                liveProviders,
+                                userLoc,
+                              ),
                             ),
 
                             // Bottom home indicator bar
@@ -1578,32 +1460,6 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                           const SizedBox(height: 8.0),
                           _buildTopProviderSliderCard(),
                         ],
-                      ),
-                    ),
-
-                  // 6. FULL VIEW FLOATING SELECTED DRIVER CARD (When a car is selected on full map)
-                  if (_isFullViewMode && _selectedCarId != null)
-                    Positioned(
-                      bottom: 24.0,
-                      left: containerWidth >= 390 ? 20.0 : 12.0,
-                      right: containerWidth >= 390 ? 20.0 : 12.0,
-                      child: Container(
-                        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 14.0),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20.0),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x22000000),
-                              blurRadius: 20.0,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: _buildSelectedDriverCard(
-                          containerWidth,
-                          liveProviders,
-                        ),
                       ),
                     ),
                 ],
@@ -1948,181 +1804,6 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
       ),
     );
   }
-
-  /// Selected driver details card within bottom widget
-  Widget _buildSelectedDriverCard(
-    double containerWidth,
-    List<ProviderModel> liveProviders,
-  ) {
-    final tr = ref.watch(translationsProvider);
-    final userLocAsync = ref.read(userLocationProvider);
-    final userLoc = userLocAsync.value ?? UserLocation.defaultLocation;
-    final userPos = MapLatLng(userLoc.latitude, userLoc.longitude);
-
-    final selectedRoute = (_driverRoutes ?? []).firstWhere(
-      (r) => r.id == _selectedCarId,
-      orElse: () => _driverRoutes!.first,
-    );
-
-    final double progress = (_carMotionController.value * selectedRoute.speedFactor * 2.0 + selectedRoute.startPhase);
-    final live = selectedRoute.roadPath.evaluatePatrol(progress);
-    final double dynamicDistKm = selectedRoute.liveDistanceKm(live.position, userPos);
-
-    final double cardWidth = containerWidth >= 390
-        ? 350.0
-        : (containerWidth - 40.0).clamp(280.0, 350.0);
-
-    final String driverName = selectedRoute.name;
-
-    return SizedBox(
-      key: const Key('selected_driver_card'),
-      width: cardWidth,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 38.0,
-                height: 38.0,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0EAFE),
-                  borderRadius: BorderRadius.circular(40.0),
-                ),
-                child: const Center(
-                  child: CustomPaint(
-                    size: Size(18.0, 16.0),
-                    painter: _ProviderCarVectorPainter(
-                      color: Color(0xFF8B53FE),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12.0),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            tr.formatProviderName(driverName),
-                            style: tr.font(
-                              fontSize: 15.0,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF1C2926),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8.0),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4.0),
-                          ),
-                          child: Text(
-                            tr.online,
-                            style: tr.font(
-                              fontSize: 9.0,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF047857),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3.0),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.near_me_rounded,
-                          size: 11.0,
-                          color: Color(0xFF8B53FE),
-                        ),
-                        const SizedBox(width: 4.0),
-                        Expanded(
-                          child: Text(
-                            '${tr.kmAway(dynamicDistKm.toStringAsFixed(1))} • ${tr.formatVehicleName(selectedRoute.vehicle)}',
-                            style: tr.font(
-                              fontSize: 11.0,
-                              fontWeight: FontWeight.w400,
-                              color: const Color(0xFF566663),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              GestureDetector(
-                onTap: () => setState(() => _selectedCarId = null),
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  width: 28.0,
-                  height: 28.0,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF3F4F6),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.close,
-                      size: 16.0,
-                      color: Color(0xFF566663),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14.0),
-          SizedBox(
-            width: double.infinity,
-            height: 44.0,
-            child: ElevatedButton(
-              onPressed: () {
-                HapticFeedback.mediumImpact();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => SendRequestScreen(
-                      serviceCategory: widget.serviceName,
-                      providerName: driverName,
-                      distance: '${dynamicDistKm.toStringAsFixed(1)} km',
-                    ),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8B53FE),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
-              ),
-              child: Text(
-                tr.confirmDriver(tr.formatProviderName(driverName).split(' ').first),
-                style: tr.font(
-                  fontSize: 14.0,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /// Dynamic Slippy Map Layer supporting unlimited viewport dragging & Google/OSM tile rendering
@@ -2241,7 +1922,7 @@ class _RoadMarkingsPainter extends CustomPainter {
   final double zoom;
   final double leftPx;
   final double topPx;
-  final int? selectedId;
+  final String? selectedId;
   final double animProgress;
   final MapLatLng userPos;
 
@@ -2445,74 +2126,6 @@ class _BackChevronPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Vector car branding matching Figma specifications
-class _ProviderCarVectorPainter extends CustomPainter {
-  final Color color;
-  const _ProviderCarVectorPainter({this.color = const Color(0xFF8B53FE)});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final strokePaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final fillPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final w = size.width;
-    final h = size.height;
-
-    // Tires peeking out
-    const double tireW = 2.0;
-    const double tireH = 3.6;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(0.2, h * 0.62, tireW, tireH),
-        const Radius.circular(0.8),
-      ),
-      fillPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w - tireW - 0.2, h * 0.62, tireW, tireH),
-        const Radius.circular(0.8),
-      ),
-      fillPaint,
-    );
-
-    // Car main body
-    final bodyPath = Path();
-    bodyPath.moveTo(1.5, h * 0.88);
-    bodyPath.lineTo(1.5, h * 0.52);
-    bodyPath.lineTo(3.2, h * 0.44);
-    bodyPath.lineTo(4.4, h * 0.08);
-    bodyPath.quadraticBezierTo(w * 0.5, 0.0, w - 4.4, h * 0.08);
-    bodyPath.lineTo(w - 3.2, h * 0.44);
-    bodyPath.lineTo(w - 1.5, h * 0.52);
-    bodyPath.lineTo(w - 1.5, h * 0.88);
-    bodyPath.quadraticBezierTo(w * 0.5, h * 0.94, 1.5, h * 0.88);
-    bodyPath.close();
-
-    canvas.drawPath(bodyPath, strokePaint);
-
-    // Windshield divider
-    final windshieldPath = Path();
-    windshieldPath.moveTo(3.6, h * 0.44);
-    windshieldPath.quadraticBezierTo(w * 0.5, h * 0.46, w - 3.6, h * 0.44);
-    canvas.drawPath(windshieldPath, strokePaint);
-
-    // Headlights
-    canvas.drawCircle(Offset(4.2, h * 0.68), 1.1, strokePaint);
-    canvas.drawCircle(Offset(w - 4.2, h * 0.68), 1.1, strokePaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
 
 /// Vector chevron right matching Figma specifications
 class _ChevronRightVectorPainter extends CustomPainter {

@@ -11,6 +11,11 @@ import 'package:mobile/features/provider/auth/presentation/widgets/provider_docu
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_otp_card.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_upload_documents_list.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_admin_approval_content_layout.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_admin_approval_heading.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_admin_approval_status_card.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_got_it_button.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_blocked_screen.dart';
+import 'package:mobile/features/provider/home/presentation/provider_home_screen.dart';
 
 Widget _buildTestApp(Widget home) {
   return ProviderScope(
@@ -177,5 +182,86 @@ void main() {
       find.text('Your account documents were not approved by admin. Please review your submitted documents or contact support.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('AdminApprovalScreen displays Resubmission Requested card and re-upload button', (tester) async {
+    await tester.pumpWidget(
+      _buildTestApp(
+        Scaffold(
+          body: SingleChildScrollView(
+            child: ProviderAdminApprovalContentLayout(
+              heading: const ProviderAdminApprovalHeading(
+                title: 'Resubmission Requested',
+                subtitle: 'Admin requested document resubmission.',
+              ),
+              statusCard: const ProviderAdminApprovalStatusCard(
+                isResubmission: true,
+              ),
+              actionButton: ProviderGotItButton(
+                title: 'Re-upload Documents',
+                onTap: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Resubmission Requested'), findsAtLeastNWidgets(1));
+    expect(find.text('Re-upload Documents'), findsOneWidget);
+  });
+
+  testWidgets('AdminApprovalScreen automatically redirects to ProviderHomeScreen when approved', (tester) async {
+    ProviderRegistrationStore.instance.update(
+      (data) => data.copyWith(
+        status: 'APPROVED',
+      ),
+    );
+
+    await tester.pumpWidget(
+      _buildTestApp(
+        const Scaffold(
+          body: SingleChildScrollView(
+            child: ProviderAdminApprovalContentLayout(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Should have redirected to ProviderHomeScreen
+    expect(find.byType(ProviderHomeScreen), findsOneWidget);
+  });
+
+  testWidgets('ProviderBlockedScreen displays blocked alert, reason and actions', (tester) async {
+    await tester.pumpWidget(
+      _buildTestApp(
+        const ProviderBlockedScreen(
+          reason: 'Terms violation test reason',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Account Blocked'), findsOneWidget);
+    expect(find.textContaining('Terms violation test reason'), findsOneWidget);
+    expect(find.text('Contact Support'), findsOneWidget);
+    expect(find.text('Sign Out'), findsOneWidget);
+  });
+
+  testWidgets('ProviderAdminApprovalStatusCard displays suspended status correctly', (tester) async {
+    await tester.pumpWidget(
+      _buildTestApp(
+        const Scaffold(
+          body: ProviderAdminApprovalStatusCard(
+            isSuspended: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Account suspended by Admin'), findsOneWidget);
   });
 }

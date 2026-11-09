@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,9 @@ import 'package:mobile/features/home/presentation/widgets/bottom_nav_bar_widget.
 import 'package:mobile/features/home/presentation/widgets/notification_popup_card.dart';
 import 'package:mobile/features/profile/presentation/profile_screen.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
+import 'package:mobile/features/provider/auth/presentation/admin_approval_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/phone_verification_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_blocked_screen.dart';
 import 'package:mobile/features/provider/dashboard/presentation/provider_dashboard_screen.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_home_header.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_online_status_text.dart';
@@ -13,7 +17,10 @@ import 'package:mobile/features/provider/home/presentation/widgets/provider_onli
 import 'package:mobile/features/provider/home/presentation/widgets/provider_stats_cards.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_vehicle_card.dart';
 import 'package:mobile/features/provider/requests/presentation/provider_requests_screen.dart';
+import 'package:mobile/providers/backend_provider.dart';
 import 'package:mobile/providers/notifications_provider.dart';
+import 'package:mobile/services/backend_service.dart';
+import 'package:mobile/services/location_service.dart';
 
 /// Provider Home Screen
 /// Implements exact base branding specifications & artboard dimensions:
@@ -51,6 +58,12 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
   int _currentTabIndex = 0;
   bool _isOnline = false;
 
+  Timer? _gpsTrackingTimer;
+  Timer? _statsRefreshTimer;
+  StreamSubscription<UserLocation>? _locationSubscription;
+  bool _isUpdatingLocation = false;
+  bool _isNavigatingAway = false;
+
   ScrollController? _scrollControllerInstance;
   ScrollController get _scrollController =>
       _scrollControllerInstance ??= ScrollController();
@@ -60,6 +73,83 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
     super.initState();
     _currentTabIndex = widget.initialTabIndex;
     _isOnline = ProviderRegistrationStore.instance.data.isOnline;
+    if (_isOnline) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _startGpsTrackingAndPresence();
+      });
+    }
+    // High-frequency stats polling and account status synchronization (every 2.5s)
+    // Instantly reacts if admin blocks, suspends, or deletes provider
+    _statsRefreshTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
+      if (mounted) {
+        ref.invalidate(providerQuickStatsProvider);
+        _syncProviderAccountStatus();
+      }
+    });
+  }
+
+  Future<void> _syncProviderAccountStatus() async {
+    if (_isNavigatingAway) return;
+    try {
+      final accountState =
+          await ref.read(backendServiceProvider).checkProviderAccountState();
+      if (!mounted || _isNavigatingAway) return;
+
+      if (accountState.status == ProviderAccountStatus.deleted) {
+        _isNavigatingAway = true;
+        _statsRefreshTimer?.cancel();
+        _stopGpsTrackingAndPresence(callBackend: false);
+        await ProviderRegistrationStore.instance.clear();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.isArabic
+                  ? 'تم حذف حساب مزود الخدمة الخاص بك من قبل الإدارة'
+                  : 'Your provider account has been deleted by administration.',
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const PhoneVerificationScreen()),
+          (route) => false,
+        );
+      } else if (accountState.status == ProviderAccountStatus.blocked) {
+        _isNavigatingAway = true;
+        _statsRefreshTimer?.cancel();
+        _stopGpsTrackingAndPresence(callBackend: true);
+        ProviderRegistrationStore.instance.update(
+          (d) => d.copyWith(status: 'BLOCKED', isOnline: false),
+        );
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => ProviderBlockedScreen(
+              reason: accountState.statusReason,
+            ),
+          ),
+          (route) => false,
+        );
+      } else if (accountState.status == ProviderAccountStatus.suspended) {
+        _isNavigatingAway = true;
+        _statsRefreshTimer?.cancel();
+        _stopGpsTrackingAndPresence(callBackend: true);
+        ProviderRegistrationStore.instance.update(
+          (d) => d.copyWith(status: 'SUSPENDED', isOnline: false),
+        );
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => const AdminApprovalScreen(
+              isSuspended: true,
+            ),
+          ),
+          (route) => false,
+        );
+      }
+    } catch (_) {}
   }
 
   @override
@@ -72,8 +162,89 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
 
   @override
   void dispose() {
+    _statsRefreshTimer?.cancel();
+    _stopGpsTrackingAndPresence(callBackend: false);
     _scrollControllerInstance?.dispose();
     super.dispose();
+  }
+
+  void _setOnlineStatus(bool online) {
+    if (_isOnline == online) return;
+    setState(() {
+      _isOnline = online;
+    });
+    ProviderRegistrationStore.instance.update(
+      (data) => data.copyWith(isOnline: online),
+    );
+    if (online) {
+      _startGpsTrackingAndPresence();
+    } else {
+      _stopGpsTrackingAndPresence(callBackend: true);
+    }
+  }
+
+  Future<void> _startGpsTrackingAndPresence() async {
+    try {
+      // 1. Immediately notify backend that provider is Online
+      await ref.read(backendServiceProvider).updateProviderPresence(true);
+    } catch (_) {}
+
+    // 2. Immediately acquire and send exact GPS location
+    _acquireAndSendGpsLocation();
+
+    // 3. Setup periodic GPS refresh timer (every 15s)
+    _gpsTrackingTimer?.cancel();
+    _gpsTrackingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      _acquireAndSendGpsLocation();
+    });
+
+    // 4. Also listen to location stream for instantaneous movements
+    _locationSubscription?.cancel();
+    _locationSubscription = ref.read(locationServiceProvider).watchLocation().listen((loc) {
+      _sendLocationToBackend(loc);
+    });
+  }
+
+  void _stopGpsTrackingAndPresence({bool callBackend = true}) {
+    _gpsTrackingTimer?.cancel();
+    _gpsTrackingTimer = null;
+    _locationSubscription?.cancel();
+    _locationSubscription = null;
+    if (callBackend) {
+      try {
+        ref.read(backendServiceProvider).updateProviderPresence(false);
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _acquireAndSendGpsLocation() async {
+    if (_isUpdatingLocation) return;
+    _isUpdatingLocation = true;
+    try {
+      final loc = await ref.read(locationServiceProvider).getCurrentLocation();
+      await _sendLocationToBackend(loc);
+    } catch (_) {
+    } finally {
+      _isUpdatingLocation = false;
+    }
+  }
+
+  Future<void> _sendLocationToBackend(UserLocation loc) async {
+    if (loc.latitude == 0 && loc.longitude == 0) return;
+    try {
+      await ref.read(backendServiceProvider).updateProviderLocation(
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        address: loc.address,
+        city: loc.cityName,
+      );
+      ProviderRegistrationStore.instance.update(
+        (data) => data.copyWith(
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+        ),
+      );
+    } catch (_) {}
   }
 
   void _onTabSelected(int index) {
@@ -225,12 +396,7 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
                                 ProviderOnlineToggle(
                                   isOnline: _isOnline,
                                   onChanged: (val) {
-                                    setState(() {
-                                      _isOnline = val;
-                                    });
-                                    ProviderRegistrationStore.instance.update(
-                                      (data) => data.copyWith(isOnline: val),
-                                    );
+                                    _setOnlineStatus(val);
                                   },
                                 ),
 
@@ -263,7 +429,8 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
 
                       // 4. Notification Card Overlay after clicking bell icon
                       //    Exact layout: width: 350; height: 96; top: 106px; left: 21px;
-                      if (notifState.isProviderCardVisible) ...[
+                      if (notifState.isProviderCardVisible &&
+                          notifState.providerNotification != null) ...[
                         Positioned.fill(
                           child: GestureDetector(
                             behavior: HitTestBehavior.translucent,
@@ -280,21 +447,21 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
                           right: 20.0,
                           child: NotificationPopupCard(
                             badgeText: context.isArabic
-                                ? notifState.providerNotification.badgeTextAr
-                                : notifState.providerNotification.badgeTextEn,
+                                ? (notifState.providerNotification?.badgeTextAr ?? '')
+                                : (notifState.providerNotification?.badgeTextEn ?? ''),
                             title: context.isArabic
-                                ? notifState.providerNotification.titleAr
-                                : notifState.providerNotification.titleEn,
+                                ? (notifState.providerNotification?.titleAr ?? '')
+                                : (notifState.providerNotification?.titleEn ?? ''),
                             location: context.isArabic
-                                ? notifState.providerNotification.locationAr
-                                : notifState.providerNotification.locationEn,
+                                ? (notifState.providerNotification?.locationAr ?? '')
+                                : (notifState.providerNotification?.locationEn ?? ''),
                             distance: context.isArabic
-                                ? notifState.providerNotification.distanceAr
-                                : notifState.providerNotification.distanceEn,
+                                ? (notifState.providerNotification?.distanceAr ?? '')
+                                : (notifState.providerNotification?.distanceEn ?? ''),
                             time: context.isArabic
-                                ? notifState.providerNotification.timeAr
-                                : notifState.providerNotification.timeEn,
-                            imageAsset: notifState.providerNotification.imageAsset,
+                                ? (notifState.providerNotification?.timeAr ?? '')
+                                : (notifState.providerNotification?.timeEn ?? ''),
+                            imageAsset: notifState.providerNotification?.imageAsset,
                             onDismiss: () {
                               ref
                                   .read(notificationsProvider.notifier)

@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/task_service.dart';
 
 /// Single Notification Model matching exact Figma specifications
 class AppNotificationItem {
@@ -71,16 +73,16 @@ class NotificationsState {
   final bool hasProviderUnread;
   final bool isCustomerCardVisible;
   final bool isProviderCardVisible;
-  final AppNotificationItem customerNotification;
-  final AppNotificationItem providerNotification;
+  final AppNotificationItem? customerNotification;
+  final AppNotificationItem? providerNotification;
 
   const NotificationsState({
-    this.hasCustomerUnread = true,
-    this.hasProviderUnread = true,
+    this.hasCustomerUnread = false,
+    this.hasProviderUnread = false,
     this.isCustomerCardVisible = false,
     this.isProviderCardVisible = false,
-    required this.customerNotification,
-    required this.providerNotification,
+    this.customerNotification,
+    this.providerNotification,
   });
 
   NotificationsState copyWith({
@@ -104,43 +106,132 @@ class NotificationsState {
 
 /// Reactive Notifier managing notifications state for Customer and Provider
 class NotificationsNotifier extends Notifier<NotificationsState> {
+  VoidCallback? _taskListener;
+
   @override
   NotificationsState build() {
-    return const NotificationsState(
-      hasCustomerUnread: true,
-      hasProviderUnread: true,
-      isCustomerCardVisible: false,
-      isProviderCardVisible: false,
-      customerNotification: AppNotificationItem(
-        id: 'cust_notif_1',
-        badgeTextEn: 'Service Update',
-        badgeTextAr: 'تحديث الخدمة',
-        titleEn: 'Battery Jump Start',
-        titleAr: 'شحن بطارية',
-        locationEn: 'King Abdullah Rd, Riyadh',
-        locationAr: 'طريق الملك عبدالله، الرياض',
-        distanceEn: '4.1 km  away',
-        distanceAr: 'على بعد 4.1 كم',
-        timeEn: 'Just now',
-        timeAr: 'الآن',
-        imageAsset: null,
-        isRead: false,
-      ),
-      providerNotification: AppNotificationItem(
-        id: 'prov_notif_1',
-        badgeTextEn: 'New Request',
-        badgeTextAr: 'طلب جديد',
-        titleEn: 'Battery Jump Start',
-        titleAr: 'شحن بطارية',
-        locationEn: 'King Abdullah Rd, Riyadh',
-        locationAr: 'طريق الملك عبدالله، الرياض',
-        distanceEn: '4.1 km  away',
-        distanceAr: 'على بعد 4.1 كم',
-        timeEn: 'Just now',
-        timeAr: 'الآن',
-        imageAsset: null,
-        isRead: false,
-      ),
+    _initTaskSync();
+    return _buildStateFromTask(TaskService.instance.activeTask);
+  }
+
+  void _initTaskSync() {
+    _taskListener = () {
+      final task = TaskService.instance.activeTask;
+      final updatedState = _buildStateFromTask(task, markUnread: true);
+      state = updatedState;
+    };
+    TaskService.instance.activeTaskNotifier.addListener(_taskListener!);
+    ref.onDispose(() {
+      if (_taskListener != null) {
+        TaskService.instance.activeTaskNotifier.removeListener(_taskListener!);
+      }
+    });
+  }
+
+  NotificationsState _buildStateFromTask(ServiceTask? task, {bool markUnread = false}) {
+    if (task == null) {
+      return NotificationsState(
+        hasCustomerUnread: false,
+        hasProviderUnread: false,
+        isCustomerCardVisible: false,
+        isProviderCardVisible: false,
+        customerNotification: null,
+        providerNotification: null,
+      );
+    }
+
+    String badgeEn = 'On The Way';
+    String badgeAr = 'في الطريق';
+    String customerTitleEn = '${task.serviceCategory} • ${task.providerName}';
+    String customerTitleAr = '${task.serviceCategory} • ${task.providerName}';
+    String providerTitleEn = '${task.serviceCategory} • ${task.customerName}';
+    String providerTitleAr = '${task.serviceCategory} • ${task.customerName}';
+
+    switch (task.step) {
+      case 0:
+        badgeEn = 'Request Sent';
+        badgeAr = 'تم إرسال الطلب';
+        customerTitleEn = 'Request sent to ${task.providerName}';
+        customerTitleAr = 'تم إرسال الطلب إلى ${task.providerName}';
+        break;
+      case 1:
+        badgeEn = 'On The Way';
+        badgeAr = 'في الطريق';
+        customerTitleEn = '${task.providerName} is on the way';
+        customerTitleAr = '${task.providerName} في الطريق إليك';
+        break;
+      case 2:
+        badgeEn = 'Provider Arrived';
+        badgeAr = 'وصل المزود';
+        customerTitleEn = '${task.providerName} has arrived';
+        customerTitleAr = 'وصل ${task.providerName} إلى موقعك';
+        break;
+      case 3:
+        badgeEn = 'In Progress';
+        badgeAr = 'جاري التنفيذ';
+        customerTitleEn = '${task.serviceCategory} in progress';
+        customerTitleAr = '${task.serviceCategory} قيد التنفيذ';
+        break;
+      case 4:
+      default:
+        badgeEn = 'Completed';
+        badgeAr = 'مكتمل';
+        customerTitleEn = 'Service completed successfully';
+        customerTitleAr = 'تمت الخدمة بنجاح';
+        break;
+    }
+
+    final custNotif = AppNotificationItem(
+      id: task.id,
+      badgeTextEn: badgeEn,
+      badgeTextAr: badgeAr,
+      titleEn: customerTitleEn,
+      titleAr: customerTitleAr,
+      locationEn: task.customerLocation,
+      locationAr: task.customerLocation,
+      distanceEn: '${task.distance} away',
+      distanceAr: '${task.distance} على بعد',
+      timeEn: task.eta.isNotEmpty ? 'ETA ${task.eta}' : 'Just now',
+      timeAr: task.eta.isNotEmpty ? 'الوصول ${task.eta}' : 'الآن',
+      imageAsset: task.providerAvatar ?? 'assets/images/driver_avatar.png',
+    );
+
+    final provNotif = AppNotificationItem(
+      id: task.id,
+      badgeTextEn: task.step == 0 ? 'New Request' : badgeEn,
+      badgeTextAr: task.step == 0 ? 'طلب جديد' : badgeAr,
+      titleEn: providerTitleEn,
+      titleAr: providerTitleAr,
+      locationEn: task.customerLocation,
+      locationAr: task.customerLocation,
+      distanceEn: '${task.distance} away',
+      distanceAr: '${task.distance} على بعد',
+      timeEn: 'Just now',
+      timeAr: 'الآن',
+      imageAsset: 'assets/images/driver_avatar.png',
+    );
+
+    return NotificationsState(
+      hasCustomerUnread: markUnread ? true : state.hasCustomerUnread,
+      hasProviderUnread: markUnread ? true : state.hasProviderUnread,
+      isCustomerCardVisible: state.isCustomerCardVisible,
+      isProviderCardVisible: state.isProviderCardVisible,
+      customerNotification: custNotif,
+      providerNotification: provNotif,
+    );
+  }
+
+  void setCustomerNotification(AppNotificationItem? notif) {
+    state = state.copyWith(
+      customerNotification: notif,
+      hasCustomerUnread: notif != null,
+    );
+  }
+
+  void setProviderNotification(AppNotificationItem? notif) {
+    state = state.copyWith(
+      providerNotification: notif,
+      hasProviderUnread: notif != null,
     );
   }
 

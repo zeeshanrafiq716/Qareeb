@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../providers/notifications_provider.dart';
+import '../../../services/task_service.dart';
 
 /// Notifications Screen navigated from the Profile Tab.
 /// Features the standard app header layout:
@@ -19,73 +20,53 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
-  final List<Map<String, dynamic>> _sampleNotifications = [
-    {
-      'id': 'notif_verified',
-      'titleEn': 'Account Verified',
-      'titleAr': 'تم التحقق من الحساب',
-      'messageEn': 'Your provider account has been verified successfully. \nYou can now go online, receive service requests, and serve customers through QAREEB.',
-      'messageAr': 'تم التحقق من حساب مزود الخدمة الخاص بك بنجاح. \nيمكنك الآن الاتصال بالإنترنت واستقبال طلبات الخدمة وخدمة العملاء عبر تطبيق قريب.',
-      'timeEn': 'Just now',
-      'timeAr': 'الآن',
-      'icon': Icons.check_rounded,
-      'isRead': false,
-    },
-    {
-      'id': 'notif_1',
-      'titleEn': 'Request Accepted!',
-      'titleAr': 'تم قبول طلبك!',
-      'messageEn': 'Ahmad Transport has accepted your service request and is on the way.',
-      'messageAr': 'قبل أحمد للنقل طلب الخدمة الخاص بك وهو في الطريق.',
-      'timeEn': '2 min ago',
-      'timeAr': 'منذ دقيقتين',
-      'icon': Icons.check_circle_rounded,
-      'isRead': false,
-    },
-    {
-      'id': 'notif_2',
-      'titleEn': 'Driver Arrived',
-      'titleAr': 'وصل السائق',
-      'messageEn': 'Your recovery driver is at your pickup location.',
-      'messageAr': 'وصل سائق الونش إلى موقع الاستلام الخاص بك.',
-      'timeEn': '15 min ago',
-      'timeAr': 'منذ ١٥ دقيقة',
-      'icon': Icons.location_on_rounded,
-      'isRead': false,
-    },
-    {
-      'id': 'notif_3',
-      'titleEn': 'Special Offer',
-      'titleAr': 'عرض خاص',
-      'messageEn': 'Get 20% off on your next towing service using promo code QAREEB20.',
-      'messageAr': 'احصل على خصم ٢٠٪ على خدمة السحب القادمة باستخدام الرمز QAREEB20.',
-      'timeEn': '2 hours ago',
-      'timeAr': 'منذ ساعتين',
-      'icon': Icons.local_offer_rounded,
-      'isRead': true,
-    },
-    {
-      'id': 'notif_4',
-      'titleEn': 'Service Completed',
-      'titleAr': 'اكتملت الخدمة',
-      'messageEn': 'Your request has been successfully completed. Thank you for using Qareeb!',
-      'messageAr': 'تم إكمال طلبك بنجاح. شكراً لاستخدامك تطبيق قريب!',
-      'timeEn': 'Yesterday',
-      'timeAr': 'أمس',
-      'icon': Icons.done_all_rounded,
-      'isRead': true,
-    },
-  ];
+  bool _forceAllRead = false;
 
   void _markAllAsRead() {
     HapticFeedback.lightImpact();
     setState(() {
-      for (final n in _sampleNotifications) {
-        n['isRead'] = true;
-      }
+      _forceAllRead = true;
     });
     ref.read(notificationsProvider.notifier).dismissCustomerNotification();
     ref.read(notificationsProvider.notifier).dismissProviderNotification();
+  }
+
+  List<Map<String, dynamic>> _getNotifications() {
+    final List<Map<String, dynamic>> items = [];
+    final active = TaskService.instance.activeTask;
+    if (active != null) {
+      final notifState = ref.watch(notificationsProvider);
+      items.add({
+        'titleEn': '${active.serviceCategory} • ${active.providerName}',
+        'titleAr': '${active.serviceCategory} • ${active.providerName}',
+        'messageEn': 'Provider is ${active.status == 'active' ? 'on the way' : active.status}. Distance: ${active.distance}, ETA: ${active.eta}',
+        'messageAr': 'المزود في الطريق. المسافة: ${active.distance}، وقت الوصول: ${active.eta}',
+        'timeEn': active.dateTime.isNotEmpty ? active.dateTime : 'Just now',
+        'timeAr': active.dateTime.isNotEmpty ? active.dateTime : 'الآن',
+        'isRead': _forceAllRead ? true : !notifState.hasCustomerUnread,
+        'icon': Icons.local_shipping_rounded,
+      });
+    }
+
+    for (final h in TaskService.instance.historyTasks) {
+      items.add({
+        'titleEn': '${h.serviceCategory} • ${h.providerName}',
+        'titleAr': '${h.serviceCategory} • ${h.providerName}',
+        'messageEn': h.status == 'cancelled'
+            ? 'Service request was cancelled.'
+            : 'Service completed successfully.',
+        'messageAr': h.status == 'cancelled'
+            ? 'تم إلغاء طلب الخدمة.'
+            : 'اكتملت الخدمة بنجاح.',
+        'timeEn': h.dateTime.isNotEmpty ? h.dateTime : 'Completed',
+        'timeAr': h.dateTime.isNotEmpty ? h.dateTime : 'مكتمل',
+        'isRead': true,
+        'icon': h.status == 'cancelled'
+            ? Icons.cancel_outlined
+            : Icons.check_circle_outline_rounded,
+      });
+    }
+    return items;
   }
 
   @override
@@ -176,15 +157,21 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                           const SizedBox(height: 24.0),
 
                           // Notification Items
-                          if (_sampleNotifications.isEmpty)
-                            _buildEmptyState(tr, isArabic)
-                          else
-                            ..._sampleNotifications.map((notif) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12.0),
-                                child: _buildNotificationCard(notif, tr, isArabic),
-                              );
-                            }),
+                          () {
+                            final notifications = _getNotifications();
+                            if (notifications.isEmpty) {
+                              return _buildEmptyState(tr, isArabic);
+                            }
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: notifications.map((notif) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12.0),
+                                  child: _buildNotificationCard(notif, tr, isArabic),
+                                );
+                              }).toList(),
+                            );
+                          }(),
 
                           const SizedBox(height: 40.0),
                         ],
@@ -348,10 +335,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   ///   - 2nd row: Message (10px, 400, #252527, line-height 100%)
   ///   - 3rd row: Mark as read (10px, 500, #8B53FE, aligned right)
   Widget _buildNotificationCard(Map<String, dynamic> notif, AppTranslations tr, bool isArabic) {
-    final bool isRead = notif['isRead'] as bool;
-    final String title = isArabic ? notif['titleAr'] as String : notif['titleEn'] as String;
-    final String message = isArabic ? notif['messageAr'] as String : notif['messageEn'] as String;
-    final String time = isArabic ? notif['timeAr'] as String : notif['timeEn'] as String;
+    final bool isRead = (notif['isRead'] as bool?) ?? false;
+    final String title = isArabic ? (notif['titleAr'] as String? ?? '') : (notif['titleEn'] as String? ?? '');
+    final String message = isArabic ? (notif['messageAr'] as String? ?? '') : (notif['messageEn'] as String? ?? '');
+    final String time = isArabic ? (notif['timeAr'] as String? ?? '') : (notif['timeEn'] as String? ?? '');
     final IconData icon = (notif['icon'] as IconData?) ?? Icons.check_rounded;
 
     return Center(

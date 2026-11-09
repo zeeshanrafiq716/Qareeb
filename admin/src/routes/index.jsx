@@ -33,7 +33,9 @@ function PublicRoute({ children }) {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
+    const saved = localStorage.getItem('qareeb_admin_active_tab')
+    const dest = saved && saved !== 'dashboard' ? `/dashboard/${saved}` : '/dashboard'
+    return <Navigate to={dest} replace />
   }
 
   return children
@@ -42,7 +44,11 @@ function PublicRoute({ children }) {
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <Navigate to="/login" replace />,
+    element: (
+      <ProtectedRoute>
+        <DashboardView />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/login',
@@ -61,7 +67,27 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: '/dashboard/:tab',
+    element: (
+      <ProtectedRoute>
+        <DashboardView />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/:tab',
+    element: (
+      <ProtectedRoute>
+        <DashboardView />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: '*',
-    element: <Navigate to="/login" replace />,
+    element: (
+      <ProtectedRoute>
+        <DashboardView />
+      </ProtectedRoute>
+    ),
   },
 ])

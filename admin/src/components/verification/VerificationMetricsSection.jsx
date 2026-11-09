@@ -5,9 +5,9 @@ export function VerificationMetricsSection({
   activeFilter = 'all',
   onSelectFilter,
   stats = {
-    pendingReview: 124,
-    underReview: 32,
-    resubmission: 16,
+    pendingReview: 0,
+    underReview: 0,
+    resubmission: 0,
   },
 }) {
   const cards = [
@@ -84,7 +84,7 @@ export function VerificationMetricsSection({
                   >
                     <IconComp className="w-4 h-4" />
                   </div>
-                  <span className="text-[14px] font-medium text-[#616166] truncate">
+                  <span className="text-[14px] font-semibold text-[#1C2926] whitespace-nowrap">
                     {card.title}
                   </span>
                 </div>

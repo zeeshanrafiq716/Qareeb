@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/api/api_client.dart';
@@ -6,6 +8,7 @@ import 'package:mobile/features/provider/auth/data/provider_registration_state.d
 import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
 import 'package:mobile/models/category_model.dart';
+import 'package:mobile/models/vehicle_type_model.dart';
 import 'package:mobile/services/backend_service.dart';
 
 /// Provider Onboarding Consolidated Details Content Layout Widget
@@ -39,13 +42,19 @@ class _ProviderOnboardingDetailsContentLayoutState
 
   String? _selectedCategory;
   String? _selectedVehicleType;
+  CategoryModel? _selectedCategoryModel;
+  VehicleTypeModel? _selectedVehicleTypeModel;
 
   List<String> _adminCategories = [];
   List<String> _adminVehicleTypes = [];
+  List<CategoryModel> _adminCategoryModels = [];
+  List<VehicleTypeModel> _adminVehicleTypeModels = [];
   bool _isLoadingAdminOptions = true;
 
   bool _isLoading = false;
   late final BackendService _backendService;
+  Timer? _liveSyncTimer;
+  VoidCallback? _activeSheetUpdater;
 
   @override
   void initState() {
@@ -61,38 +70,99 @@ class _ProviderOnboardingDetailsContentLayoutState
 
     _selectedCategory = null;
     _selectedVehicleType = null;
+    _selectedCategoryModel = null;
+    _selectedVehicleTypeModel = null;
 
     _backendService = BackendService(ApiClient());
     _loadAdminOptions();
+
+    // Live background sync (every 15s) so Admin panel changes reflect automatically
+    _liveSyncTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      _loadAdminOptions(silent: true);
+    });
   }
 
-  Future<void> _loadAdminOptions() async {
+  Future<void> _loadAdminOptions({bool silent = false, VoidCallback? onRefreshed}) async {
     try {
-      final List<CategoryModel> categories = await _backendService.getCategories();
-      final List<String> vehicleTypes = await _backendService.getVehicleTypes();
+      // Parallel high-speed fetch
+      final results = await Future.wait([
+        _backendService.getCategories(),
+        _backendService.getVehicleTypeModels(),
+      ]);
+
+      final categories = results[0] as List<CategoryModel>;
+      final vehicleTypes = results[1] as List<VehicleTypeModel>;
 
       if (mounted) {
-        setState(() {
-          _adminCategories = categories
-              .where((c) => c.isEnabled)
-              .map((c) => c.name)
-              .toSet()
-              .toList();
-          _adminVehicleTypes = vehicleTypes.toSet().toList();
-          _isLoadingAdminOptions = false;
-        });
+        final newCats = categories
+            .where((c) => c.isEnabled)
+            .map((c) => c.name)
+            .toSet()
+            .toList();
+        final newTypes = vehicleTypes
+            .where((v) => v.isEnabled)
+            .map((v) => v.name)
+            .toSet()
+            .toList();
+
+        final bool hasChanged = !listEquals(_adminCategories, newCats) ||
+            !listEquals(_adminVehicleTypes, newTypes);
+
+        if (hasChanged || !silent) {
+          setState(() {
+            _adminCategoryModels = categories.where((c) => c.isEnabled).toList();
+            _adminVehicleTypeModels = vehicleTypes.where((v) => v.isEnabled).toList();
+            _adminCategories = newCats;
+            _adminVehicleTypes = newTypes;
+            _isLoadingAdminOptions = false;
+
+            // Maintain model selections
+            if (_selectedCategory != null) {
+              final found = _adminCategoryModels.cast<CategoryModel?>().firstWhere(
+                    (c) => c?.name == _selectedCategory,
+                    orElse: () => null,
+                  );
+              if (found != null) {
+                _selectedCategoryModel = found;
+              } else {
+                _selectedCategory = null;
+                _selectedCategoryModel = null;
+              }
+            }
+
+            if (_selectedVehicleType != null) {
+              final found = _adminVehicleTypeModels.cast<VehicleTypeModel?>().firstWhere(
+                    (v) => v?.name == _selectedVehicleType,
+                    orElse: () => null,
+                  );
+              if (found != null) {
+                _selectedVehicleTypeModel = found;
+              } else {
+                _selectedVehicleType = null;
+                _selectedVehicleTypeModel = null;
+              }
+            }
+          });
+        }
+
+        _activeSheetUpdater?.call();
+        onRefreshed?.call();
       }
     } catch (_) {
-      if (mounted) {
+      if (mounted && !silent) {
         setState(() {
           _isLoadingAdminOptions = false;
         });
+        _activeSheetUpdater?.call();
+        onRefreshed?.call();
       }
     }
   }
 
   @override
   void dispose() {
+    _liveSyncTimer?.cancel();
+    _activeSheetUpdater = null;
     _nameCtrl.dispose();
     _whatsappCtrl.dispose();
     _plateCtrl.dispose();
@@ -102,19 +172,9 @@ class _ProviderOnboardingDetailsContentLayoutState
 
   void _showCategoryDropdown() {
     final isArabic = context.isArabic;
-    final options = _adminCategories.isNotEmpty
-        ? _adminCategories
-        : [
-            'Vehicle Towing',
-            'Flatbed Towing',
-            'Battery Jumpstart',
-            'Tire Assistance',
-            'Fuel Delivery',
-            'Emergency Recovery',
-            'Ride',
-            'Pickup',
-            'Van',
-          ];
+
+    // Trigger instant refresh right when user taps dropdown
+    _loadAdminOptions(silent: true);
 
     showModalBottomSheet(
       context: context,
@@ -122,89 +182,139 @@ class _ProviderOnboardingDetailsContentLayoutState
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
       ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 44.0,
-                    height: 4.0,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF0ED),
-                      borderRadius: BorderRadius.circular(2.0),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16.0),
-                Text(
-                  isArabic ? 'اختر نوع الخدمة' : 'Select Service Category',
-                  style: GoogleFonts.inter(
-                    fontSize: 16.0,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1C2926),
-                  ),
-                ),
-                const SizedBox(height: 12.0),
-                Flexible(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: options.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1.0, color: Color(0xFFF3F4F6)),
-                    itemBuilder: (context, index) {
-                      final cat = options[index];
-                      final isSelected = cat == _selectedCategory;
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          Icons.local_shipping_outlined,
-                          color: isSelected ? const Color(0xFF8B53FE) : const Color(0xFF71717A),
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            _activeSheetUpdater = () {
+              if (bottomSheetContext.mounted) {
+                setModalState(() {});
+              }
+            };
+
+            final options = _adminCategoryModels.isNotEmpty
+                ? _adminCategoryModels
+                : _adminCategories
+                    .map((name) => CategoryModel(id: name, name: name, slug: name))
+                    .toList();
+
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44.0,
+                        height: 4.0,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF0ED),
+                          borderRadius: BorderRadius.circular(2.0),
                         ),
-                        title: Text(
-                          isArabic ? context.auto(cat) : cat,
+                      ),
+                    ),
+                    const SizedBox(height: 16.0),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          isArabic ? 'اختر نوع الخدمة' : 'Select Service Category',
                           style: GoogleFonts.inter(
-                            fontSize: 14.5,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                            color: isSelected ? const Color(0xFF8B53FE) : const Color(0xFF1C2926),
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1C2926),
                           ),
                         ),
-                        trailing: isSelected
-                            ? const Icon(Icons.check_circle_rounded, color: Color(0xFF8B53FE))
-                            : null,
-                        onTap: () {
-                          setState(() => _selectedCategory = cat);
-                          Navigator.of(context).pop();
-                        },
-                      );
-                    },
-                  ),
+                        if (_isLoadingAdminOptions)
+                          const SizedBox(
+                            width: 14.0,
+                            height: 14.0,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.0,
+                              color: Color(0xFF8B53FE),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12.0),
+                    if (options.isEmpty && _isLoadingAdminOptions)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 32.0),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF8B53FE),
+                          ),
+                        ),
+                      )
+                    else if (options.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24.0),
+                        child: Text(
+                          isArabic ? 'لا توجد فئات خدمات متاحة' : 'No service categories available',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 14.0,
+                            color: const Color(0xFF71717A),
+                          ),
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          separatorBuilder: (_, _) => const Divider(height: 1.0, color: Color(0xFFF3F4F6)),
+                          itemBuilder: (context, index) {
+                            final cat = options[index];
+                            final isSelected = _selectedCategoryModel?.id == cat.id ||
+                                _selectedCategory == cat.name;
+                            final displayName = cat.localizedName(isArabic);
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(
+                                Icons.local_shipping_outlined,
+                                color: isSelected ? const Color(0xFF8B53FE) : const Color(0xFF71717A),
+                              ),
+                              title: Text(
+                                displayName,
+                                style: GoogleFonts.inter(
+                                  fontSize: 14.5,
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                  color: isSelected ? const Color(0xFF8B53FE) : const Color(0xFF1C2926),
+                                ),
+                              ),
+                              trailing: isSelected
+                                  ? const Icon(Icons.check_circle_rounded, color: Color(0xFF8B53FE))
+                                  : null,
+                              onTap: () {
+                                setState(() {
+                                  _selectedCategoryModel = cat;
+                                  _selectedCategory = cat.name;
+                                });
+                                Navigator.of(context).pop();
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
-    );
+    ).whenComplete(() {
+      _activeSheetUpdater = null;
+    });
   }
 
   void _showVehicleTypeDropdown() {
     final isArabic = context.isArabic;
-    final options = _adminVehicleTypes.isNotEmpty
-        ? _adminVehicleTypes
-        : [
-            'Flatbed Truck',
-            'Wheel-Lift Tow Truck',
-            'Integrated Tow Truck',
-            'Heavy-Duty Recovery Truck',
-            'Service Van',
-            'Pickup Truck',
-            'Standard Car / Sedan',
-            'Motorcycle / Bike',
-          ];
+
+    // Trigger instant refresh right when user taps dropdown
+    _loadAdminOptions(silent: true);
 
     showModalBottomSheet(
       context: context,
@@ -212,73 +322,132 @@ class _ProviderOnboardingDetailsContentLayoutState
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
       ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 44.0,
-                    height: 4.0,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF0ED),
-                      borderRadius: BorderRadius.circular(2.0),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16.0),
-                Text(
-                  isArabic ? 'اختر نوع المركبة' : 'Select Vehicle Type',
-                  style: GoogleFonts.inter(
-                    fontSize: 16.0,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1C2926),
-                  ),
-                ),
-                const SizedBox(height: 12.0),
-                Flexible(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: options.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1.0, color: Color(0xFFF3F4F6)),
-                    itemBuilder: (context, index) {
-                      final vType = options[index];
-                      final isSelected = vType == _selectedVehicleType;
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          Icons.fire_truck_outlined,
-                          color: isSelected ? const Color(0xFF8B53FE) : const Color(0xFF71717A),
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            _activeSheetUpdater = () {
+              if (bottomSheetContext.mounted) {
+                setModalState(() {});
+              }
+            };
+
+            final options = _adminVehicleTypeModels.isNotEmpty
+                ? _adminVehicleTypeModels
+                : _adminVehicleTypes
+                    .map((name) => VehicleTypeModel.fromString(name))
+                    .toList();
+
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44.0,
+                        height: 4.0,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF0ED),
+                          borderRadius: BorderRadius.circular(2.0),
                         ),
-                        title: Text(
-                          isArabic ? context.auto(vType) : vType,
+                      ),
+                    ),
+                    const SizedBox(height: 16.0),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          isArabic ? 'اختر نوع المركبة' : 'Select Vehicle Type',
                           style: GoogleFonts.inter(
-                            fontSize: 14.5,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                            color: isSelected ? const Color(0xFF8B53FE) : const Color(0xFF1C2926),
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1C2926),
                           ),
                         ),
-                        trailing: isSelected
-                            ? const Icon(Icons.check_circle_rounded, color: Color(0xFF8B53FE))
-                            : null,
-                        onTap: () {
-                          setState(() => _selectedVehicleType = vType);
-                          Navigator.of(context).pop();
-                        },
-                      );
-                    },
-                  ),
+                        if (_isLoadingAdminOptions)
+                          const SizedBox(
+                            width: 14.0,
+                            height: 14.0,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.0,
+                              color: Color(0xFF8B53FE),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12.0),
+                    if (options.isEmpty && _isLoadingAdminOptions)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 32.0),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF8B53FE),
+                          ),
+                        ),
+                      )
+                    else if (options.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24.0),
+                        child: Text(
+                          isArabic ? 'لا توجد أنواع مركبات محددة' : 'No vehicle types available',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 14.0,
+                            color: const Color(0xFF71717A),
+                          ),
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          separatorBuilder: (_, _) => const Divider(height: 1.0, color: Color(0xFFF3F4F6)),
+                          itemBuilder: (context, index) {
+                            final vType = options[index];
+                            final isSelected = _selectedVehicleTypeModel?.id == vType.id ||
+                                _selectedVehicleType == vType.name;
+                            final displayName = vType.localizedName(isArabic);
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(
+                                Icons.fire_truck_outlined,
+                                color: isSelected ? const Color(0xFF8B53FE) : const Color(0xFF71717A),
+                              ),
+                              title: Text(
+                                displayName,
+                                style: GoogleFonts.inter(
+                                  fontSize: 14.5,
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                  color: isSelected ? const Color(0xFF8B53FE) : const Color(0xFF1C2926),
+                                ),
+                              ),
+                              trailing: isSelected
+                                  ? const Icon(Icons.check_circle_rounded, color: Color(0xFF8B53FE))
+                                  : null,
+                              onTap: () {
+                                setState(() {
+                                  _selectedVehicleTypeModel = vType;
+                                  _selectedVehicleType = vType.name;
+                                });
+                                Navigator.of(context).pop();
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
-    );
+    ).whenComplete(() {
+      _activeSheetUpdater = null;
+    });
   }
 
   Future<void> _handleContinue() async {
@@ -334,9 +503,18 @@ class _ProviderOnboardingDetailsContentLayoutState
 
     // Sync with backend API in background if available
     try {
+      final categoryId = _selectedCategoryModel?.id ?? _selectedCategory ?? '';
+      final vehicleTypeId = _selectedVehicleTypeModel?.id ?? '';
       await _backendService.updateProviderProfile(
         name: name,
-        categoryId: _selectedCategory ?? '1',
+        categoryId: categoryId,
+        categoryName: _selectedCategory,
+        whatsappNumber: whatsapp.isNotEmpty ? whatsapp : _registeredPhone,
+        vehicleType: _selectedVehicleType,
+        vehicleTypeId: vehicleTypeId,
+        vehicleModel: _selectedVehicleType,
+        plateNumber: plate,
+        vehicleColor: color,
         address: '',
         city: '',
       );
@@ -559,7 +737,7 @@ class _ProviderOnboardingDetailsContentLayoutState
           isArabic ? 'يمكنك إضافة رقم واتساب للتواصل مع العملاء.' : 'You can add your secondary WhatsApp number.',
         ),
 
-        const SizedBox(height: 20.0),
+        const SizedBox(height: ProviderOnboardingDetailsContentLayout.fieldGap),
 
         // Section Title: Service & Vehicle Details
         Text(
@@ -585,13 +763,16 @@ class _ProviderOnboardingDetailsContentLayoutState
               children: [
                 Expanded(
                   child: Text(
-                    _selectedCategory != null && _selectedCategory!.isNotEmpty
-                        ? (isArabic ? context.auto(_selectedCategory!) : _selectedCategory!)
-                        : (isArabic ? 'اختر نوع الخدمة' : 'Select Service Category'),
+                    _selectedCategoryModel != null
+                        ? _selectedCategoryModel!.localizedName(isArabic)
+                        : (_selectedCategory != null && _selectedCategory!.isNotEmpty
+                            ? (isArabic ? context.auto(_selectedCategory!) : _selectedCategory!)
+                            : (isArabic ? 'اختر نوع الخدمة' : 'Select Service Category')),
                     style: GoogleFonts.inter(
                       fontSize: 14.0,
                       fontWeight: FontWeight.w500,
-                      color: _selectedCategory != null && _selectedCategory!.isNotEmpty
+                      color: (_selectedCategoryModel != null ||
+                              (_selectedCategory != null && _selectedCategory!.isNotEmpty))
                           ? const Color(0xFF1C2926)
                           : const Color(0xFF9CA3AF),
                     ),
@@ -627,13 +808,16 @@ class _ProviderOnboardingDetailsContentLayoutState
               children: [
                 Expanded(
                   child: Text(
-                    _selectedVehicleType != null && _selectedVehicleType!.isNotEmpty
-                        ? (isArabic ? context.auto(_selectedVehicleType!) : _selectedVehicleType!)
-                        : (isArabic ? 'اختر نوع المركبة' : 'Select Vehicle Type'),
+                    _selectedVehicleTypeModel != null
+                        ? _selectedVehicleTypeModel!.localizedName(isArabic)
+                        : (_selectedVehicleType != null && _selectedVehicleType!.isNotEmpty
+                            ? (isArabic ? context.auto(_selectedVehicleType!) : _selectedVehicleType!)
+                            : (isArabic ? 'اختر نوع المركبة' : 'Select Vehicle Type')),
                     style: GoogleFonts.inter(
                       fontSize: 14.0,
                       fontWeight: FontWeight.w500,
-                      color: _selectedVehicleType != null && _selectedVehicleType!.isNotEmpty
+                      color: (_selectedVehicleTypeModel != null ||
+                              (_selectedVehicleType != null && _selectedVehicleType!.isNotEmpty))
                           ? const Color(0xFF1C2926)
                           : const Color(0xFF9CA3AF),
                     ),

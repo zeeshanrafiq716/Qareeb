@@ -410,8 +410,9 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
       return;
     }
 
-    // Verify all compulsory documents and vehicle photos on backend
+    // Verify all compulsory documents and complete onboarding on backend
     _backendService.verifyAllCompulsoryDocuments();
+    _backendService.completeOnboarding();
 
     ProviderRegistrationStore.instance.update(
       (data) => data.copyWith(

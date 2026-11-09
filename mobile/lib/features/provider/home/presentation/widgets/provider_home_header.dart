@@ -144,26 +144,42 @@ class ProviderHomeHeader extends ConsumerWidget {
                               child: Container(
                                 width: avatarSize,
                                 height: avatarSize,
-                                color: const Color(0xFFFCA5A5), // Coral background matching customer side
+                                color: const Color(0xFFF0EAFE),
                                 child: isNetworkAvatar
                                     ? Image.network(
                                         avatarUrl!,
                                         width: avatarSize,
                                         height: avatarSize,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, _, _) => Image.asset(
-                                          defaultAvatarAsset,
-                                          width: avatarSize,
-                                          height: avatarSize,
-                                          fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => const Center(
+                                          child: Icon(
+                                            Icons.person_rounded,
+                                            size: 22.0,
+                                            color: Color(0xFF8B53FE),
+                                          ),
                                         ),
                                       )
-                                    : Image.asset(
-                                        avatarUrl ?? defaultAvatarAsset,
-                                        width: avatarSize,
-                                        height: avatarSize,
-                                        fit: BoxFit.cover,
-                                      ),
+                                    : (avatarUrl != null && avatarUrl!.isNotEmpty && avatarUrl != defaultAvatarAsset)
+                                        ? Image.asset(
+                                            avatarUrl!,
+                                            width: avatarSize,
+                                            height: avatarSize,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, _, _) => const Center(
+                                              child: Icon(
+                                                Icons.person_rounded,
+                                                size: 22.0,
+                                                color: Color(0xFF8B53FE),
+                                              ),
+                                            ),
+                                          )
+                                        : const Center(
+                                            child: Icon(
+                                              Icons.person_rounded,
+                                              size: 22.0,
+                                              color: Color(0xFF8B53FE),
+                                            ),
+                                          ),
                               ),
                             ),
                           ),

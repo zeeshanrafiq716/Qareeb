@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 120" width="196" height="120" fill="none">
+  
+  <defs>
+    <!-- Realistic 3D White Bodywork -->
+    <linearGradient id="body_white_3d" x1="0.1" y1="0" x2="0.3" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="25%" stop-color="#FAFAFA"/>
+      <stop offset="60%" stop-color="#EEF2F6"/>
+      <stop offset="85%" stop-color="#D9E2EC"/>
+      <stop offset="100%" stop-color="#BCCCDC"/>
+    </linearGradient>
+    <linearGradient id="body_white_roof" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+    <linearGradient id="body_shadow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#94A3B8"/>
+      <stop offset="100%" stop-color="#475569"/>
+    </linearGradient>
+
+    <!-- Tinted Glass Window Reflection -->
+    <linearGradient id="glass_3d" x1="0.1" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#E0F2FE" stop-opacity="0.95"/>
+      <stop offset="25%" stop-color="#BAE6FD" stop-opacity="0.9"/>
+      <stop offset="55%" stop-color="#38BDF8" stop-opacity="0.85"/>
+      <stop offset="80%" stop-color="#0284C7" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0.95"/>
+    </linearGradient>
+
+    <!-- Chrome & Polished Metal -->
+    <linearGradient id="chrome_metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="25%" stop-color="#94A3B8"/>
+      <stop offset="50%" stop-color="#F8FAFC"/>
+      <stop offset="75%" stop-color="#64748B"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+
+    <!-- Alloy Rim -->
+    <linearGradient id="alloy_rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F8FAFC"/>
+      <stop offset="40%" stop-color="#CBD5E1"/>
+      <stop offset="80%" stop-color="#64748B"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+
+    <!-- Stainless Steel Tank (Water) -->
+    <linearGradient id="steel_tank_water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E0F2FE"/>
+      <stop offset="18%" stop-color="#BAE6FD"/>
+      <stop offset="35%" stop-color="#38BDF8"/>
+      <stop offset="50%" stop-color="#0284C7"/>
+      <stop offset="70%" stop-color="#0369A1"/>
+      <stop offset="100%" stop-color="#0C4A6E"/>
+    </linearGradient>
+
+    <!-- Fuel Tank (Amber / Gold) -->
+    <linearGradient id="fuel_tank_grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FEF3C7"/>
+      <stop offset="20%" stop-color="#FDE68A"/>
+      <stop offset="45%" stop-color="#F59E0B"/>
+      <stop offset="75%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#92400E"/>
+    </linearGradient>
+
+    <!-- Amber Beacon Bar -->
+    <linearGradient id="beacon_amber" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="50%" stop-color="#FEF08A"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+
+    <!-- Drop Shadow Filter -->
+    <filter id="soft_shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3.5" flood-color="#0F172A" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  
+  <ellipse cx="98" cy="105" rx="76" ry="6.5" fill="#0F172A" opacity="0.16"/>
+  <ellipse cx="98" cy="105" rx="58" ry="3.5" fill="#0F172A" opacity="0.22"/>
+
+  <g filter="url(#soft_shadow)">
+    <!-- Van Body Roof -->
+    <path d="M34 42 Q36 34 46 34 L138 34 Q146 34 150 40 L166 60 Q170 66 170 72 L170 86 L32 86 Q30 86 30 78 L30 52 Q30 42 34 42 Z" fill="url(#body_white_3d)"/>
+    <!-- Lower Body Sill & Shadow -->
+    <path d="M30 82 L170 82 L170 86 L30 86 Z" fill="#94A3B8" opacity="0.6"/>
+    <!-- Wheel Arch Cutouts -->
+    <path d="M42 86 A16 16 0 0 1 74 86 Z" fill="#0F172A"/>
+    <path d="M128 86 A16 16 0 0 1 160 86 Z" fill="#0F172A"/>
+
+    <!-- Front Windshield & Side Windows -->
+    <!-- Windshield -->
+    <path d="M144 38 L162 60 L136 60 L134 38 Z" fill="url(#glass_3d)"/>
+    <!-- Front Door Window -->
+    <path d="M112 40 L132 40 L134 60 L112 60 Z" fill="url(#glass_3d)"/>
+    <!-- Middle Sliding Window -->
+    <path d="M72 40 L108 40 L108 60 L72 60 Z" fill="url(#glass_3d)"/>
+    <!-- Rear Quarter Window -->
+    <path d="M36 42 Q40 40 48 40 L68 40 L68 60 L34 60 Z" fill="url(#glass_3d)"/>
+
+    <!-- Door Seams & Handle -->
+    <line x1="110" y1="38" x2="110" y2="82" stroke="#CBD5E1" stroke-width="1.2"/>
+    <line x1="70" y1="38" x2="70" y2="82" stroke="#CBD5E1" stroke-width="1.2"/>
+    <rect x="114" y="64" width="8" height="2" rx="1" fill="#475569"/>
+    <rect x="74" y="64" width="8" height="2" rx="1" fill="#475569"/>
+
+    <!-- Aerodynamic Side Mirror -->
+    <path d="M136 54 L142 54 Q144 54 144 58 L142 62 L136 60 Z" fill="url(#body_white_3d)"/>
+    <rect x="137" y="55" width="5" height="5" rx="1" fill="#38BDF8"/>
+
+    <!-- Front Headlight & Chrome Grille -->
+    <path d="M166 66 L171 68 Q172 70 171 74 L165 74 Z" fill="#F8FAFC"/>
+    <path d="M166 68 L170 70 L170 72 L166 72 Z" fill="#38BDF8" opacity="0.8"/>
+    <rect x="170" y="70" width="2" height="3" fill="#F59E0B"/>
+    <rect x="162" y="74" width="10" height="3" rx="1" fill="url(#chrome_metal)"/>
+    <!-- Front Bumper -->
+    <rect x="164" y="78" width="7" height="6" rx="2" fill="#E2E8F0"/>
+
+    <!-- Roof Rack & Custom Equipment Mounted -->
+    
+    
+    <!-- Mounted Bullet Security Cameras -->
+    <g transform="translate(56, 52)">
+      <rect x="-8" y="-4" width="14" height="7" rx="2" fill="#1E293B"/>
+      <circle cx="7" cy="-0.5" r="3.5" fill="#38BDF8"/>
+      <line x1="-8" y1="0" x2="-14" y2="4" stroke="#475569" stroke-width="2"/>
+    </g>
+    <g transform="translate(76, 52)">
+      <rect x="-8" y="-4" width="14" height="7" rx="2" fill="#1E293B"/>
+      <circle cx="7" cy="-0.5" r="3.5" fill="#38BDF8"/>
+    </g>
+  
+
+    <!-- Wheels -->
+    
+  <g transform="translate(58, 86)">
+    <!-- Tire Outer Rubber -->
+    <circle cx="0" cy="0" r="13.5" fill="#1E293B"/>
+    <circle cx="0" cy="0" r="12.5" fill="#0F172A"/>
+    <!-- Tire Tread Ring -->
+    <circle cx="0" cy="0" r="11" fill="#1E293B"/>
+    <!-- Alloy Wheel -->
+    <circle cx="0" cy="0" r="9.5" fill="url(#alloy_rim)"/>
+    <!-- Rim Spokes -->
+    <circle cx="0" cy="0" r="6" fill="#334155"/>
+    <circle cx="0" cy="0" r="4" fill="url(#chrome_metal)"/>
+    <circle cx="0" cy="0" r="2" fill="#0F172A"/>
+  </g>
+
+    
+  <g transform="translate(144, 86)">
+    <!-- Tire Outer Rubber -->
+    <circle cx="0" cy="0" r="13.5" fill="#1E293B"/>
+    <circle cx="0" cy="0" r="12.5" fill="#0F172A"/>
+    <!-- Tire Tread Ring -->
+    <circle cx="0" cy="0" r="11" fill="#1E293B"/>
+    <!-- Alloy Wheel -->
+    <circle cx="0" cy="0" r="9.5" fill="url(#alloy_rim)"/>
+    <!-- Rim Spokes -->
+    <circle cx="0" cy="0" r="6" fill="#334155"/>
+    <circle cx="0" cy="0" r="4" fill="url(#chrome_metal)"/>
+    <circle cx="0" cy="0" r="2" fill="#0F172A"/>
+  </g>
+
+  </g>
+</svg>

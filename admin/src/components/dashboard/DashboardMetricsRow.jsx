@@ -14,12 +14,13 @@ import {
 export function DashboardMetricsRow({
   adminName = 'Zeeshan',
   stats = {
-    totalProviders: '1,482',
-    pendingVerifications: '24',
-    onlineProviders: '312',
-    openReports: '8',
+    totalProviders: '0',
+    pendingVerifications: '0',
+    onlineProviders: '0',
+    openReports: '0',
   },
   onDateRangeChange,
+  onCardClick,
 }) {
   const [dateRange, setDateRange] = useState('Last 7 Days')
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -36,10 +37,10 @@ export function DashboardMetricsRow({
     {
       id: 'total-providers',
       title: 'Total Providers',
-      value: stats.totalProviders || '1,482',
+      value: stats.totalProviders ?? '0',
       icon: Users,
       trend: {
-        value: '12%',
+        value: '0%',
         direction: 'up',
         bgColor: 'bg-[#E9FBF0]',
         textColor: 'text-[#16A34A]',
@@ -49,10 +50,10 @@ export function DashboardMetricsRow({
     {
       id: 'pending-verifications',
       title: 'Pending Verifications',
-      value: stats.pendingVerifications || '24',
+      value: stats.pendingVerifications ?? '0',
       icon: Clock,
       trend: {
-        value: '6%',
+        value: '0%',
         direction: 'up',
         bgColor: 'bg-[#FEF3E2]',
         textColor: 'text-[#D97706]',
@@ -62,10 +63,10 @@ export function DashboardMetricsRow({
     {
       id: 'online-providers',
       title: 'Online Providers',
-      value: stats.onlineProviders || '312',
+      value: stats.onlineProviders ?? '0',
       icon: UserCheck,
       trend: {
-        value: '18%',
+        value: '0%',
         direction: 'up',
         bgColor: 'bg-[#E9FBF0]',
         textColor: 'text-[#16A34A]',
@@ -75,10 +76,10 @@ export function DashboardMetricsRow({
     {
       id: 'open-reports',
       title: 'Open Reports',
-      value: stats.openReports || '8',
+      value: stats.openReports ?? '0',
       icon: ShieldAlert,
       trend: {
-        value: '-20%',
+        value: '0%',
         direction: 'down',
         bgColor: 'bg-[#FEE2E2]',
         textColor: 'text-[#DC2626]',
@@ -169,21 +170,22 @@ export function DashboardMetricsRow({
           return (
             <div
               key={card.id}
+              onClick={() => onCardClick && onCardClick(card.id)}
               style={{
                 height: '170px',
                 borderRadius: '20px',
-                padding: '20px',
-                gap: '32px',
+                padding: '16px 18px',
+                gap: '24px',
                 background: '#FFFFFF',
                 boxSizing: 'border-box',
               }}
-              className="w-full min-w-0 flex flex-col justify-between shrink-0 border border-[#F0EFF5] shadow-xs hover:border-[#DECFFC] transition-all"
+              className="w-full min-w-0 flex flex-col justify-between shrink-0 border border-[#F0EFF5] shadow-xs hover:border-[#8B53FE] hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer"
             >
               {/* Card Inner Heading: height: 32; gap: 12px; */}
               <div
                 style={{
-                  height: '32px',
-                  gap: '12px',
+                  minHeight: '32px',
+                  gap: '10px',
                 }}
                 className="w-full flex items-center shrink-0 min-w-0"
               >
@@ -192,7 +194,7 @@ export function DashboardMetricsRow({
                   <IconComp className="w-4 h-4" />
                 </div>
                 {/* Label */}
-                <span className="text-[14px] font-medium text-[#616166] truncate min-w-0">
+                <span className="text-[13px] sm:text-[13.5px] font-semibold text-[#1C2926] leading-snug whitespace-normal min-w-0">
                   {card.title}
                 </span>
               </div>
@@ -205,7 +207,7 @@ export function DashboardMetricsRow({
                 className="w-full flex flex-col justify-between shrink-0 min-w-0"
               >
                 {/* Value */}
-                <div className="text-[28px] font-bold text-[#1C2926] leading-none tracking-tight truncate">
+                <div className="text-[28px] font-bold text-[#1C2926] leading-none tracking-tight">
                   {card.value}
                 </div>
 
@@ -222,7 +224,7 @@ export function DashboardMetricsRow({
                     <span>{card.trend.value}</span>
                   </span>
 
-                  <span className="text-[11px] sm:text-[12px] text-[#616166] font-normal truncate min-w-0">
+                  <span className="text-[11px] sm:text-[12px] text-[#616166] font-normal whitespace-nowrap shrink-0">
                     {card.comparison}
                   </span>
                 </div>

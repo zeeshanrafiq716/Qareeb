@@ -27,105 +27,6 @@ class ServicesSectionWidget extends ConsumerWidget {
   final VoidCallback? onCard1Tap;
   final VoidCallback? onCard2Tap;
 
-  /// Default baseline categories matching Figma branding
-  static const List<CategoryModel> defaultCategories = [
-    CategoryModel(
-      id: 1,
-      name: 'Ride',
-      slug: 'ride',
-      subtitle: 'City & local rides',
-      assetImage: 'assets/images/car_ride.png',
-      isEnabled: true,
-    ),
-    CategoryModel(
-      id: 2,
-      name: 'Pickup',
-      slug: 'pickup',
-      subtitle: 'Goods & deliveries',
-      assetImage: 'assets/images/pickup.png',
-      isEnabled: true,
-    ),
-    CategoryModel(
-      id: 3,
-      name: 'Rider',
-      slug: 'rider',
-      subtitle: 'Fast & convenient',
-      assetImage: 'assets/images/rider_bike.png',
-      isEnabled: true,
-    ),
-    CategoryModel(
-      id: 4,
-      name: 'Van',
-      slug: 'van',
-      subtitle: 'Group & family travel',
-      assetImage: 'assets/images/van.png',
-      isEnabled: true,
-    ),
-    CategoryModel(
-      id: 5,
-      name: 'Auto',
-      slug: 'auto',
-      subtitle: 'Affordable local travel',
-      isEnabled: true,
-    ),
-    CategoryModel(
-      id: 6,
-      name: 'Emergency',
-      slug: 'emergency',
-      subtitle: 'Urgent roadside aid',
-      isEnabled: true,
-    ),
-    // 6 Additional category cards copied from the first 4 cards
-    CategoryModel(
-      id: 7,
-      name: 'Ride',
-      slug: 'ride',
-      subtitle: 'City & local rides',
-      assetImage: 'assets/images/car_ride.png',
-      isEnabled: true,
-    ),
-    CategoryModel(
-      id: 8,
-      name: 'Pickup',
-      slug: 'pickup',
-      subtitle: 'Goods & deliveries',
-      assetImage: 'assets/images/pickup.png',
-      isEnabled: true,
-    ),
-    CategoryModel(
-      id: 9,
-      name: 'Rider',
-      slug: 'rider',
-      subtitle: 'Fast & convenient',
-      assetImage: 'assets/images/rider_bike.png',
-      isEnabled: true,
-    ),
-    CategoryModel(
-      id: 10,
-      name: 'Van',
-      slug: 'van',
-      subtitle: 'Group & family travel',
-      assetImage: 'assets/images/van.png',
-      isEnabled: true,
-    ),
-    CategoryModel(
-      id: 11,
-      name: 'Ride',
-      slug: 'ride',
-      subtitle: 'City & local rides',
-      assetImage: 'assets/images/car_ride.png',
-      isEnabled: true,
-    ),
-    CategoryModel(
-      id: 12,
-      name: 'Pickup',
-      slug: 'pickup',
-      subtitle: 'Goods & deliveries',
-      assetImage: 'assets/images/pickup.png',
-      isEnabled: true,
-    ),
-  ];
-
   const ServicesSectionWidget({
     super.key,
     this.heading = 'Choose Your Ride',
@@ -140,21 +41,20 @@ class ServicesSectionWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Determine active category list:
-    // 1. Explicitly passed categories (e.g. customized or filtered)
-    // 2. Live categories from backend provider (synced with admin dashboard)
-    // 3. Default preset categories (Row 1: Ride, Pickup; Row 2: Delivery, Moto)
+    // Active categories: real admin categories synced from backend,
+    // with CategoryModel.default26Categories as seamless baseline so the app is NEVER empty.
     List<CategoryModel> activeCategories;
     if (categories != null && categories!.isNotEmpty) {
-      activeCategories = categories!.where((c) => c.isEnabled && c.slug != 'emergency').toList();
+      final filtered = categories!.where((c) => c.isEnabled && c.slug != 'emergency').toList();
+      activeCategories = filtered.isNotEmpty ? filtered : CategoryModel.default26Categories;
     } else {
       final backendCategories = ref.watch(categoriesProvider);
       activeCategories = backendCategories.maybeWhen(
         data: (items) {
           final enabled = items.where((c) => c.isEnabled && c.slug != 'emergency').toList();
-          return enabled.isNotEmpty ? enabled : defaultCategories.where((c) => c.slug != 'emergency').toList();
+          return enabled.isNotEmpty ? enabled : CategoryModel.default26Categories;
         },
-        orElse: () => defaultCategories.where((c) => c.slug != 'emergency').toList(),
+        orElse: () => CategoryModel.default26Categories,
       );
     }
 
@@ -254,8 +154,8 @@ class ServicesSectionWidget extends ConsumerWidget {
             Expanded(
               child: CategoryCardWidget.fromModel(
                 firstCategory,
-                titleOverride: tr.categoryName(firstCategory.slug, firstCategory.name),
-                subtitleOverride: tr.categorySubtitle(firstCategory.slug, firstCategory.displaySubtitle),
+                titleOverride: firstCategory.localizedName(tr.isArabic),
+                subtitleOverride: firstCategory.localizedSubtitle(tr.isArabic),
                 tr: tr,
                 onTap: tapFirst,
                 customContent: customFirst,
@@ -270,8 +170,8 @@ class ServicesSectionWidget extends ConsumerWidget {
               child: secondCategory != null
                   ? CategoryCardWidget.fromModel(
                       secondCategory,
-                      titleOverride: tr.categoryName(secondCategory.slug, secondCategory.name),
-                      subtitleOverride: tr.categorySubtitle(secondCategory.slug, secondCategory.displaySubtitle),
+                      titleOverride: secondCategory.localizedName(tr.isArabic),
+                      subtitleOverride: secondCategory.localizedSubtitle(tr.isArabic),
                       tr: tr,
                       onTap: tapSecond,
                       customContent: customSecond,

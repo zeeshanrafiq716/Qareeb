@@ -9,12 +9,18 @@ import {
   adminLoginSchema,
   adminLookupSchema,
   adminMapSchema,
+  adminProfileUpdateSchema,
   categoryCreateSchema,
   categoryPatchSchema,
+  categoryReorderSchema,
   idParamSchema,
   optionalReasonSchema,
   providerListSchema,
   reasonSchema,
+  vehicleTypeCreateSchema,
+  vehicleTypePatchSchema,
+  cityCreateSchema,
+  cityPatchSchema,
 } from "../schemas.js";
 import * as adminService from "../admin.service.js";
 import { listOnlineProviders } from "../presence.service.js";
@@ -22,6 +28,7 @@ import { getPlatformFunnelAnalytics, getProviderFunnelSummary } from "../funnel.
 import { adminLoginRateLimit } from "../../middleware/rateLimit.js";
 import { adminPushSchema } from "../schemas.js";
 import { sendAdminPush } from "../notifications.service.js";
+import { autoTranslateToArabic } from "../../utils/translator.js";
 
 export const adminRoutes = Router();
 
@@ -34,12 +41,37 @@ adminRoutes.post(
   }),
 );
 
+adminRoutes.get(
+  "/profile",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.getAdminProfile(req.admin.id));
+  }),
+);
+
+adminRoutes.patch(
+  "/profile",
+  requireAdmin,
+  validate(adminProfileUpdateSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.updateAdminProfile(req.admin.id, req.body));
+  }),
+);
+
 adminRoutes.post(
   "/notifications/send",
   requireAdmin,
   validate(adminPushSchema),
   asyncHandler(async (req, res) => {
     ok(res, await sendAdminPush(req.body));
+  }),
+);
+
+adminRoutes.get(
+  "/notifications",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.getAdminNotifications());
   }),
 );
 
@@ -111,9 +143,18 @@ adminRoutes.post(
 adminRoutes.post(
   "/providers/:id/suspend",
   requireAdmin,
-  validate(reasonSchema),
+  validate(optionalReasonSchema),
   asyncHandler(async (req, res) => {
-    ok(res, await adminService.suspendProvider(req.params.id, req.admin, req.body.reason));
+    ok(res, await adminService.suspendProvider(req.params.id, req.admin, req.body?.reason));
+  }),
+);
+
+adminRoutes.post(
+  "/providers/:id/block",
+  requireAdmin,
+  validate(optionalReasonSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.blockProvider(req.params.id, req.admin, req.body?.reason));
   }),
 );
 
@@ -123,6 +164,15 @@ adminRoutes.post(
   validate(optionalReasonSchema),
   asyncHandler(async (req, res) => {
     ok(res, await adminService.reinstateProvider(req.params.id, req.admin, req.body?.reason));
+  }),
+);
+
+adminRoutes.delete(
+  "/providers/:id",
+  requireAdmin,
+  validate(idParamSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.deleteProvider(req.params.id, req.admin));
   }),
 );
 
@@ -187,7 +237,16 @@ adminRoutes.post(
   requireAdmin,
   validate(categoryCreateSchema),
   asyncHandler(async (req, res) => {
-    created(res, await adminService.createCategory(req.body.name));
+    created(res, await adminService.createCategory(req.body));
+  }),
+);
+
+adminRoutes.patch(
+  "/categories/reorder",
+  requireAdmin,
+  validate(categoryReorderSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.reorderCategories(req.body));
   }),
 );
 
@@ -206,5 +265,121 @@ adminRoutes.delete(
   validate(idParamSchema),
   asyncHandler(async (req, res) => {
     ok(res, await adminService.removeCategory(req.params.id));
+  }),
+);
+
+adminRoutes.get(
+  "/vehicle-types",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const isEnabled = req.query.isEnabled !== undefined ? req.query.isEnabled === "true" : undefined;
+    ok(res, await adminService.listVehicleTypes({ categoryId: req.query.categoryId, isEnabled }));
+  }),
+);
+
+adminRoutes.post(
+  "/vehicle-types",
+  requireAdmin,
+  validate(vehicleTypeCreateSchema),
+  asyncHandler(async (req, res) => {
+    created(res, await adminService.createVehicleType(req.body));
+  }),
+);
+
+adminRoutes.patch(
+  "/vehicle-types/:id",
+  requireAdmin,
+  validate(vehicleTypePatchSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.patchVehicleType(req.params.id, req.body));
+  }),
+);
+
+adminRoutes.delete(
+  "/vehicle-types/:id",
+  requireAdmin,
+  validate(idParamSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.removeVehicleType(req.params.id));
+  }),
+);
+
+adminRoutes.get(
+  "/cities",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const enabledOnly = req.query.enabledOnly === "true";
+    ok(res, await adminService.listCities({ enabledOnly }));
+  }),
+);
+
+adminRoutes.post(
+  "/cities",
+  requireAdmin,
+  validate(cityCreateSchema),
+  asyncHandler(async (req, res) => {
+    created(res, await adminService.createCity(req.body));
+  }),
+);
+
+adminRoutes.patch(
+  "/cities/:id",
+  requireAdmin,
+  validate(cityPatchSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.patchCity(req.params.id, req.body));
+  }),
+);
+
+adminRoutes.delete(
+  "/cities/:id",
+  requireAdmin,
+  validate(idParamSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.removeCity(req.params.id));
+  }),
+);
+
+adminRoutes.post(
+  "/translate",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const text = req.body?.text || req.query?.text || "";
+    const translated = await autoTranslateToArabic(text);
+    ok(res, { text, translated });
+  }),
+);
+
+adminRoutes.get(
+  "/translate",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const text = req.query?.text || "";
+    const translated = await autoTranslateToArabic(text);
+    ok(res, { text, translated });
+  }),
+);
+
+adminRoutes.get(
+  "/category-assets",
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    ok(res, await adminService.listCategoryAssets());
+  }),
+);
+
+adminRoutes.post(
+  "/category-assets",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    created(res, await adminService.addCategoryAsset(req.body));
+  }),
+);
+
+adminRoutes.delete(
+  "/category-assets/:id",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.removeCategoryAsset(req.params.id));
   }),
 );

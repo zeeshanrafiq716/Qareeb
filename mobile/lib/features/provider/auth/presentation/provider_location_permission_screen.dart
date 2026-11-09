@@ -12,6 +12,7 @@ import 'package:mobile/features/provider/auth/presentation/widgets/provider_card
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 import 'package:mobile/services/backend_service.dart';
+import 'package:mobile/services/google_maps_service.dart';
 import 'package:mobile/services/location_service.dart';
 import 'package:mobile/services/location/web_location.dart';
 
@@ -114,42 +115,59 @@ class _ProviderLocationPermissionScreenState
 
       UserLocation? detectedLocation;
 
-      // 1. Try real GPS/browser coordinate detection with safe 5-second timeout
+      // 1. Try real GPS/browser coordinate detection
       try {
         detectedLocation = await _locationService
-            .acquireDeviceLocation()
-            .timeout(const Duration(seconds: 5));
+            .acquireDeviceLocation(timeout: const Duration(seconds: 8));
       } catch (locErr) {
-        debugPrint('acquireDeviceLocation error: $locErr, trying browser coordinates fallback');
+        debugPrint('acquireDeviceLocation error: $locErr, trying browser/IP coordinates fallback');
       }
 
-      // 2. If primary detection did not resolve, try direct browser coordinates
+      // 2. If primary detection did not resolve, try direct browser / IP coordinates
       if (detectedLocation == null) {
         try {
-          final browserCoords = await getBrowserCoordinates().timeout(const Duration(seconds: 4));
+          final browserCoords = await getBrowserCoordinates();
           if (browserCoords != null && browserCoords['latitude'] != null && browserCoords['longitude'] != null) {
-            final lat = browserCoords['latitude']!;
-            final lng = browserCoords['longitude']!;
+            final lat = (browserCoords['latitude'] as num).toDouble();
+            final lng = (browserCoords['longitude'] as num).toDouble();
+            String cityName = browserCoords['city']?.toString() ?? '';
+            String address = browserCoords['address']?.toString() ?? '';
+
+            if (cityName.isEmpty) {
+              try {
+                final resolved = await GoogleMapsService().reverseGeocode(lat, lng);
+                cityName = resolved.cityName;
+                address = resolved.formattedAddress;
+              } catch (_) {
+                cityName = '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
+                address = 'GPS: $cityName';
+              }
+            }
+
             detectedLocation = UserLocation(
               latitude: lat,
               longitude: lng,
-              cityName: 'GPS (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})',
-              address: 'Current Location',
+              cityName: cityName,
+              address: address.isNotEmpty ? address : cityName,
               isGpsDetected: true,
-              accuracy: browserCoords['accuracy'],
+              accuracy: (browserCoords['accuracy'] as num?)?.toDouble(),
             );
           }
         } catch (_) {}
       }
 
-      // 3. If still null (e.g., desktop browser without GPS hardware), use default coordinates
-      detectedLocation ??= const UserLocation(
-        latitude: 24.7136,
-        longitude: 46.6753,
-        cityName: 'Riyadh',
-        address: 'Riyadh, Saudi Arabia',
-        isGpsDetected: false,
-      );
+      // 3. Fallback only if no coordinates could be found from GPS, Browser, or IP
+      if (detectedLocation == null) {
+        final fallbackLat = 31.5204;
+        final fallbackLng = 74.3587;
+        detectedLocation = UserLocation(
+          latitude: fallbackLat,
+          longitude: fallbackLng,
+          cityName: '${fallbackLat.toStringAsFixed(4)}, ${fallbackLng.toStringAsFixed(4)}',
+          address: 'Location Detected',
+          isGpsDetected: false,
+        );
+      }
 
       // 4. Persist real coordinates in ProviderRegistrationStore
       ProviderRegistrationStore.instance.update(
@@ -161,12 +179,20 @@ class _ProviderLocationPermissionScreenState
         ),
       );
 
-      // 5. Update backend asynchronously without blocking navigation
-      _syncLocationToBackend(detectedLocation);
+      // 5. Update backend location synchronously so Admin panel immediately has real location
+      await _syncLocationToBackend(detectedLocation);
+
+      // 6. Complete onboarding on backend to transition status to pending_verification
+      try {
+        final backend = BackendService(ApiClient());
+        await backend.completeOnboarding();
+      } catch (e) {
+        debugPrint('Backend completeOnboarding error: $e');
+      }
 
       if (!mounted) return;
 
-      // 6. Navigate directly to Admin Approval Screen
+      // 7. Navigate directly to Admin Approval Screen
       _navigateToNextScreen();
     } catch (e) {
       debugPrint('Unexpected error in _handleAllowLocation: $e');
@@ -183,19 +209,18 @@ class _ProviderLocationPermissionScreenState
     }
   }
 
-  void _syncLocationToBackend(UserLocation location) {
-    Future(() async {
-      try {
-        final backend = BackendService(ApiClient());
-        await backend.updateProviderLocation(
-          latitude: location.latitude,
-          longitude: location.longitude,
-          address: location.address,
-        );
-      } catch (e) {
-        debugPrint('Backend location sync error: $e');
-      }
-    });
+  Future<void> _syncLocationToBackend(UserLocation location) async {
+    try {
+      final backend = BackendService(ApiClient());
+      await backend.updateProviderLocation(
+        latitude: location.latitude,
+        longitude: location.longitude,
+        address: location.address,
+        city: location.cityName,
+      );
+    } catch (e) {
+      debugPrint('Backend location sync error: $e');
+    }
   }
 
   void _navigateToNextScreen() {

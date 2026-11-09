@@ -4,10 +4,12 @@ import { created, ok } from "../../utils/http.js";
 import { validate } from "../../middleware/validate.js";
 import { optionalProvider, requireProvider } from "../../middleware/auth.js";
 import { publicFileUrl, upload } from "../../middleware/upload.js";
+import { PROVIDER_STATUS } from "../../config/constants.js";
+import { ForbiddenError } from "../../utils/AppError.js";
 import { kycTokenSchema, profileSchema, verificationSchema } from "../schemas.js";
 import * as authService from "../auth.service.js";
 import * as providerService from "../providers.service.js";
-import { getProviderPresence } from "../presence.service.js";
+import { getProviderPresence, setOnline, setOffline } from "../presence.service.js";
 import { processLocationUpdate } from "../location.service.js";
 import {
   getProviderDashboardAnalytics,
@@ -39,6 +41,9 @@ providerRoutes.get(
   "/me/stats",
   optionalProvider,
   asyncHandler(async (req, res) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     const providerId = req.provider?.id || req.query.providerId || null;
     const stats = await getProviderQuickStats(providerId);
     ok(res, stats);
@@ -49,6 +54,9 @@ providerRoutes.get(
   "/me/dashboard",
   optionalProvider,
   asyncHandler(async (req, res) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     const providerId = req.provider?.id || req.query.providerId || null;
     const dashboard = await getProviderDashboardAnalytics(providerId);
     ok(res, dashboard);
@@ -64,11 +72,47 @@ providerRoutes.get(
 );
 
 providerRoutes.put(
+  "/me/presence",
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    const isOnline = Boolean(req.body.isOnline);
+    if (isOnline) {
+      if (
+        req.provider.status_code === PROVIDER_STATUS.SUSPENDED ||
+        req.provider.status_code === PROVIDER_STATUS.BLOCKED
+      ) {
+        throw new ForbiddenError(`Cannot go online while account is ${req.provider.status_code}`);
+      }
+      await setOnline(req.provider.id);
+    } else {
+      await setOffline(req.provider.id);
+    }
+    ok(res, await getProviderPresence(req.provider.id));
+  }),
+);
+
+providerRoutes.put(
   "/me/location",
   requireProvider,
   validate(locationUpdateSchema),
   asyncHandler(async (req, res) => {
-    ok(res, await processLocationUpdate(req.provider.id, req.body.latitude, req.body.longitude));
+    if (
+      req.provider.status_code === PROVIDER_STATUS.SUSPENDED ||
+      req.provider.status_code === PROVIDER_STATUS.BLOCKED
+    ) {
+      ok(res, { accepted: false, reason: `account_${req.provider.status_code}`, isOnline: false });
+      return;
+    }
+    ok(
+      res,
+      await processLocationUpdate(
+        req.provider.id,
+        req.body.latitude,
+        req.body.longitude,
+        req.body.address,
+        req.body.city,
+      ),
+    );
   }),
 );
 
@@ -119,6 +163,14 @@ providerRoutes.get(
 );
 
 providerRoutes.post(
+  "/me/complete-onboarding",
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    ok(res, await providerService.completeProviderOnboarding(req.provider));
+  }),
+);
+
+providerRoutes.post(
   "/me/verification/check-all",
   requireProvider,
   asyncHandler(async (req, res) => {
@@ -126,6 +178,9 @@ providerRoutes.post(
       req.provider.client || null,
       req.provider.id,
     );
+    if (providerService.completeProviderOnboarding) {
+      await providerService.completeProviderOnboarding(req.provider);
+    }
     ok(res, { success: true, ...docStatus });
   }),
 );

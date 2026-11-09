@@ -105,6 +105,7 @@ export function buildCustomerDiscoveryCard(row, distanceM, redisOnline) {
 }
 
 async function ensureNearbyProvidersAroundCoordinates({ latitude, longitude, categoryId }) {
+  if (env.isTest) return;
   const lat = Number(latitude);
   const lng = Number(longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;

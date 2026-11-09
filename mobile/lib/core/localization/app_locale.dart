@@ -77,9 +77,9 @@ typedef AppTranslations = AppLocalizations;
 
 /// Context extensions for Flutter official localization
 extension AppLocalizationsContextExtension on BuildContext {
-  AppLocalizations get l10n => AppLocalizations.of(this)!;
-  AppLocalizations get tr => AppLocalizations.of(this)!;
-  bool get isArabic => Localizations.localeOf(this).languageCode == 'ar';
+  AppLocalizations get l10n => AppLocalizations.of(this) ?? lookupAppLocalizations(const Locale('en'));
+  AppLocalizations get tr => AppLocalizations.of(this) ?? lookupAppLocalizations(const Locale('en'));
+  bool get isArabic => Localizations.maybeLocaleOf(this)?.languageCode == 'ar';
   String auto(String? text) => tr.auto(text);
 }
 
@@ -113,18 +113,36 @@ extension AppLocalizationsDomainExtension on AppLocalizations {
     if (!isArabic) return text;
 
     final key = '${slugOrName.toLowerCase()} ${text.toLowerCase()}';
-    if (key.contains('carpent')) return 'نجار';
-    if (key.contains('ac-tech') || key.contains('ac tech') || key.contains('air cond') || key.contains('hvac') || key.contains('air conditioning')) return 'فني تكييف';
-    if (key.contains('electri')) return 'كهربائي';
-    if (key.contains('clean')) return 'خدمات تنظيف';
-    if (key.contains('plumb')) return 'سباك';
-    if (key.contains('paint')) return 'دهان وديكور';
-    if (key.contains('mechanic')) return 'ميكانيكي سيارات';
-    if (key.contains('pest')) return 'مكافحة حشرات';
-    if (key.contains('home') || key.contains('maint') || key.contains('care')) return 'صيانة منزلية';
+    // 26 Master Reference Categories
+    if (key.contains('tow') || key.contains('سطحة')) return 'سطحة';
+    if (key.contains('tyre') || key.contains('tire') || key.contains('puncture') || key.contains('بنشر') || key.contains('كاوتش')) return 'كاوتش / بنشر';
+    if (key.contains('fuel') || key.contains('وقود')) return 'توصيل وقود';
+    if (key.contains('mechanic') || key.contains('ميكانيك')) return 'ميكانيكي سيارات';
+    if (key.contains('large_pickup') || key.contains('large pickup') || (key.contains('pickup') && key.contains('large')) || key.contains('كبيرة')) return 'دينا كبيرة';
+    if (key.contains('small_pickup') || key.contains('small pickup') || (key.contains('pickup') && key.contains('small')) || key.contains('صغيرة') || key.contains('dyna')) return 'دينا صغيرة';
+    if (key.contains('small_water') || key.contains('small water') || (key.contains('water') && key.contains('small'))) return 'صهريج ماء صغير';
+    if (key.contains('large_water') || key.contains('large water') || (key.contains('water') && key.contains('large')) || key.contains('tanker') || key.contains('صهريج')) return 'صهريج ماء كبير';
+    if (key.contains('battery') || key.contains('jump') || key.contains('بطارية')) return 'بطارية – جامب ستارتر';
+    if (key.contains('ac') || key.contains('hvac') || key.contains('air') || key.contains('مكيف')) return 'فني مكيف هواء';
+    if (key.contains('electri') || key.contains('كهرب')) return 'كهربائي';
+    if (key.contains('plumb') || key.contains('سباك')) return 'سباك';
+    if (key.contains('clean') || key.contains('تنظيف')) return 'تنظيف منازل';
+    if (key.contains('wash') || key.contains('غسال')) return 'فني غسالات';
+    if (key.contains('refrig') || key.contains('fridge') || key.contains('ثلاج')) return 'فني ثلاجة';
+    if (key.contains('appliance') || key.contains('أجهزة')) return 'صيانة أجهزة';
+    if (key.contains('tile') || key.contains('ceramic') || key.contains('بلاط') || key.contains('سيراميك')) return 'فني بلاط وسيراميك';
+    if (key.contains('carpent') || key.contains('نجار')) return 'نجار';
+    if (key.contains('paint') || key.contains('دهان')) return 'دهان';
+    if (key.contains('pest') || key.contains('حشرات')) return 'مكافحة حشرات';
+    if (key.contains('network') || key.contains('wifi') || key.contains('شبك')) return 'فني شبكات';
+    if (key.contains('cctv') || key.contains('camera') || key.contains('كامير')) return 'فني كاميرات مراقبة';
+    if (key.contains('curtain') || key.contains('ستائر')) return 'تركيب ستائر';
+    if (key.contains('door') || key.contains('lock') || key.contains('أبواب') || key.contains('أقفال')) return 'فني أبواب وأقفال';
+    if (key.contains('construct') || key.contains('renov') || key.contains('بناء') || key.contains('ترميم')) return 'أعمال بناء وترميم';
+    if (key.contains('pool') || key.contains('مسبح') || key.contains('مسابح')) return 'صيانة مسابح';
+
+    // Core Fleet & Other Services
     if (key.contains('ride') || key.contains('car ride') || key.contains('transport')) return 'مشوار بسيارة';
-    if (key.contains('pickup') && (key.contains('deliver') || key.contains('توصيل'))) return 'استلام وتوصيل';
-    if (key.contains('pickup') || key.contains('truck') || key.contains('cargo') || key.contains('freight')) return 'نقل وتوصيل';
     if (key.contains('rider') || key.contains('bike') || key.contains('moto')) return 'توصيل بالدراجة';
     if (key.contains('van') || key.contains('shuttle') || key.contains('bus')) return 'حافلة عائلية';
     if (key.contains('auto') || key.contains('rickshaw') || key.contains('tuktuk') || key.contains('tuk')) return 'عربة ريكشا';
@@ -133,25 +151,9 @@ extension AppLocalizationsDomainExtension on AppLocalizations {
     if (key.contains('fire')) return 'دفاع مدني وإطفاء';
     if (key.contains('hospital')) return 'مستشفى';
     if (key.contains('emerg')) return 'طوارئ الطريق';
-    if (key.contains('tow')) return 'سطحة وسحب سيارات';
-    if (key.contains('tyre') || key.contains('tire')) return 'تبديل وإصلاح إطارات';
-    if (key.contains('battery')) return 'شحن وتبديل بطارية';
-    if (key.contains('fuel')) return 'توصيل وقود';
-    if (key.contains('lock') || key.contains('key')) return 'فتح أقفال';
-    if (key.contains('wash')) return 'غسيل سيارات متنقل';
-    if (key.contains('oil')) return 'تغيير زيت وفلاتر';
-    if (key.contains('furniture') || key.contains('moving') || key.contains('mover')) return 'نقل أثاث';
-    if (key.contains('garden')) return 'تنسيق حدائق';
-    if (key.contains('weld')) return 'حدادة ولحام';
-    if (key.contains('tailor')) return 'خياطة وتفصيل';
-    if (key.contains('secur')) return 'خدمات أمنية';
-    if (key.contains('courier') || key.contains('parcel')) return 'شحن طرود';
-    if (key.contains('appliance')) return 'صيانة أجهزة منزلية';
-    if (key.contains('laundry')) return 'غسيل وكوي';
-    if (key.contains('mason') || key.contains('brick')) return 'بناء وترميم';
 
     if (RegExp(r'[a-zA-Z]').hasMatch(text)) {
-      return 'خدمة معتمدة';
+      return text;
     }
     return text;
   }
@@ -230,6 +232,7 @@ extension AppLocalizationsDomainExtension on AppLocalizations {
     if (s == 'approved') return 'معتمد';
     if (s == 'rejected') return 'مرفوض';
     if (s == 'suspended') return 'معلق';
+    if (s == 'blocked') return 'محظور';
     if (s == 'initiated') return 'تم البدء';
     if (s == 'in_progress' || s == 'in progress') return 'قيد التنفيذ';
     if (s == 'accepted') return 'تم القبول';
@@ -435,7 +438,7 @@ extension AppLocalizationsDomainExtension on AppLocalizations {
 
   String get fullNameLabel => isArabic ? 'الاسم الكامل' : 'Full Name';
 
-  String get fullNamePlaceholder => isArabic ? 'حسن رضا' : 'Hassan Raza';
+  String get fullNamePlaceholder => isArabic ? 'الاسم الكامل' : 'Full Name';
 
   String get asPerIqama => isArabic ? '(حسب الإقامة/الهوية)' : '(as per Iqama)';
 
@@ -550,6 +553,21 @@ extension AppLocalizationsDomainExtension on AppLocalizations {
 
   String get statusPendingBadge => isArabic ? 'قيد الانتظار' : 'Pending';
 
+  String get accountBlockedTitle => isArabic ? 'الحساب محظور' : 'Account Blocked';
+  String get accountBlockedDesc => isArabic
+      ? 'تم حظر حسابك من قبل إدارة التطبيق. لا يمكنك استقبال الطلبات أو تقديم الخدمات.'
+      : 'Your provider account has been blocked by Qareeb administration. You cannot accept requests or go online.';
+
+  String get accountSuspendedTitle => isArabic ? 'الحساب معلق' : 'Account Suspended';
+  String get accountSuspendedDesc => isArabic
+      ? 'تم تعليق حساب مزود الخدمة الخاص بك مؤقتاً من قبل الإدارة.'
+      : 'Your provider account has been temporarily suspended by the administration.';
+
+  String get accountDeletedTitle => isArabic ? 'تم حذف الحساب' : 'Account Deleted';
+  String get accountDeletedDesc => isArabic
+      ? 'تم حذف حساب مزود الخدمة الخاص بك من قبل الإدارة.'
+      : 'Your provider account has been deleted by the administration.';
+
   String get whatsNext => isArabic ? 'ما هي الخطوة التالية؟' : 'What’s Next?';
 
   String get whatsNextSubtitle => isArabic
@@ -642,8 +660,17 @@ extension AppLocalizationsDomainExtension on AppLocalizations {
       return trimmed;
     }
 
+    // 1b. If text contains Arabic in parentheses e.g. "Flatbed (سطحة)", extract and return Arabic
+    final parenMatch = RegExp(r'\(([\u0600-\u06FF\s]+)\)').firstMatch(trimmed);
+    if (parenMatch != null && parenMatch.group(1) != null) {
+      return parenMatch.group(1)!.trim();
+    }
+
     // 2. Direct dictionary match (exact lowercase)
     final lower = trimmed.toLowerCase();
+    if (lower == 'workhouse' || lower == 'workshop' || lower == 'work house') {
+      return 'ورشة عمل';
+    }
     if (lower == 'pickup & delivery' || lower == 'pickup and delivery' || lower == 'pickup & delivery') {
       return 'استلام وتوصيل';
     }
@@ -702,6 +729,37 @@ extension AppLocalizationsDomainExtension on AppLocalizations {
   }
 
   static const Map<String, String> _autoTranslationMap = {
+    // Heavy machinery & specialized vehicles
+    'loader': 'لودر / شيول',
+    'wheel loader': 'شيول / لودر',
+    'water tank': 'وايت ماء / صهريج مياه',
+    'water tanker': 'وايت ماء / صهريج مياه',
+    'tank': 'صهريج / خزان',
+    'tanker': 'وايت / صهريج',
+    'crane': 'كرين / رافعة',
+    'forklift': 'رافعة شوكية',
+    'bulldozer': 'بلدوزر',
+    'excavator': 'حفار',
+    'dumper': 'قلاب',
+    'trailer': 'تريلا',
+
+    // Workshops & Services
+    'workhouse': 'ورشة عمل',
+    'workshop': 'ورشة عمل',
+    'work house': 'ورشة عمل',
+    'garage': 'ورشة / كراج',
+    'flatbed tow truck': 'سطحة عادية',
+    'hydraulic low flatbed': 'سطحة هيدروليك',
+    'wheel lift tow truck': 'ونش رفع',
+    'heavy duty recovery truck': 'سطحة ثقيل',
+    'covered carrier': 'سطحة مغلقة VIP',
+    'motorbike carrier': 'سطحة دبابات',
+    'towing truck': 'ونش',
+    'ride sedan': 'توصيل',
+    'pickup truck': 'وانيت',
+    'family van': 'فان',
+    'emergency beacon': 'طوارئ',
+
     // Actions & Buttons
     'got it': 'فهمت ذلك',
     "what's next": 'ما الخطوة التالية؟',

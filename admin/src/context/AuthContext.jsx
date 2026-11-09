@@ -29,6 +29,18 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('qareeb_admin_user', JSON.stringify(adminData))
   }
 
+  const updateAdmin = (adminData, authToken) => {
+    setAdmin((prev) => {
+      const merged = { ...(prev || {}), ...adminData }
+      localStorage.setItem('qareeb_admin_user', JSON.stringify(merged))
+      return merged
+    })
+    if (authToken) {
+      setToken(authToken)
+      localStorage.setItem('qareeb_admin_token', authToken)
+    }
+  }
+
   const logout = () => {
     setAdmin(null)
     setToken(null)
@@ -37,7 +49,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ admin, token, isAuthenticated: !!token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ admin, token, isAuthenticated: !!token, isLoading, login, logout, updateAdmin }}>
       {children}
     </AuthContext.Provider>
   )

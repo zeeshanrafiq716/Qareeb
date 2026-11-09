@@ -1,16 +1,45 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Search, Bell, ChevronDown, Command, LogOut, User, CheckCircle2 } from 'lucide-react'
+import { Search, Bell, ChevronDown, Command, LogOut, User, CheckCircle2, PhoneCall, Clock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { fetchAdminNotifications } from '../../api/admin'
 
 export function AdminTopHeader({
   searchValue = '',
   onSearchChange,
   placeholder = 'Search providers,applications, or anything...',
+  fluid = false,
 }) {
   const { admin, logout } = useAuth()
   const searchInputRef = useRef(null)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  // Fetch real notifications from backend
+  useEffect(() => {
+    let mounted = true
+    async function loadNotifications() {
+      try {
+        const res = await fetchAdminNotifications()
+        if (mounted && res) {
+          setNotifications(res.items || [])
+          setUnreadCount(res.unreadCount || 0)
+        }
+      } catch {
+        if (mounted) {
+          setNotifications([])
+          setUnreadCount(0)
+        }
+      }
+    }
+    loadNotifications()
+    const interval = setInterval(loadNotifications, 30000)
+    return () => {
+      mounted = false
+      clearInterval(interval)
+    }
+  }, [])
 
   // Listen for Cmd+K or Ctrl+K shortcut to focus search
   useEffect(() => {
@@ -33,7 +62,9 @@ export function AdminTopHeader({
         height: '80px',
         boxSizing: 'border-box',
       }}
-      className="w-full max-w-[1084px] bg-white rounded-[16px] px-6 flex items-center justify-between border border-[#EBEBEB] shadow-xs shrink-0 select-none"
+      className={`w-full ${
+        fluid ? 'max-w-none' : 'max-w-[1084px]'
+      } bg-white rounded-[16px] px-6 flex items-center justify-between border border-[#EBEBEB] shadow-xs shrink-0 select-none`}
     >
       {/* ================= LEFT: SEARCH INPUT BAR ================= */}
       {/* Layout: height: 44px; width: 440px; rounded-xl; bg: #F5F5F7 */}
@@ -70,29 +101,59 @@ export function AdminTopHeader({
             title="Notifications"
           >
             <Bell className="w-4 h-4" />
-            {/* Notification Badge Dot */}
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-[#8B53FE] ring-2 ring-white" />
+            {/* Notification Badge Dot (Only if unread > 0) */}
+            {unreadCount > 0 && (
+              <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-[#8B53FE] ring-2 ring-white" />
+            )}
           </button>
 
           {/* Notifications Dropdown */}
           {notificationsOpen && (
-            <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-[#EFF0ED] p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-[#EFF0ED] p-4 z-50 animate-in fade-in zoom-in-95 duration-150 max-h-[380px] flex flex-col">
               <div className="flex items-center justify-between pb-2 border-b border-[#EFF0ED]">
                 <span className="text-xs font-bold text-[#1C2926]">Notifications</span>
-                <span className="text-[10px] font-semibold text-[#8B53FE] bg-[#F0EAFE] px-2 py-0.5 rounded-full">
-                  1 New
-                </span>
+                {unreadCount > 0 ? (
+                  <span className="text-[10px] font-semibold text-[#8B53FE] bg-[#F0EAFE] px-2 py-0.5 rounded-full">
+                    {unreadCount} New
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-medium text-[#9EAFA9] bg-[#F5F5F7] px-2 py-0.5 rounded-full">
+                    All caught up
+                  </span>
+                )}
               </div>
-              <div className="py-3 space-y-2 text-xs">
-                <div className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#EFF0ED] space-y-1">
-                  <div className="font-semibold text-[#1C2926] flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#22C55E]" />
-                    <span>New Provider Verification</span>
+              <div className="py-2 space-y-2 text-xs overflow-y-auto flex-1">
+                {notifications.length === 0 ? (
+                  <div className="py-6 text-center text-[#9EAFA9]">
+                    <Bell className="w-6 h-6 mx-auto mb-1.5 opacity-30 text-[#8B53FE]" />
+                    <p className="text-xs font-semibold text-[#1C2926]">No new notifications</p>
+                    <p className="text-[11px] text-[#616166] mt-0.5">You're all caught up!</p>
                   </div>
-                  <p className="text-[11px] text-[#566663]">
-                    A service provider submitted compulsory documents for approval.
-                  </p>
-                </div>
+                ) : (
+                  notifications.map((n) => (
+                    <div
+                      key={n.id}
+                      className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#EFF0ED] space-y-1 hover:border-[#DECFFC] transition-colors"
+                    >
+                      <div className="font-semibold text-[#1C2926] flex items-center gap-1.5">
+                        {n.type === 'call_interaction' ? (
+                          <PhoneCall className="w-3.5 h-3.5 text-[#8B53FE]" />
+                        ) : (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#22C55E]" />
+                        )}
+                        <span className="truncate">{n.title}</span>
+                      </div>
+                      <p className="text-[11px] text-[#566663] leading-relaxed">
+                        {n.message}
+                      </p>
+                      {n.createdAt && (
+                        <p className="text-[10px] text-[#9EAFA9]">
+                          {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}

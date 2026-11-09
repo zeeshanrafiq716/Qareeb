@@ -8,6 +8,7 @@ import '../../../core/localization/app_locale.dart';
 import 'live_tracking_screen.dart';
 import 'widgets/real_map_background_widget.dart';
 import '../../../services/profile_stats_service.dart';
+import '../../../services/task_service.dart';
 
 /// Screen displayed when user clicks 'Send Request' in ProviderDetailScreen.
 /// Implements the exact header and map layer of Pickup & Delivery screens as requested.
@@ -38,6 +39,11 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
   void initState() {
     super.initState();
     ProfileStatsService.instance.recordNewRequest(isProvider: false);
+    TaskService.instance.createCustomerRequest(
+      providerName: widget.providerName,
+      serviceCategory: widget.serviceCategory,
+      distance: widget.distance,
+    );
     _startAcceptanceSimulation();
   }
 

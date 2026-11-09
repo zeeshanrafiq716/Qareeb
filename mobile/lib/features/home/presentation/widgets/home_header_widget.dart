@@ -101,35 +101,24 @@ class HomeHeaderWidget extends ConsumerWidget {
                           child: Container(
                             width: 36.0,
                             height: 36.0,
-                            color: const Color(0xFFFCA5A5), // Peach/coral background from reference
+                            color: const Color(0xFFF0EAFE),
                             child: onProfileTap != null
                                 ? GestureDetector(
                                     onTap: onProfileTap,
-                                    child: Image.network(
-                                      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
-                                      width: 36.0,
-                                      height: 36.0,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => Center(
-                                        child: Icon(
-                                          Icons.face_rounded,
-                                          size: 26.0,
-                                          color: const Color(0xFF1E293B).withValues(alpha: 0.85),
-                                        ),
+                                    behavior: HitTestBehavior.opaque,
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.person_rounded,
+                                        size: 22.0,
+                                        color: Color(0xFF8B53FE),
                                       ),
                                     ),
                                   )
-                                : Image.network(
-                                    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
-                                    width: 36.0,
-                                    height: 36.0,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) => Center(
-                                      child: Icon(
-                                        Icons.face_rounded,
-                                        size: 26.0,
-                                        color: const Color(0xFF1E293B).withValues(alpha: 0.85),
-                                      ),
+                                : const Center(
+                                    child: Icon(
+                                      Icons.person_rounded,
+                                      size: 22.0,
+                                      color: Color(0xFF8B53FE),
                                     ),
                                   ),
                           ),

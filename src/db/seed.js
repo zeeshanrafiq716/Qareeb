@@ -17,6 +17,7 @@ const DEFAULT_STATUSES = [
   [ENTITY.PROVIDER, PROVIDER_STATUS.APPROVED, "Approved", false, 40],
   [ENTITY.PROVIDER, PROVIDER_STATUS.REJECTED, "Rejected", true, 50],
   [ENTITY.PROVIDER, PROVIDER_STATUS.SUSPENDED, "Suspended", false, 60],
+  [ENTITY.PROVIDER, PROVIDER_STATUS.BLOCKED, "Blocked", true, 70],
   [ENTITY.VERIFICATION, VERIFICATION_STATUS.PENDING, "Pending review", false, 10],
   [ENTITY.VERIFICATION, VERIFICATION_STATUS.APPROVED, "Approved", true, 20],
   [ENTITY.VERIFICATION, VERIFICATION_STATUS.REJECTED, "Rejected", true, 30],
@@ -26,188 +27,13 @@ const DEFAULT_STATUSES = [
   [ENTITY.CALL, CALL_STATUS.FAILED, "Failed", true, 40],
 ];
 
-const REAL_CATEGORIES = [
-  { name: "Tyre Repair", slug: "tyre-repair" },
-  { name: "Battery Jump Start", slug: "battery-jump-start" },
-  { name: "Vehicle Towing", slug: "vehicle-towing" },
-  { name: "Fuel Delivery", slug: "fuel-delivery" },
-  { name: "Mobile Mechanic", slug: "mobile-mechanic" },
-  { name: "Car Lockout Assistance", slug: "car-lockout" },
-];
+export async function seed(pool = getPool(), { forceClean = false } = {}) {
+  const shouldClean =
+    forceClean ||
+    process.argv.includes("--clean") ||
+    process.argv.includes("--reset");
 
-const REAL_PROVIDERS = [
-  {
-    publicId: "QRB-100001",
-    name: "Ahmed Raza",
-    phone: "+966501234567",
-    categorySlug: "tyre-repair",
-    status: PROVIDER_STATUS.APPROVED,
-    isOnline: true,
-    ratingAvg: 4.9,
-    ratingCount: 142,
-    city: "Jeddah",
-    lat: 21.5433,
-    lng: 39.1728,
-  },
-  {
-    publicId: "QRB-100002",
-    name: "Ali Ahmad",
-    phone: "+966502345678",
-    categorySlug: "tyre-repair",
-    status: PROVIDER_STATUS.APPROVED,
-    isOnline: true,
-    ratingAvg: 4.8,
-    ratingCount: 98,
-    city: "Riyadh",
-    lat: 24.7450,
-    lng: 46.6420,
-  },
-  {
-    publicId: "QRB-100003",
-    name: "Abdul Ahad",
-    phone: "+966503456789",
-    categorySlug: "fuel-delivery",
-    status: PROVIDER_STATUS.SUSPENDED,
-    isOnline: false,
-    ratingAvg: 4.5,
-    ratingCount: 52,
-    city: "Makkah",
-    lat: 21.3891,
-    lng: 39.8579,
-  },
-  {
-    publicId: "QRB-100004",
-    name: "M Ibrahim",
-    phone: "+966504567890",
-    categorySlug: "tyre-repair",
-    status: PROVIDER_STATUS.APPROVED,
-    isOnline: false,
-    ratingAvg: 4.7,
-    ratingCount: 64,
-    city: "Jeddah",
-    lat: 21.5200,
-    lng: 39.1800,
-  },
-  {
-    publicId: "QRB-100005",
-    name: "Awais Ali",
-    phone: "+966505678901",
-    categorySlug: "vehicle-towing",
-    status: PROVIDER_STATUS.APPROVED,
-    isOnline: true,
-    ratingAvg: 4.9,
-    ratingCount: 110,
-    city: "Madinah",
-    lat: 24.5247,
-    lng: 39.5692,
-  },
-  {
-    publicId: "QRB-100006",
-    name: "Umsan Khan",
-    phone: "+966506789012",
-    categorySlug: "tyre-repair",
-    status: PROVIDER_STATUS.APPROVED,
-    isOnline: true,
-    ratingAvg: 4.9,
-    ratingCount: 88,
-    city: "Jeddah",
-    lat: 21.5350,
-    lng: 39.1650,
-  },
-  {
-    publicId: "QRB-100007",
-    name: "Khalid Al-Otaibi",
-    phone: "+966559876543",
-    categorySlug: "vehicle-towing",
-    status: PROVIDER_STATUS.APPROVED,
-    isOnline: true,
-    ratingAvg: 4.8,
-    ratingCount: 75,
-    city: "Riyadh",
-    lat: 24.7310,
-    lng: 46.6490,
-  },
-  {
-    publicId: "QRB-100008",
-    name: "Tariq Mansoor",
-    phone: "+966542345678",
-    categorySlug: "fuel-delivery",
-    status: PROVIDER_STATUS.APPROVED,
-    isOnline: true,
-    ratingAvg: 4.9,
-    ratingCount: 120,
-    city: "Riyadh",
-    lat: 24.7480,
-    lng: 46.6720,
-  },
-  {
-    publicId: "QRB-100009",
-    name: "Fahad Al-Harbi",
-    phone: "+966563456789",
-    categorySlug: "battery-jump-start",
-    status: PROVIDER_STATUS.APPROVED,
-    isOnline: true,
-    ratingAvg: 4.7,
-    ratingCount: 91,
-    city: "Riyadh",
-    lat: 24.6980,
-    lng: 46.6210,
-  },
-  {
-    publicId: "QRB-100010",
-    name: "Sultan Al-Ghamdi",
-    phone: "+966598765432",
-    categorySlug: "tyre-repair",
-    status: PROVIDER_STATUS.APPROVED,
-    isOnline: true,
-    ratingAvg: 4.8,
-    ratingCount: 135,
-    city: "Riyadh",
-    lat: 24.6990,
-    lng: 46.6850,
-  },
-  {
-    publicId: "QRB-100011",
-    name: "Nasser Al-Dossari",
-    phone: "+966531112233",
-    categorySlug: "car-lockout",
-    status: PROVIDER_STATUS.APPROVED,
-    isOnline: true,
-    ratingAvg: 4.9,
-    ratingCount: 160,
-    city: "Riyadh",
-    lat: 24.7390,
-    lng: 46.7210,
-  },
-  {
-    publicId: "QRB-100012",
-    name: "Majed Al-Mutairi",
-    phone: "+966574445566",
-    categorySlug: "vehicle-towing",
-    status: PROVIDER_STATUS.APPROVED,
-    isOnline: true,
-    ratingAvg: 4.8,
-    ratingCount: 84,
-    city: "Riyadh",
-    lat: 24.7080,
-    lng: 46.7130,
-  },
-  {
-    publicId: "QRB-202403",
-    name: "Ahmad Raza",
-    phone: "+966485705644",
-    categorySlug: "tyre-repair",
-    status: PROVIDER_STATUS.PENDING_VERIFICATION,
-    isOnline: false,
-    ratingAvg: 0.0,
-    ratingCount: 0,
-    city: "Jeddah",
-    lat: 21.5433,
-    lng: 39.1728,
-  },
-];
-
-export async function seed(pool = getPool()) {
+  // 1. Ensure all system entity statuses exist
   for (const [entityType, code, label, isTerminal, sortOrder] of DEFAULT_STATUSES) {
     await pool.query(
       `INSERT INTO statuses (entity_type, code, label, is_terminal, sort_order)
@@ -218,94 +44,7 @@ export async function seed(pool = getPool()) {
     );
   }
 
-  // Remove legacy test dummy data
-  await pool.query(`DELETE FROM providers WHERE phone LIKE '+92%'`);
-  await pool.query(`DELETE FROM categories WHERE slug IN ('plumber', 'electrician', 'carpenter', 'ac-technician', 'painter', 'cleaner', 'pest-control', 'home-maintenance', 'ride', 'pickup', 'rider', 'van', 'auto', 'emergency', 'mechanic')`);
-
-  const categoryMap = {};
-  for (const cat of REAL_CATEGORIES) {
-    const res = await pool.query(
-      `INSERT INTO categories (name, slug, is_enabled)
-       VALUES ($1, $2, true)
-       ON CONFLICT (slug) DO UPDATE SET is_enabled = true, name = EXCLUDED.name
-       RETURNING id, slug`,
-      [cat.name, cat.slug],
-    );
-    categoryMap[res.rows[0].slug] = res.rows[0].id;
-  }
-
-  const statusMap = {};
-  const statusRes = await pool.query(`SELECT id, entity_type, code FROM statuses`);
-  for (const row of statusRes.rows) {
-    statusMap[`${row.entity_type}:${row.code}`] = row.id;
-  }
-
-  const verApprovedStatusId = statusMap[`${ENTITY.VERIFICATION}:${VERIFICATION_STATUS.APPROVED}`];
-  const verPendingStatusId = statusMap[`${ENTITY.VERIFICATION}:${VERIFICATION_STATUS.PENDING}`];
-
-  for (const p of REAL_PROVIDERS) {
-    const categoryId = categoryMap[p.categorySlug];
-    const statusId = statusMap[`${ENTITY.PROVIDER}:${p.status}`];
-
-    const provRes = await pool.query(
-      `INSERT INTO providers (public_id, phone, name, category_id, status_id, is_online, rating_avg, rating_count, phone_verified_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
-       ON CONFLICT (phone) DO UPDATE
-       SET public_id = EXCLUDED.public_id,
-           name = EXCLUDED.name,
-           category_id = EXCLUDED.category_id,
-           status_id = EXCLUDED.status_id,
-           is_online = EXCLUDED.is_online,
-           rating_avg = EXCLUDED.rating_avg,
-           rating_count = EXCLUDED.rating_count,
-           phone_verified_at = now()
-       RETURNING id, public_id`,
-      [p.publicId, p.phone, p.name, categoryId, statusId, p.isOnline, p.ratingAvg, p.ratingCount],
-    );
-
-    const providerId = provRes.rows[0]?.id;
-    if (providerId) {
-      if (p.lat && p.lng) {
-        await pool.query(
-          `INSERT INTO locations (provider_id, latitude, longitude, city, location_updated_at)
-           VALUES ($1, $2, $3, $4, now())
-           ON CONFLICT (provider_id) DO UPDATE
-           SET latitude = EXCLUDED.latitude,
-               longitude = EXCLUDED.longitude,
-               city = EXCLUDED.city,
-               location_updated_at = now()`,
-          [providerId, p.lat, p.lng, p.city],
-        );
-      }
-
-      if (p.status === PROVIDER_STATUS.PENDING_VERIFICATION) {
-        // Ahmad Raza full verification documents
-        const docs = [
-          { type: 'iqama', url: '/assets/istimara_card.png', notes: 'Saudi Iqama ID verified' },
-          { type: 'registration', url: '/assets/istimara_card.png', notes: 'Vehicle Istimara registration verified' },
-          { type: 'driving_licence', url: '/assets/istimara_card.png', notes: 'Saudi Driving Licence verified' },
-          { type: 'vehicle_front', url: '/assets/categories/flatbed_truck.png', notes: 'Toyota Dyna Flatbed Truck Front' },
-          { type: 'vehicle_rear', url: '/assets/categories/flatbed_truck.png', notes: 'Toyota Dyna Flatbed Truck Rear' },
-        ];
-        for (const doc of docs) {
-          await pool.query(
-            `INSERT INTO verifications (provider_id, document_type, document_url, status_id, notes)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [providerId, doc.type, doc.url, verPendingStatusId, doc.notes],
-          );
-        }
-      } else if (verApprovedStatusId) {
-        await pool.query(
-          `INSERT INTO verifications (provider_id, document_type, document_url, status_id, notes)
-           VALUES ($1, 'iqama', '/assets/istimara_card.png', $2, 'Verified via Abshir link')
-           ON CONFLICT DO NOTHING`,
-          [providerId, verApprovedStatusId],
-        );
-      }
-    }
-  }
-
-  // Seed Admin user
+  // 2. Ensure Admin account exists for Admin Panel
   const passwordHash = await bcrypt.hash(env.ADMIN_PASSWORD, env.isTest ? 4 : 10);
   await pool.query(
     `INSERT INTO admins (email, password_hash, name, role, is_active)
@@ -315,16 +54,94 @@ export async function seed(pool = getPool()) {
     [env.ADMIN_EMAIL, passwordHash, env.ADMIN_NAME],
   );
 
-  // Synchronize the public_id sequence past all existing seeded IDs
-  await pool.query(`
-    SELECT setval(
-      'provider_public_id_seq',
-      COALESCE((SELECT MAX(SUBSTRING(public_id FROM 5)::bigint) FROM providers WHERE public_id ~ '^QRB-[0-9]+$'), 100000) + 1
-    )
-  `);
+  // 3. Clean out mock records only when explicitly requested via --clean / --reset
+  if (shouldClean) {
+    await pool.query(`DELETE FROM call_logs`);
+    await pool.query(`DELETE FROM verifications`);
+    await pool.query(`DELETE FROM locations`);
+    await pool.query(`DELETE FROM provider_status_history`);
+    await pool.query(`DELETE FROM provider_device_tokens`);
+    await pool.query(`DELETE FROM otp_codes`);
+    await pool.query(`DELETE FROM otp_request_audit`);
+    await pool.query(`DELETE FROM customer_funnel_events`);
+    await pool.query(`DELETE FROM providers`);
+    await pool.query(`ALTER SEQUENCE provider_public_id_seq RESTART WITH 100001`);
+    logger.info("Database cleaned of mock records via --clean flag.");
+  }
+
+  // 4. Ensure exact 26 official categories from user's master list (bilingual & sort order support)
+  await pool.query(`DELETE FROM categories WHERE slug IN ('ride', 'pickup', 'rider', 'van', 'auto', 'emergency', 'tank')`);
+
+  const DEFAULT_CATEGORIES = [
+    // [Name (English), Slug, Subtitle, SubtitleAr, NameAr (Arabic), SortOrder, IconUrl]
+    ["Tow Truck", "tow-truck", "Vehicle breakdown & roadside towing", "سحب ونقل المركبات المعطلة", "سطحة", 1, "/assets/categories/tow_truck.png"],
+    ["Tyre & Puncture Repair", "tyre-puncture-repair", "Mobile tyre replacement & puncture repair", "إصلاح وتبديل بنشر متنقل", "كاوتش / بنشر", 2, "/assets/categories/tyre_repair.png"],
+    ["Fuel Delivery", "fuel-delivery", "Emergency petrol & diesel delivery", "توصيل بنزين وديزل للموقع", "توصيل وقود", 3, "/assets/categories/fuel_delivery.png"],
+    ["Car Mechanic", "car-mechanic", "On-site mechanical diagnostics & repair", "فحص وصيانة ميكانيكا السيارات", "ميكانيكي سيارات", 4, "/assets/categories/car_mechanic.png"],
+    ["Small Pickup (Dyna)", "small-pickup-dyna", "Light cargo & local transport", "نقل حمولات وبضائع خفيفة", "دينا صغيرة", 5, "/assets/categories/small_pickup_dyna.png"],
+    ["Large Pickup (Dyna)", "large-pickup-dyna", "Commercial transport & large moves", "نقل عفش وبضائع تجارية كبيرة", "دينا كبيرة", 6, "/assets/categories/large_pickup_dyna.png"],
+    ["Small Water Tanker", "small-water-tanker", "Clean potable water delivery", "توصيل وايت ماء صالح للشرب", "صهريج ماء صغير", 7, "/assets/categories/small_water_tanker.png"],
+    ["Large Water Tanker", "large-water-tanker", "Bulk water supply & storage refill", "تعبئة وتوريد صهاريج مياه كبيرة", "صهريج ماء كبير", 8, "/assets/categories/large_water_tanker.png"],
+    ["Battery Jump Start", "battery-jump-start", "Quick battery boost & mobile replacement", "اشتراك بطارية وتبديل فوري", "بطارية – جامب ستارتر", 9, "/assets/categories/battery_jump_start.png"],
+    ["AC Technician", "ac-technician", "AC repair, gas recharge & duct cleaning", "صيانة وتبريد وتعبئة فريون المكيفات", "فني مكيف هواء", 10, "/assets/categories/ac_technician.png"],
+    ["Electrician", "electrician", "Residential electrical wiring & repairs", "صيانة وتمديدات كهربائية منزلية", "كهربائي", 11, "/assets/categories/electrician.png"],
+    ["Plumber", "plumber", "Plumbing leaks, piping & fixtures", "سباكة وإصلاح تسريبات المياه", "سباك", 12, "/assets/categories/plumber.png"],
+    ["House Cleaning", "house-cleaning", "Deep residential & commercial cleaning", "تنظيف فلل وشقق وتعقيم شامل", "تنظيف منازل", 13, "/assets/categories/house_cleaning.png"],
+    ["Washing Machine Tech", "washing-machine-tech", "Washing machine & dryer diagnostics", "صيانة وتصليح الغسالات والنشافات", "فني غسالات", 14, "/assets/categories/washing_machine_tech.png"],
+    ["Refrigerator Tech", "refrigerator-tech", "Refrigerator cooling & compressor repair", "صيانة وتبريد الثلاجات والفريزر", "فني ثلاجة", 15, "/assets/categories/refrigerator_tech.png"],
+    ["Appliance Technician", "appliance-technician", "Stoves, ovens & small appliance repair", "إصلاح الأفران والأجهزة الكهربائية", "صيانة أجهزة", 16, "/assets/categories/appliance_technician.png"],
+    ["Tiles & Ceramic", "tiles-ceramic", "Tile installation, renovation & grouting", "تركيب وتجديد البلاط والسيراميك", "فني بلاط وسيراميك", 17, "/assets/categories/tiles_ceramic.png"],
+    ["Carpenter", "carpenter", "Custom wood furniture & door repair", "أعمال نجارة وصيانة الأبواب والأثاث", "نجار", 18, "/assets/categories/carpenter.png"],
+    ["Painter", "painter", "Interior & exterior wall painting", "دهانات وديكورات داخلية وخارجية", "دهان", 19, "/assets/categories/painter.png"],
+    ["Pest Control", "pest-control", "Safe pest elimination & spraying", "رش مبيدات ومكافحة الحشرات والقوارض", "مكافحة حشرات", 20, "/assets/categories/pest_control.png"],
+    ["Network Technician", "network-technician", "Wi-Fi routers, Ethernet & network setup", "تمديد وبرمجة الشبكات والإنترنت", "فني شبكات", 21, "/assets/categories/network_technician.png"],
+    ["CCTV Technician", "cctv-technician", "Security camera installation & DVR setup", "تركيب وبرمجة كاميرات المراقبة", "فني كاميرات مراقبة", 22, "/assets/categories/cctv_technician.png"],
+    ["Curtain Installation", "curtain-installation", "Drapery tracks & curtain installation", "تفصيل وتركيب الستائر والمسارات", "تركيب ستائر", 23, "/assets/categories/curtain_installation.png"],
+    ["Doors & Locks", "doors-locks", "Smart locks, handles & key cylinder fitting", "فتح وتركيب الأقفال والأبواب الذكية", "فني أبواب وأقفال", 24, "/assets/categories/doors_locks.png"],
+    ["Construction & Renovation", "construction-renovation", "General building renovation & masonry", "مقاولات وترميم وتشطيب مباني", "أعمال بناء وترميم", 25, "/assets/categories/construction_renovation.png"],
+    ["Pool Maintenance", "pool-maintenance", "Swimming pool cleaning, filters & pumps", "تنظيف وتعقيم وصيانة فلاتر المسابح", "صيانة مسابح", 26, "/assets/categories/pool_maintenance.png"],
+  ];
+
+  for (const [name, slug, subtitle, subtitleAr, nameAr, sortOrder, iconUrl] of DEFAULT_CATEGORIES) {
+    await pool.query(
+      `INSERT INTO categories (name, slug, subtitle, subtitle_ar, name_ar, sort_order, icon_url, is_enabled)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+       ON CONFLICT (slug) DO UPDATE SET 
+         is_enabled = true, 
+         name = EXCLUDED.name, 
+         name_ar = EXCLUDED.name_ar, 
+         subtitle = EXCLUDED.subtitle, 
+         subtitle_ar = EXCLUDED.subtitle_ar, 
+         sort_order = EXCLUDED.sort_order,
+         icon_url = EXCLUDED.icon_url`,
+      [name, slug, subtitle, subtitleAr, nameAr, sortOrder, iconUrl],
+    );
+  }
+
+  const DEFAULT_VEHICLE_TYPES = [
+    ["Flatbed Tow Truck", "flatbed-tow-truck", 1, "سطحة عادية"],
+    ["Hydraulic Low Flatbed", "hydraulic-low-flatbed", 2, "سطحة هيدروليك"],
+    ["Wheel Lift Tow Truck", "wheel-lift-tow-truck", 3, "ونش رفع"],
+    ["Heavy Duty Recovery Truck", "heavy-duty-recovery-truck", 4, "سطحة ثقيل"],
+    ["Covered Carrier", "covered-carrier-vip", 5, "سطحة مغلقة VIP"],
+    ["Motorbike Carrier", "motorbike-carrier", 6, "سطحة دبابات"],
+  ];
+
+  for (const [name, slug, sortOrder, nameAr] of DEFAULT_VEHICLE_TYPES) {
+    await pool.query(
+      `INSERT INTO vehicle_types (name, slug, sort_order, name_ar, is_enabled)
+       VALUES ($1, $2, $3, $4, true)
+       ON CONFLICT (slug) DO UPDATE SET is_enabled = true, name = EXCLUDED.name, name_ar = EXCLUDED.name_ar, sort_order = EXCLUDED.sort_order`,
+      [name, slug, sortOrder, nameAr],
+    );
+  }
+
+  if (shouldClean) {
+    await pool.query(`ALTER SEQUENCE provider_public_id_seq RESTART WITH 100001`);
+  }
 
   clearStatusCache();
-  logger.info("Seed data ready with real Saudi roadside assistance production data");
+  logger.info("Database schema & dictionary data ready.");
 }
 
 if (process.argv[1]?.endsWith("seed.js")) {

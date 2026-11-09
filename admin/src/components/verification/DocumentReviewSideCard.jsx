@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   X,
   CheckCircle2,
@@ -6,6 +6,7 @@ import {
   RotateCcw,
   AlertCircle,
   ArrowRight,
+  FileText,
 } from 'lucide-react'
 
 export function DocumentReviewSideCard({
@@ -20,20 +21,34 @@ export function DocumentReviewSideCard({
   onSubmitReview,
 }) {
   const [selectedStatus, setSelectedStatus] = useState('resubmit') // 'verified' | 'invalid' | 'resubmit'
+  const docTitle = document.title || 'Document'
   const [remarks, setRemarks] = useState(
-    'Please upload a clear full-page copy of your vehicle registration (Istimara). The current document is unclear.'
+    `Please upload a clear copy of your ${docTitle}. The current document is unclear.`
   )
+
+  useEffect(() => {
+    if (document?.title) {
+      if (selectedStatus === 'verified') {
+        setRemarks(`${document.title} verified and confirmed as valid and acceptable.`)
+      } else if (selectedStatus === 'invalid') {
+        setRemarks(`${document.title} has an issue or does not match provider details. Please re-upload.`)
+      } else {
+        setRemarks(`Please upload a clear copy of your ${document.title}. The current document is unclear.`)
+      }
+    }
+  }, [document?.id, document?.title, selectedStatus])
 
   if (!isOpen) return null
 
   const handleStatusChange = (status) => {
     setSelectedStatus(status)
+    const currentTitle = document?.title || 'Document'
     if (status === 'verified') {
-      setRemarks('Document verified and confirmed as valid and acceptable.')
+      setRemarks(`${currentTitle} verified and confirmed as valid and acceptable.`)
     } else if (status === 'invalid') {
-      setRemarks('Document has expired or does not match provider details. Please review and re-upload.')
+      setRemarks(`${currentTitle} has an issue or does not match provider details. Please re-upload.`)
     } else {
-      setRemarks('Please upload a clear full-page copy of your vehicle registration (Istimara). The current document is unclear.')
+      setRemarks(`Please upload a clear copy of your ${currentTitle}. The current document is unclear.`)
     }
   }
 
@@ -124,17 +139,37 @@ export function DocumentReviewSideCard({
               </span>
             </div>
 
-            {/* Authentic Saudi Istimara Document Image */}
-            <div className="w-full h-[150px] sm:h-[180px] rounded-[14px] overflow-hidden border border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-center p-1 relative shadow-inner">
-              <img
-                src="/assets/istimara_card.png"
-                alt="Vehicle Registration (Istimara)"
-                className="w-full h-full object-contain rounded-lg"
-                onError={(e) => {
-                  // Fallback to placeholder if asset not loaded
-                  e.currentTarget.style.display = 'none'
+            {/* Real Document Preview Image */}
+            <div className="w-full h-[160px] sm:h-[190px] rounded-[14px] overflow-hidden border border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-center p-2 relative shadow-inner">
+              {document.previewUrl || document.documentUrl || document.url ? (
+                <img
+                  src={document.previewUrl || document.documentUrl || document.url}
+                  alt={document.title || 'Document Preview'}
+                  className="w-full h-full object-contain rounded-lg transition-transform hover:scale-105 duration-200"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                    const fb = e.currentTarget.parentElement?.querySelector('.fallback-preview')
+                    if (fb) fb.style.display = 'flex'
+                  }}
+                />
+              ) : null}
+              <div
+                className="fallback-preview flex flex-col items-center justify-center text-[#9EAFA9] p-4 text-center"
+                style={{
+                  display:
+                    document.previewUrl || document.documentUrl || document.url
+                      ? 'none'
+                      : 'flex',
                 }}
-              />
+              >
+                <FileText className="w-9 h-9 text-[#DECFFC] mb-1.5" />
+                <p className="text-xs font-semibold text-[#1C2926]">
+                  No document image uploaded
+                </p>
+                <p className="text-[11px] text-[#616166] mt-0.5">
+                  The provider has not submitted an image for this document.
+                </p>
+              </div>
             </div>
           </div>
 

@@ -17,110 +17,26 @@ import {
   CheckCircle,
   XCircle,
   RotateCcw,
+  Clock,
+  Phone,
+  PauseCircle,
+  Ban,
+  Trash2,
 } from 'lucide-react'
 import {
   fetchProviders,
+  fetchCategories,
   approveProviderApi,
   rejectProviderApi,
+  suspendProviderApi,
+  blockProviderApi,
+  deleteProviderApi,
 } from '../../api/admin'
-
-const REAL_SAUDI_APPLICATIONS = [
-  {
-    id: 'QA-2024-003',
-    backendId: '3fc8e74c-d926-4d60-a162-7063cd892758',
-    providerId: 'QRB-202403',
-    name: 'Ahmad Raza',
-    city: 'Jeddah',
-    category: 'Tyre Repair',
-    categoryIcon: Disc,
-    submittedDate: '23 Sept 2026',
-    submittedTime: '10:30 AM',
-    status: 'Pending Review',
-    statusType: 'pending',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80',
-    nationalId: '2487654321',
-    iqamaExpiry: '12 Mar 2026',
-    phone: '+966 48 570 5644',
-    whatsapp: '+966 48 570 5644',
-    vehicleModel: 'Toyota Dyna',
-    vehicleType: 'Flatbed Truck',
-    plateNumber: 'ABC 1234',
-    vehicleColor: 'White',
-  },
-  {
-    id: 'QA-2024-001',
-    backendId: '4c536750-1642-4a74-94c0-d03db80654a8',
-    providerId: 'QRB-100001',
-    name: 'Ahmed Raza',
-    city: 'Jeddah',
-    category: 'Tyre Repair',
-    categoryIcon: Disc,
-    submittedDate: '23 Sept 2026',
-    submittedTime: '10:30 AM',
-    status: 'Approved',
-    statusType: 'approved',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80',
-  },
-  {
-    id: 'QA-2024-002',
-    backendId: '3bf01dff-92f9-4075-b6ce-325ee184290e',
-    providerId: 'QRB-100002',
-    name: 'Ali Ahmad',
-    city: 'Riyadh',
-    category: 'Battery Jump Start',
-    categoryIcon: Disc,
-    submittedDate: '22 Sept 2026',
-    submittedTime: '04:30 AM',
-    status: 'Approved',
-    statusType: 'approved',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&h=120&q=80',
-  },
-  {
-    id: 'QA-2024-004',
-    backendId: '66eaaa98-139e-4f15-9803-9da85d75a9b0',
-    providerId: 'QRB-100003',
-    name: 'Abdul Ahad',
-    city: 'Makkah',
-    category: 'Fuel Delivery',
-    categoryIcon: Fuel,
-    submittedDate: '21 Sept 2026',
-    submittedTime: '9:00 AM',
-    status: 'Under Review',
-    statusType: 'under_review',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&h=120&q=80',
-  },
-  {
-    id: 'QA-2024-005',
-    backendId: '1073a412-3622-4f11-81a6-8dd89c8e45a1',
-    providerId: 'QRB-100004',
-    name: 'M Ibrahim',
-    city: 'Jeddah',
-    category: 'Tyre Repair',
-    categoryIcon: Disc,
-    submittedDate: '20 Sept 2026',
-    submittedTime: '10:30 AM',
-    status: 'Approved',
-    statusType: 'approved',
-    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=120&h=120&q=80',
-  },
-  {
-    id: 'QA-2024-006',
-    backendId: '70eb72d0-95d9-4452-bd01-8829d78be993',
-    providerId: 'QRB-100005',
-    name: 'Awais Ali',
-    city: 'Madinah',
-    category: 'Vehicle Towing',
-    categoryIcon: Truck,
-    submittedDate: '19 Sept 2026',
-    submittedTime: '12:30 PM',
-    status: 'Approved',
-    statusType: 'approved',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80',
-  },
-]
 
 export function VerificationTableSection({
   onViewDetails,
+  activeFilter = 'all',
+  onUpdateStats,
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All Categories')
@@ -132,100 +48,169 @@ export function VerificationTableSection({
   const [activeRowMenu, setActiveRowMenu] = useState(null)
   const [selectedRows, setSelectedRows] = useState([])
   const [currentPage, setCurrentPage] = useState(1)
-  const [applicationsList, setApplicationsList] = useState(REAL_SAUDI_APPLICATIONS)
-  const [loading, setLoading] = useState(false)
+  const [applicationsList, setApplicationsList] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let mounted = true
-    async function loadApplications() {
+    async function loadApplications(isSilent = false) {
       try {
-        setLoading(true)
-        const res = await fetchProviders({ limit: 50 })
+        if (!isSilent) setLoading(true)
+        const res = await fetchProviders({ limit: 100 })
         if (!mounted) return
-        const rawItems = res?.items || []
-        if (rawItems.length > 0) {
-          const mapped = rawItems.map((item, idx) => {
-            const catName = item.category?.name || 'Tyre Repair'
-            let Icon = Disc
-            if (catName.toLowerCase().includes('tow')) Icon = Truck
-            else if (catName.toLowerCase().includes('fuel')) Icon = Fuel
-            else if (catName.toLowerCase().includes('mechanic')) Icon = Wrench
-            else if (catName.toLowerCase().includes('lockout')) Icon = Key
+        const rawItems = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.items)
+          ? res.items
+          : Array.isArray(res)
+          ? res
+          : []
+        // Only show providers who completed onboarding steps and submitted for verification
+        const onboardedItems = rawItems.filter(
+          (item) => item.status !== 'pending_otp' && item.status !== 'pending_profile'
+        )
+        const mapped = onboardedItems.map((item, idx) => {
+          const catName = item.category?.name || 'Roadside Assistance'
+          let Icon = Disc
+          if (catName.toLowerCase().includes('tow')) Icon = Truck
+          else if (catName.toLowerCase().includes('fuel')) Icon = Fuel
+          else if (catName.toLowerCase().includes('mechanic')) Icon = Wrench
+          else if (catName.toLowerCase().includes('lockout')) Icon = Key
 
-            const createdAt = item.createdAt ? new Date(item.createdAt) : new Date()
-            const dateStr = createdAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-            const timeStr = createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+          const createdAt = item.createdAt ? new Date(item.createdAt) : new Date()
+          const dateStr = createdAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          const timeStr = createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 
-            let stBadge = 'Approved'
-            let stType = 'approved'
-            if (item.status === 'pending_verification' || item.status === 'pending_profile' || item.status === 'pending_otp') {
-              stBadge = 'Pending Review'
-              stType = 'pending'
-            } else if (item.status === 'rejected') {
+          let stBadge = 'Approved'
+          let stType = 'approved'
+          if (item.status === 'pending_verification') {
+            stBadge = 'Pending Review'
+            stType = 'pending'
+          } else if (item.status === 'rejected') {
+            if (item.statusReason && item.statusReason.toLowerCase().includes('resubmi')) {
+              stBadge = 'Resubmission'
+              stType = 'resubmission'
+            } else {
               stBadge = 'Rejected'
               stType = 'rejected'
-            } else if (item.status === 'suspended') {
-              stBadge = 'Under Review'
-              stType = 'under_review'
             }
+          } else if (item.status === 'suspended') {
+            stBadge = 'Under Review'
+            stType = 'under_review'
+          }
 
-            const avatars = [
-              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80',
-              'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&h=120&q=80',
-              'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&h=120&q=80',
-              'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=120&h=120&q=80',
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80',
-              'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&h=120&q=80',
-            ]
+          const displayName = item.name && item.name.trim().length > 0 && item.name !== 'Provider'
+            ? item.name
+            : (item.phone ? `Provider (${item.phone})` : 'New Provider')
 
-            return {
-              id: item.providerId?.replace('QRB-', 'QA-2024-') || `QA-2024-${String(idx + 1).padStart(3, '0')}`,
-              backendId: item.id,
-              providerId: item.providerId,
-              name: item.name || 'Provider',
-              city: item.location?.city || 'Riyadh',
-              category: catName,
-              categoryIcon: Icon,
-              submittedDate: dateStr,
-              submittedTime: timeStr,
-              status: stBadge,
-              statusType: stType,
-              avatar: item.photoUrl || avatars[idx % avatars.length],
-              phone: item.phone,
-              nationalId: '2487654321',
-              iqamaExpiry: '12 Mar 2026',
-              vehicleModel: 'Toyota Dyna',
-              vehicleType: 'Flatbed Truck',
-              plateNumber: 'ABC 1234',
-              vehicleColor: 'White',
-            }
-          })
+          const isOnline = Boolean(item.isOnline ?? item.presence?.isOnline)
+          const lat = item.location?.latitude != null ? Number(item.location.latitude) : null
+          const lng = item.location?.longitude != null ? Number(item.location.longitude) : null
 
-          // Sort so Pending Review is at the top
-          mapped.sort((a, b) => (a.status === 'Pending Review' ? -1 : 1))
-          setApplicationsList(mapped)
-        }
+          const rawCity = item.location?.city || item.city || item.location?.address
+          const cleanCity = (!rawCity || rawCity.toLowerCase().trim() === 'pending')
+            ? (item.location?.latitude ? `${Number(item.location.latitude).toFixed(4)}, ${Number(item.location.longitude).toFixed(4)}` : 'Location Pending')
+            : rawCity
+
+          return {
+            id: item.providerId?.replace('QRB-', 'QA-2024-') || `QA-2024-${String(idx + 1).padStart(3, '0')}`,
+            backendId: item.id,
+            providerId: item.providerId,
+            name: displayName,
+            isOnline,
+            latitude: lat,
+            longitude: lng,
+            hasCoordinates: lat != null && lng != null,
+            city: cleanCity,
+            category: catName,
+            categoryIcon: Icon,
+            submittedDate: dateStr,
+            submittedTime: timeStr,
+            status: stBadge,
+            statusType: stType,
+            avatar: item.photoUrl || `https://images.unsplash.com/photo-${1500000000000 + (idx * 1234567) % 500000000}?auto=format&fit=crop&w=120&h=120&q=80`,
+            phone: item.phone,
+            whatsapp: item.whatsapp || item.whatsappNumber || item.phone,
+            nationalId: item.nationalId || item.iqamaNumber || 'Pending Submission',
+            iqamaExpiry: item.iqamaExpiry || 'Pending Submission',
+            vehicleModel: item.vehicleModel || 'Pending Submission',
+            vehicleType: item.vehicleType || 'Roadside Vehicle',
+            plateNumber: item.plateNumber || 'Pending Submission',
+            vehicleColor: item.vehicleColor || 'Pending',
+          }
+        })
+
+        // Prioritize pending review items at top
+        mapped.sort((a, b) => (a.status === 'Pending Review' ? -1 : 1))
+        setApplicationsList(mapped)
       } catch (err) {
         console.error('Failed to load verification applications from backend:', err)
       } finally {
-        if (mounted) setLoading(false)
+        if (mounted && !isSilent) setLoading(false)
       }
     }
-    loadApplications()
+
+    // 1. Initial load
+    loadApplications(false)
+
+    // 2. Real-time background sync interval (every 2.5 seconds without manual refresh)
+    const intervalTimer = setInterval(() => {
+      loadApplications(true)
+    }, 2500)
+
+    // 3. Instant sync when browser tab gains focus or window becomes visible
+    const handleFocus = () => loadApplications(true)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') loadApplications(true)
+    }
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibility)
+
     return () => {
       mounted = false
+      clearInterval(intervalTimer)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [])
 
-  const categories = [
-    'All Categories',
-    'Tyre Repair',
-    'Battery Jump Start',
-    'Vehicle Towing',
-    'Fuel Delivery',
-    'Mobile Mechanic',
-    'Car Lockout Assistance',
-  ]
+  useEffect(() => {
+    if (onUpdateStats && applicationsList) {
+      onUpdateStats({
+        pendingReview: applicationsList.filter((a) => a.status === 'Pending Review').length,
+        underReview: applicationsList.filter((a) => a.status === 'Under Review').length,
+        resubmission: applicationsList.filter((a) => a.status === 'Resubmission' || a.status === 'Rejected').length,
+      })
+    }
+  }, [applicationsList])
+
+  const [categories, setCategories] = useState(['All Categories'])
+
+  // Load real categories dynamically (No mock/seed data)
+  useEffect(() => {
+    async function loadRealCategories() {
+      try {
+        const res = await fetchCategories()
+        const items = res?.data || res?.items || []
+        const apiNames = items.map((c) => c.name).filter(Boolean)
+        const appCatNames = applicationsList
+          .map((a) => a.category)
+          .filter((cat) => cat && cat !== 'Pending Submission')
+        const unique = Array.from(new Set([...apiNames, ...appCatNames]))
+        setCategories(['All Categories', ...unique])
+      } catch {
+        const appCatNames = Array.from(
+          new Set(
+            applicationsList
+              .map((a) => a.category)
+              .filter((cat) => cat && cat !== 'Pending Submission')
+          )
+        )
+        setCategories(['All Categories', ...appCatNames])
+      }
+    }
+    loadRealCategories()
+  }, [applicationsList])
   const statuses = ['All Status', 'Pending Review', 'Under Review', 'Resubmission', 'Rejected', 'Approved']
   const dateRanges = ['Today', 'Last 7 Days', 'Last 30 Days', 'This Month', 'All Time']
 
@@ -241,23 +226,33 @@ export function VerificationTableSection({
         return 'bg-[#FEE2E2] text-[#DC2626]'
       case 'Approved':
         return 'bg-[#E9FBF0] text-[#16A34A]'
+      case 'Suspended':
+        return 'bg-[#FFF7ED] text-[#EA580C]'
+      case 'Blocked':
+        return 'bg-[#FFF1F2] text-[#E11D48]'
       default:
         return 'bg-[#F3F4F6] text-[#4B5563]'
     }
   }
 
-  // Filter applications based on search and filters
+  // Filter applications
   const filteredApplications = applicationsList.filter((app) => {
     const matchesSearch =
       !searchQuery ||
-      app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.city.toLowerCase().includes(searchQuery.toLowerCase())
+      app.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (app.phone && app.phone.includes(searchQuery)) ||
+      app.city?.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory =
       selectedCategory === 'All Categories' || app.category === selectedCategory
     const matchesStatus =
       selectedStatus === 'All Status' || app.status === selectedStatus
-    return matchesSearch && matchesCategory && matchesStatus
+    const matchesCardFilter =
+      activeFilter === 'all' ||
+      (activeFilter === 'pending' && app.status === 'Pending Review') ||
+      (activeFilter === 'under_review' && app.status === 'Under Review') ||
+      (activeFilter === 'resubmission' && (app.status === 'Resubmission' || app.status === 'Rejected'))
+    return matchesSearch && matchesCategory && matchesStatus && matchesCardFilter
   })
 
   const toggleSelectAll = () => {
@@ -302,6 +297,63 @@ export function VerificationTableSection({
     }
   }
 
+  const handleRequestResubmission = async (app) => {
+    setActiveRowMenu(null)
+    setApplicationsList((prev) =>
+      prev.map((a) => (a.id === app.id ? { ...a, status: 'Resubmission', statusType: 'resubmission' } : a))
+    )
+    if (app.backendId) {
+      try {
+        await rejectProviderApi(app.backendId, 'Resubmission requested: please re-upload clear documents')
+      } catch (err) {
+        console.error('Failed to request resubmission on backend:', err)
+      }
+    }
+  }
+
+  const handleSuspend = async (app) => {
+    setActiveRowMenu(null)
+    setApplicationsList((prev) =>
+      prev.map((a) => (a.id === app.id ? { ...a, status: 'Suspended', statusType: 'suspended' } : a))
+    )
+    if (app.backendId) {
+      try {
+        await suspendProviderApi(app.backendId, 'Suspended by admin')
+      } catch (err) {
+        console.error('Failed to suspend provider on backend:', err)
+      }
+    }
+  }
+
+  const handleBlock = async (app) => {
+    setActiveRowMenu(null)
+    setApplicationsList((prev) =>
+      prev.map((a) => (a.id === app.id ? { ...a, status: 'Blocked', statusType: 'blocked' } : a))
+    )
+    if (app.backendId) {
+      try {
+        await blockProviderApi(app.backendId, 'Blocked by admin')
+      } catch (err) {
+        console.error('Failed to block provider on backend:', err)
+      }
+    }
+  }
+
+  const handleDelete = async (app) => {
+    setActiveRowMenu(null)
+    if (!window.confirm(`Are you sure you want to delete application for "${app.name}"? This action cannot be undone.`)) {
+      return
+    }
+    setApplicationsList((prev) => prev.filter((a) => a.id !== app.id))
+    if (app.backendId) {
+      try {
+        await deleteProviderApi(app.backendId)
+      } catch (err) {
+        console.error('Failed to delete provider on backend:', err)
+      }
+    }
+  }
+
   return (
     <div
       style={{
@@ -312,21 +364,19 @@ export function VerificationTableSection({
       }}
       className="w-full max-w-[1084px] flex flex-col justify-between shrink-0 overflow-hidden select-none animate-in fade-in duration-150"
     >
-      {/* ================= 1. FILTERS ROW (1084x40 inside padding) ================= */}
+      {/* Filters Row */}
       <div className="w-full px-5 py-3.5 flex items-center justify-between shrink-0">
-        {/* Search Input Box */}
         <div className="relative w-full max-w-[380px] flex items-center">
           <Search className="w-4 h-4 text-[#9EAFA9] absolute left-3.5 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by provider, application, or anything..."
+            placeholder="Search by provider, category, or location..."
             className="w-full h-[40px] pl-10 pr-4 text-xs font-normal text-[#1C2926] placeholder-[#9EAFA9] bg-white border border-[#EBEBEB] rounded-xl focus:border-[#8B53FE] focus:ring-2 focus:ring-[#8B53FE]/15 transition-all outline-none"
           />
         </div>
 
-        {/* 3 Dropdown Filter Buttons */}
         <div className="flex items-center gap-3">
           {/* Categories */}
           <div className="relative">
@@ -438,16 +488,14 @@ export function VerificationTableSection({
         </div>
       </div>
 
-      {/* ================= 2. TABLE WRAPPER ================= */}
-      <div className="w-full overflow-x-auto custom-card-scrollbar flex-1 flex flex-col justify-start">
-        {/* Table Header: h-56px, bg-[#F4F2F7], px-5 */}
+      {/* Table Wrapper - No Horizontal Scrollbar */}
+      <div className="w-full overflow-x-hidden flex-1 flex flex-col justify-start min-h-[300px]">
         <div
           style={{
             height: '56px',
           }}
-          className="w-full min-w-[850px] bg-[#F4F2F7] px-5 flex items-center shrink-0 text-[12px] font-semibold text-[#616166]"
+          className="w-full bg-[#F4F2F7] px-4 sm:px-5 flex items-center shrink-0 text-[12px] font-semibold text-[#616166]"
         >
-          {/* Checkbox */}
           <div className="w-[32px] flex items-center justify-start shrink-0">
             <input
               type="checkbox"
@@ -459,220 +507,258 @@ export function VerificationTableSection({
               className="w-4 h-4 rounded border-[#D1D5DB] text-[#8B53FE] focus:ring-[#8B53FE] cursor-pointer"
             />
           </div>
-
-          {/* Provider */}
-          <div className="flex-1 min-w-[155px] flex items-center gap-1.5">
+          <div className="flex-1 min-w-[120px] flex items-center gap-1.5 pr-2">
             <span>Provider</span>
             <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
           </div>
-
-          {/* Application ID */}
-          <div className="w-[105px] flex items-center gap-1.5 shrink-0">
-            <span>Application ID</span>
-            <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
-          </div>
-
-          {/* Service Category */}
-          <div className="w-[150px] flex items-center gap-1.5 shrink-0">
+          <div className="w-[130px] flex items-center gap-1.5 shrink-0">
             <span>Service Category</span>
             <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
           </div>
-
-          {/* Location */}
-          <div className="w-[100px] flex items-center gap-1.5 shrink-0">
+          <div className="w-[185px] flex items-center gap-1.5 shrink-0 pr-2">
             <span>Location</span>
             <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
           </div>
-
-          {/* Submitted On */}
-          <div className="w-[120px] flex items-center gap-1.5 shrink-0">
+          <div className="w-[115px] flex items-center gap-1.5 shrink-0">
             <span>Submitted On</span>
             <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
           </div>
-
-          {/* Status */}
-          <div className="w-[100px] flex items-center gap-1.5 shrink-0">
+          <div className="w-[105px] flex items-center gap-1.5 shrink-0">
             <span>Status</span>
             <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
           </div>
-
-          {/* Action */}
-          <div className="w-[140px] flex items-center justify-end gap-1.5 shrink-0 pr-1">
+          <div className="w-[125px] flex items-center justify-end gap-1.5 shrink-0 pr-1">
             <span>Action</span>
             <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
           </div>
         </div>
 
-        {/* Table Body */}
+        {/* Table Body / Real Empty State */}
         <div className="flex-1 flex flex-col justify-start">
-          {filteredApplications.map((app) => {
-            const CategoryIcon = app.categoryIcon || Disc
-            const isSelected = selectedRows.includes(app.id)
+          {loading ? (
+            <div className="w-full py-16 flex flex-col items-center justify-center text-center text-[#9EAFA9]">
+              <div className="w-7 h-7 border-2 border-[#8B53FE] border-t-transparent rounded-full animate-spin mb-3" />
+              <p className="text-xs text-[#616166]">Loading verification applications...</p>
+            </div>
+          ) : filteredApplications.length === 0 ? (
+            <div className="w-full py-16 flex flex-col items-center justify-center text-center text-[#9EAFA9]">
+              <Clock className="w-10 h-10 mb-2 text-[#DECFFC]" />
+              <p className="text-sm font-semibold text-[#1C2926]">No applications pending review</p>
+              <p className="text-xs text-[#616166] mt-1 max-w-sm">
+                When new providers complete onboarding and submit documents, their applications will appear here for review.
+              </p>
+            </div>
+          ) : (
+            filteredApplications.map((app) => {
+              const CategoryIcon = app.categoryIcon || Disc
+              const isSelected = selectedRows.includes(app.id)
 
-            return (
-              <div
-                key={app.id}
-                style={{
-                  height: '60px',
-                }}
-                className={`w-full min-w-[850px] px-5 flex items-center shrink-0 border-b border-[#F0EFF2] transition-colors hover:bg-[#FAF9FD] ${
-                  isSelected ? 'bg-[#F9F7FE]' : 'bg-white'
-                }`}
-              >
-                {/* Checkbox */}
-                <div className="w-[32px] flex items-center justify-start shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleSelectRow(app.id)}
-                    className="w-4 h-4 rounded border-[#D1D5DB] text-[#8B53FE] focus:ring-[#8B53FE] cursor-pointer"
-                  />
-                </div>
-
-                {/* Provider: Avatar + Name + City */}
-                <div className="flex-1 min-w-[155px] flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-[#EFF0ED]">
-                    <img
-                      src={app.avatar}
-                      alt={app.name}
-                      className="w-full h-full object-cover"
+              return (
+                <div
+                  key={app.id}
+                  style={{
+                    height: '62px',
+                  }}
+                  className={`w-full px-4 sm:px-5 flex items-center shrink-0 border-b border-[#F0EFF2] transition-colors hover:bg-[#FAF9FD] ${
+                    isSelected ? 'bg-[#F9F7FE]' : 'bg-white'
+                  }`}
+                >
+                  <div className="w-[32px] flex items-center justify-start shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelectRow(app.id)}
+                      className="w-4 h-4 rounded border-[#D1D5DB] text-[#8B53FE] focus:ring-[#8B53FE] cursor-pointer"
                     />
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[13px] font-semibold text-[#1C2926] leading-tight truncate">
-                      {app.name}
+
+                  <div className="flex-1 min-w-[120px] flex items-center pr-2">
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[13px] font-semibold text-[#1C2926] leading-tight truncate">
+                          {app.name}
+                        </span>
+                        <span
+                          title={app.isOnline ? 'Online' : 'Offline'}
+                          className={`w-2 h-2 rounded-full shrink-0 ${
+                            app.isOnline
+                              ? 'bg-[#22C55E] ring-2 ring-[#22C55E]/30 animate-pulse'
+                              : 'bg-[#D1D5DB]'
+                          }`}
+                        />
+                      </div>
+                      {app.phone ? (
+                        <div className="flex items-center gap-1 text-[11px] text-[#616166] mt-0.5">
+                          <Phone className="w-2.5 h-2.5 text-[#9EAFA9] shrink-0" />
+                          <span className="truncate">{app.phone}</span>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-[#9EAFA9] mt-0.5">New Registration</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="w-[130px] flex items-center gap-2 shrink-0">
+                    <div className="w-6 h-6 rounded-md bg-[#F5F3FF] flex items-center justify-center shrink-0 text-[#8B53FE]">
+                      <CategoryIcon className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="text-xs font-medium text-[#1C2926] truncate">
+                      {app.category}
                     </span>
-                    <div className="flex items-center gap-1 text-[11px] text-[#616166] mt-0.5">
-                      <MapPin className="w-2.5 h-2.5 text-[#9EAFA9] shrink-0" />
-                      <span className="truncate">{app.city}</span>
+                  </div>
+
+                  <div className="w-[185px] flex flex-col justify-center shrink-0 text-xs pr-2">
+                    <div className="flex items-center gap-1.5 text-[#1C2926]" title={app.city}>
+                      <MapPin
+                        className={`w-3.5 h-3.5 shrink-0 ${
+                          app.isOnline ? 'text-[#16A34A] animate-pulse' : 'text-[#8B53FE]'
+                        }`}
+                      />
+                      <span className="font-medium text-[12px] text-[#1C2926] leading-tight break-words line-clamp-1">
+                        {app.city}
+                      </span>
+                    </div>
+                    {app.hasCoordinates && (
+                      <span
+                        className="text-[10px] text-[#616166] font-mono mt-0.5 pl-5 truncate"
+                        title={`GPS: ${app.latitude}, ${app.longitude}`}
+                      >
+                        {app.latitude.toFixed(4)}, {app.longitude.toFixed(4)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="w-[115px] flex flex-col shrink-0">
+                    <span className="text-xs font-medium text-[#1C2926] leading-tight">
+                      {app.submittedDate}
+                    </span>
+                    <span className="text-[11px] text-[#9EAFA9] leading-tight mt-0.5">
+                      {app.submittedTime}
+                    </span>
+                  </div>
+
+                  <div className="w-[105px] shrink-0">
+                    <span
+                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold leading-none ${getStatusBadge(
+                        app.status
+                      )}`}
+                    >
+                      {app.status}
+                    </span>
+                  </div>
+
+                  <div className="w-[125px] flex items-center justify-end gap-1.5 shrink-0 relative pr-1">
+                    <button
+                      type="button"
+                      onClick={() => onViewDetails && onViewDetails(app)}
+                      className="whitespace-nowrap px-2.5 py-1.5 rounded-lg bg-[#EFF6FF] text-[#2563EB] hover:bg-[#DBEAFE] text-xs font-semibold transition-colors cursor-pointer shrink-0 shadow-2xs"
+                    >
+                      View Details
+                    </button>
+
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveRowMenu((prev) => (prev === app.id ? null : app.id))
+                        }
+                        className="p-1 rounded-md text-[#9EAFA9] hover:text-[#1C2926] hover:bg-[#F3F4F6] transition-colors cursor-pointer"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+
+                      {activeRowMenu === app.id && (
+                        <div className="absolute right-0 mt-1 w-44 bg-white border border-[#EFF0ED] rounded-xl shadow-lg py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveRowMenu(null)
+                              if (onViewDetails) onViewDetails(app)
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-left text-[#1C2926] hover:bg-[#F0EAFE] flex items-center gap-2 cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-[#8B53FE]" />
+                            <span>Inspect Docs</span>
+                          </button>
+
+                          {app.status === 'Approved' ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleSuspend(app)}
+                                className="w-full px-3 py-1.5 text-xs text-left text-[#EA580C] hover:bg-[#FFF7ED] flex items-center gap-2 cursor-pointer"
+                              >
+                                <PauseCircle className="w-3.5 h-3.5 text-[#EA580C]" />
+                                <span>Suspend</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleBlock(app)}
+                                className="w-full px-3 py-1.5 text-xs text-left text-[#E11D48] hover:bg-[#FFF1F2] flex items-center gap-2 cursor-pointer"
+                              >
+                                <Ban className="w-3.5 h-3.5 text-[#E11D48]" />
+                                <span>Block</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(app)}
+                                className="w-full px-3 py-1.5 text-xs text-left text-[#DC2626] hover:bg-[#FEF2F2] flex items-center gap-2 cursor-pointer border-t border-[#F0EFF2]"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-[#DC2626]" />
+                                <span>Delete</span>
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleApprove(app)}
+                                className="w-full px-3 py-1.5 text-xs text-left text-[#16A34A] hover:bg-[#E9FBF0] flex items-center gap-2 cursor-pointer"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5 text-[#16A34A]" />
+                                <span>Approve</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRequestResubmission(app)}
+                                className="w-full px-3 py-1.5 text-xs text-left text-[#D97706] hover:bg-[#FEF3E2] flex items-center gap-2 cursor-pointer"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5 text-[#D97706]" />
+                                <span>Request Resubmission</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleReject(app)}
+                                className="w-full px-3 py-1.5 text-xs text-left text-[#DC2626] hover:bg-[#FEF2F2] flex items-center gap-2 cursor-pointer"
+                              >
+                                <XCircle className="w-3.5 h-3.5 text-[#DC2626]" />
+                                <span>Reject</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-
-                {/* Application ID */}
-                <div className="w-[105px] text-xs font-normal text-[#616166] shrink-0">
-                  {app.id}
-                </div>
-
-                {/* Service Category */}
-                <div className="w-[150px] flex items-center gap-2 shrink-0">
-                  <CategoryIcon className="w-4 h-4 text-[#9EAFA9] shrink-0" />
-                  <span className="text-xs font-normal text-[#1C2926] truncate">
-                    {app.category}
-                  </span>
-                </div>
-
-                {/* Location */}
-                <div className="w-[100px] flex items-center gap-1.5 shrink-0 text-xs text-[#1C2926]">
-                  <MapPin className="w-3.5 h-3.5 text-[#9EAFA9] shrink-0" />
-                  <span className="truncate">{app.city}</span>
-                </div>
-
-                {/* Submitted On */}
-                <div className="w-[120px] flex flex-col shrink-0">
-                  <span className="text-xs font-medium text-[#1C2926] leading-tight">
-                    {app.submittedDate}
-                  </span>
-                  <span className="text-[11px] text-[#9EAFA9] leading-tight mt-0.5">
-                    {app.submittedTime}
-                  </span>
-                </div>
-
-                {/* Status Badge */}
-                <div className="w-[100px] shrink-0">
-                  <span
-                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold leading-none ${getStatusBadge(
-                      app.status
-                    )}`}
-                  >
-                    {app.status}
-                  </span>
-                </div>
-
-                {/* Actions: View Details Pill + Three Dots */}
-                <div className="w-[140px] flex items-center justify-end gap-2 shrink-0 relative pr-1">
-                  <button
-                    type="button"
-                    onClick={() => onViewDetails && onViewDetails(app)}
-                    className="whitespace-nowrap px-3 py-1.5 rounded-lg bg-[#EFF6FF] text-[#2563EB] hover:bg-[#DBEAFE] text-xs font-medium transition-colors cursor-pointer shrink-0"
-                  >
-                    View Details
-                  </button>
-
-                  <div className="relative shrink-0">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setActiveRowMenu((prev) => (prev === app.id ? null : app.id))
-                      }
-                      className="p-1 rounded-md text-[#9EAFA9] hover:text-[#1C2926] hover:bg-[#F3F4F6] transition-colors cursor-pointer"
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
-
-                    {/* Row Context Menu */}
-                    {activeRowMenu === app.id && (
-                      <div className="absolute right-0 mt-1 w-40 bg-white border border-[#EFF0ED] rounded-xl shadow-lg py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveRowMenu(null)
-                            if (onViewDetails) onViewDetails(app)
-                          }}
-                          className="w-full px-3 py-1.5 text-xs text-left text-[#1C2926] hover:bg-[#F0EAFE] flex items-center gap-2 cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-[#8B53FE]" />
-                          <span>Inspect Docs</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleApprove(app)}
-                          className="w-full px-3 py-1.5 text-xs text-left text-[#16A34A] hover:bg-[#E9FBF0] flex items-center gap-2 cursor-pointer"
-                        >
-                          <CheckCircle className="w-3.5 h-3.5 text-[#16A34A]" />
-                          <span>Approve</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveRowMenu(null)}
-                          className="w-full px-3 py-1.5 text-xs text-left text-[#D97706] hover:bg-[#FEF3E2] flex items-center gap-2 cursor-pointer"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5 text-[#D97706]" />
-                          <span>Request Resubmission</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleReject(app)}
-                          className="w-full px-3 py-1.5 text-xs text-left text-[#DC2626] hover:bg-[#FEF2F2] flex items-center gap-2 cursor-pointer"
-                        >
-                          <XCircle className="w-3.5 h-3.5 text-[#DC2626]" />
-                          <span>Reject</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+              )
+            })
+          )}
         </div>
       </div>
 
-      {/* ================= 4. NUMBERS CAROUSEL / PAGINATION (1044x32, px-5, py-3) ================= */}
+      {/* Footer */}
       <div
         style={{
           height: '52px',
         }}
         className="w-full px-5 flex items-center justify-between shrink-0 border-t border-[#F0EFF2] bg-white"
       >
-        {/* Left: Showing info */}
         <span className="text-xs text-[#616166] font-normal">
-          Showing 1-{filteredApplications.length} of {applicationsList.length} applications
+          Showing {filteredApplications.length} of {applicationsList.length} applications
         </span>
 
-        {/* Right: Numbers Carousel Controls */}
         <div className="flex items-center gap-1.5">
-          {/* Previous Page Button */}
           <button
             type="button"
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -680,30 +766,15 @@ export function VerificationTableSection({
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-
-          {/* Page Numbers */}
-          {[1, 2, 3, 4, 5].map((page) => {
-            const isActive = currentPage === page
-            return (
-              <button
-                key={page}
-                type="button"
-                onClick={() => setCurrentPage(page)}
-                className={`w-8 h-8 rounded-lg text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${
-                  isActive
-                    ? 'border border-[#8B53FE] text-[#8B53FE] bg-white shadow-2xs'
-                    : 'border border-[#EBEBEB] text-[#616166] hover:bg-[#F9F9FB]'
-                }`}
-              >
-                {page}
-              </button>
-            )
-          })}
-
-          {/* Next Page Button */}
           <button
             type="button"
-            onClick={() => setCurrentPage((p) => Math.min(5, p + 1))}
+            className="w-8 h-8 rounded-lg text-xs font-semibold flex items-center justify-center border border-[#8B53FE] text-[#8B53FE] bg-white shadow-2xs"
+          >
+            1
+          </button>
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => p + 1)}
             className="w-8 h-8 rounded-lg border border-[#EBEBEB] text-[#616166] hover:bg-[#F9F9FB] flex items-center justify-center transition-colors cursor-pointer"
           >
             <ChevronRight className="w-4 h-4" />

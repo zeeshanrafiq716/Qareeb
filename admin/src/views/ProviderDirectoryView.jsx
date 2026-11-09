@@ -14,6 +14,7 @@ import {
   Fuel,
   Wrench,
   Key,
+  Clock,
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
@@ -22,94 +23,16 @@ import {
   CheckCircle,
   Ban,
   PauseCircle,
+  Trash2,
 } from 'lucide-react'
 import {
   fetchProviders,
+  fetchCategories,
   suspendProviderApi,
+  blockProviderApi,
   reinstateProviderApi,
-  approveProviderApi,
+  deleteProviderApi,
 } from '../api/admin'
-
-const REAL_SAUDI_PROVIDERS = [
-  {
-    id: 'QRB-100001',
-    name: 'Ahmed Raza',
-    phone: '+966 50 123 4567',
-    category: 'Tyre Repair',
-    categoryIcon: Disc,
-    location: 'Jeddah',
-    registeredDate: '23 Sept 2026',
-    registeredTime: '10:00 AM',
-    status: 'Active',
-    statusType: 'active',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80',
-  },
-  {
-    id: 'QRB-100002',
-    name: 'Ali Ahmad',
-    phone: '+966 50 234 5678',
-    category: 'Battery Jump Start',
-    categoryIcon: Disc,
-    location: 'Riyadh',
-    registeredDate: '22 Sept 2026',
-    registeredTime: '10:15 PM',
-    status: 'Active',
-    statusType: 'active',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&h=120&q=80',
-  },
-  {
-    id: 'QRB-100003',
-    name: 'Abdul Ahad',
-    phone: '+966 50 345 6789',
-    category: 'Fuel Delivery',
-    categoryIcon: Fuel,
-    location: 'Makkah',
-    registeredDate: '21 Sept 2026',
-    registeredTime: '12:00 AM',
-    status: 'Suspended',
-    statusType: 'suspended',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&h=120&q=80',
-  },
-  {
-    id: 'QRB-100004',
-    name: 'M Ibrahim',
-    phone: '+966 50 456 7890',
-    category: 'Tyre Repair',
-    categoryIcon: Disc,
-    location: 'Jeddah',
-    registeredDate: '20 Sept 2026',
-    registeredTime: '12:30 PM',
-    status: 'Inactive',
-    statusType: 'inactive',
-    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=120&h=120&q=80',
-  },
-  {
-    id: 'QRB-100005',
-    name: 'Awais Ali',
-    phone: '+966 50 567 8901',
-    category: 'Vehicle Towing',
-    categoryIcon: Truck,
-    location: 'Madinah',
-    registeredDate: '19 Sept 2026',
-    registeredTime: '11:30 AM',
-    status: 'Active',
-    statusType: 'active',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80',
-  },
-  {
-    id: 'QRB-100006',
-    name: 'Usman Khan',
-    phone: '+966 50 678 9012',
-    category: 'Car Lockout Assistance',
-    categoryIcon: Key,
-    location: 'Riyadh',
-    registeredDate: '18 Sept 2026',
-    registeredTime: '9:00 PM',
-    status: 'Active',
-    statusType: 'active',
-    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&h=120&q=80',
-  },
-]
 
 export function ProviderDirectoryView({
   onViewProfile,
@@ -121,95 +44,155 @@ export function ProviderDirectoryView({
   const [categoryOpen, setCategoryOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [dateRangeOpen, setDateRangeOpen] = useState(false)
-  const [activeFilterCard, setActiveFilterCard] = useState('all') // 'all' | 'active' | 'inactive' | 'suspended'
+  const [activeFilterCard, setActiveFilterCard] = useState('all') // 'all' | 'active' | 'pending' | 'inactive' | 'suspended'
   const [activeRowMenu, setActiveRowMenu] = useState(null)
   const [selectedRows, setSelectedRows] = useState([])
   const [currentPage, setCurrentPage] = useState(1)
-  const [providersList, setProvidersList] = useState(REAL_SAUDI_PROVIDERS)
-  const [loading, setLoading] = useState(false)
+  const [providersList, setProvidersList] = useState([])
+  const [loading, setLoading] = useState(true)
 
   // Fetch real providers from backend API
   useEffect(() => {
     let mounted = true
-    async function loadRealProviders() {
+    async function loadRealProviders(isSilent = false) {
       try {
-        setLoading(true)
-        const res = await fetchProviders({ limit: 50 })
+        if (!isSilent) setLoading(true)
+        const res = await fetchProviders({ limit: 100 })
         if (!mounted) return
-        const rawItems = res?.items || []
-        if (rawItems.length > 0) {
-          const mapped = rawItems.map((item, idx) => {
-            const catName = item.category?.name || 'Tyre Repair'
-            let Icon = Disc
-            if (catName.toLowerCase().includes('tow')) Icon = Truck
-            else if (catName.toLowerCase().includes('fuel')) Icon = Fuel
-            else if (catName.toLowerCase().includes('mechanic')) Icon = Wrench
-            else if (catName.toLowerCase().includes('lockout')) Icon = Key
+        const rawItems = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.items)
+          ? res.items
+          : Array.isArray(res)
+          ? res
+          : []
+        // Business Rule: Providers only show in admin panel once they complete onboarding steps
+        const onboardedItems = rawItems.filter(
+          (item) => item.status !== 'pending_otp' && item.status !== 'pending_profile'
+        )
+        const mapped = onboardedItems.map((item, idx) => {
+          const catName = item.category?.name || 'Roadside Assistance'
+          let Icon = Disc
+          if (catName.toLowerCase().includes('tow')) Icon = Truck
+          else if (catName.toLowerCase().includes('fuel')) Icon = Fuel
+          else if (catName.toLowerCase().includes('mechanic')) Icon = Wrench
+          else if (catName.toLowerCase().includes('lockout')) Icon = Key
 
-            const createdAt = item.createdAt ? new Date(item.createdAt) : new Date()
-            const dateStr = createdAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-            const timeStr = createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+          const createdAt = item.createdAt ? new Date(item.createdAt) : new Date()
+          const dateStr = createdAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          const timeStr = createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 
-            let stStr = 'Active'
-            if (item.status === 'suspended') stStr = 'Suspended'
-            else if (item.status === 'pending_verification' || item.status === 'pending_otp' || item.status === 'pending_profile') stStr = 'Inactive'
-            else if (item.status === 'rejected') stStr = 'Inactive'
+          let stStr = 'Active'
+          if (item.status === 'suspended') stStr = 'Suspended'
+          else if (item.status === 'pending_verification') stStr = 'Pending Approval'
+          else if (item.status === 'rejected') stStr = 'Inactive'
 
-            const avatars = [
-              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80',
-              'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&h=120&q=80',
-              'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&h=120&q=80',
-              'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=120&h=120&q=80',
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80',
-              'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&h=120&q=80',
-            ]
+          const isOnline = Boolean(item.isOnline ?? item.presence?.isOnline)
+          const lat = item.location?.latitude != null ? Number(item.location.latitude) : null
+          const lng = item.location?.longitude != null ? Number(item.location.longitude) : null
+          const locationCity = item.location?.city || item.city || (lat != null && lng != null ? `${lat.toFixed(4)}, ${lng.toFixed(4)}` : 'Location Pending')
+          const locationAddress = item.location?.address || ''
 
-            return {
-              id: item.providerId || `QRB-1000${String(idx + 1).padStart(2, '0')}`,
-              backendId: item.id,
-              name: item.name || 'Provider',
-              phone: item.phone,
-              category: catName,
-              categoryIcon: Icon,
-              location: item.location?.city || 'Riyadh',
-              registeredDate: dateStr,
-              registeredTime: timeStr,
-              status: stStr,
-              statusType: stStr.toLowerCase(),
-              avatar: item.photoUrl || avatars[idx % avatars.length],
-            }
-          })
-          setProvidersList(mapped)
-        }
+          const displayName = item.name && item.name.trim().length > 0 && item.name !== 'Provider'
+            ? item.name
+            : (item.phone ? `Provider (${item.phone})` : 'New Provider')
+
+          return {
+            id: item.providerId || `QRB-1000${String(idx + 1).padStart(2, '0')}`,
+            backendId: item.id,
+            name: displayName,
+            phone: item.phone,
+            isOnline,
+            latitude: lat,
+            longitude: lng,
+            hasCoordinates: lat != null && lng != null,
+            location: locationCity,
+            address: locationAddress,
+            whatsapp: item.whatsapp || item.whatsappNumber || item.phone,
+            nationalId: item.nationalId || item.iqamaNumber || 'Pending Submission',
+            iqamaExpiry: item.iqamaExpiry || 'Pending Submission',
+            vehicleModel: item.vehicleModel || 'Pending Submission',
+            vehicleType: item.vehicleType || 'Roadside Vehicle',
+            plateNumber: item.plateNumber || 'Pending Submission',
+            vehicleColor: item.vehicleColor || 'Pending',
+            category: catName,
+            categoryIcon: Icon,
+            registeredDate: dateStr,
+            registeredTime: timeStr,
+            status: stStr,
+            statusType: stStr.toLowerCase(),
+            avatar: item.photoUrl || `https://images.unsplash.com/photo-${1500000000000 + (idx * 1234567) % 500000000}?auto=format&fit=crop&w=120&h=120&q=80`,
+          }
+        })
+        setProvidersList(mapped)
       } catch (err) {
         console.error('Failed to load real providers from backend:', err)
       } finally {
-        if (mounted) setLoading(false)
+        if (mounted && !isSilent) setLoading(false)
       }
     }
-    loadRealProviders()
+    // 1. Initial load
+    loadRealProviders(false)
+
+    // 2. Real-time background sync interval (every 2.5 seconds without manual refresh)
+    const intervalTimer = setInterval(() => {
+      loadRealProviders(true)
+    }, 2500)
+
+    // 3. Instant sync when browser tab gains focus or window becomes visible
+    const handleFocus = () => loadRealProviders(true)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') loadRealProviders(true)
+    }
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibility)
+
     return () => {
       mounted = false
+      clearInterval(intervalTimer)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [])
 
   const stats = {
     total: providersList.length,
+    online: providersList.filter((p) => p.isOnline).length,
+    offline: providersList.filter((p) => !p.isOnline).length,
     active: providersList.filter((p) => p.status === 'Active').length,
+    pending: providersList.filter((p) => p.status === 'Pending Approval').length,
     inactive: providersList.filter((p) => p.status === 'Inactive').length,
     suspended: providersList.filter((p) => p.status === 'Suspended').length,
   }
 
-  const categories = [
-    'All Categories',
-    'Tyre Repair',
-    'Battery Jump Start',
-    'Vehicle Towing',
-    'Fuel Delivery',
-    'Mobile Mechanic',
-    'Car Lockout Assistance',
-  ]
-  const statuses = ['All Status', 'Active', 'Inactive', 'Suspended']
+  const [categories, setCategories] = useState(['All Categories'])
+
+  // Load real categories from DB and active providers (No mock/seed data)
+  useEffect(() => {
+    async function loadRealCategories() {
+      try {
+        const res = await fetchCategories()
+        const items = res?.data || res?.items || []
+        const apiNames = items.map((c) => c.name).filter(Boolean)
+        const providerCatNames = providersList
+          .map((p) => p.category)
+          .filter((cat) => cat && cat !== 'Pending Registration')
+        const unique = Array.from(new Set([...apiNames, ...providerCatNames]))
+        setCategories(['All Categories', ...unique])
+      } catch {
+        const providerCatNames = Array.from(
+          new Set(
+            providersList
+              .map((p) => p.category)
+              .filter((cat) => cat && cat !== 'Pending Registration')
+          )
+        )
+        setCategories(['All Categories', ...providerCatNames])
+      }
+    }
+    loadRealCategories()
+  }, [providersList])
+  const statuses = ['All Status', 'Online', 'Offline', 'Active', 'Pending Approval', 'Inactive', 'Suspended']
   const dateRanges = ['Registered Date', 'Today', 'Last 7 Days', 'Last 30 Days', 'This Month', 'All Time']
 
   const metricCards = [
@@ -222,18 +205,18 @@ export function ProviderDirectoryView({
       activeRing: 'border-[#8B53FE] ring-2 ring-[#8B53FE]/15',
     },
     {
-      id: 'active',
-      title: 'Active',
-      count: stats.active,
+      id: 'online',
+      title: 'Online Now',
+      count: stats.online,
       icon: UserCheck,
       iconBg: 'bg-[#E9FBF0] text-[#16A34A]',
       activeRing: 'border-[#16A34A] ring-2 ring-[#16A34A]/15',
     },
     {
-      id: 'inactive',
-      title: 'Inactive',
-      count: stats.inactive,
-      icon: UserX,
+      id: 'pending',
+      title: 'Pending Approval',
+      count: stats.pending,
+      icon: Clock,
       iconBg: 'bg-[#FEF3E2] text-[#D97706]',
       activeRing: 'border-[#D97706] ring-2 ring-[#D97706]/15',
     },
@@ -251,8 +234,10 @@ export function ProviderDirectoryView({
     switch (status) {
       case 'Active':
         return 'text-[#16A34A]'
-      case 'Inactive':
+      case 'Pending Approval':
         return 'text-[#D97706]'
+      case 'Inactive':
+        return 'text-[#616166]'
       case 'Suspended':
         return 'text-[#DC2626]'
       default:
@@ -264,20 +249,25 @@ export function ProviderDirectoryView({
   const filteredProviders = providersList.filter((p) => {
     const matchesSearch =
       !searchQuery ||
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.phone.includes(searchQuery) ||
-      p.location.toLowerCase().includes(searchQuery.toLowerCase())
+      p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.phone && p.phone.includes(searchQuery)) ||
+      p.location?.toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesCategory =
       selectedCategory === 'All Categories' || p.category === selectedCategory
 
     const matchesDropdownStatus =
-      selectedStatus === 'All Status' || p.status === selectedStatus
+      selectedStatus === 'All Status' ||
+      (selectedStatus === 'Online' && p.isOnline) ||
+      (selectedStatus === 'Offline' && !p.isOnline) ||
+      p.status === selectedStatus
 
     const matchesCardFilter =
       activeFilterCard === 'all' ||
+      (activeFilterCard === 'online' && p.isOnline) ||
       (activeFilterCard === 'active' && p.status === 'Active') ||
+      (activeFilterCard === 'pending' && p.status === 'Pending Approval') ||
       (activeFilterCard === 'inactive' && p.status === 'Inactive') ||
       (activeFilterCard === 'suspended' && p.status === 'Suspended')
 
@@ -311,9 +301,26 @@ export function ProviderDirectoryView({
           await reinstateProviderApi(targetProv.backendId)
         } else if (newStatus === 'Suspended') {
           await suspendProviderApi(targetProv.backendId, 'Suspended by admin')
+        } else if (newStatus === 'Blocked') {
+          await blockProviderApi(targetProv.backendId, 'Blocked by admin')
         }
       } catch (err) {
         console.error('Failed to update provider status on backend:', err)
+      }
+    }
+  }
+
+  const handleDeleteProvider = async (prov) => {
+    setActiveRowMenu(null)
+    if (!window.confirm(`Are you sure you want to permanently delete provider "${prov.name}"? This action cannot be undone.`)) {
+      return
+    }
+    setProvidersList((prev) => prev.filter((p) => p.id !== prov.id))
+    if (prov.backendId) {
+      try {
+        await deleteProviderApi(prov.backendId)
+      } catch (err) {
+        console.error('Failed to delete provider on backend:', err)
       }
     }
   }
@@ -339,7 +346,7 @@ export function ProviderDirectoryView({
           return (
             <div
               key={card.id}
-              onClick={() => setActiveFilterCard(card.id)}
+              onClick={() => setActiveFilterCard((prev) => (prev === card.id ? 'all' : card.id))}
               className={`h-[110px] rounded-[20px] bg-white p-5 border shadow-xs flex flex-col justify-between transition-all cursor-pointer ${
                 isActive
                   ? card.activeRing
@@ -354,7 +361,7 @@ export function ProviderDirectoryView({
                   >
                     <IconComp className="w-4 h-4" />
                   </div>
-                  <span className="text-[13px] font-medium text-[#616166] truncate">
+                  <span className="text-[13px] font-semibold text-[#1C2926] whitespace-nowrap">
                     {card.title}
                   </span>
                 </div>
@@ -371,11 +378,10 @@ export function ProviderDirectoryView({
         })}
       </div>
 
-      {/* ================= 3. PROVIDER DIRECTORY TABLE CONTAINER (bg: white, border: 1px solid #EBEBEB, radius: 20px) ================= */}
+      {/* ================= 3. PROVIDER DIRECTORY TABLE CONTAINER ================= */}
       <div className="w-full bg-white rounded-[20px] border border-[#EBEBEB] shadow-xs flex flex-col justify-between shrink-0 overflow-hidden">
-        {/* Filters Row: Search input + 3 filter dropdowns */}
+        {/* Filters Row */}
         <div className="w-full px-5 py-3.5 flex items-center justify-between shrink-0">
-          {/* Search Input Box */}
           <div className="relative w-full max-w-[380px] flex items-center">
             <Search className="w-4 h-4 text-[#9EAFA9] absolute left-3.5 pointer-events-none" />
             <input
@@ -387,9 +393,8 @@ export function ProviderDirectoryView({
             />
           </div>
 
-          {/* 3 Dropdown Filter Buttons */}
           <div className="flex items-center gap-3">
-            {/* Categories */}
+            {/* Categories Dropdown */}
             <div className="relative">
               <button
                 type="button"
@@ -425,7 +430,7 @@ export function ProviderDirectoryView({
               )}
             </div>
 
-            {/* Status */}
+            {/* Status Dropdown */}
             <div className="relative">
               <button
                 type="button"
@@ -461,7 +466,7 @@ export function ProviderDirectoryView({
               )}
             </div>
 
-            {/* Registered Date */}
+            {/* Registered Date Dropdown */}
             <div className="relative">
               <button
                 type="button"
@@ -499,16 +504,15 @@ export function ProviderDirectoryView({
           </div>
         </div>
 
-        {/* Scrollable Table Area */}
-        <div className="w-full overflow-x-auto custom-card-scrollbar flex-1 flex flex-col justify-start">
-          {/* Menubar / Table Header (h: 56px, bg: #F4F2F7, px-5) */}
+        {/* Table Area - No Horizontal Scrollbar */}
+        <div className="w-full overflow-x-hidden flex-1 flex flex-col justify-start min-h-[300px]">
+          {/* Menubar / Table Header */}
           <div
             style={{
               height: '56px',
             }}
-            className="w-full min-w-[850px] bg-[#F4F2F7] px-5 flex items-center shrink-0 text-[12px] font-semibold text-[#616166]"
+            className="w-full bg-[#F4F2F7] px-5 flex items-center shrink-0 text-[12px] font-semibold text-[#616166]"
           >
-            {/* Checkbox */}
             <div className="w-[32px] flex items-center justify-start shrink-0">
               <input
                 type="checkbox"
@@ -520,220 +524,258 @@ export function ProviderDirectoryView({
                 className="w-4 h-4 rounded border-[#D1D5DB] text-[#8B53FE] focus:ring-[#8B53FE] cursor-pointer"
               />
             </div>
-
-            {/* Provider */}
-            <div className="flex-1 min-w-[155px] flex items-center gap-1.5">
+            <div className="flex-1 min-w-[130px] flex items-center gap-1.5">
               <span>Provider</span>
               <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
             </div>
-
-            {/* Provider ID */}
             <div className="w-[105px] flex items-center gap-1.5 shrink-0">
               <span>Provider ID</span>
               <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
             </div>
-
-            {/* Service Category */}
-            <div className="w-[150px] flex items-center gap-1.5 shrink-0">
+            <div className="w-[130px] flex items-center gap-1.5 shrink-0">
               <span>Service Category</span>
               <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
             </div>
-
-            {/* Location */}
-            <div className="w-[100px] flex items-center gap-1.5 shrink-0">
-              <span>Location</span>
+            <div className="w-[110px] flex items-center gap-1.5 shrink-0">
+              <span>Location (GPS)</span>
               <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
             </div>
-
-            {/* Registered On */}
-            <div className="w-[120px] flex items-center gap-1.5 shrink-0">
+            <div className="w-[110px] flex items-center gap-1.5 shrink-0">
               <span>Registered On</span>
               <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
             </div>
-
-            {/* Status */}
-            <div className="w-[85px] flex items-center gap-1.5 shrink-0">
+            <div className="w-[110px] flex items-center gap-1.5 shrink-0">
               <span>Status</span>
               <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
             </div>
-
-            {/* Action */}
-            <div className="w-[145px] flex items-center justify-end gap-1.5 shrink-0 pr-1">
+            <div className="w-[115px] flex items-center justify-end gap-1.5 shrink-0 pr-1">
               <span>Action</span>
               <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
             </div>
           </div>
 
-          {/* Table Body */}
+          {/* Table Body / Real Empty State */}
           <div className="flex-1 flex flex-col justify-start">
-            {filteredProviders.map((p) => {
-              const CategoryIcon = p.categoryIcon || Disc
-              const isSelected = selectedRows.includes(p.id)
+            {loading ? (
+              <div className="w-full py-16 flex flex-col items-center justify-center text-center text-[#9EAFA9]">
+                <div className="w-7 h-7 border-2 border-[#8B53FE] border-t-transparent rounded-full animate-spin mb-3" />
+                <p className="text-xs text-[#616166]">Loading real provider records...</p>
+              </div>
+            ) : filteredProviders.length === 0 ? (
+              <div className="w-full py-16 flex flex-col items-center justify-center text-center text-[#9EAFA9]">
+                <Users className="w-10 h-10 mb-2 text-[#DECFFC]" />
+                <p className="text-sm font-semibold text-[#1C2926]">No providers registered yet</p>
+                <p className="text-xs text-[#616166] mt-1 max-w-sm">
+                  Providers who register and submit their details via the Qareeb application will be listed here.
+                </p>
+              </div>
+            ) : (
+              filteredProviders.map((p) => {
+                const CategoryIcon = p.categoryIcon || Disc
+                const isSelected = selectedRows.includes(p.id)
 
-              return (
-                <div
-                  key={p.id}
-                  style={{
-                    height: '60px',
-                  }}
-                  className={`w-full min-w-[850px] px-5 flex items-center shrink-0 border-b border-[#F0EFF2] transition-colors hover:bg-[#FAF9FD] ${
-                    isSelected ? 'bg-[#F9F7FE]' : 'bg-white'
-                  }`}
-                >
-                  {/* Checkbox */}
-                  <div className="w-[32px] flex items-center justify-start shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleSelectRow(p.id)}
-                      className="w-4 h-4 rounded border-[#D1D5DB] text-[#8B53FE] focus:ring-[#8B53FE] cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Provider: Avatar + Name + Phone */}
-                  <div className="flex-1 min-w-[155px] flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-[#EFF0ED]">
-                      <img
-                        src={p.avatar}
-                        alt={p.name}
-                        className="w-full h-full object-cover"
+                return (
+                  <div
+                    key={p.id}
+                    style={{
+                      height: '60px',
+                    }}
+                    className={`w-full px-5 flex items-center shrink-0 border-b border-[#F0EFF2] transition-colors hover:bg-[#FAF9FD] ${
+                      isSelected ? 'bg-[#F9F7FE]' : 'bg-white'
+                    }`}
+                  >
+                    <div className="w-[32px] flex items-center justify-start shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelectRow(p.id)}
+                        className="w-4 h-4 rounded border-[#D1D5DB] text-[#8B53FE] focus:ring-[#8B53FE] cursor-pointer"
                       />
                     </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[13px] font-semibold text-[#1C2926] leading-tight truncate">
-                        {p.name}
+
+                    <div className="flex-1 min-w-[130px] flex items-center">
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[13px] font-semibold text-[#1C2926] leading-tight truncate">
+                            {p.name}
+                          </span>
+                          <span
+                            title={p.isOnline ? 'Online' : 'Offline'}
+                            className={`w-2 h-2 rounded-full shrink-0 ${
+                              p.isOnline
+                                ? 'bg-[#22C55E] ring-2 ring-[#22C55E]/30 animate-pulse'
+                                : 'bg-[#D1D5DB]'
+                            }`}
+                          />
+                        </div>
+                        <div className="flex items-center gap-1 text-[11px] text-[#616166] mt-0.5">
+                          <Phone className="w-2.5 h-2.5 text-[#9EAFA9] shrink-0" />
+                          <span className="truncate">{p.phone}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="w-[105px] text-xs font-normal text-[#616166] shrink-0">
+                      {p.id}
+                    </div>
+
+                    <div className="w-[130px] flex items-center gap-2 shrink-0">
+                      <CategoryIcon className="w-4 h-4 text-[#9EAFA9] shrink-0" />
+                      <span className="text-xs font-normal text-[#1C2926] truncate">
+                        {p.category}
                       </span>
-                      <div className="flex items-center gap-1 text-[11px] text-[#616166] mt-0.5">
-                        <Phone className="w-2.5 h-2.5 text-[#9EAFA9] shrink-0" />
-                        <span className="truncate">{p.phone}</span>
+                    </div>
+
+                    <div className="w-[110px] flex flex-col shrink-0 text-xs">
+                      <div className="flex items-center gap-1 text-[#1C2926]">
+                        <Compass
+                          className={`w-3.5 h-3.5 shrink-0 ${
+                            p.isOnline ? 'text-[#16A34A] animate-pulse' : 'text-[#9EAFA9]'
+                          }`}
+                        />
+                        <span className="truncate font-medium">{p.location}</span>
+                      </div>
+                      {p.hasCoordinates ? (
+                        <span
+                          className="text-[10px] text-[#616166] font-mono mt-0.5 truncate"
+                          title={`GPS: ${p.latitude}, ${p.longitude}${
+                            p.address ? ` (${p.address})` : ''
+                          }`}
+                        >
+                          {p.latitude.toFixed(4)}, {p.longitude.toFixed(4)}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-[#9EAFA9] mt-0.5">GPS pending</span>
+                      )}
+                    </div>
+
+                    <div className="w-[110px] flex flex-col shrink-0">
+                      <span className="text-xs font-medium text-[#1C2926] leading-tight">
+                        {p.registeredDate}
+                      </span>
+                      <span className="text-[11px] text-[#9EAFA9] leading-tight mt-0.5">
+                        {p.registeredTime}
+                      </span>
+                    </div>
+
+                    <div className="w-[110px] flex flex-col gap-1 shrink-0">
+                      <div className="flex items-center">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                            p.isOnline
+                              ? 'bg-[#E9FBF0] text-[#16A34A] border border-[#BBF7D0]'
+                              : 'bg-[#F3F4F6] text-[#6B7280] border border-[#E5E7EB]'
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              p.isOnline
+                                ? 'bg-[#22C55E] ring-2 ring-[#22C55E]/40 animate-pulse'
+                                : 'bg-[#9CA3AF]'
+                            }`}
+                          />
+                          {p.isOnline ? 'Online' : 'Offline'}
+                        </span>
+                      </div>
+                      <span
+                        className={`text-[11px] font-medium leading-tight ${getStatusColor(
+                          p.status
+                        )}`}
+                      >
+                        {p.status}
+                      </span>
+                    </div>
+
+                    <div className="w-[115px] flex items-center justify-end gap-2 shrink-0 relative pr-1">
+                      <button
+                        type="button"
+                        onClick={() => onViewProfile && onViewProfile(p)}
+                        className="whitespace-nowrap px-3 py-1.5 rounded-lg bg-[#EFF6FF] text-[#2563EB] hover:bg-[#DBEAFE] text-xs font-medium transition-colors cursor-pointer shrink-0"
+                      >
+                        View Profile
+                      </button>
+
+                      <div className="relative shrink-0">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveRowMenu((prev) => (prev === p.id ? null : p.id))
+                          }
+                          className="p-1 rounded-md text-[#9EAFA9] hover:text-[#1C2926] hover:bg-[#F3F4F6] transition-colors cursor-pointer"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+
+                        {activeRowMenu === p.id && (
+                          <div className="absolute right-0 mt-1 w-44 bg-white border border-[#EFF0ED] rounded-xl shadow-lg py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveRowMenu(null)
+                                if (onViewProfile) onViewProfile(p)
+                              }}
+                              className="w-full px-3 py-1.5 text-xs text-left text-[#1C2926] hover:bg-[#F0EAFE] flex items-center gap-2 cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-[#8B53FE]" />
+                              <span>View Details</span>
+                            </button>
+                            {p.status !== 'Active' && (
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateStatus(p.id, 'Active')}
+                                className="w-full px-3 py-1.5 text-xs text-left text-[#16A34A] hover:bg-[#E9FBF0] flex items-center gap-2 cursor-pointer"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5 text-[#16A34A]" />
+                                <span>Set Active</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatus(p.id, 'Suspended')}
+                              className="w-full px-3 py-1.5 text-xs text-left text-[#EA580C] hover:bg-[#FFF7ED] flex items-center gap-2 cursor-pointer"
+                            >
+                              <PauseCircle className="w-3.5 h-3.5 text-[#EA580C]" />
+                              <span>Suspend</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatus(p.id, 'Blocked')}
+                              className="w-full px-3 py-1.5 text-xs text-left text-[#E11D48] hover:bg-[#FFF1F2] flex items-center gap-2 cursor-pointer"
+                            >
+                              <Ban className="w-3.5 h-3.5 text-[#E11D48]" />
+                              <span>Block</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteProvider(p)}
+                              className="w-full px-3 py-1.5 text-xs text-left text-[#DC2626] hover:bg-[#FEF2F2] flex items-center gap-2 cursor-pointer border-t border-[#F0EFF2]"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-[#DC2626]" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-
-                  {/* Provider ID */}
-                  <div className="w-[105px] text-xs font-normal text-[#616166] shrink-0">
-                    {p.id}
-                  </div>
-
-                  {/* Service Category */}
-                  <div className="w-[150px] flex items-center gap-2 shrink-0">
-                    <CategoryIcon className="w-4 h-4 text-[#9EAFA9] shrink-0" />
-                    <span className="text-xs font-normal text-[#1C2926] truncate">
-                      {p.category}
-                    </span>
-                  </div>
-
-                  {/* Location */}
-                  <div className="w-[100px] flex items-center gap-1.5 shrink-0 text-xs text-[#1C2926]">
-                    <Compass className="w-3.5 h-3.5 text-[#9EAFA9] shrink-0" />
-                    <span className="truncate">{p.location}</span>
-                  </div>
-
-                  {/* Registered On */}
-                  <div className="w-[120px] flex flex-col shrink-0">
-                    <span className="text-xs font-medium text-[#1C2926] leading-tight">
-                      {p.registeredDate}
-                    </span>
-                    <span className="text-[11px] text-[#9EAFA9] leading-tight mt-0.5">
-                      {p.registeredTime}
-                    </span>
-                  </div>
-
-                  {/* Status */}
-                  <div className="w-[85px] shrink-0">
-                    <span
-                      className={`text-[12px] font-bold leading-tight ${getStatusColor(
-                        p.status
-                      )}`}
-                    >
-                      {p.status}
-                    </span>
-                  </div>
-
-                  {/* Actions: View Profile Pill + Three Dots */}
-                  <div className="w-[145px] flex items-center justify-end gap-2 shrink-0 relative pr-1">
-                    <button
-                      type="button"
-                      onClick={() => onViewProfile && onViewProfile(p)}
-                      className="whitespace-nowrap px-3 py-1.5 rounded-lg bg-[#EFF6FF] text-[#2563EB] hover:bg-[#DBEAFE] text-xs font-medium transition-colors cursor-pointer shrink-0"
-                    >
-                      View Profile
-                    </button>
-
-                    <div className="relative shrink-0">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setActiveRowMenu((prev) => (prev === p.id ? null : p.id))
-                        }
-                        className="p-1 rounded-md text-[#9EAFA9] hover:text-[#1C2926] hover:bg-[#F3F4F6] transition-colors cursor-pointer"
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
-
-                      {/* Row Context Menu */}
-                      {activeRowMenu === p.id && (
-                        <div className="absolute right-0 mt-1 w-40 bg-white border border-[#EFF0ED] rounded-xl shadow-lg py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveRowMenu(null)
-                              if (onViewProfile) onViewProfile(p)
-                            }}
-                            className="w-full px-3 py-1.5 text-xs text-left text-[#1C2926] hover:bg-[#F0EAFE] flex items-center gap-2 cursor-pointer"
-                          >
-                            <Eye className="w-3.5 h-3.5 text-[#8B53FE]" />
-                            <span>View Details</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateStatus(p.id, 'Active')}
-                            className="w-full px-3 py-1.5 text-xs text-left text-[#16A34A] hover:bg-[#E9FBF0] flex items-center gap-2 cursor-pointer"
-                          >
-                            <CheckCircle className="w-3.5 h-3.5 text-[#16A34A]" />
-                            <span>Set Active</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateStatus(p.id, 'Inactive')}
-                            className="w-full px-3 py-1.5 text-xs text-left text-[#D97706] hover:bg-[#FEF3E2] flex items-center gap-2 cursor-pointer"
-                          >
-                            <PauseCircle className="w-3.5 h-3.5 text-[#D97706]" />
-                            <span>Set Inactive</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateStatus(p.id, 'Suspended')}
-                            className="w-full px-3 py-1.5 text-xs text-left text-[#DC2626] hover:bg-[#FEF2F2] flex items-center gap-2 cursor-pointer"
-                          >
-                            <Ban className="w-3.5 h-3.5 text-[#DC2626]" />
-                            <span>Suspend</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })
+            )}
           </div>
         </div>
 
-        {/* Numbers Carousel / Pagination Footer */}
+        {/* Footer */}
         <div
           style={{
             height: '52px',
           }}
           className="w-full px-5 flex items-center justify-between shrink-0 border-t border-[#F0EFF2] bg-white"
         >
-          {/* Left: Showing info */}
           <span className="text-xs text-[#616166] font-normal">
-            Showing 1-{filteredProviders.length} of {providersList.length} providers
+            Showing {filteredProviders.length} of {providersList.length} providers
           </span>
 
-          {/* Right: Numbers Carousel Controls */}
           <div className="flex items-center gap-1.5">
-            {/* Previous */}
             <button
               type="button"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -741,30 +783,15 @@ export function ProviderDirectoryView({
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-
-            {/* Page Numbers */}
-            {[1, 2, 3, 4, 5].map((page) => {
-              const isActive = currentPage === page
-              return (
-                <button
-                  key={page}
-                  type="button"
-                  onClick={() => setCurrentPage(page)}
-                  className={`w-8 h-8 rounded-lg text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${
-                    isActive
-                      ? 'border border-[#8B53FE] text-[#8B53FE] bg-white shadow-2xs'
-                      : 'border border-[#EBEBEB] text-[#616166] hover:bg-[#F9F9FB]'
-                  }`}
-                >
-                  {page}
-                </button>
-              )
-            })}
-
-            {/* Next */}
             <button
               type="button"
-              onClick={() => setCurrentPage((p) => Math.min(5, p + 1))}
+              className="w-8 h-8 rounded-lg text-xs font-semibold flex items-center justify-center border border-[#8B53FE] text-[#8B53FE] bg-white shadow-2xs"
+            >
+              1
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => p + 1)}
               className="w-8 h-8 rounded-lg border border-[#EBEBEB] text-[#616166] hover:bg-[#F9F9FB] flex items-center justify-center transition-colors cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />

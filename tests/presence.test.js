@@ -89,4 +89,42 @@ describe("Phase 2 presence", () => {
       .rows[0].last_seen_at;
     expect(new Date(after).getTime()).toBeGreaterThanOrEqual(new Date(before).getTime());
   });
+
+  it("updates presence via PUT /api/v1/provider/me/presence and reflects in admin providers", async () => {
+    const { token, provider } = await completeRegistration("03070000005");
+    const adminToken = await adminAuth();
+
+    // Set online
+    const onlineRes = await api()
+      .put("/api/v1/provider/me/presence")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ isOnline: true });
+    expect(onlineRes.status).toBe(200);
+    expect(onlineRes.body.data.isOnline).toBe(true);
+
+    // Verify in admin list
+    const adminRes1 = await api()
+      .get("/api/v1/admin/providers")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(adminRes1.status).toBe(200);
+    const target1 = adminRes1.body.data.find((p) => p.id === provider.id);
+    expect(target1).toBeTruthy();
+    expect(target1.isOnline).toBe(true);
+
+    // Set offline
+    const offlineRes = await api()
+      .put("/api/v1/provider/me/presence")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ isOnline: false });
+    expect(offlineRes.status).toBe(200);
+    expect(offlineRes.body.data.isOnline).toBe(false);
+
+    // Verify in admin list
+    const adminRes2 = await api()
+      .get("/api/v1/admin/providers")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(adminRes2.status).toBe(200);
+    const target2 = adminRes2.body.data.find((p) => p.id === provider.id);
+    expect(target2.isOnline).toBe(false);
+  });
 });

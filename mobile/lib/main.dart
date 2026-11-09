@@ -17,6 +17,7 @@ import 'features/provider/auth/presentation/admin_approval_screen.dart';
 import 'features/provider/auth/presentation/otp_verification_screen.dart';
 import 'features/provider/auth/presentation/phone_verification_screen.dart';
 import 'features/provider/auth/presentation/phone_verified_screen.dart';
+import 'features/provider/auth/presentation/provider_blocked_screen.dart';
 import 'features/provider/auth/presentation/provider_location_permission_screen.dart';
 import 'features/provider/auth/presentation/provider_profile_details_screen.dart';
 import 'features/provider/auth/presentation/upload_documents_screen.dart';
@@ -26,9 +27,13 @@ import 'features/provider/splash/presentation/provider_splash_screen.dart';
 import 'features/provider/theme/provider_text_styles.dart';
 import 'features/requests/presentation/requests_screen.dart';
 import 'features/splash/presentation/splash_screen.dart';
+import 'services/task_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize real task service
+  await TaskService.instance.init();
 
   // Pre-load active mode from persistence before app boots up
   // Ensures provider side directly launches ProviderSplashScreen, never flashing customer splash
@@ -124,6 +129,7 @@ class QareebApp extends ConsumerWidget {
         '/provider/upload-documents': (context) => const UploadDocumentsScreen(),
         '/provider/location-permission': (context) => const ProviderLocationPermissionScreen(),
         '/provider/admin-approval': (context) => const AdminApprovalScreen(),
+        '/provider/blocked': (context) => const ProviderBlockedScreen(),
         '/provider/home': (context) => const ProviderHomeScreen(),
       },
     );

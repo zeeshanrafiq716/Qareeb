@@ -18,9 +18,11 @@ import 'features/provider/splash/presentation/provider_splash_screen.dart';
 import 'features/provider/theme/provider_colors.dart';
 import 'features/provider/theme/provider_text_styles.dart';
 import 'core/localization/app_locale.dart';
+import 'services/task_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await TaskService.instance.init();
 
   // Gracefully handle font network loading errors
   PlatformDispatcher.instance.onError = (error, stack) {

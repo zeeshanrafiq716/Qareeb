@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import '../services/google_maps_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/api/api_client.dart';
@@ -38,11 +40,92 @@ final healthCheckProvider = FutureProvider<HealthStatusModel>((ref) async {
   return await service.checkHealth();
 });
 
-/// Categories provider
-final categoriesProvider = FutureProvider<List<CategoryModel>>((ref) async {
-  final service = ref.watch(backendServiceProvider);
-  return await service.getCategories();
-});
+/// Real-time Categories notifier automatically synced with the backend.
+/// When an admin creates, activates, or deletes a category in the admin panel,
+/// it automatically detects the change via listEquals and updates the UI
+/// without requiring a manual refresh or rebuilding when unchanged.
+class CategoriesNotifier extends AsyncNotifier<List<CategoryModel>> {
+  Timer? _syncTimer;
+
+  @override
+  Future<List<CategoryModel>> build() async {
+    final service = ref.watch(backendServiceProvider);
+
+    ref.onDispose(() {
+      _syncTimer?.cancel();
+    });
+
+    _syncTimer?.cancel();
+    // Background sync every 15s to keep state fresh without overwhelming network
+    _syncTimer = Timer.periodic(const Duration(seconds: 15), (_) => _syncCategories());
+
+    return await service.getCategories();
+  }
+
+  Future<void> _syncCategories() async {
+    try {
+      final service = ref.read(backendServiceProvider);
+      final fresh = await service.getCategories();
+
+      final current = state.value;
+      if (current == null || !listEquals(current, fresh)) {
+        state = AsyncData(fresh);
+      }
+    } catch (_) {
+      // Keep existing state if offline or transient error
+    }
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final service = ref.read(backendServiceProvider);
+      return await service.getCategories();
+    });
+  }
+}
+
+final categoriesProvider =
+    AsyncNotifierProvider<CategoriesNotifier, List<CategoryModel>>(
+  CategoriesNotifier.new,
+);
+
+/// Real-time Vehicle Types notifier automatically synced with the backend.
+class VehicleTypesNotifier extends AsyncNotifier<List<String>> {
+  Timer? _syncTimer;
+
+  @override
+  Future<List<String>> build() async {
+    final service = ref.watch(backendServiceProvider);
+
+    ref.onDispose(() {
+      _syncTimer?.cancel();
+    });
+
+    _syncTimer?.cancel();
+    // Background sync every 15s to keep state fresh without overwhelming network
+    _syncTimer = Timer.periodic(const Duration(seconds: 15), (_) => _syncTypes());
+
+    return await service.getVehicleTypes();
+  }
+
+  Future<void> _syncTypes() async {
+    try {
+      final service = ref.read(backendServiceProvider);
+      final fresh = await service.getVehicleTypes();
+
+      final current = state.value;
+      if (current == null || !listEquals(current, fresh)) {
+        state = AsyncData(fresh);
+      }
+    } catch (_) {}
+  }
+}
+
+final vehicleTypesProvider =
+    AsyncNotifierProvider<VehicleTypesNotifier, List<String>>(
+  VehicleTypesNotifier.new,
+);
 
 /// Real nearby providers based on real user GPS coordinates
 final nearbyProvidersProvider = FutureProvider<List<ProviderMarkerModel>>((ref) async {

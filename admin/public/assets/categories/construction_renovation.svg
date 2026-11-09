@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 120" width="196" height="120" fill="none">
+  
+  <defs>
+    <!-- Realistic 3D White Bodywork -->
+    <linearGradient id="body_white_3d" x1="0.1" y1="0" x2="0.3" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="25%" stop-color="#FAFAFA"/>
+      <stop offset="60%" stop-color="#EEF2F6"/>
+      <stop offset="85%" stop-color="#D9E2EC"/>
+      <stop offset="100%" stop-color="#BCCCDC"/>
+    </linearGradient>
+    <linearGradient id="body_white_roof" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+    <linearGradient id="body_shadow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#94A3B8"/>
+      <stop offset="100%" stop-color="#475569"/>
+    </linearGradient>
+
+    <!-- Tinted Glass Window Reflection -->
+    <linearGradient id="glass_3d" x1="0.1" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#E0F2FE" stop-opacity="0.95"/>
+      <stop offset="25%" stop-color="#BAE6FD" stop-opacity="0.9"/>
+      <stop offset="55%" stop-color="#38BDF8" stop-opacity="0.85"/>
+      <stop offset="80%" stop-color="#0284C7" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0.95"/>
+    </linearGradient>
+
+    <!-- Chrome & Polished Metal -->
+    <linearGradient id="chrome_metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="25%" stop-color="#94A3B8"/>
+      <stop offset="50%" stop-color="#F8FAFC"/>
+      <stop offset="75%" stop-color="#64748B"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+
+    <!-- Alloy Rim -->
+    <linearGradient id="alloy_rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F8FAFC"/>
+      <stop offset="40%" stop-color="#CBD5E1"/>
+      <stop offset="80%" stop-color="#64748B"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+
+    <!-- Stainless Steel Tank (Water) -->
+    <linearGradient id="steel_tank_water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E0F2FE"/>
+      <stop offset="18%" stop-color="#BAE6FD"/>
+      <stop offset="35%" stop-color="#38BDF8"/>
+      <stop offset="50%" stop-color="#0284C7"/>
+      <stop offset="70%" stop-color="#0369A1"/>
+      <stop offset="100%" stop-color="#0C4A6E"/>
+    </linearGradient>
+
+    <!-- Fuel Tank (Amber / Gold) -->
+    <linearGradient id="fuel_tank_grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FEF3C7"/>
+      <stop offset="20%" stop-color="#FDE68A"/>
+      <stop offset="45%" stop-color="#F59E0B"/>
+      <stop offset="75%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#92400E"/>
+    </linearGradient>
+
+    <!-- Amber Beacon Bar -->
+    <linearGradient id="beacon_amber" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="50%" stop-color="#FEF08A"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+
+    <!-- Drop Shadow Filter -->
+    <filter id="soft_shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3.5" flood-color="#0F172A" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  
+  <ellipse cx="98" cy="105" rx="76" ry="6.5" fill="#0F172A" opacity="0.16"/>
+  <ellipse cx="98" cy="105" rx="58" ry="3.5" fill="#0F172A" opacity="0.22"/>
+
+  <g filter="url(#soft_shadow)">
+    <!-- Cab Body -->
+    <path d="M78 44 Q80 36 90 36 L130 36 Q138 36 142 44 L154 60 L166 62 Q172 64 172 72 L172 84 L78 84 Z" fill="url(#body_white_3d)"/>
+    <!-- Cargo Bed -->
+    <path d="M26 62 L80 62 L80 84 L26 84 Q24 84 24 80 L24 66 Q24 62 26 62 Z" fill="url(#body_white_3d)"/>
+    <rect x="24" y="60" width="56" height="4" rx="1.5" fill="url(#chrome_metal)"/>
+    <!-- Bed Inner Wall -->
+    <rect x="28" y="64" width="50" height="16" fill="#334155" opacity="0.15"/>
+
+    <!-- Wheel Arch Cutouts -->
+    <path d="M38 84 A16 16 0 0 1 70 84 Z" fill="#0F172A"/>
+    <path d="M128 84 A16 16 0 0 1 160 84 Z" fill="#0F172A"/>
+
+    <!-- Cab Windshield & Door Window -->
+    <path d="M128 40 L146 58 L124 58 L122 40 Z" fill="url(#glass_3d)"/>
+    <path d="M92 40 L120 40 L122 58 L90 58 Z" fill="url(#glass_3d)"/>
+    <line x1="120" y1="40" x2="120" y2="82" stroke="#CBD5E1" stroke-width="1.2"/>
+    <rect x="96" y="64" width="8" height="2" rx="1" fill="#475569"/>
+
+    <!-- Mirror -->
+    <path d="M124 52 L130 52 L130 57 L124 56 Z" fill="url(#body_white_3d)"/>
+
+    <!-- Headlight & Grille -->
+    <path d="M164 66 L171 67 Q172 69 171 73 L164 73 Z" fill="#F8FAFC"/>
+    <rect x="170" y="69" width="2" height="3" fill="#F59E0B"/>
+    <rect x="160" y="72" width="12" height="4" rx="1" fill="url(#chrome_metal)"/>
+    <rect x="162" y="78" width="10" height="6" rx="2" fill="#E2E8F0"/>
+
+    
+    
+    <!-- Construction Brickwork & Masonry Box -->
+    <rect x="32" y="54" width="14" height="8" rx="1" fill="#B91C1C"/>
+    <rect x="48" y="54" width="14" height="8" rx="1" fill="#991B1B"/>
+    <rect x="40" y="46" width="14" height="8" rx="1" fill="#B91C1C"/>
+    <!-- Yellow Builder Safety Helmet -->
+    <path d="M64 54 A8 8 0 0 1 78 54 Z" fill="#FACC15"/>
+    <rect x="62" y="54" width="18" height="2" rx="1" fill="#EAB308"/>
+  
+
+    <!-- Wheels -->
+    
+  <g transform="translate(54, 84)">
+    <!-- Tire Outer Rubber -->
+    <circle cx="0" cy="0" r="13.5" fill="#1E293B"/>
+    <circle cx="0" cy="0" r="12.5" fill="#0F172A"/>
+    <!-- Tire Tread Ring -->
+    <circle cx="0" cy="0" r="11" fill="#1E293B"/>
+    <!-- Alloy Wheel -->
+    <circle cx="0" cy="0" r="9.5" fill="url(#alloy_rim)"/>
+    <!-- Rim Spokes -->
+    <circle cx="0" cy="0" r="6" fill="#334155"/>
+    <circle cx="0" cy="0" r="4" fill="url(#chrome_metal)"/>
+    <circle cx="0" cy="0" r="2" fill="#0F172A"/>
+  </g>
+
+    
+  <g transform="translate(144, 84)">
+    <!-- Tire Outer Rubber -->
+    <circle cx="0" cy="0" r="13.5" fill="#1E293B"/>
+    <circle cx="0" cy="0" r="12.5" fill="#0F172A"/>
+    <!-- Tire Tread Ring -->
+    <circle cx="0" cy="0" r="11" fill="#1E293B"/>
+    <!-- Alloy Wheel -->
+    <circle cx="0" cy="0" r="9.5" fill="url(#alloy_rim)"/>
+    <!-- Rim Spokes -->
+    <circle cx="0" cy="0" r="6" fill="#334155"/>
+    <circle cx="0" cy="0" r="4" fill="url(#chrome_metal)"/>
+    <circle cx="0" cy="0" r="2" fill="#0F172A"/>
+  </g>
+
+  </g>
+</svg>

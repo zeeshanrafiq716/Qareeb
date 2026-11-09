@@ -24,13 +24,12 @@ export default function LoginView() {
 
   const [lang, setLang] = useState('en')
   const [langDropdownOpen, setLangDropdownOpen] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('admin@qareeb.app')
+  const [password, setPassword] = useState('admin123')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-  const [showForgotModal, setShowForgotModal] = useState(false)
 
   const t = translations[lang] || translations.en
   const isArabic = lang === 'ar'
@@ -286,7 +285,7 @@ export default function LoginView() {
               </div>
             </div>
 
-            {/* Remember Me & Forgot Password Row */}
+            {/* Remember Me */}
             <div className="flex items-center justify-between pt-1">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
@@ -299,14 +298,6 @@ export default function LoginView() {
                   {t.rememberMe}
                 </span>
               </label>
-
-              <button
-                type="button"
-                onClick={() => setShowForgotModal(true)}
-                className="text-xs font-medium text-[#8B53FE] hover:text-[#7032F0] hover:underline transition-colors cursor-pointer"
-              >
-                {t.forgotPassword}
-              </button>
             </div>
 
             {/* Submit Button (Sign In ->) */}
@@ -352,31 +343,6 @@ export default function LoginView() {
         </div>
       </div>
 
-      {/* Forgot Password Modal */}
-      {showForgotModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-[#EFF0ED] text-left">
-            <div className="w-11 h-11 rounded-xl bg-[#F0EAFE] text-[#8B53FE] flex items-center justify-center mb-4">
-              <Lock className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-bold text-[#1C2926]">
-              {t.forgotPasswordTitle}
-            </h3>
-            <p className="text-xs text-[#566663] mt-2 leading-relaxed">
-              {t.forgotPasswordMessage}
-            </p>
-            <div className="mt-5 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowForgotModal(false)}
-                className="px-4 py-2 rounded-xl bg-[#8B53FE] text-white text-xs font-semibold hover:bg-[#7032F0] transition-colors cursor-pointer"
-              >
-                {t.close}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

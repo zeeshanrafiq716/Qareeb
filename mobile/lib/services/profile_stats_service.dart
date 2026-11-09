@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'task_service.dart';
 
 /// Real Profile Statistics Model
 class ProfileStatsData {
@@ -113,11 +114,22 @@ class ProfileStatsService {
       final prefs = await SharedPreferences.getInstance();
       final photoPath = await getSavedPhotoPath(isProvider: isProvider);
 
+      // Real task counts from TaskService
+      final activeTaskCount = TaskService.instance.activeTask != null ? 1 : 0;
+      final historyTasks = TaskService.instance.historyTasks;
+      final realCompletedCount = historyTasks.where((t) => t.status == 'completed').length;
+
       if (isProvider) {
-        final total = prefs.getInt(_keyProviderTotalReq) ?? 128;
-        final completed = prefs.getInt(_keyProviderCompletedReq) ?? 107;
-        final rating = prefs.getDouble(_keyProviderRating) ?? 4.8;
-        final reviews = prefs.getInt(_keyProviderReviews) ?? 120;
+        final providerRequests = TaskService.instance.providerRequests;
+        final realTotal = providerRequests.length + historyTasks.length;
+        final customTotal = prefs.getInt(_keyProviderTotalReq);
+        final total = customTotal ?? realTotal;
+
+        final customCompleted = prefs.getInt(_keyProviderCompletedReq);
+        final completed = customCompleted ?? realCompletedCount;
+
+        final rating = prefs.getDouble(_keyProviderRating) ?? 5.0;
+        final reviews = prefs.getInt(_keyProviderReviews) ?? realCompletedCount;
 
         return ProfileStatsData(
           totalRequests: total,
@@ -128,10 +140,15 @@ class ProfileStatsService {
         );
       } else {
         // Customer side stats
-        final total = prefs.getInt(_keyCustomerTotalReq) ?? 128;
-        final completed = prefs.getInt(_keyCustomerCompletedReq) ?? 107;
-        final rating = prefs.getDouble(_keyCustomerRating) ?? 4.8;
-        final reviews = prefs.getInt(_keyCustomerReviews) ?? 120;
+        final realTotal = activeTaskCount + historyTasks.length;
+        final customTotal = prefs.getInt(_keyCustomerTotalReq);
+        final total = customTotal ?? realTotal;
+
+        final customCompleted = prefs.getInt(_keyCustomerCompletedReq);
+        final completed = customCompleted ?? realCompletedCount;
+
+        final rating = prefs.getDouble(_keyCustomerRating) ?? 5.0;
+        final reviews = prefs.getInt(_keyCustomerReviews) ?? realCompletedCount;
 
         return ProfileStatsData(
           totalRequests: total,
@@ -143,10 +160,10 @@ class ProfileStatsService {
       }
     } catch (_) {
       return const ProfileStatsData(
-        totalRequests: 128,
-        completedRequests: 107,
-        rating: 4.8,
-        reviewsCount: 120,
+        totalRequests: 0,
+        completedRequests: 0,
+        rating: 5.0,
+        reviewsCount: 0,
       );
     }
   }
@@ -156,7 +173,7 @@ class ProfileStatsService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final key = isProvider ? _keyProviderTotalReq : _keyCustomerTotalReq;
-      final current = prefs.getInt(key) ?? 128;
+      final current = prefs.getInt(key) ?? 0;
       await prefs.setInt(key, current + 1);
     } catch (_) {}
   }
@@ -166,7 +183,7 @@ class ProfileStatsService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final key = isProvider ? _keyProviderCompletedReq : _keyCustomerCompletedReq;
-      final current = prefs.getInt(key) ?? 107;
+      final current = prefs.getInt(key) ?? 0;
       await prefs.setInt(key, current + 1);
     } catch (_) {}
   }
@@ -181,8 +198,8 @@ class ProfileStatsService {
       final ratingKey = isProvider ? _keyProviderRating : _keyCustomerRating;
       final reviewsKey = isProvider ? _keyProviderReviews : _keyCustomerReviews;
 
-      final currentRating = prefs.getDouble(ratingKey) ?? 4.8;
-      final currentReviews = prefs.getInt(reviewsKey) ?? 120;
+      final currentRating = prefs.getDouble(ratingKey) ?? 5.0;
+      final currentReviews = prefs.getInt(reviewsKey) ?? 0;
 
       final updatedReviews = currentReviews + 1;
       final updatedRating = ((currentRating * currentReviews) + newRating) / updatedReviews;

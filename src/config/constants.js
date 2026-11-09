@@ -11,6 +11,7 @@ export const PROVIDER_STATUS = {
   APPROVED: "approved",
   REJECTED: "rejected",
   SUSPENDED: "suspended",
+  BLOCKED: "blocked",
 };
 
 export const VERIFICATION_STATUS = {

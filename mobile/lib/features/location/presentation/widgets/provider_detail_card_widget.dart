@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_locale.dart';
+import '../../../../providers/backend_provider.dart';
 import '../send_location_screen.dart';
 import '../send_request_screen.dart';
 
@@ -26,6 +27,7 @@ class ProviderDetailCardWidget extends ConsumerWidget {
   final int tripsCount;
   final String? avatarUrl;
   final String? phoneNumber;
+  final String? providerPublicId;
   final bool showCloseIcon;
   final VoidCallback? onClose;
   final VoidCallback? onSendMyLocation;
@@ -42,6 +44,7 @@ class ProviderDetailCardWidget extends ConsumerWidget {
     this.tripsCount = 120,
     this.avatarUrl,
     this.phoneNumber,
+    this.providerPublicId,
     this.showCloseIcon = true,
     this.onClose,
     this.onSendMyLocation,
@@ -60,6 +63,7 @@ class ProviderDetailCardWidget extends ConsumerWidget {
     int tripsCount = 120,
     String? avatarUrl,
     String? phoneNumber,
+    String? providerPublicId,
     VoidCallback? onSendMyLocation,
     VoidCallback? onSendRequest,
   }) {
@@ -79,6 +83,7 @@ class ProviderDetailCardWidget extends ConsumerWidget {
         tripsCount: tripsCount,
         avatarUrl: avatarUrl,
         phoneNumber: phoneNumber,
+        providerPublicId: providerPublicId,
         showCloseIcon: true,
         onClose: () => Navigator.of(ctx).pop(),
         onSendMyLocation: onSendMyLocation ??
@@ -120,6 +125,7 @@ class ProviderDetailCardWidget extends ConsumerWidget {
     return Align(
       alignment: Alignment.bottomCenter,
       child: Container(
+        key: const Key('selected_driver_card'),
         width: cardWidth,
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.78,
@@ -277,6 +283,12 @@ class ProviderDetailCardWidget extends ConsumerWidget {
                                 key: const Key('provider_detail_card_whatsapp_btn'),
                                 onTap: () {
                                   HapticFeedback.lightImpact();
+                                  if (providerPublicId != null && providerPublicId!.isNotEmpty) {
+                                    ref.read(backendServiceProvider).trackCustomerEvent(
+                                      event: 'whatsapp_click',
+                                      providerPublicId: providerPublicId!,
+                                    ).catchError((_) {});
+                                  }
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
@@ -314,6 +326,12 @@ class ProviderDetailCardWidget extends ConsumerWidget {
                                 key: const Key('provider_detail_card_call_btn'),
                                 onTap: () {
                                   HapticFeedback.lightImpact();
+                                  if (providerPublicId != null && providerPublicId!.isNotEmpty) {
+                                    ref.read(backendServiceProvider).trackCustomerEvent(
+                                      event: 'call_click',
+                                      providerPublicId: providerPublicId!,
+                                    ).catchError((_) {});
+                                  }
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(

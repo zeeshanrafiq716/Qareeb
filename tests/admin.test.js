@@ -105,4 +105,43 @@ describe("admin authentication and provider management", () => {
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("INVALID_STATUS_TRANSITION");
   });
+
+  it("blocks and reinstates an approved provider", async () => {
+    const created = await completeRegistration("03030000006");
+    const token = await adminAuth();
+    const id = created.provider.id;
+
+    await api().post(`/api/v1/admin/providers/${id}/approve`).set("Authorization", `Bearer ${token}`).send({});
+
+    const blocked = await api()
+      .post(`/api/v1/admin/providers/${id}/block`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ reason: "Fraudulent activity" });
+    expect(blocked.status).toBe(200);
+    expect(blocked.body.data.status).toBe(PROVIDER_STATUS.BLOCKED);
+
+    const reinstated = await api()
+      .post(`/api/v1/admin/providers/${id}/reinstate`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ reason: "Unblocked after appeal" });
+    expect(reinstated.status).toBe(200);
+    expect(reinstated.body.data.status).toBe(PROVIDER_STATUS.APPROVED);
+  });
+
+  it("deletes a provider permanently", async () => {
+    const created = await completeRegistration("03030000007");
+    const token = await adminAuth();
+    const id = created.provider.id;
+
+    const delRes = await api()
+      .delete(`/api/v1/admin/providers/${id}`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(delRes.status).toBe(200);
+    expect(delRes.body.data.success).toBe(true);
+
+    const lookupRes = await api()
+      .get(`/api/v1/admin/providers/${id}`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(lookupRes.status).toBe(404);
+  });
 });

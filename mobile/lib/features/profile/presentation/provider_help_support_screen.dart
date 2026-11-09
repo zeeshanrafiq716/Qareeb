@@ -35,6 +35,7 @@ class _ProviderHelpSupportScreenState
   final List<XFile> _attachedScreenshots = [];
   final ImagePicker _picker = ImagePicker();
   bool _isSubmitting = false;
+  int _expandedFaqIndex = -1;
 
   static const List<String> _issueCategories = [
     'Earnings & Payouts',
@@ -268,10 +269,23 @@ class _ProviderHelpSupportScreenState
 
                           const SizedBox(height: 20.0),
 
-                          // Quick Contact Action Cards (Call + WhatsApp)
+                          // Quick Contact Action Cards (Call + WhatsApp + Email)
                           _buildQuickContactRow(isArabic),
 
-                          const SizedBox(height: 22.0),
+                          const SizedBox(height: 24.0),
+
+                          // Partner FAQs
+                          Text(
+                            isArabic ? 'الأسئلة الشائعة للشركاء' : 'Partner Frequently Asked Questions',
+                            style: GoogleFonts.inter(
+                              fontSize: 16.0,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1C2926),
+                            ),
+                          ),
+                          const SizedBox(height: 12.0),
+                          _buildFaqSection(isArabic),
+                          const SizedBox(height: 24.0),
 
                           // Issue Category Dropdown
                           _buildCategorySelector(isArabic),
@@ -444,45 +458,50 @@ class _ProviderHelpSupportScreenState
             Color(0xFF6D28D9),
           ],
         ),
-        borderRadius: BorderRadius.circular(18.0),
+        borderRadius: BorderRadius.circular(16.0),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x358B53FE),
-            blurRadius: 18.0,
-            offset: Offset(0, 6),
+            color: Color(0x288B53FE),
+            blurRadius: 16.0,
+            offset: Offset(0, 4),
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 48.0,
-            height: 48.0,
+            width: 44.0,
+            height: 44.0,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(14.0),
+              borderRadius: BorderRadius.circular(12.0),
             ),
             child: const Center(
               child: Icon(
                 Icons.headset_mic_rounded,
-                size: 26.0,
+                size: 24.0,
                 color: Colors.white,
               ),
             ),
           ),
-          const SizedBox(width: 14.0),
+          const SizedBox(width: 12.0),
           Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   isArabic ? 'دعم شركاء قريب على مدار 24/7' : '24/7 Dedicated Partner Care',
                   style: GoogleFonts.inter(
                     fontSize: 14.5,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     color: Colors.white,
+                    height: 1.2,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 3.0),
                 Text(
@@ -491,8 +510,12 @@ class _ProviderHelpSupportScreenState
                     : 'Instant response for trip issues, earnings & safety',
                   style: GoogleFonts.inter(
                     fontSize: 11.5,
-                    color: Colors.white.withValues(alpha: 0.85),
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white.withValues(alpha: 0.9),
+                    height: 1.25,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -502,92 +525,224 @@ class _ProviderHelpSupportScreenState
     );
   }
 
-  /// Quick Contact Row (Call Support & WhatsApp)
+  /// Quick Contact Row (Call Support, WhatsApp & Email)
   Widget _buildQuickContactRow(bool isArabic) {
     return Row(
       children: [
         // Call Hotline
         Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F7),
-              borderRadius: BorderRadius.circular(14.0),
-              border: Border.all(color: const Color(0xFFEBEBEF)),
+          child: _buildContactChannelItem(
+            icon: const Icon(
+              Icons.phone_rounded,
+              size: 18.0,
+              color: Color(0xFF8B53FE),
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(14.0),
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(isArabic ? 'جارٍ الاتصال بالرقم 19901...' : 'Connecting to Partner Hotline 19901...'),
-                      backgroundColor: const Color(0xFF1C2926),
-                    ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.phone_in_talk_rounded, size: 18.0, color: Color(0xFF8B53FE)),
-                      const SizedBox(width: 8.0),
-                      Text(
-                        isArabic ? 'اتصال بالدعم' : 'Call Support',
-                        style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600, color: const Color(0xFF1C2926)),
-                      ),
-                    ],
+            label: isArabic ? 'اتصال' : 'Call',
+            onTap: () {
+              HapticFeedback.lightImpact();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    isArabic
+                        ? 'جارٍ الاتصال برقم دعم الشركاء +966 54 545 6467...'
+                        : 'Connecting to Partner Hotline (+966 54 545 6467)...',
                   ),
+                  backgroundColor: const Color(0xFF1C2926),
                 ),
-              ),
-            ),
+              );
+            },
+            isArabic: isArabic,
           ),
         ),
 
-        const SizedBox(width: 12.0),
+        const SizedBox(width: 10.0),
 
-        // WhatsApp Chat
+        // Real Official WhatsApp Button
         Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F7),
-              borderRadius: BorderRadius.circular(14.0),
-              border: Border.all(color: const Color(0xFFEBEBEF)),
+          child: _buildContactChannelItem(
+            icon: const _RealWhatsAppIcon(
+              size: 19.0,
+              color: Color(0xFF25D366),
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(14.0),
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(isArabic ? 'جارٍ فتح محادثة واتساب الدعم...' : 'Opening WhatsApp Partner Desk...'),
-                      backgroundColor: const Color(0xFF10B981),
-                    ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.chat_rounded, size: 18.0, color: Color(0xFF10B981)),
-                      const SizedBox(width: 8.0),
-                      Text(
-                        isArabic ? 'واتساب الشركاء' : 'WhatsApp Desk',
-                        style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600, color: const Color(0xFF1C2926)),
-                      ),
-                    ],
+            label: isArabic ? 'واتساب' : 'WhatsApp',
+            onTap: () {
+              HapticFeedback.lightImpact();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    isArabic
+                        ? 'جارٍ فتح محادثة واتساب شركاء قريب...'
+                        : 'Opening WhatsApp Partner Desk...',
                   ),
+                  backgroundColor: const Color(0xFF10B981),
                 ),
-              ),
+              );
+            },
+            isArabic: isArabic,
+          ),
+        ),
+
+        const SizedBox(width: 10.0),
+
+        // Email Support
+        Expanded(
+          child: _buildContactChannelItem(
+            icon: const Icon(
+              Icons.mail_rounded,
+              size: 18.0,
+              color: Color(0xFF8B53FE),
             ),
+            label: isArabic ? 'إيميل' : 'Email',
+            onTap: () {
+              HapticFeedback.lightImpact();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    isArabic
+                        ? 'البريد الإلكتروني للشركاء: partners@qareeb.app'
+                        : 'Email: partners@qareeb.app',
+                  ),
+                  backgroundColor: const Color(0xFF8B53FE),
+                ),
+              );
+            },
+            isArabic: isArabic,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildContactChannelItem({
+    required Widget icon,
+    required String label,
+    required VoidCallback onTap,
+    required bool isArabic,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14.0),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                icon,
+                const SizedBox(width: 6.0),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1C2926),
+                      ),
+                      maxLines: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Partner FAQ Section
+  Widget _buildFaqSection(bool isArabic) {
+    final faqs = [
+      {
+        'qEn': 'How do I receive instant trip earnings?',
+        'qAr': 'كيف أستلم أرباح الرحلات والخدمات؟',
+        'aEn': 'Earnings from completed orders are credited immediately to your in-app partner balance and can be transferred daily to your registered IBAN.',
+        'aAr': 'تضاف أرباح الطلبات المكتملة فوراً إلى رصيد حسابك في التطبيق، ويمكنك تحويلها يومياً إلى حسابك البنكي (الآيبان) المسجل.',
+      },
+      {
+        'qEn': 'What should I do if a customer cancels after arrival?',
+        'qAr': 'ماذا أفعل إذا قام العميل بالإلغاء بعد وصولي؟',
+        'aEn': 'If the customer cancels after your status is marked as "Arrived", a standard cancellation compensation fee is automatically credited to your balance.',
+        'aAr': 'إذا ألغى العميل الطلب بعد تسجيل حالتك كـ "وصلت"، سيتم احتساب رسوم تعويض الإلغاء تلقائياً وإضافتها إلى رصيدك.',
+      },
+      {
+        'qEn': 'How do I update my vehicle or renew documents?',
+        'qAr': 'كيف أقوم بتحديث بيانات المركبة وتجديد الوثائق؟',
+        'aEn': 'Navigate to your Profile tab > Vehicle & Service Details or Upload Documents to submit renewed licenses or change vehicle info for review.',
+        'aAr': 'انتقل إلى تبويب الملف الشخصي > تفاصيل المركبة والخدمة أو رفع الوثائق لتحديث المستندات المجددة أو تعديل بيانات المركبة للمراجعة.',
+      },
+      {
+        'qEn': 'How does GPS tracking and request dispatch work?',
+        'qAr': 'كيف يعمل نظام تحديد الموقع وتوجيه الطلبات؟',
+        'aEn': 'When your status is set to "Online", Qareeb matches you with nearby customers within your service radius. Make sure location permissions are set to "Always Allow".',
+        'aAr': 'عند تفعيل حالتك كـ "متصل"، يقوم نظام قريب بمطابقتك مع العملاء الأقرب ضمن نطاق تغطيتك. تأكد من تفعيل إذن الموقع على "السماح دائماً".',
+      },
+    ];
+
+    return Column(
+      children: List.generate(faqs.length, (index) {
+        final item = faqs[index];
+        final isExpanded = _expandedFaqIndex == index;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8.0),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            borderRadius: BorderRadius.circular(12.0),
+            border: Border.all(
+              color: isExpanded ? const Color(0xFF8B53FE) : const Color(0xFFE5E7EB),
+            ),
+          ),
+          child: Column(
+            children: [
+              ListTile(
+                dense: true,
+                title: Text(
+                  isArabic ? item['qAr']! : item['qEn']!,
+                  style: GoogleFonts.inter(
+                    fontSize: 13.0,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1C2926),
+                  ),
+                ),
+                trailing: Icon(
+                  isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                  color: isExpanded ? const Color(0xFF8B53FE) : const Color(0xFF616166),
+                  size: 20.0,
+                ),
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() {
+                    _expandedFaqIndex = isExpanded ? -1 : index;
+                  });
+                },
+              ),
+              if (isExpanded)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 14.0),
+                  child: Text(
+                    isArabic ? item['aAr']! : item['aEn']!,
+                    style: GoogleFonts.inter(
+                      fontSize: 12.0,
+                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF566663),
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      }),
     );
   }
 
@@ -915,5 +1070,99 @@ class _ChevronPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ChevronPainter oldDelegate) => oldDelegate.color != color;
+}
+
+/// Official Vector WhatsApp Icon matching authentic brand curves
+class _RealWhatsAppIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const _RealWhatsAppIcon({
+    this.size = 19.0,
+    this.color = const Color(0xFF25D366),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _WhatsAppVectorPainter(color: color),
+    );
+  }
+}
+
+class _WhatsAppVectorPainter extends CustomPainter {
+  final Color color;
+
+  const _WhatsAppVectorPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    final double scale = size.width / 24.0;
+    canvas.save();
+    canvas.scale(scale, scale);
+
+    final path = Path()..fillType = PathFillType.evenOdd;
+
+    path.moveTo(12.04, 2.0);
+    path.cubicTo(6.58, 2.0, 2.13, 6.45, 2.13, 11.91);
+    path.cubicTo(2.13, 13.66, 2.59, 15.36, 3.45, 16.86);
+    path.lineTo(2.05, 22.0);
+    path.lineTo(7.3, 20.62);
+    path.cubicTo(8.75, 21.41, 10.38, 21.83, 12.04, 21.83);
+    path.cubicTo(17.5, 21.83, 21.95, 17.38, 21.95, 11.92);
+    path.cubicTo(21.95, 9.27, 20.92, 6.78, 19.05, 4.91);
+    path.cubicTo(17.18, 3.03, 14.69, 2.0, 12.04, 2.0);
+    path.close();
+
+    path.moveTo(12.05, 3.67);
+    path.cubicTo(14.25, 3.67, 16.31, 4.53, 17.87, 6.09);
+    path.cubicTo(19.42, 7.65, 20.28, 9.72, 20.28, 11.92);
+    path.cubicTo(20.28, 16.46, 16.58, 20.16, 12.04, 20.16);
+    path.cubicTo(10.66, 20.16, 9.3, 19.8, 8.1, 19.11);
+    path.lineTo(7.81, 18.94);
+    path.lineTo(4.7, 19.76);
+    path.lineTo(5.53, 16.73);
+    path.lineTo(5.34, 16.43);
+    path.cubicTo(4.56, 15.19, 4.15, 13.57, 4.15, 11.91);
+    path.cubicTo(4.15, 7.37, 7.85, 3.67, 12.05, 3.67);
+    path.close();
+
+    path.moveTo(8.53, 7.33);
+    path.cubicTo(8.37, 7.33, 8.1, 7.39, 7.87, 7.64);
+    path.cubicTo(7.65, 7.89, 7.02, 8.48, 7.02, 9.71);
+    path.cubicTo(7.02, 10.93, 7.91, 12.11, 8.03, 12.27);
+    path.cubicTo(8.16, 12.44, 9.75, 14.88, 12.19, 15.93);
+    path.cubicTo(14.22, 16.81, 14.63, 16.63, 15.08, 16.59);
+    path.cubicTo(15.53, 16.55, 16.53, 16.0, 16.74, 15.42);
+    path.cubicTo(16.95, 14.84, 16.95, 14.34, 16.89, 14.24);
+    path.cubicTo(16.82, 14.13, 16.66, 14.07, 16.41, 13.95);
+    path.cubicTo(16.16, 13.82, 14.94, 13.22, 14.71, 13.14);
+    path.cubicTo(14.49, 13.06, 14.32, 13.01, 14.16, 13.26);
+    path.cubicTo(13.99, 13.51, 13.52, 14.07, 13.37, 14.24);
+    path.cubicTo(13.23, 14.4, 13.08, 14.42, 12.83, 14.3);
+    path.cubicTo(12.58, 14.17, 11.78, 13.91, 10.83, 13.07);
+    path.cubicTo(10.09, 12.41, 9.59, 11.6, 9.47, 11.35);
+    path.cubicTo(9.34, 11.1, 9.45, 10.97, 9.58, 10.84);
+    path.cubicTo(9.69, 10.73, 9.83, 10.55, 9.95, 10.41);
+    path.cubicTo(10.08, 10.26, 10.12, 10.16, 10.2, 9.99);
+    path.cubicTo(10.28, 9.83, 10.24, 9.68, 10.18, 9.56);
+    path.cubicTo(10.12, 9.44, 9.63, 8.23, 9.42, 7.74);
+    path.cubicTo(9.22, 7.25, 9.02, 7.32, 8.87, 7.31);
+    path.cubicTo(8.72, 7.31, 8.55, 7.33, 8.53, 7.33);
+    path.close();
+
+    canvas.drawPath(path, paint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _WhatsAppVectorPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 

@@ -149,20 +149,13 @@ export function VerificationSuccessModal({
         {/* Provider Snapshot Row */}
         <div className="flex items-center justify-between px-2 pt-1">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-[#EBEBEB]">
-              <img
-                src={provider.avatar}
-                alt={provider.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
             <div className="flex flex-col">
               <span className="text-[14px] font-bold text-[#1C2926] leading-tight">
                 {provider.name}
               </span>
               <div className="flex items-center gap-1 text-[11px] text-[#616166] mt-0.5">
                 <MapPin className="w-3 h-3 text-[#9EAFA9]" />
-                <span>{provider.city}</span>
+                <span>{provider.city || 'Riyadh'}</span>
               </div>
             </div>
           </div>

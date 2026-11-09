@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
+import '../../../services/task_service.dart';
 import 'service_in_progress_screen.dart';
 import 'widgets/top_down_car_widget.dart';
 import 'widgets/real_map_background_widget.dart';
@@ -39,6 +40,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
   @override
   void initState() {
     super.initState();
+    TaskService.instance.updateTaskStatus(status: 'arrived', step: 2, distance: '0 km', eta: 'Arrived');
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),

@@ -15,128 +15,7 @@ import {
 } from 'lucide-react'
 import { fetchCallLogs } from '../api/admin'
 
-const INITIAL_CALL_LOGS = [
-  {
-    id: 'Call - 10248',
-    callId: 'Call - 10248',
-    requestId: 'REQ-29841',
-    category: 'Tyre Repair',
-    provider: {
-      name: 'Ahmad Raza',
-      publicId: 'PRV-10427',
-      phone: '+966 55 123 4567',
-      location: 'Jeddah',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80',
-    },
-    customer: {
-      name: 'Ali Hassan',
-      role: 'Customer',
-      phone: '+966 55 123 4567',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&h=120&q=80',
-    },
-    date: '04 Nov 2026',
-    time: '10:30 AM',
-    interaction: 'Call',
-    status: 'Answered',
-    duration: '02 min 18 sec',
-  },
-  {
-    id: 'Call - 10249',
-    callId: 'Call - 10249',
-    requestId: 'REQ-29842',
-    category: 'Vehicle Towing',
-    provider: {
-      name: 'Ali Ahmad',
-      publicId: 'PRV-10428',
-      phone: '+966 50 123 4567',
-      location: 'Makkah',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&h=120&q=80',
-    },
-    customer: {
-      name: 'Faisal Khan',
-      role: 'Customer',
-      phone: '+966 56 112 2334',
-      avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=120&h=120&q=80',
-    },
-    date: '22 Sept 2026',
-    time: '04:30 AM',
-    interaction: 'WhatsApp',
-    status: 'Initiated',
-    duration: 'Direct Chat',
-  },
-  {
-    id: 'Call - 10250',
-    callId: 'Call - 10250',
-    requestId: 'REQ-29843',
-    category: 'Fuel Delivery',
-    provider: {
-      name: 'Abdul Ahad',
-      publicId: 'PRV-10429',
-      phone: '+966 50 345 6789',
-      location: 'Dammam',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&h=120&q=80',
-    },
-    customer: {
-      name: 'Usman Ali',
-      role: 'Customer',
-      phone: '+966 59 443 3221',
-      avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=120&h=120&q=80',
-    },
-    date: '22 Sept 2026',
-    time: '12:30 AM',
-    interaction: 'Call',
-    status: 'Failed',
-    duration: '00 min 00 sec',
-  },
-  {
-    id: 'Call - 10251',
-    callId: 'Call - 10251',
-    requestId: 'REQ-29844',
-    category: 'Tyre Repair',
-    provider: {
-      name: 'M Ibrahim',
-      publicId: 'PRV-10430',
-      phone: '+966 50 456 7890',
-      location: 'Riyadh',
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&h=120&q=80',
-    },
-    customer: {
-      name: 'Haris Malik',
-      role: 'Customer',
-      phone: '+966 53 776 6554',
-      avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&h=120&q=80',
-    },
-    date: '21 Sept 2026',
-    time: '9:00 AM',
-    interaction: 'Call',
-    status: 'Answered',
-    duration: '04 min 12 sec',
-  },
-  {
-    id: 'Call - 10252',
-    callId: 'Call - 10252',
-    requestId: 'REQ-29845',
-    category: 'Battery Jumpstart',
-    provider: {
-      name: 'Awais Ali',
-      publicId: 'PRV-10431',
-      phone: '+966 50 567 8901',
-      location: 'Jeddah',
-      avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=120&h=120&q=80',
-    },
-    customer: {
-      name: 'Ahad Raza',
-      role: 'Customer',
-      phone: '+966 55 332 2110',
-      avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=120&h=120&q=80',
-    },
-    date: '20 Sept 2026',
-    time: '10:30 AM',
-    interaction: 'Call',
-    status: 'Answered',
-    duration: '01 min 50 sec',
-  },
-]
+const INITIAL_CALL_LOGS = []
 
 export function CallLogsView() {
   const [selectedDateRange, setSelectedDateRange] = useState('Last 7 Days')
@@ -148,48 +27,72 @@ export function CallLogsView() {
   const [openStatusDropdown, setOpenStatusDropdown] = useState(false)
   const [selectedCallRows, setSelectedCallRows] = useState([])
   const [activeCallDetail, setActiveCallDetail] = useState(null)
+  const [activeMetricFilter, setActiveMetricFilter] = useState('all')
+
+  const handleMetricCardClick = (id) => {
+    if (activeMetricFilter === id) {
+      setActiveMetricFilter('all')
+      setSelectedInteraction('All Interactions')
+      setSelectedCallStatus('All Call Statuses')
+      return
+    }
+    setActiveMetricFilter(id)
+    if (id === 'total') {
+      setSelectedInteraction('All Interactions')
+      setSelectedCallStatus('All Call Statuses')
+    } else if (id === 'whatsapp') {
+      setSelectedInteraction('WhatsApp')
+      setSelectedCallStatus('All Call Statuses')
+    } else if (id === 'answered') {
+      setSelectedInteraction('All Interactions')
+      setSelectedCallStatus('Answered')
+    } else if (id === 'failed') {
+      setSelectedInteraction('All Interactions')
+      setSelectedCallStatus('Failed')
+    }
+  }
   const [currentPage, setCurrentPage] = useState(1)
 
   // Real backend logs sync
-  const [logs, setLogs] = useState(INITIAL_CALL_LOGS)
-  const [totalCount, setTotalCount] = useState(315)
+  const [logs, setLogs] = useState([])
+  const [totalCount, setTotalCount] = useState(0)
 
   useEffect(() => {
     let isMounted = true
     async function loadLogs() {
       try {
-        const res = await fetchCallLogs({ limit: 10 })
+        const res = await fetchCallLogs({ limit: 50 })
         const items = res?.items || res?.data || res
-        if (isMounted && Array.isArray(items) && items.length > 0) {
+        if (isMounted && Array.isArray(items)) {
           const mapped = items.map((cl, idx) => ({
             id: cl.id || `Call - ${10248 + idx}`,
             callId: `Call - ${10248 + idx}`,
             requestId: `REQ-${29841 + idx}`,
-            category: cl.category_name || 'Tyre Repair',
+            category: cl.category_name || 'Roadside Assistance',
             provider: {
-              name: cl.provider_name || cl.provider?.name || INITIAL_CALL_LOGS[idx % INITIAL_CALL_LOGS.length].provider.name,
+              name: cl.provider_name || cl.provider?.name || 'Provider',
               publicId: cl.provider_public_id || `PRV-${10427 + idx}`,
-              phone: cl.provider_phone || cl.provider?.phone || '+966 55 123 4567',
-              location: cl.provider_city || INITIAL_CALL_LOGS[idx % INITIAL_CALL_LOGS.length].provider.location,
-              avatar: INITIAL_CALL_LOGS[idx % INITIAL_CALL_LOGS.length].provider.avatar,
+              phone: cl.provider_phone || cl.provider?.phone || '+966 50 000 0000',
+              location: cl.provider_city || 'Riyadh',
+              avatar: cl.provider?.photo_url || `https://images.unsplash.com/photo-${1500000000000 + (idx * 1234567) % 500000000}?auto=format&fit=crop&w=120&h=120&q=80`,
             },
             customer: {
-              name: cl.customer_name || cl.customer?.name || INITIAL_CALL_LOGS[idx % INITIAL_CALL_LOGS.length].customer.name,
+              name: cl.customer_name || cl.customer?.name || 'Customer',
               role: 'Customer',
-              phone: cl.customer_phone || '+966 55 123 4567',
-              avatar: INITIAL_CALL_LOGS[idx % INITIAL_CALL_LOGS.length].customer.avatar,
+              phone: cl.customer_phone || '+966 50 000 0000',
+              avatar: `https://images.unsplash.com/photo-${1530000000000 + (idx * 1234567) % 500000000}?auto=format&fit=crop&w=120&h=120&q=80`,
             },
-            date: cl.started_at ? new Date(cl.started_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '04 Nov 2026',
-            time: cl.started_at ? new Date(cl.started_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '10:30 AM',
+            date: cl.started_at ? new Date(cl.started_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Today',
+            time: cl.started_at ? new Date(cl.started_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'Just now',
             interaction: cl.channel === 'whatsapp' ? 'WhatsApp' : 'Call',
             status: cl.status_code === 'completed' || cl.status === 'completed' ? 'Answered' : cl.status_code === 'failed' ? 'Failed' : 'Initiated',
-            duration: cl.duration_seconds ? `${String(Math.floor(cl.duration_seconds / 60)).padStart(2, '0')} min ${String(cl.duration_seconds % 60).padStart(2, '0')} sec` : '02 min 18 sec',
+            duration: cl.duration_seconds ? `${String(Math.floor(cl.duration_seconds / 60)).padStart(2, '0')} min ${String(cl.duration_seconds % 60).padStart(2, '0')} sec` : '00 min 00 sec',
           }))
           setLogs(mapped)
-          if (res?.meta?.total) setTotalCount(res.meta.total)
+          setTotalCount(res?.meta?.total ?? mapped.length)
         }
       } catch {
-        // Keep fallback logs
+        if (isMounted) setLogs([])
       }
     }
     loadLogs()
@@ -235,12 +138,17 @@ export function CallLogsView() {
     )
   }
 
+  const totalCallsCount = logs.length
+  const whatsappCount = logs.filter((l) => l.interaction === 'WhatsApp').length
+  const answeredCount = logs.filter((l) => l.status === 'Answered').length
+  const failedCount = logs.filter((l) => l.status === 'Failed').length
+
   const metricCards = [
     {
       id: 'total',
       title: 'Total Calls',
-      count: '315',
-      percentage: '12%',
+      count: String(totalCallsCount),
+      percentage: '0%',
       isPositive: true,
       icon: Phone,
       iconBg: 'bg-[#F4EFFE] text-[#8B53FE]',
@@ -248,8 +156,8 @@ export function CallLogsView() {
     {
       id: 'whatsapp',
       title: 'WhatsApp Interactions',
-      count: '87',
-      percentage: '14%',
+      count: String(whatsappCount),
+      percentage: '0%',
       isPositive: true,
       icon: MessageCircle,
       iconBg: 'bg-[#E9FBF0] text-[#16A34A]',
@@ -257,8 +165,8 @@ export function CallLogsView() {
     {
       id: 'answered',
       title: 'Answered Calls',
-      count: '76',
-      percentage: '12%',
+      count: String(answeredCount),
+      percentage: '0%',
       isPositive: true,
       icon: PhoneCall,
       iconBg: 'bg-[#E0F2FE] text-[#0284C7]',
@@ -266,8 +174,8 @@ export function CallLogsView() {
     {
       id: 'failed',
       title: 'Failed Calls',
-      count: '60',
-      percentage: '-12%',
+      count: String(failedCount),
+      percentage: '0%',
       isPositive: false,
       icon: PhoneMissed,
       iconBg: 'bg-[#FEE2E2] text-[#DC2626]',
@@ -336,9 +244,12 @@ export function CallLogsView() {
         {metricCards.map((card) => {
           const IconComp = card.icon
 
+          const isActive = activeMetricFilter === card.id
+
           return (
             <div
               key={card.id}
+              onClick={() => handleMetricCardClick(card.id)}
               style={{
                 height: '170px',
                 borderRadius: '20px',
@@ -346,7 +257,11 @@ export function CallLogsView() {
                 background: '#FFFFFF',
                 boxSizing: 'border-box',
               }}
-              className="w-full min-w-0 border border-[#EBEBEB] shadow-xs flex flex-col justify-between shrink-0 hover:border-[#DECFFC] hover:shadow-sm transition-all"
+              className={`w-full min-w-0 border shadow-xs flex flex-col justify-between shrink-0 transition-all cursor-pointer ${
+                isActive
+                  ? 'border-[#8B53FE] ring-2 ring-[#8B53FE]/15 shadow-sm'
+                  : 'border-[#EBEBEB] hover:border-[#8B53FE] hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'
+              }`}
             >
               {/* Card Top: Icon + Title */}
               <div className="flex items-center gap-3 min-w-0">
@@ -355,7 +270,7 @@ export function CallLogsView() {
                 >
                   <IconComp className="w-4.5 h-4.5" />
                 </div>
-                <span className="text-[14px] font-medium text-[#616166] truncate min-w-0">
+                <span className="text-[13px] font-semibold text-[#1C2926] whitespace-nowrap">
                   {card.title}
                 </span>
               </div>
@@ -544,8 +459,17 @@ export function CallLogsView() {
             </div>
 
             {/* ================= TABLE ROWS LAYOUT: 1084x60, border-bottom: 1px ================= */}
-            <div className="w-full flex flex-col divide-y divide-[#F0EFF5]">
-              {filteredLogs.map((log) => {
+            <div className="w-full flex flex-col divide-y divide-[#F0EFF5] min-h-[220px]">
+              {filteredLogs.length === 0 ? (
+                <div className="w-full py-16 flex flex-col items-center justify-center text-center text-[#9EAFA9]">
+                  <PhoneCall className="w-10 h-10 mb-2 text-[#DECFFC]" />
+                  <p className="text-sm font-semibold text-[#1C2926]">No call logs recorded yet</p>
+                  <p className="text-xs text-[#616166] mt-1 max-w-sm">
+                    Call interactions and WhatsApp inquiries initiated by customers via the Qareeb application will appear here.
+                  </p>
+                </div>
+              ) : (
+                filteredLogs.map((log) => {
                 const isChecked = selectedCallRows.includes(log.id)
 
                 return (
@@ -661,7 +585,7 @@ export function CallLogsView() {
                     </div>
                   </div>
                 )
-              })}
+              }))}
             </div>
           </div>
         </div>
@@ -676,7 +600,9 @@ export function CallLogsView() {
           className="w-full border-t border-[#F0EFF5] flex items-center justify-between shrink-0"
         >
           <span className="text-[13px] text-[#616166]">
-            Showing 1-{filteredLogs.length} of {totalCount} Calls
+            {filteredLogs.length === 0
+              ? 'Showing 0 of 0 Calls'
+              : `Showing 1-${filteredLogs.length} of ${totalCount || filteredLogs.length} Calls`}
           </span>
 
           {/* Pagination Controls */}
@@ -689,7 +615,7 @@ export function CallLogsView() {
             >
               ‹
             </button>
-            {[1, 2, 3, 4, 5].map((pageNum) => (
+            {(filteredLogs.length === 0 ? [1] : [1, 2, 3, 4, 5]).map((pageNum) => (
               <button
                 key={pageNum}
                 type="button"
@@ -705,7 +631,7 @@ export function CallLogsView() {
             ))}
             <button
               type="button"
-              disabled={currentPage === 5}
+              disabled={currentPage >= (filteredLogs.length === 0 ? 1 : 5)}
               onClick={() => setCurrentPage((p) => Math.min(5, p + 1))}
               className="w-8 h-8 rounded-lg border border-[#E5E7EB] flex items-center justify-center text-[#616166] hover:bg-gray-50 disabled:opacity-40 cursor-pointer"
             >

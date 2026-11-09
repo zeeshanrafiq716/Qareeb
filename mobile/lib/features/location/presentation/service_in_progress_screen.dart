@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../services/profile_stats_service.dart';
+import '../../../services/task_service.dart';
 
 /// Screen displayed automatically after provider arrives.
 /// Contains the standard branding header and the success status layout,
@@ -743,6 +744,7 @@ class _ServiceInProgressScreenState
                                 await ProfileStatsService.instance.recordCompletedRequest(
                                   isProvider: false,
                                 );
+                                await TaskService.instance.completeTask();
                                 if (!context.mounted) return;
                                 Navigator.of(context).popUntil((route) => route.isFirst);
                               },

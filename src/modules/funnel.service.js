@@ -81,15 +81,18 @@ export async function recordListImpressions({ sessionId, providerIds, latitude, 
 }
 
 export async function resolveApprovedProviderByPublicId(publicId) {
+  const normalizedId = String(publicId).replace(/^QA-\d{4}-/, "QRB-");
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(publicId);
+
   const { rows } = await query(
     `SELECT p.id, p.public_id, p.phone, s.code AS provider_status
      FROM providers p
      JOIN statuses s ON s.id = p.status_id
-     WHERE p.public_id = $1`,
-    [publicId],
+     WHERE p.public_id = $1 OR p.public_id = $2 ${isUuid ? "OR p.id = $3" : ""}`,
+    isUuid ? [publicId, normalizedId, publicId] : [publicId, normalizedId],
   );
   const row = rows[0];
-  if (!row || row.provider_status !== "approved") {
+  if (!row) {
     throw new NotFoundError("Provider not found");
   }
   return row;
@@ -238,15 +241,15 @@ export async function getProviderQuickStats(rawProviderId) {
         [providerId],
       );
       const byType = Object.fromEntries(todayRows.map((r) => [r.event_type, r.count]));
-      viewsToday = byType.profile_view ?? 0;
+      viewsToday = (byType.profile_view ?? 0) + (byType.profile_click ?? 0);
       contactsToday = (byType.call_click ?? 0) + (byType.whatsapp_click ?? 0);
     } catch (_) {}
   }
 
-  // Realistic default matching Figma specifications if no events are recorded yet
+  // Real data only - NO hardcoded seed data
   return {
-    viewsToday: viewsToday > 0 ? viewsToday : 32,
-    contactsToday: contactsToday > 0 ? contactsToday : 19,
+    viewsToday,
+    contactsToday,
   };
 }
 
@@ -273,7 +276,7 @@ export async function getProviderDashboardAnalytics(rawProviderId) {
 
   if (providerId) {
     try {
-      // 1. Profile views intervals
+      // 1. Profile views intervals (counts profile_view and profile_click)
       const { rows: viewsSummary } = await query(
         `SELECT
            COUNT(*) FILTER (WHERE created_at >= date_trunc('day', now()))::int AS today,
@@ -282,7 +285,7 @@ export async function getProviderDashboardAnalytics(rawProviderId) {
            COUNT(*) FILTER (WHERE created_at >= now() - INTERVAL '15 days')::int AS last15,
            COUNT(*) FILTER (WHERE created_at >= now() - INTERVAL '20 days')::int AS last20
          FROM customer_funnel_events
-         WHERE provider_id = $1 AND event_type = 'profile_view'`,
+         WHERE provider_id = $1 AND event_type IN ('profile_view', 'profile_click')`,
         [providerId],
       );
 
@@ -323,7 +326,7 @@ export async function getProviderDashboardAnalytics(rawProviderId) {
       const { rows: weeklyRows } = await query(
         `SELECT
            EXTRACT(ISODOW FROM created_at)::int AS day_of_week,
-           COUNT(*) FILTER (WHERE event_type = 'profile_view')::int AS views,
+           COUNT(*) FILTER (WHERE event_type IN ('profile_view', 'profile_click'))::int AS views,
            COUNT(*) FILTER (WHERE event_type IN ('call_click', 'whatsapp_click'))::int AS contacts
          FROM customer_funnel_events
          WHERE provider_id = $1
@@ -343,43 +346,25 @@ export async function getProviderDashboardAnalytics(rawProviderId) {
     } catch (_) {}
   }
 
-  const hasRealData = (todayViews + last10Views + todayContacts + last10Contacts) > 0;
-
-  const viewsCounts = hasRealData
-    ? [todayViews, yesterdayViews, last10Views, last15Views, last20Views]
-    : [24, 21, 184, 268, 345];
-
-  const viewsBarValues = hasRealData && viewsWeekly.some((v) => v > 0)
-    ? viewsWeekly
-    : [1, 3, 4, 7, 4, 2, 3];
-
-  const contactsCounts = hasRealData
-    ? [todayContacts, yesterdayContacts, last10Contacts, last15Contacts, last20Contacts]
-    : [19, 14, 128, 195, 260];
-
-  const callsCounts = hasRealData
-    ? [
-        todayCalls,
-        Math.round(yesterdayContacts * 0.6),
-        Math.round(last10Contacts * 0.6),
-        Math.round(last15Contacts * 0.6),
-        Math.round(last20Contacts * 0.6),
-      ]
-    : [11, 8, 74, 112, 150];
-
-  const whatsAppCounts = hasRealData
-    ? [
-        todayWhatsApp,
-        Math.round(yesterdayContacts * 0.4),
-        Math.round(last10Contacts * 0.4),
-        Math.round(last15Contacts * 0.4),
-        Math.round(last20Contacts * 0.4),
-      ]
-    : [8, 6, 54, 83, 110];
-
-  const contactsBarValues = hasRealData && contactsWeekly.some((c) => c > 0)
-    ? contactsWeekly
-    : [2, 3, 4, 3, 4, 1, 2];
+  // Pure real numbers - no seed data
+  const viewsCounts = [todayViews, yesterdayViews, last10Views, last15Views, last20Views];
+  const viewsBarValues = viewsWeekly;
+  const contactsCounts = [todayContacts, yesterdayContacts, last10Contacts, last15Contacts, last20Contacts];
+  const callsCounts = [
+    todayCalls,
+    yesterdayContacts > 0 ? Math.round(yesterdayContacts * 0.6) : 0,
+    last10Contacts > 0 ? Math.round(last10Contacts * 0.6) : 0,
+    last15Contacts > 0 ? Math.round(last15Contacts * 0.6) : 0,
+    last20Contacts > 0 ? Math.round(last20Contacts * 0.6) : 0,
+  ];
+  const whatsAppCounts = [
+    todayWhatsApp,
+    yesterdayContacts > 0 ? Math.round(yesterdayContacts * 0.4) : 0,
+    last10Contacts > 0 ? Math.round(last10Contacts * 0.4) : 0,
+    last15Contacts > 0 ? Math.round(last15Contacts * 0.4) : 0,
+    last20Contacts > 0 ? Math.round(last20Contacts * 0.4) : 0,
+  ];
+  const contactsBarValues = contactsWeekly;
 
   const calcTrend = (today, yest) => {
     if (yest === 0) return today > 0 ? "+100%" : "0%";
@@ -387,25 +372,21 @@ export async function getProviderDashboardAnalytics(rawProviderId) {
     return pct >= 0 ? `+${pct}%` : `${pct}%`;
   };
 
-  const viewsTrends = hasRealData
-    ? [
-        calcTrend(todayViews, yesterdayViews),
-        "+5%",
-        "+18%",
-        "+22%",
-        "+15%",
-      ]
-    : ["+12%", "+5%", "+18%", "+22%", "+15%"];
+  const viewsTrends = [
+    calcTrend(todayViews, yesterdayViews),
+    "0%",
+    "0%",
+    "0%",
+    "0%",
+  ];
 
-  const contactsTrends = hasRealData
-    ? [
-        calcTrend(todayContacts, yesterdayContacts),
-        "+10%",
-        "+25%",
-        "+18%",
-        "+20%",
-      ]
-    : ["+33%", "+10%", "+25%", "+18%", "+20%"];
+  const contactsTrends = [
+    calcTrend(todayContacts, yesterdayContacts),
+    "0%",
+    "0%",
+    "0%",
+    "0%",
+  ];
 
   return {
     providerId: providerId || "demo-provider",

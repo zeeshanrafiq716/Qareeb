@@ -62,6 +62,7 @@ class ProviderRegistrationData {
   bool get isOnline => _isOnline == true;
   bool get isSuspended =>
       _status == 'SUSPENDED' || _status == 'REJECTED' || _status == 'DECLINED';
+  bool get isBlocked => _status == 'BLOCKED' || _status == 'blocked';
 
   const ProviderRegistrationData({
     String? phone,

@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
+import '../../../services/task_service.dart';
+import '../../location/presentation/live_tracking_screen.dart';
 import '../../location/presentation/location_permission_screen.dart';
+import '../../profile/presentation/notifications_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../requests/presentation/requests_screen.dart';
 import '../../../providers/backend_provider.dart';
@@ -90,7 +93,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }
         return loc.cityName.isNotEmpty
             ? loc.cityName
-            : (tr.isArabic ? 'كراتشي، باكستان' : 'Karachi Pakistan');
+            : (tr.isArabic ? 'الرياض، المملكة العربية السعودية' : 'Riyadh, Saudi Arabia');
       },
       loading: () => tr.gpsDetecting,
       error: (_, _) => tr.isArabic ? 'خدمة الموقع غير مفعلة' : 'Location is OFF',
@@ -167,46 +170,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           PointerDeviceKind.unknown,
                         },
                       ),
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // 1. Branding Header Layout
-                            HomeHeaderWidget(
-                              location: locationText,
-                              locationLabel: locationLabel,
-                              onLocationTap: () {
-                                HapticFeedback.lightImpact();
-                                ref.refresh(userLocationProvider);
-                              },
-                            ),
+                      child: RefreshIndicator(
+                        color: const Color(0xFF8B53FE),
+                        onRefresh: () async {
+                          ref.invalidate(categoriesProvider);
+                          ref.invalidate(userLocationProvider);
+                        },
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // 1. Branding Header Layout
+                              HomeHeaderWidget(
+                                location: locationText,
+                                locationLabel: locationLabel,
+                                onLocationTap: () {
+                                  HapticFeedback.lightImpact();
+                                  ref.invalidate(userLocationProvider);
+                                },
+                                onNotificationTap: () {
+                                  final notif = ref.read(notificationsProvider).customerNotification;
+                                  if (notif != null) {
+                                    ref.read(notificationsProvider.notifier).toggleCustomerCard();
+                                  } else {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const NotificationsScreen(),
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
 
-                            // Vertical spacing between header and services section
-                            const SizedBox(height: 16.0),
+                              // Vertical spacing between header and services section
+                              const SizedBox(height: 16.0),
 
-                            // 2. Services Section (All Category Cards with real images & exact branding)
-                            ServicesSectionWidget(
-                              onCategoryTap: (category) {
-                                final String displayName = category.name == 'Pickup'
-                                    ? 'Pickup & Delivery'
-                                    : category.name;
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => LocationPermissionScreen(
-                                      serviceName: displayName,
+                              // 2. Services Section (All Category Cards with real images & exact branding)
+                              ServicesSectionWidget(
+                                onCategoryTap: (category) {
+                                  final String displayName = category.name == 'Pickup'
+                                      ? 'Pickup & Delivery'
+                                      : category.name;
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => LocationPermissionScreen(
+                                        serviceName: displayName,
+                                      ),
                                     ),
-                                  ),
-                                );
-                              },
-                            ),
+                                  );
+                                },
+                              ),
 
-                            // Clearance space so floating bottom navigation bar doesn't overlap cards
-                            SizedBox(height: 140.0),
-                          ],
+                              // Clearance space so floating bottom navigation bar doesn't overlap cards
+                              SizedBox(height: 140.0),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -226,7 +248,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                   // 3. Notification Card Overlay after clicking bell icon
                   //    Exact layout: width: 350; height: 96; top: 106px; left: 21px;
-                  if (notifState.isCustomerCardVisible) ...[
+                  if (notifState.isCustomerCardVisible &&
+                      notifState.customerNotification != null) ...[
                     Positioned.fill(
                       child: GestureDetector(
                         behavior: HitTestBehavior.translucent,
@@ -243,21 +266,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       right: 20.0,
                       child: NotificationPopupCard(
                         badgeText: tr.isArabic
-                            ? notifState.customerNotification.badgeTextAr
-                            : notifState.customerNotification.badgeTextEn,
+                            ? (notifState.customerNotification?.badgeTextAr ?? '')
+                            : (notifState.customerNotification?.badgeTextEn ?? ''),
                         title: tr.isArabic
-                            ? notifState.customerNotification.titleAr
-                            : notifState.customerNotification.titleEn,
+                            ? (notifState.customerNotification?.titleAr ?? '')
+                            : (notifState.customerNotification?.titleEn ?? ''),
                         location: tr.isArabic
-                            ? notifState.customerNotification.locationAr
-                            : notifState.customerNotification.locationEn,
+                            ? (notifState.customerNotification?.locationAr ?? '')
+                            : (notifState.customerNotification?.locationEn ?? ''),
                         distance: tr.isArabic
-                            ? notifState.customerNotification.distanceAr
-                            : notifState.customerNotification.distanceEn,
+                            ? (notifState.customerNotification?.distanceAr ?? '')
+                            : (notifState.customerNotification?.distanceEn ?? ''),
                         time: tr.isArabic
-                            ? notifState.customerNotification.timeAr
-                            : notifState.customerNotification.timeEn,
-                        imageAsset: notifState.customerNotification.imageAsset,
+                            ? (notifState.customerNotification?.timeAr ?? '')
+                            : (notifState.customerNotification?.timeEn ?? ''),
+                        imageAsset: notifState.customerNotification?.imageAsset,
+                        onTap: () {
+                          ref.read(notificationsProvider.notifier).hideCustomerCard();
+                          final task = TaskService.instance.activeTask;
+                          if (task != null) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => LiveTrackingScreen(
+                                  serviceCategory: task.serviceCategory,
+                                  providerName: task.providerName,
+                                  distance: task.distance,
+                                  duration: task.eta,
+                                ),
+                              ),
+                            );
+                          } else {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationsScreen(),
+                              ),
+                            );
+                          }
+                        },
                         onDismiss: () {
                           ref
                               .read(notificationsProvider.notifier)

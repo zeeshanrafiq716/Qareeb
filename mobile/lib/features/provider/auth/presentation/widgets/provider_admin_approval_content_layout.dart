@@ -1,7 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile/core/api/api_client.dart';
+import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
+import 'package:mobile/features/provider/auth/presentation/phone_verification_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_blocked_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_admin_approval_badge.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_admin_approval_heading.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_admin_approval_status_card.dart';
@@ -10,6 +15,7 @@ import 'package:mobile/features/provider/auth/presentation/widgets/provider_got_
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_under_review_card.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_whats_next_card.dart';
 import 'package:mobile/features/provider/home/presentation/provider_home_screen.dart';
+import 'package:mobile/services/backend_service.dart';
 
 /// Provider Admin Approval Screen Next Widget Layout Branding
 /// Implements exact Figma branding specifications:
@@ -80,33 +86,145 @@ class _ProviderAdminApprovalContentLayoutState
     extends State<ProviderAdminApprovalContentLayout> {
   bool _showReviewNotice = false;
   bool _isApproved = false;
-  Timer? _approvalTimer;
+  bool _isResubmission = false;
+  bool _isRejected = false;
+  bool _isSuspended = false;
+  String _statusReason = '';
+  bool _hasAutoRedirected = false;
+  Timer? _pollTimer;
+  late final BackendService _backendService;
 
   bool get _isSuspendedOrRejected {
     if (widget.isSuspended == true || widget.isRejected == true) return true;
     final currentData = ProviderRegistrationStore.instance.data;
-    return currentData.isSuspended;
+    return currentData.isSuspended || _isRejected || _isSuspended;
   }
 
   @override
   void initState() {
     super.initState();
+    _backendService = BackendService(ApiClient());
     final currentData = ProviderRegistrationStore.instance.data;
     _isApproved = currentData.status == 'APPROVED';
+    _isRejected = currentData.status == 'REJECTED';
+    _isSuspended = currentData.status == 'SUSPENDED';
+
+    if (_isApproved) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navigateToHome();
+      });
+      return;
+    }
+
     if (!currentData.isOnboardingCompleted && !_isSuspendedOrRejected) {
       ProviderRegistrationStore.instance.update(
         (data) => data.copyWith(isOnboardingCompleted: true),
       );
     }
+
+    // Immediately fetch real status from backend
+    _checkRealStatus();
+
+    // High-frequency polling (every 2 seconds) so admin actions show up live on this screen
+    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      _checkRealStatus();
+    });
   }
 
   @override
   void dispose() {
-    _approvalTimer?.cancel();
+    _pollTimer?.cancel();
     super.dispose();
   }
 
-  void _onGotItPressed() {
+  Future<void> _checkRealStatus() async {
+    try {
+      final accountState = await _backendService.checkProviderAccountState();
+      if (!mounted) return;
+
+      if (accountState.status == ProviderAccountStatus.deleted) {
+        _pollTimer?.cancel();
+        await ProviderRegistrationStore.instance.clear();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.isArabic
+                  ? 'تم حذف حساب مزود الخدمة الخاص بك من قبل الإدارة'
+                  : 'Your provider account has been deleted by administration.',
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+          ),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const PhoneVerificationScreen()),
+          (route) => false,
+        );
+        return;
+      }
+
+      if (accountState.status == ProviderAccountStatus.blocked) {
+        _pollTimer?.cancel();
+        ProviderRegistrationStore.instance.update(
+          (d) => d.copyWith(status: 'BLOCKED', isOnline: false),
+        );
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => ProviderBlockedScreen(
+              reason: accountState.statusReason,
+            ),
+          ),
+          (route) => false,
+        );
+        return;
+      }
+
+      final profile = accountState.profile;
+      final rawStatus = accountState.rawStatus;
+      final publicId = profile?['providerId']?.toString();
+      final statusReason = accountState.statusReason;
+
+      if (rawStatus.isNotEmpty) {
+        final approved = accountState.status == ProviderAccountStatus.approved;
+        final isResubmission = accountState.status == ProviderAccountStatus.resubmissionRequested;
+        final rejected = (rawStatus == 'REJECTED' && !isResubmission) ||
+            rawStatus == 'DECLINED';
+        final suspended = accountState.status == ProviderAccountStatus.suspended;
+
+        ProviderRegistrationStore.instance.update((data) {
+          return data.copyWith(
+            status: rawStatus,
+            publicId: publicId ?? data.publicId,
+            isOnboardingCompleted: true,
+          );
+        });
+
+        if (mounted) {
+          setState(() {
+            _isApproved = approved;
+            _isResubmission = isResubmission;
+            _isRejected = rejected;
+            _isSuspended = suspended;
+            _statusReason = statusReason;
+            if (rejected || suspended || isResubmission) {
+              _showReviewNotice = true;
+            } else if (approved) {
+              _showReviewNotice = false;
+            }
+          });
+
+          // AUTOMATIC REDIRECT TO HOME WHEN ADMIN APPROVES
+          if (approved && !_hasAutoRedirected) {
+            _hasAutoRedirected = true;
+            _navigateToHome();
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  void _onGotItPressed() async {
     HapticFeedback.lightImpact();
 
     if (_isApproved) {
@@ -114,58 +232,38 @@ class _ProviderAdminApprovalContentLayoutState
       return;
     }
 
-    if (_isSuspendedOrRejected) {
-      setState(() {
-        _showReviewNotice = true;
-      });
+    if (_isResubmission || _isRejected) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const UploadDocumentsScreen()),
+      );
       return;
     }
 
-    if (_showReviewNotice) return;
+    // Re-check live status immediately
+    await _checkRealStatus();
+
+    if (!mounted) return;
+
+    if (_isApproved) {
+      _navigateToHome();
+      return;
+    }
 
     setState(() {
       _showReviewNotice = true;
     });
-
-    // Simulate verification cycle:
-    // Update pending status, remove notice card, and auto-land on home
-    _approvalTimer?.cancel();
-    _approvalTimer = Timer(const Duration(milliseconds: 3800), () {
-      if (!mounted) return;
-      setState(() {
-        _isApproved = true;
-        _showReviewNotice = false;
-      });
-
-      ProviderRegistrationStore.instance.update(
-        (data) => data.copyWith(
-          status: 'APPROVED',
-          isOnboardingCompleted: true,
-        ),
-      );
-
-      // Brief pause to display the completed checkmarks before auto-landing on home screen
-      Future.delayed(const Duration(milliseconds: 1400), () {
-        if (!mounted) return;
-        _navigateToHome();
-      });
-    });
   }
 
   void _navigateToHome() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => const ProviderHomeScreen(),
-        transitionsBuilder: (_, animation, _, child) => FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeInOutCubic,
-          ),
-          child: child,
-        ),
-        transitionDuration: const Duration(milliseconds: 350),
-      ),
-    );
+    _pollTimer?.cancel();
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const ProviderHomeScreen()),
+        (route) => false,
+      );
+    });
   }
 
   @override
@@ -187,7 +285,33 @@ class _ProviderAdminApprovalContentLayoutState
               const SizedBox(height: ProviderAdminApprovalContentLayout.designGap),
 
               // 2. content layout: width: 350; height: 51; gap: 12px;
-              widget.heading ?? const ProviderAdminApprovalHeading(),
+              widget.heading ??
+                  ProviderAdminApprovalHeading(
+                    title: _isApproved
+                        ? (context.isArabic ? 'تمت الموافقة على الحساب' : 'Account Approved')
+                        : (_isResubmission
+                            ? (context.isArabic ? 'مطلوب إعادة تقديم المستندات' : 'Resubmission Requested')
+                            : ((_isRejected || _isSuspended)
+                                ? (context.isArabic ? 'تم رفض الطلب' : 'Application Rejected')
+                                : null)),
+                    subtitle: _isApproved
+                        ? (context.isArabic
+                            ? 'تمت مراجعة بياناتك وقبولها بنجاح!'
+                            : 'Your application has been approved by admin!')
+                        : (_isResubmission
+                            ? (_statusReason.isNotEmpty
+                                ? _statusReason
+                                : (context.isArabic
+                                    ? 'طلب المشرف إعادة تقديم بعض المستندات. يرجى التحديث.'
+                                    : 'Admin requested document resubmission. Please re-upload.'))
+                            : ((_isRejected || _isSuspended)
+                                ? (_statusReason.isNotEmpty
+                                    ? _statusReason
+                                    : (context.isArabic
+                                        ? 'لم يتم اعتماد مستندات حسابك من قبل الإدارة.'
+                                        : 'Your application was rejected by admin.'))
+                                : null)),
+                  ),
 
               // Gap: 20px
               const SizedBox(height: ProviderAdminApprovalContentLayout.designGap),
@@ -196,14 +320,24 @@ class _ProviderAdminApprovalContentLayoutState
               widget.statusCard ??
                   ProviderAdminApprovalStatusCard(
                     isApproved: _isApproved,
-                    isSuspended: _isSuspendedOrRejected,
+                    isSuspended: _isSuspended,
+                    isRejected: _isRejected,
+                    isResubmission: _isResubmission,
                   ),
 
               // Gap: 20px
               const SizedBox(height: ProviderAdminApprovalContentLayout.designGap),
 
               // 4. next card branding: width: 350; height: 77; padding: 16px; bg: #F2F5F4;
-              widget.whatsNextCard ?? const ProviderWhatsNextCard(),
+              widget.whatsNextCard ??
+                  (_isApproved
+                      ? ProviderWhatsNextCard(
+                          title: context.isArabic ? 'الحساب جاهز!' : 'Account Ready!',
+                          subtitle: context.isArabic
+                              ? 'تم اعتماد حسابك بنجاح. يمكنك الآن الانتقال للوحة التحكم والبدء.'
+                              : 'Your account has been approved. You can now start receiving service requests.',
+                        )
+                      : const ProviderWhatsNextCard()),
 
               // Gap: 24px (proper gap before button matching previous branding)
               const SizedBox(height: ProviderAdminApprovalContentLayout.buttonGap),
@@ -211,19 +345,31 @@ class _ProviderAdminApprovalContentLayoutState
               // 5. Got It Button: width: 100%, height: 52, radius: 12, bg: #8B53FE, text: Got it
               widget.actionButton ??
                   ProviderGotItButton(
+                    title: _isApproved
+                        ? (context.isArabic ? 'الدخول إلى حسابي' : 'Go to Dashboard')
+                        : (_isResubmission
+                            ? (context.isArabic ? 'تحديث المستندات' : 'Re-upload Documents')
+                            : ((_isRejected || _isSuspended)
+                                ? (context.isArabic ? 'تحديث المستندات' : 'Update Documents')
+                                : null)),
                     onTap: _onGotItPressed,
                   ),
 
-              // 6. Under Review Notice Box (Animates in when Got It is tapped, or shown if rejected/suspended)
+              // 6. Under Review Notice Box (Animates in when Got It is tapped, or shown if rejected/resubmission)
               AnimatedCrossFade(
                 firstChild: const SizedBox(width: double.infinity, height: 0.0),
                 secondChild: Padding(
                   padding: const EdgeInsets.only(top: 16.0),
                   child: ProviderUnderReviewCard(
-                    isRejected: _isSuspendedOrRejected,
+                    isRejected: _isRejected || _isSuspended,
+                    isResubmission: _isResubmission,
+                    title: _isResubmission
+                        ? (context.isArabic ? 'مطلوب إعادة تقديم المستندات' : 'Resubmission Requested')
+                        : null,
+                    subtitle: _statusReason.isNotEmpty ? _statusReason : null,
                   ),
                 ),
-                crossFadeState: (_showReviewNotice || _isSuspendedOrRejected)
+                crossFadeState: (!_isApproved && (_showReviewNotice || _isSuspendedOrRejected || _isResubmission))
                     ? CrossFadeState.showSecond
                     : CrossFadeState.showFirst,
                 duration: const Duration(milliseconds: 300),

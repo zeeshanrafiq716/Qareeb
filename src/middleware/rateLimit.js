@@ -16,7 +16,15 @@ function clientIp(req) {
 export function rateLimit(options) {
   const { windowSeconds, limit, keyPrefix, keyGenerator } = options;
   return async (req, res, next) => {
-    if (!env.RATE_LIMIT_ENABLED || env.isTest) {
+    if (!env.RATE_LIMIT_ENABLED || env.isTest || env.NODE_ENV !== "production") {
+      return next();
+    }
+    // Never throttle multipart document and photo uploads
+    if (
+      req.originalUrl?.includes("/verification") ||
+      req.originalUrl?.includes("/upload") ||
+      req.originalUrl?.includes("/photo")
+    ) {
       return next();
     }
     try {

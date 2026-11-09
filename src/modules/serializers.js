@@ -7,8 +7,12 @@ export function serializeProvider(row, extras = {}) {
           latitude: row.latitude === null ? null : Number(row.latitude),
           longitude: row.longitude === null ? null : Number(row.longitude),
           address: row.address,
+          updatedAt: row.location_updated_at ?? null,
         }
       : null);
+
+  const isOnline = Boolean(extras.isOnline ?? row.is_online);
+  const lastSeenAt = row.last_seen_at ?? null;
 
   return {
     id: row.id,
@@ -27,9 +31,26 @@ export function serializeProvider(row, extras = {}) {
           enabled: row.category_enabled ?? true,
         }
       : null,
+    whatsapp: row.whatsapp_number || row.phone,
+    whatsappNumber: row.whatsapp_number || null,
+    nationalId: row.iqama_number || null,
+    iqamaNumber: row.iqama_number || null,
+    iqamaExpiry: row.iqama_expiry || null,
+    vehicleType: row.vehicle_type_name || row.vehicle_type_db_name || null,
+    vehicleTypeId: row.vehicle_type_id || null,
+    vehicleModel: row.vehicle_model || null,
+    plateNumber: row.plate_number || null,
+    vehicleColor: row.vehicle_color || null,
     location: loc,
+    isOnline,
+    lastSeenAt,
+    presence: extras.presence ?? {
+      isOnline,
+      lastSeenAt,
+      locationUpdatedAt: row.location_updated_at ?? null,
+    },
     verification: extras.verification ?? extras.latestVerification ?? null,
-    presence: extras.presence ?? null,
+    documents: extras.documents ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -71,8 +92,33 @@ export function serializeCategory(row) {
   return {
     id: row.id,
     name: row.name,
+    nameAr: row.name_ar || null,
+    name_ar: row.name_ar || null,
     slug: row.slug,
     isEnabled: row.is_enabled,
+    sortOrder: row.sort_order ?? 0,
+    sort_order: row.sort_order ?? 0,
+    subtitle: row.subtitle || null,
+    subtitleAr: row.subtitle_ar || null,
+    subtitle_ar: row.subtitle_ar || null,
+    iconUrl: row.icon_url || null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function serializeVehicleType(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    nameAr: row.name_ar || null,
+    name_ar: row.name_ar || null,
+    slug: row.slug,
+    categoryId: row.category_id || null,
+    categoryName: row.category_name || null,
+    icon: row.icon || null,
+    isEnabled: row.is_enabled ?? true,
+    sortOrder: row.sort_order ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -87,11 +133,15 @@ const PROVIDER_SELECT = `
          loc.city AS city,
          loc.latitude AS latitude,
          loc.longitude AS longitude,
-         loc.address AS address
+         loc.address AS address,
+         loc.location_updated_at AS location_updated_at,
+         vt.name AS vehicle_type_db_name,
+         vt.name_ar AS vehicle_type_db_name_ar
   FROM providers p
   JOIN statuses s ON s.id = p.status_id
   LEFT JOIN categories c ON c.id = p.category_id
   LEFT JOIN locations loc ON loc.provider_id = p.id
+  LEFT JOIN vehicle_types vt ON vt.id = p.vehicle_type_id
 `;
 
 export async function fetchProviderById(client, id) {

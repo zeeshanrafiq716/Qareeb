@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/services/task_service.dart';
 import 'package:mobile/features/provider/requests/presentation/provider_active_request_screen.dart';
 import 'package:mobile/features/location/presentation/widgets/top_down_car_widget.dart';
 import 'package:mobile/features/location/presentation/widgets/real_map_background_widget.dart';
@@ -1022,9 +1023,12 @@ class _ProviderRequestDetailsScreenState
                                         // Decline button
                                         Expanded(
                                           child: GestureDetector(
-                                            onTap: () {
+                                            onTap: () async {
                                               HapticFeedback.lightImpact();
-                                              Navigator.of(context).maybePop();
+                                              await TaskService.instance.cancelTask();
+                                              if (context.mounted) {
+                                                Navigator.of(context).maybePop();
+                                              }
                                             },
                                             child: Container(
                                               height: 52.0,
@@ -1063,8 +1067,10 @@ class _ProviderRequestDetailsScreenState
                                         // Accept button
                                         Expanded(
                                           child: GestureDetector(
-                                            onTap: () {
+                                            onTap: () async {
                                               HapticFeedback.mediumImpact();
+                                              await TaskService.instance.updateTaskStatus(status: 'active', step: 1);
+                                              if (!context.mounted) return;
                                               ScaffoldMessenger.of(context).showSnackBar(
                                                 SnackBar(
                                                   backgroundColor: const Color(0xFF8B53FE),

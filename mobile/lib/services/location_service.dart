@@ -122,10 +122,12 @@ class LocationService {
   Future<UserLocation> acquireDeviceLocation({
     Duration timeout = const Duration(seconds: 12),
   }) async {
-    // 1. Check if device location service is turned ON
-    final serviceEnabled = await isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      throw const LocationServiceDisabledException();
+    // 1. On native mobile (Android/iOS), check if device location service is turned ON
+    if (!kIsWeb) {
+      final serviceEnabled = await isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw const LocationServiceDisabledException();
+      }
     }
 
     // 2. Request runtime permission if needed without throwing hard errors
@@ -140,15 +142,25 @@ class LocationService {
     double? lat;
     double? lng;
     double? acc;
+    String? webCity;
+    String? webAddress;
 
-    // On Web, direct HTML5 browser geolocation is fastest and triggers prompt smoothly
+    // On Web, direct HTML5 browser geolocation or real IP fallback
     if (kIsWeb) {
       try {
         final coords = await getBrowserCoordinates();
         if (coords != null && coords['latitude'] != null && coords['longitude'] != null) {
-          lat = coords['latitude']!;
-          lng = coords['longitude']!;
-          acc = coords['accuracy'];
+          lat = (coords['latitude'] as num).toDouble();
+          lng = (coords['longitude'] as num).toDouble();
+          if (coords['accuracy'] != null) {
+            acc = (coords['accuracy'] as num).toDouble();
+          }
+          if (coords['city'] != null && coords['city'].toString().isNotEmpty) {
+            webCity = coords['city'].toString();
+          }
+          if (coords['address'] != null && coords['address'].toString().isNotEmpty) {
+            webAddress = coords['address'].toString();
+          }
         }
       } catch (_) {}
     }
@@ -188,9 +200,17 @@ class LocationService {
           try {
             final coords = await getBrowserCoordinates();
             if (coords != null && coords['latitude'] != null && coords['longitude'] != null) {
-              lat = coords['latitude']!;
-              lng = coords['longitude']!;
-              acc = coords['accuracy'];
+              lat = (coords['latitude'] as num).toDouble();
+              lng = (coords['longitude'] as num).toDouble();
+              if (coords['accuracy'] != null) {
+                acc = (coords['accuracy'] as num).toDouble();
+              }
+              if (coords['city'] != null && coords['city'].toString().isNotEmpty) {
+                webCity = coords['city'].toString();
+              }
+              if (coords['address'] != null && coords['address'].toString().isNotEmpty) {
+                webAddress = coords['address'].toString();
+              }
             }
           } catch (_) {}
         }
@@ -205,13 +225,18 @@ class LocationService {
 
     // 4. Reverse geocode to resolve city & address with safe timeout
     Map<String, String> geoInfo = {};
-    try {
-      geoInfo = await _reverseGeocode(lat, lng).timeout(const Duration(seconds: 3));
-    } catch (_) {
-      geoInfo = {
-        'city': 'GPS (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})',
-        'address': 'Current Location',
-      };
+    if (webCity != null && webCity.isNotEmpty) {
+      geoInfo['city'] = webCity;
+      geoInfo['address'] = webAddress ?? webCity;
+    } else {
+      try {
+        geoInfo = await _reverseGeocode(lat, lng).timeout(const Duration(seconds: 4));
+      } catch (_) {
+        geoInfo = {
+          'city': '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
+          'address': 'GPS: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
+        };
+      }
     }
 
     final userLoc = UserLocation(
@@ -283,9 +308,9 @@ class LocationService {
       try {
         await for (final coords in watchBrowserCoordinates()) {
           if (coords.containsKey('latitude') && coords.containsKey('longitude')) {
-            final double lat = coords['latitude']!;
-            final double lng = coords['longitude']!;
-            final double? acc = coords['accuracy'];
+            final double lat = (coords['latitude'] as num).toDouble();
+            final double lng = (coords['longitude'] as num).toDouble();
+            final double? acc = (coords['accuracy'] as num?)?.toDouble();
 
             String city = _cachedLocation?.cityName ?? '';
             String addr = _cachedLocation?.address ?? '';

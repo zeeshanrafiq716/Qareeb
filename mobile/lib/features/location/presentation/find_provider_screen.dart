@@ -37,619 +37,6 @@ class FindProviderScreen extends ConsumerStatefulWidget {
   ConsumerState<FindProviderScreen> createState() => _FindProviderScreenState();
 }
 
-class _NearbyProviderItem {
-  final int id;
-  final String name;
-  final String nameAr;
-  final String vehicle;
-  final String vehicleAr;
-  final double rating;
-  final int reviews;
-  final String status;
-  final double distanceKm;
-  final String eta;
-  final String etaAr;
-  final String imagePath;
-  final String phone;
-  final double latOffset;
-  final double lngOffset;
-  final double heading;
-  final Color carColor;
-
-  const _NearbyProviderItem({
-    required this.id,
-    required this.name,
-    required this.nameAr,
-    required this.vehicle,
-    required this.vehicleAr,
-    required this.rating,
-    required this.reviews,
-    required this.status,
-    required this.distanceKm,
-    required this.eta,
-    required this.etaAr,
-    required this.imagePath,
-    required this.phone,
-    required this.latOffset,
-    required this.lngOffset,
-    this.heading = 45.0,
-    this.carColor = const Color(0xFFA67AFE),
-  });
-}
-
-const List<_NearbyProviderItem> _all30NearbyProviders = [
-  _NearbyProviderItem(
-    id: 1,
-    name: 'Uzair Ahmed',
-    nameAr: 'عزير أحمد',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.9,
-    reviews: 120,
-    status: 'Available',
-    distanceKm: 0.3,
-    eta: '2 min away',
-    etaAr: 'على بعد 2 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 300 1234567',
-    latOffset: 0.0018,
-    lngOffset: -0.0022,
-    heading: 85.0,
-    carColor: Color(0xFFA67AFE),
-  ),
-  _NearbyProviderItem(
-    id: 2,
-    name: 'Ahmad Raza',
-    nameAr: 'أحمد رضا',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.9,
-    reviews: 115,
-    status: 'Available',
-    distanceKm: 0.5,
-    eta: '3 min away',
-    etaAr: 'على بعد 3 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 301 2345678',
-    latOffset: -0.0015,
-    lngOffset: 0.0028,
-    heading: 210.0,
-    carColor: Color(0xFF8B53FE),
-  ),
-  _NearbyProviderItem(
-    id: 3,
-    name: 'Muhammad Bilal',
-    nameAr: 'محمد بلال',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.8,
-    reviews: 95,
-    status: 'Available',
-    distanceKm: 0.6,
-    eta: '4 min away',
-    etaAr: 'على بعد 4 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 302 3456789',
-    latOffset: 0.0032,
-    lngOffset: 0.0015,
-    heading: 340.0,
-    carColor: Color(0xFF6C3CE9),
-  ),
-  _NearbyProviderItem(
-    id: 4,
-    name: 'Usman Ali',
-    nameAr: 'عثمان علي',
-    vehicle: 'Pickup • AC',
-    vehicleAr: 'شاحنة نقل • مكيف',
-    rating: 4.9,
-    reviews: 142,
-    status: 'Available',
-    distanceKm: 0.9,
-    eta: '5 min away',
-    etaAr: 'على بعد 5 د',
-    imagePath: 'assets/images/pickup.png',
-    phone: '+92 303 4567890',
-    latOffset: -0.0028,
-    lngOffset: -0.0035,
-    heading: 120.0,
-    carColor: Color(0xFF9E6CF5),
-  ),
-  _NearbyProviderItem(
-    id: 5,
-    name: 'Hamza Sheikh',
-    nameAr: 'حمزة شيخ',
-    vehicle: 'Sedan • Non-AC',
-    vehicleAr: 'سيدان • بدون تكييف',
-    rating: 4.7,
-    reviews: 80,
-    status: 'Available',
-    distanceKm: 1.1,
-    eta: '6 min away',
-    etaAr: 'على بعد 6 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 304 5678901',
-    latOffset: 0.0042,
-    lngOffset: -0.0018,
-    heading: 45.0,
-    carColor: Color(0xFF7C4DFF),
-  ),
-  _NearbyProviderItem(
-    id: 6,
-    name: 'Tariq Mahmood',
-    nameAr: 'طارق محمود',
-    vehicle: 'SUV • AC',
-    vehicleAr: 'دفع رباعي • مكيف',
-    rating: 4.8,
-    reviews: 108,
-    status: 'Available',
-    distanceKm: 1.2,
-    eta: '7 min away',
-    etaAr: 'على بعد 7 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 305 6789012',
-    latOffset: -0.0038,
-    lngOffset: 0.0042,
-    heading: 175.0,
-    carColor: Color(0xFF8B53FE),
-  ),
-  _NearbyProviderItem(
-    id: 7,
-    name: 'Zeeshan Khan',
-    nameAr: 'ذیشان خان',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.9,
-    reviews: 134,
-    status: 'Available',
-    distanceKm: 1.4,
-    eta: '8 min away',
-    etaAr: 'على بعد 8 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 306 7890123',
-    latOffset: 0.0022,
-    lngOffset: 0.0051,
-    heading: 290.0,
-    carColor: Color(0xFFA67AFE),
-  ),
-  _NearbyProviderItem(
-    id: 8,
-    name: 'Fahad Mustafa',
-    nameAr: 'فهد مصطفى',
-    vehicle: 'Hatchback • AC',
-    vehicleAr: 'هاتشباك • مكيف',
-    rating: 4.7,
-    reviews: 64,
-    status: 'Available',
-    distanceKm: 1.5,
-    eta: '9 min away',
-    etaAr: 'على بعد 9 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 307 8901234',
-    latOffset: -0.0045,
-    lngOffset: -0.0021,
-    heading: 60.0,
-    carColor: Color(0xFF9E6CF5),
-  ),
-  _NearbyProviderItem(
-    id: 9,
-    name: 'Imran Butt',
-    nameAr: 'عمران بت',
-    vehicle: 'Pickup • AC',
-    vehicleAr: 'شاحنة نقل • مكيف',
-    rating: 4.8,
-    reviews: 112,
-    status: 'Available',
-    distanceKm: 1.7,
-    eta: '10 min away',
-    etaAr: 'على بعد 10 د',
-    imagePath: 'assets/images/pickup.png',
-    phone: '+92 308 9012345',
-    latOffset: 0.0055,
-    lngOffset: 0.0033,
-    heading: 195.0,
-    carColor: Color(0xFF6C3CE9),
-  ),
-  _NearbyProviderItem(
-    id: 10,
-    name: 'Asad Malik',
-    nameAr: 'أسعد مالك',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.9,
-    reviews: 88,
-    status: 'Available',
-    distanceKm: 1.8,
-    eta: '11 min away',
-    etaAr: 'على بعد 11 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 309 0123456',
-    latOffset: -0.0019,
-    lngOffset: 0.0062,
-    heading: 315.0,
-    carColor: Color(0xFF8B53FE),
-  ),
-  _NearbyProviderItem(
-    id: 11,
-    name: 'Rashid Minhas',
-    nameAr: 'راشد منهاس',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.8,
-    reviews: 92,
-    status: 'Available',
-    distanceKm: 2.0,
-    eta: '12 min away',
-    etaAr: 'على بعد 12 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 310 1234567',
-    latOffset: 0.0062,
-    lngOffset: -0.0041,
-    heading: 110.0,
-    carColor: Color(0xFFA67AFE),
-  ),
-  _NearbyProviderItem(
-    id: 12,
-    name: 'Daniyal Siddiqui',
-    nameAr: 'دانيال صديقي',
-    vehicle: 'SUV • AC',
-    vehicleAr: 'دفع رباعي • مكيف',
-    rating: 4.9,
-    reviews: 150,
-    status: 'Available',
-    distanceKm: 2.1,
-    eta: '12 min away',
-    etaAr: 'على بعد 12 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 311 2345678',
-    latOffset: -0.0058,
-    lngOffset: 0.0054,
-    heading: 225.0,
-    carColor: Color(0xFF7C4DFF),
-  ),
-  _NearbyProviderItem(
-    id: 13,
-    name: 'Waqas Qureshi',
-    nameAr: 'وقاص قريشي',
-    vehicle: 'Pickup • AC',
-    vehicleAr: 'شاحنة نقل • مكيف',
-    rating: 4.7,
-    reviews: 76,
-    status: 'Available',
-    distanceKm: 2.3,
-    eta: '13 min away',
-    etaAr: 'على بعد 13 د',
-    imagePath: 'assets/images/pickup.png',
-    phone: '+92 312 3456789',
-    latOffset: 0.0035,
-    lngOffset: -0.0068,
-    heading: 15.0,
-    carColor: Color(0xFF9E6CF5),
-  ),
-  _NearbyProviderItem(
-    id: 14,
-    name: 'Salman Farooq',
-    nameAr: 'سلمان فاروق',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.8,
-    reviews: 104,
-    status: 'Available',
-    distanceKm: 2.4,
-    eta: '14 min away',
-    etaAr: 'على بعد 14 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 313 4567890',
-    latOffset: -0.0065,
-    lngOffset: -0.0039,
-    heading: 140.0,
-    carColor: Color(0xFF8B53FE),
-  ),
-  _NearbyProviderItem(
-    id: 15,
-    name: 'Haris Rauf',
-    nameAr: 'حارث رؤوف',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.9,
-    reviews: 128,
-    status: 'Available',
-    distanceKm: 2.5,
-    eta: '14 min away',
-    etaAr: 'على بعد 14 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 314 5678901',
-    latOffset: 0.0071,
-    lngOffset: 0.0025,
-    heading: 270.0,
-    carColor: Color(0xFF6C3CE9),
-  ),
-  _NearbyProviderItem(
-    id: 16,
-    name: 'Babar Azam',
-    nameAr: 'بابر أعظم',
-    vehicle: 'SUV • AC',
-    vehicleAr: 'دفع رباعي • مكيف',
-    rating: 5.0,
-    reviews: 210,
-    status: 'Available',
-    distanceKm: 2.7,
-    eta: '15 min away',
-    etaAr: 'على بعد 15 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 315 6789012',
-    latOffset: -0.0041,
-    lngOffset: 0.0078,
-    heading: 35.0,
-    carColor: Color(0xFFA67AFE),
-  ),
-  _NearbyProviderItem(
-    id: 17,
-    name: 'Shaheen Afridi',
-    nameAr: 'شاهين أفريدي',
-    vehicle: 'Pickup • AC',
-    vehicleAr: 'شاحنة نقل • مكيف',
-    rating: 4.9,
-    reviews: 175,
-    status: 'Available',
-    distanceKm: 2.8,
-    eta: '16 min away',
-    etaAr: 'على بعد 16 د',
-    imagePath: 'assets/images/pickup.png',
-    phone: '+92 316 7890123',
-    latOffset: 0.0048,
-    lngOffset: -0.0075,
-    heading: 180.0,
-    carColor: Color(0xFF8B53FE),
-  ),
-  _NearbyProviderItem(
-    id: 18,
-    name: 'Shadab Khan',
-    nameAr: 'شاداب خان',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.8,
-    reviews: 98,
-    status: 'Available',
-    distanceKm: 3.0,
-    eta: '17 min away',
-    etaAr: 'على بعد 17 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 317 8901234',
-    latOffset: -0.0074,
-    lngOffset: 0.0048,
-    heading: 300.0,
-    carColor: Color(0xFF9E6CF5),
-  ),
-  _NearbyProviderItem(
-    id: 19,
-    name: 'Naseem Shah',
-    nameAr: 'نسيم شاه',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.9,
-    reviews: 110,
-    status: 'Available',
-    distanceKm: 3.1,
-    eta: '17 min away',
-    etaAr: 'على بعد 17 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 318 9012345',
-    latOffset: 0.0082,
-    lngOffset: -0.0031,
-    heading: 90.0,
-    carColor: Color(0xFF7C4DFF),
-  ),
-  _NearbyProviderItem(
-    id: 20,
-    name: 'Mohammad Rizwan',
-    nameAr: 'محمد رضوان',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.9,
-    reviews: 185,
-    status: 'Available',
-    distanceKm: 3.2,
-    eta: '18 min away',
-    etaAr: 'على بعد 18 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 319 0123456',
-    latOffset: -0.0051,
-    lngOffset: -0.0082,
-    heading: 240.0,
-    carColor: Color(0xFF8B53FE),
-  ),
-  _NearbyProviderItem(
-    id: 21,
-    name: 'Fakhar Zaman',
-    nameAr: 'فخر زمان',
-    vehicle: 'SUV • AC',
-    vehicleAr: 'دفع رباعي • مكيف',
-    rating: 4.8,
-    reviews: 102,
-    status: 'Available',
-    distanceKm: 3.4,
-    eta: '19 min away',
-    etaAr: 'على بعد 19 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 320 1234567',
-    latOffset: 0.0069,
-    lngOffset: 0.0065,
-    heading: 135.0,
-    carColor: Color(0xFFA67AFE),
-  ),
-  _NearbyProviderItem(
-    id: 22,
-    name: 'Iftikhar Ahmed',
-    nameAr: 'افتخار أحمد',
-    vehicle: 'Pickup • AC',
-    vehicleAr: 'شاحنة نقل • مكيف',
-    rating: 4.7,
-    reviews: 89,
-    status: 'Available',
-    distanceKm: 3.5,
-    eta: '20 min away',
-    etaAr: 'على بعد 20 د',
-    imagePath: 'assets/images/pickup.png',
-    phone: '+92 321 2345678',
-    latOffset: -0.0083,
-    lngOffset: -0.0055,
-    heading: 330.0,
-    carColor: Color(0xFF6C3CE9),
-  ),
-  _NearbyProviderItem(
-    id: 23,
-    name: 'Imad Wasim',
-    nameAr: 'عماد وسيم',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.8,
-    reviews: 114,
-    status: 'Available',
-    distanceKm: 3.6,
-    eta: '20 min away',
-    etaAr: 'على بعد 20 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 322 3456789',
-    latOffset: 0.0058,
-    lngOffset: -0.0088,
-    heading: 50.0,
-    carColor: Color(0xFF8B53FE),
-  ),
-  _NearbyProviderItem(
-    id: 24,
-    name: 'Hasan Ali',
-    nameAr: 'حسن علي',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.7,
-    reviews: 73,
-    status: 'Available',
-    distanceKm: 3.8,
-    eta: '21 min away',
-    etaAr: 'على بعد 21 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 323 4567890',
-    latOffset: -0.0068,
-    lngOffset: 0.0086,
-    heading: 215.0,
-    carColor: Color(0xFF9E6CF5),
-  ),
-  _NearbyProviderItem(
-    id: 25,
-    name: 'Faheem Ashraf',
-    nameAr: 'فهيم أشرف',
-    vehicle: 'Hatchback • AC',
-    vehicleAr: 'هاتشباك • مكيف',
-    rating: 4.6,
-    reviews: 58,
-    status: 'Available',
-    distanceKm: 3.9,
-    eta: '22 min away',
-    etaAr: 'على بعد 22 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 324 5678901',
-    latOffset: 0.0091,
-    lngOffset: 0.0042,
-    heading: 160.0,
-    carColor: Color(0xFF7C4DFF),
-  ),
-  _NearbyProviderItem(
-    id: 26,
-    name: 'Aamer Jamal',
-    nameAr: 'عامر جمال',
-    vehicle: 'Pickup • AC',
-    vehicleAr: 'شاحنة نقل • مكيف',
-    rating: 4.8,
-    reviews: 91,
-    status: 'Available',
-    distanceKm: 4.1,
-    eta: '23 min away',
-    etaAr: 'على بعد 23 د',
-    imagePath: 'assets/images/pickup.png',
-    phone: '+92 325 6789012',
-    latOffset: -0.0092,
-    lngOffset: -0.0046,
-    heading: 280.0,
-    carColor: Color(0xFF8B53FE),
-  ),
-  _NearbyProviderItem(
-    id: 27,
-    name: 'Saim Ayub',
-    nameAr: 'صائم أيوب',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.9,
-    reviews: 130,
-    status: 'Available',
-    distanceKm: 4.2,
-    eta: '23 min away',
-    etaAr: 'على بعد 23 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 326 7890123',
-    latOffset: 0.0076,
-    lngOffset: -0.0079,
-    heading: 20.0,
-    carColor: Color(0xFFA67AFE),
-  ),
-  _NearbyProviderItem(
-    id: 28,
-    name: 'Abdullah Shafique',
-    nameAr: 'عبد الله شفيق',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.8,
-    reviews: 84,
-    status: 'Available',
-    distanceKm: 4.4,
-    eta: '24 min away',
-    etaAr: 'على بعد 24 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 327 8901234',
-    latOffset: -0.0079,
-    lngOffset: 0.0094,
-    heading: 190.0,
-    carColor: Color(0xFF6C3CE9),
-  ),
-  _NearbyProviderItem(
-    id: 29,
-    name: 'Usama Mir',
-    nameAr: 'أسامة مير',
-    vehicle: 'SUV • AC',
-    vehicleAr: 'دفع رباعي • مكيف',
-    rating: 4.7,
-    reviews: 67,
-    status: 'Available',
-    distanceKm: 4.5,
-    eta: '25 min away',
-    etaAr: 'على بعد 25 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 328 9012345',
-    latOffset: 0.0098,
-    lngOffset: -0.0062,
-    heading: 320.0,
-    carColor: Color(0xFF9E6CF5),
-  ),
-  _NearbyProviderItem(
-    id: 30,
-    name: 'Zaman Khan',
-    nameAr: 'زمان خان',
-    vehicle: 'Sedan • AC',
-    vehicleAr: 'سيدان • مكيف',
-    rating: 4.8,
-    reviews: 95,
-    status: 'Available',
-    distanceKm: 4.7,
-    eta: '26 min away',
-    etaAr: 'على بعد 26 د',
-    imagePath: 'assets/images/car_ride.png',
-    phone: '+92 329 0123456',
-    latOffset: -0.0095,
-    lngOffset: -0.0078,
-    heading: 75.0,
-    carColor: Color(0xFF8B53FE),
-  ),
-];
-
 class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
   bool _isSearchOpen = false;
   final TextEditingController _searchController = TextEditingController();
@@ -701,17 +88,15 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
             final List<ProviderMarkerModel> liveProviders = nearbyProvidersAsync.value ?? [];
 
             final String searchQuery = _searchController.text.trim().toLowerCase();
-            final List<_NearbyProviderItem> searchedProviders = searchQuery.isEmpty
-                ? _all30NearbyProviders
-                : _all30NearbyProviders.where((p) {
+            final List<ProviderMarkerModel> searchedProviders = searchQuery.isEmpty
+                ? liveProviders
+                : liveProviders.where((p) {
                     return p.name.toLowerCase().contains(searchQuery) ||
-                        p.nameAr.toLowerCase().contains(searchQuery) ||
-                        p.vehicle.toLowerCase().contains(searchQuery) ||
-                        p.vehicleAr.toLowerCase().contains(searchQuery) ||
+                        p.categoryName.toLowerCase().contains(searchQuery) ||
                         '${p.distanceKm} km'.contains(searchQuery);
                   }).toList();
 
-            final List<_NearbyProviderItem> activeProviders = searchedProviders
+            final List<ProviderMarkerModel> activeProviders = searchedProviders
                 .take(_selectedProviderCount)
                 .toList();
 
@@ -954,19 +339,62 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
 
                           const SizedBox(height: 16.0),
 
-                          ...activeProviders.asMap().entries.map(
-                            (entry) {
-                              final index = entry.key;
-                              final item = entry.value;
-                              final liveItem = (index < liveProviders.length) ? liveProviders[index] : null;
-                              return Padding(
+                          if (activeProviders.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 36.0),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 56.0,
+                                      height: 56.0,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFF0EAFE),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.person_search_rounded,
+                                          size: 28.0,
+                                          color: Color(0xFF8B53FE),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16.0),
+                                    Text(
+                                      tr.isArabic ? 'لا يوجد مزودين متاحين حالياً' : 'No providers available nearby',
+                                      style: tr.font(
+                                        fontSize: 15.0,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF1C2926),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6.0),
+                                    Text(
+                                      tr.isArabic
+                                          ? 'سيظهر المزودون المعتمدون هنا عند تواجدهم بالقرب منك.'
+                                          : 'Approved providers will appear here when active nearby.',
+                                      style: tr.font(
+                                        fontSize: 12.0,
+                                        fontWeight: FontWeight.w400,
+                                        color: const Color(0xFF718096),
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else
+                            ...activeProviders.map(
+                              (item) => Padding(
                                 padding: const EdgeInsets.only(bottom: 12.0),
                                 child: Center(
-                                  child: _buildServiceCard(cardWidth, item, liveItem),
+                                  child: _buildServiceCard(cardWidth, item),
                                 ),
-                              );
-                            },
-                          ),
+                              ),
+                            ),
 
                           const SizedBox(height: 16.0),
 
@@ -1131,31 +559,27 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
   }
 
   /// Card branding matching exact Figma specifications:
-  Widget _buildServiceCard(double cardWidth, _NearbyProviderItem item, [ProviderMarkerModel? liveItem]) {
-    final String providerName = liveItem != null
-        ? tr.formatProviderName(liveItem.name)
-        : (tr.isArabic ? item.nameAr : item.name);
+  Widget _buildServiceCard(double cardWidth, ProviderMarkerModel item) {
+    final String providerName = tr.formatProviderName(item.name);
 
-    final String imagePath = (liveItem?.categorySlug == 'pickup' || item.imagePath.contains('pickup'))
+    final String imagePath = (item.categorySlug.contains('pickup'))
         ? 'assets/images/pickup.png'
         : 'assets/images/car_ride.png';
 
-    final String vehicleType = liveItem != null
-        ? (liveItem.categorySlug == 'pickup'
-            ? (tr.isArabic ? 'بيك أب • مكيف' : 'Pickup • AC')
-            : (tr.isArabic ? 'سيدان • مكيف' : 'Sedan • AC'))
-        : (tr.isArabic ? item.vehicleAr : item.vehicle);
+    final String vehicleType = item.categorySlug.contains('pickup')
+        ? (tr.isArabic ? 'بيك أب • مكيف' : 'Pickup • AC')
+        : (tr.isArabic ? 'سيدان • مكيف' : 'Sedan • AC');
 
-    final double distanceKm = liveItem?.distanceKm ?? item.distanceKm;
+    final double distanceKm = item.distanceKm > 0 ? item.distanceKm : 1.0;
     final String etaStr = tr.isArabic
-        ? item.etaAr
-        : (liveItem?.etaDisplay ?? item.eta);
+        ? '${(distanceKm * 3.5).round().clamp(1, 99)} د'
+        : '${(distanceKm * 3.5).round().clamp(1, 99)} min away';
     final String distanceStr = tr.isArabic
         ? '${distanceKm.toStringAsFixed(1)} كم'
         : '${distanceKm.toStringAsFixed(1)} km';
 
-    final double rating = liveItem?.ratingAvg ?? item.rating;
-    final int reviews = liveItem?.ratingCount ?? item.reviews;
+    final double rating = item.ratingAvg > 0 ? item.ratingAvg : 5.0;
+    final int reviews = item.ratingCount > 0 ? item.ratingCount : 1;
 
     final double effectiveWidth = cardWidth;
 
@@ -1164,11 +588,19 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
       child: GestureDetector(
         onTap: () {
           HapticFeedback.lightImpact();
+          final effectivePublicId = item.publicId.isNotEmpty ? item.publicId : 'QRB-${item.id}';
+          ref.read(backendServiceProvider).trackCustomerEvent(
+            event: 'profile_view',
+            providerPublicId: effectivePublicId,
+            latitude: item.latitude,
+            longitude: item.longitude,
+          );
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => ProviderDetailScreen(
-                serviceCategory: tr.categoryName(liveItem?.categoryName ?? widget.serviceCategory),
+                serviceCategory: tr.categoryName(item.categoryName.isNotEmpty ? item.categoryName : widget.serviceCategory),
                 providerName: providerName,
+                providerPublicId: effectivePublicId,
               ),
             ),
           );
@@ -1411,16 +843,19 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                   GestureDetector(
                     onTap: () {
                       HapticFeedback.lightImpact();
+                      final effectivePublicId = item.publicId.isNotEmpty ? item.publicId : 'QRB-${item.id}';
+                      ref.read(backendServiceProvider).trackCustomerEvent(
+                        event: 'call_click',
+                        providerPublicId: effectivePublicId,
+                        latitude: item.latitude,
+                        longitude: item.longitude,
+                      );
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            liveItem != null
-                                ? (tr.isArabic
-                                    ? 'جارٍ الاتصال بـ $providerName...'
-                                    : 'Calling $providerName (GPS: ${liveItem.coordinatesDisplay})...')
-                                : (tr.isArabic
-                                    ? 'جارٍ الاتصال بـ $providerName...'
-                                    : 'Calling $providerName (${item.phone})...'),
+                            tr.isArabic
+                                ? 'جارٍ الاتصال بـ $providerName...'
+                                : 'Calling $providerName (GPS: ${item.coordinatesDisplay})...',
                             style: tr.font(fontSize: 12.0, color: Colors.white),
                           ),
                           backgroundColor: const Color(0xFF8B53FE),
