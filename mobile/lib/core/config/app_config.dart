@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 class AppConfig {
   AppConfig._();
 
@@ -7,25 +5,18 @@ class AppConfig {
   static const String appVersion = '1.0.0';
   static const String googleMapsApiKey = 'AIzaSyDpF68t3tu43hMcN969pPsub6QCzEwLBLE';
 
-  /// Resolves the default backend base URL depending on platform:
-  /// - Android Emulator: 10.0.2.2:3000
-  /// - Web / Windows / macOS / iOS Simulator: localhost:3000
+  /// Live Production Backend Server URL
+  static const String productionBaseUrl = 'https://zesho.tech';
+
+  /// Resolves the default backend base URL:
   static String get defaultBaseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000';
-    }
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        return 'http://10.0.2.2:3000';
-      default:
-        return 'http://localhost:3000';
-    }
+    return productionBaseUrl;
   }
 
   /// Can be overridden at runtime or via environment variables
   static String baseUrl = defaultBaseUrl;
 
   /// Default timeout in milliseconds
-  static const int connectTimeoutMs = 6000;
-  static const int receiveTimeoutMs = 6000;
+  static const int connectTimeoutMs = 10000;
+  static const int receiveTimeoutMs = 10000;
 }
