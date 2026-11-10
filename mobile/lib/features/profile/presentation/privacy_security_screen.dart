@@ -135,9 +135,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                         },
                       ),
                       child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
-                        ),
+                        physics: const ClampingScrollPhysics(),
                         padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -500,7 +498,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                       ),
                       const SizedBox(height: 2.0),
                       Text(
-                        isArabic ? 'تطبيق قريب • آخر نشاط: الآن' : 'Qareeb App • Last active: Just now',
+                        isArabic ? 'تطبيق زشو • آخر نشاط: الآن' : 'Zesho App • Last active: Just now',
                         style: GoogleFonts.inter(
                           fontSize: 11.0,
                           color: const Color(0xFF616166),
@@ -689,8 +687,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                         ),
                         Text(
                           isArabic
-                            ? 'اتصال فوري مع خدمات الطوارئ أو عمليات قريب'
-                            : 'Immediate connection to Saudi emergency & Qareeb ops',
+                            ? 'اتصال فوري مع خدمات الطوارئ أو عمليات زشو'
+                            : 'Immediate connection to Saudi emergency & Zesho ops',
                           style: GoogleFonts.inter(
                             fontSize: 10.5,
                             color: const Color(0xFFB91C1C),
@@ -756,7 +754,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                   onPressed: () => _triggerEmergencyCall(context, '+966545456467', isArabic),
                   icon: const Icon(Icons.support_agent_rounded, size: 17.0, color: Color(0xFFDC2626)),
                   label: Text(
-                    isArabic ? 'غرفة عمليات قريب للطوارئ' : 'Qareeb 24/7 Safety Hotline',
+                    isArabic ? 'غرفة عمليات زشو للطوارئ' : 'Zesho 24/7 Safety Hotline',
                     style: GoogleFonts.inter(fontSize: 12.0, fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -1018,8 +1016,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
             icon: Icons.alt_route_rounded,
             title: isArabic ? 'مشاركة مسار الشاحنة مع العمليات' : 'Live Route Telemetry',
             subtitle: isArabic
-                ? 'بث مسار المركبة لغرفة عمليات قريب لضمان سرعة الدعم والمساعدة الفنية'
-                : 'Stream route telemetry to Qareeb Dispatch Hub for quick roadside assist',
+                ? 'بث مسار المركبة لغرفة عمليات زشو لضمان سرعة الدعم والمساعدة الفنية'
+                : 'Stream route telemetry to Zesho Dispatch Hub for quick roadside assist',
             value: _routeTelemetry,
             onChanged: (val) {
               HapticFeedback.selectionClick();
@@ -1130,7 +1128,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           _buildDivider(),
           _buildActionTile(
             icon: Icons.support_agent_rounded,
-            title: isArabic ? 'عمليات أسطول قريب 24/7' : 'Qareeb Fleet Dispatch Ops',
+            title: isArabic ? 'عمليات أسطول زشو 24/7' : 'Zesho Fleet Dispatch Ops',
             subtitle: isArabic
                 ? 'فريق الدعم الفني المباشر للمزودين والسائقين'
                 : 'Instant response line for towing partners & drivers',
@@ -2123,8 +2121,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
         ),
         content: Text(
           isArabic
-              ? 'يلتزم تطبيق قريب بحماية خصوصية وأمان بياناتك وفق الأنظمة واللوائح السعودية. لا يتم مشاركة موقعك أو أرقام الاتصال إلا مع الطرف المقابل أثناء سير الطلب النشط لضمان جودة وأمان تقديم الخدمة.'
-              : 'Qareeb is fully committed to safeguarding user and partner privacy in compliance with Saudi national data privacy guidelines. Live GPS telemetry and telephone relays are only engaged during active dispatch windows.',
+              ? 'يلتزم تطبيق زشو بحماية خصوصية وأمان بياناتك وفق الأنظمة واللوائح السعودية. لا يتم مشاركة موقعك أو أرقام الاتصال إلا مع الطرف المقابل أثناء سير الطلب النشط لضمان جودة وأمان تقديم الخدمة.'
+              : 'Zesho is fully committed to safeguarding user and partner privacy in compliance with Saudi national data privacy guidelines. Live GPS telemetry and telephone relays are only engaged during active dispatch windows.',
           style: GoogleFonts.inter(fontSize: 12.5, height: 1.45, color: const Color(0xFF566663)),
         ),
         actions: [

@@ -341,9 +341,7 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                           ),
                           child: SingleChildScrollView(
                             controller: _scrollController,
-                            physics: const AlwaysScrollableScrollPhysics(
-                              parent: BouncingScrollPhysics(),
-                            ),
+                            physics: const ClampingScrollPhysics(),
                             padding: const EdgeInsets.only(bottom: 24.0),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,

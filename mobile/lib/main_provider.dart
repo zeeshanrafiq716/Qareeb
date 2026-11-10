@@ -63,6 +63,18 @@ void main() async {
 
 /// Standalone Provider App Entry Point
 /// Isolates provider navigation and themes completely from customer app.
+class AppScrollBehavior extends MaterialScrollBehavior {
+  const AppScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) => const ClampingScrollPhysics();
+
+  @override
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
+    return child;
+  }
+}
+
 class QareebProviderApp extends ConsumerWidget {
   const QareebProviderApp({super.key});
 
@@ -73,11 +85,12 @@ class QareebProviderApp extends ConsumerWidget {
     ProviderTextStyles.isArabic = isArabic;
 
     return MaterialApp(
-      title: 'QAREEB Partner',
+      title: 'ZESHO Partner',
       debugShowCheckedModeBanner: false,
       locale: locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
+      scrollBehavior: const AppScrollBehavior(),
       builder: (context, child) {
         return Directionality(
           textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,

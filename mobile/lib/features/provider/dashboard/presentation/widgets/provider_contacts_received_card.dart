@@ -90,8 +90,8 @@ class _ProviderContactsReceivedCardState
 
     final String headingText = isArabic ? 'جهات الاتصال المستلمة' : 'Contacts Received';
     final String subHeadingText = isArabic
-        ? 'العملاء الذين تواصلوا معك عبر قريب.'
-        : 'Customers contacted you through QAREEB.';
+        ? 'العملاء الذين تواصلوا معك عبر زشو.'
+        : 'Customers contacted you through ZESHO.';
     final String comparisonText = isArabic ? 'مقارنة بالأمس' : 'vs yesterday';
 
     final int currentContacts = _selectedTabIndex < contactsCounts.length

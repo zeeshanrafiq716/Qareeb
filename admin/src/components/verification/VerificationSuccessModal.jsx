@@ -33,7 +33,7 @@ export function VerificationSuccessModal({
   const config = {
     verified: {
       title: 'Successfully Verified',
-      subtitle: "The document has been reviewed and approved in accordance with Qareeb's verification standards.",
+      subtitle: "The document has been reviewed and approved in accordance with Zesho's verification standards.",
       icon: Check,
       iconBg: 'bg-gradient-to-tr from-[#8B53FE] to-[#A67AFE]',
       shadowColor: 'shadow-[#8B53FE]/35',
@@ -50,7 +50,7 @@ export function VerificationSuccessModal({
     },
     invalid: {
       title: 'Document Marked as Invalid',
-      subtitle: "The document does not meet Qareeb's standards and has been rejected.",
+      subtitle: "The document does not meet Zesho's standards and has been rejected.",
       icon: X,
       iconBg: 'bg-gradient-to-tr from-[#EF4444] to-[#F87171]',
       shadowColor: 'shadow-[#EF4444]/35',

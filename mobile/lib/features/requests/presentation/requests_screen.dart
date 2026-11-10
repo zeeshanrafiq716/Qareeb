@@ -143,17 +143,12 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                         ),
                         child: SingleChildScrollView(
                           controller: _scrollController,
-                          physics: const AlwaysScrollableScrollPhysics(
-                            parent: BouncingScrollPhysics(),
-                          ),
+                          physics: const ClampingScrollPhysics(),
                           child: SizedBox(
                             width: containerWidth,
-                            height: math.max(
-                              containerHeight + 140.0,
-                              _activeFilterIndex == 1
-                                  ? math.max(containerHeight + 140.0, 260.0 + _filteredHistoryItems.length * 135.0 + 140.0)
-                                  : (TaskService.instance.activeTask != null ? 840.0 : containerHeight),
-                            ),
+                            height: _activeFilterIndex == 1
+                                ? math.max(containerHeight, 260.0 + _filteredHistoryItems.length * 135.0 + 140.0)
+                                : (TaskService.instance.activeTask != null ? math.max(containerHeight, 840.0) : containerHeight),
                             child: Stack(
                               clipBehavior: Clip.none,
                               children: [

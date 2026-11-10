@@ -489,9 +489,7 @@ class _ProviderActiveRequestScreenState
                               behavior: const ProviderCardScrollBehavior(),
                               child: SingleChildScrollView(
                                 controller: _scrollController,
-                                physics: const AlwaysScrollableScrollPhysics(
-                                  parent: BouncingScrollPhysics(),
-                                ),
+                                physics: const ClampingScrollPhysics(),
                                 padding: EdgeInsets.fromLTRB(
                                   20.0,
                                   6.0,

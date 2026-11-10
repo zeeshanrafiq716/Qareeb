@@ -166,7 +166,7 @@ class ProviderDetailCardWidget extends ConsumerWidget {
             Padding(
               padding: EdgeInsets.fromLTRB(20.0, 48.0, 20.0, math.max(16.0, bottomInset + 12.0)),
               child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,

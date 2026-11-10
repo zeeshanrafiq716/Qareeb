@@ -44,7 +44,7 @@ export async function startServer() {
 
   httpServer.listen(env.PORT, "0.0.0.0", () => {
     logger.info(
-      `Qareeb API (Phase 5) on http://localhost:${env.PORT} | WebSocket /socket.io`,
+      `Zesho API (Phase 5) on http://localhost:${env.PORT} | WebSocket /socket.io`,
     );
   });
 

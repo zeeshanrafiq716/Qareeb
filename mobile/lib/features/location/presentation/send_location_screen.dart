@@ -76,9 +76,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                 },
               ),
               child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
+                physics: const ClampingScrollPhysics(),
                 child: SizedBox(
                   width: containerWidth,
                   child: Column(

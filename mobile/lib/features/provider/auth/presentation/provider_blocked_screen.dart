@@ -159,7 +159,7 @@ class _ProviderBlockedScreenState extends State<ProviderBlockedScreen> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
-                          'QAREEB',
+                          'ZESHO',
                           style: TextStyle(
                             fontFamily: isArabic ? 'Cairo' : 'Inter',
                             fontSize: 20.0,

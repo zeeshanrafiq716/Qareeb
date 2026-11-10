@@ -1,7 +1,7 @@
 class AppConfig {
   AppConfig._();
 
-  static const String appName = 'Qareeb';
+  static const String appName = 'Zesho';
   static const String appVersion = '1.0.0';
   static const String googleMapsApiKey = 'AIzaSyDpF68t3tu43hMcN969pPsub6QCzEwLBLE';
 

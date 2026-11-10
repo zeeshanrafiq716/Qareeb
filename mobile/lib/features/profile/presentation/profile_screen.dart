@@ -376,14 +376,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           PointerDeviceKind.stylus,
                         },
                       ),
-                      child: RefreshIndicator(
-                        color: const Color(0xFF8B53FE),
-                        onRefresh: _loadProfileData,
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          physics: const AlwaysScrollableScrollPhysics(
-                            parent: BouncingScrollPhysics(),
-                          ),
+                      child: SingleChildScrollView(
+                        controller: _scrollController,
+                        physics: const ClampingScrollPhysics(),
                         child: Padding(
                           padding: EdgeInsets.symmetric(
                             horizontal: cardHorizontalMargin,
@@ -647,7 +642,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                   ),
-                ),
 
                   // Floating Bottom Navigation Bar (Profile tab active: index 2)
                   if (widget.showBottomNav)
@@ -879,11 +873,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final String providerName = ProviderRegistrationStore.instance.data.fullName.trim();
       displayName = providerName.isNotEmpty
           ? providerName
-          : (isArabic ? 'شريك قريب' : 'Qareeb Partner');
+          : (isArabic ? 'شريك زشو' : 'Zesho Partner');
     } else {
       displayName = _customerName.isNotEmpty
           ? _customerName
-          : (isArabic ? 'عميل قريب' : 'Qareeb User');
+          : (isArabic ? 'عميل زشو' : 'Zesho User');
     }
 
     final bool hasCustomPhoto = _stats.photoPath != null &&

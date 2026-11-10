@@ -395,9 +395,7 @@ class _ProviderRequestDetailsScreenState
                               behavior: const ProviderCardScrollBehavior(),
                               child: SingleChildScrollView(
                                 controller: _scrollController,
-                                physics: const AlwaysScrollableScrollPhysics(
-                                  parent: BouncingScrollPhysics(),
-                                ),
+                                physics: const ClampingScrollPhysics(),
                                 padding: EdgeInsets.fromLTRB(20.0, 6.0, 20.0, bottomSafeArea > 0 ? (bottomSafeArea + 24.0) : 24.0),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,

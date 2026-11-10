@@ -292,9 +292,7 @@ class _CustomerFeedbackSupportScreenState
                 children: [
                   Positioned.fill(
                     child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(
-                        parent: BouncingScrollPhysics(),
-                      ),
+                      physics: const ClampingScrollPhysics(),
                       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -449,8 +447,8 @@ class _CustomerFeedbackSupportScreenState
               const SizedBox(height: 2.0),
               Text(
                 isArabic
-                    ? 'فريق خدمة عملاء قريب في خدمتك دائماً.'
-                    : 'Qareeb Customer Care is here to assist you.',
+                    ? 'فريق خدمة عملاء زشو في خدمتك دائماً.'
+                    : 'Zesho Customer Care is here to assist you.',
                 style: AppTypography.fontForLocale(
                   isArabic: isArabic,
                   fontSize: 11.5,
@@ -514,7 +512,7 @@ class _CustomerFeedbackSupportScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isArabic ? 'خدمة عملاء قريب 24/7' : '24/7 Qareeb Customer Care',
+                  isArabic ? 'خدمة عملاء زشو 24/7' : '24/7 Zesho Customer Care',
                   style: AppTypography.fontForLocale(
                     isArabic: isArabic,
                     fontSize: 14.5,
@@ -568,7 +566,7 @@ class _CustomerFeedbackSupportScreenState
                   content: Text(
                     isArabic
                         ? 'جارٍ الاتصال برقم الدعم +966 54 545 6467...'
-                        : 'Connecting to Qareeb Support (+966 54 545 6467)...',
+                        : 'Connecting to Zesho Support (+966 54 545 6467)...',
                     style: AppTypography.fontForLocale(isArabic: isArabic, color: Colors.white),
                   ),
                   backgroundColor: const Color(0xFF1C2926),
@@ -622,8 +620,8 @@ class _CustomerFeedbackSupportScreenState
                 SnackBar(
                   content: Text(
                     isArabic
-                        ? 'البريد الإلكتروني للدعم: support@qareeb.app'
-                        : 'Support email: support@qareeb.app',
+                        ? 'البريد الإلكتروني للدعم: support@zesho.tech'
+                        : 'Support email: support@zesho.tech',
                     style: AppTypography.fontForLocale(isArabic: isArabic, color: Colors.white),
                   ),
                   backgroundColor: const Color(0xFF8B53FE),
@@ -792,8 +790,8 @@ class _CustomerFeedbackSupportScreenState
       {
         'qEn': 'Are all providers verified and licensed?',
         'qAr': 'هل جميع مقدمي الخدمة مرخصون ومعتمدون؟',
-        'aEn': 'Yes, every provider on Qareeb undergoes thorough verification of their National ID/Iqama, driving license, vehicle registration, and criminal background before being approved.',
-        'aAr': 'نعم، يخضع جميع مقدمي الخدمة في قريب لفحص وتوثيق الهوية الوطنية/الإقامة، رخصة القيادة، استمارة المركبة والفحص الأمني قبل اعتمادهم.',
+        'aEn': 'Yes, every provider on Zesho undergoes thorough verification of their National ID/Iqama, driving license, vehicle registration, and criminal background before being approved.',
+        'aAr': 'نعم، يخضع جميع مقدمي الخدمة في زشو لفحص وتوثيق الهوية الوطنية/الإقامة، رخصة القيادة، استمارة المركبة والفحص الأمني قبل اعتمادهم.',
       },
     ];
 

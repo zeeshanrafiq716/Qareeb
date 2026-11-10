@@ -139,7 +139,7 @@ class _ProviderDashboardScreenState extends ConsumerState<ProviderDashboardScree
                         behavior: const ProviderCardScrollBehavior(),
                         child: SingleChildScrollView(
                           controller: _scrollController,
-                          physics: const BouncingScrollPhysics(),
+                          physics: const ClampingScrollPhysics(),
                           padding: EdgeInsets.only(
                             left: 20.0,
                             right: 20.0,

@@ -250,9 +250,7 @@ class _ProviderHelpSupportScreenState
                 children: [
                   Positioned.fill(
                     child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(
-                        parent: BouncingScrollPhysics(),
-                      ),
+                      physics: const ClampingScrollPhysics(),
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -599,8 +597,8 @@ class _ProviderHelpSupportScreenState
                 SnackBar(
                   content: Text(
                     isArabic
-                        ? 'البريد الإلكتروني للشركاء: partners@qareeb.app'
-                        : 'Email: partners@qareeb.app',
+                        ? 'البريد الإلكتروني للشركاء: partners@zesho.tech'
+                        : 'Email: partners@zesho.tech',
                   ),
                   backgroundColor: const Color(0xFF8B53FE),
                 ),
@@ -683,8 +681,8 @@ class _ProviderHelpSupportScreenState
       {
         'qEn': 'How does GPS tracking and request dispatch work?',
         'qAr': 'كيف يعمل نظام تحديد الموقع وتوجيه الطلبات؟',
-        'aEn': 'When your status is set to "Online", Qareeb matches you with nearby customers within your service radius. Make sure location permissions are set to "Always Allow".',
-        'aAr': 'عند تفعيل حالتك كـ "متصل"، يقوم نظام قريب بمطابقتك مع العملاء الأقرب ضمن نطاق تغطيتك. تأكد من تفعيل إذن الموقع على "السماح دائماً".',
+        'aEn': 'When your status is set to "Online", Zesho matches you with nearby customers within your service radius. Make sure location permissions are set to "Always Allow".',
+        'aAr': 'عند تفعيل حالتك كـ "متصل"، يقوم نظام زشو بمطابقتك مع العملاء الأقرب ضمن نطاق تغطيتك. تأكد من تفعيل إذن الموقع على "السماح دائماً".',
       },
     ];
 

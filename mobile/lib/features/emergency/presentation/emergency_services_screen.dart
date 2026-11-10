@@ -141,9 +141,7 @@ class _EmergencyServicesScreenState extends ConsumerState<EmergencyServicesScree
                       ),
                       child: SingleChildScrollView(
                         controller: _scrollController,
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
-                        ),
+                        physics: const ClampingScrollPhysics(),
                         child: SizedBox(
                           width: containerWidth,
                           height: contentHeight,

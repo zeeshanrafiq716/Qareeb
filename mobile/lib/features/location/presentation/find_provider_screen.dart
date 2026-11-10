@@ -331,9 +331,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                           right: horizontalPadding,
                           bottom: 40.0,
                         ),
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
-                        ),
+                        physics: const ClampingScrollPhysics(),
                         children: [
                           Center(child: _buildProvidersInnerCard(cardWidth)),
 

@@ -251,7 +251,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                             left: 20.0,
                             right: 20.0,
                             child: SingleChildScrollView(
-                              physics: const BouncingScrollPhysics(),
+                              physics: const ClampingScrollPhysics(),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [

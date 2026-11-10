@@ -299,9 +299,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 20.0),
                               child: SingleChildScrollView(
-                                physics: const AlwaysScrollableScrollPhysics(
-                                  parent: BouncingScrollPhysics(),
-                                ),
+                                physics: const ClampingScrollPhysics(),
                                 child: SizedBox(
                                   width: double.infinity,
                                   child: Column(

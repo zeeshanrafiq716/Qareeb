@@ -465,7 +465,7 @@ export function CallLogsView() {
                   <PhoneCall className="w-10 h-10 mb-2 text-[#DECFFC]" />
                   <p className="text-sm font-semibold text-[#1C2926]">No call logs recorded yet</p>
                   <p className="text-xs text-[#616166] mt-1 max-w-sm">
-                    Call interactions and WhatsApp inquiries initiated by customers via the Qareeb application will appear here.
+                    Call interactions and WhatsApp inquiries initiated by customers via the Zesho application will appear here.
                   </p>
                 </div>
               ) : (

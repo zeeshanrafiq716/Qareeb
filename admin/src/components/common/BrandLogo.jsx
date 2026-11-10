@@ -24,7 +24,7 @@ export function BrandLogo({ className = '', iconSize = 28, showText = true, text
 
       {showText && (
         <span className={`font-bold tracking-wider text-base font-sans uppercase ${textColor}`}>
-          QAREEB
+          ZESHO
         </span>
       )}
     </div>

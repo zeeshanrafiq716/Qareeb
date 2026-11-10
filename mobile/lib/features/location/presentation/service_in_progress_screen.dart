@@ -104,9 +104,7 @@ class _ServiceInProgressScreenState
                 },
               ),
               child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
+                physics: const ClampingScrollPhysics(),
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                 child: Center(
                   child: SizedBox(

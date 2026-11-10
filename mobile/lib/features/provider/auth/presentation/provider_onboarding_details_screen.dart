@@ -74,7 +74,7 @@ class ProviderOnboardingDetailsScreen extends StatelessWidget {
                         child: ScrollConfiguration(
                           behavior: const ProviderCardScrollBehavior(),
                           child: SingleChildScrollView(
-                            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                            physics: const ClampingScrollPhysics(),
                             padding: EdgeInsets.only(
                               left: 20.0,
                               right: 20.0,

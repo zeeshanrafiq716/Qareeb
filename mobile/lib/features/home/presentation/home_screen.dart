@@ -170,18 +170,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           PointerDeviceKind.unknown,
                         },
                       ),
-                      child: RefreshIndicator(
-                        color: const Color(0xFF8B53FE),
-                        onRefresh: () async {
-                          ref.invalidate(categoriesProvider);
-                          ref.invalidate(userLocationProvider);
-                        },
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          physics: const AlwaysScrollableScrollPhysics(
-                            parent: BouncingScrollPhysics(),
-                          ),
-                          child: Column(
+                      child: SingleChildScrollView(
+                        controller: _scrollController,
+                        physics: const ClampingScrollPhysics(),
+                        child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               // 1. Branding Header Layout
@@ -226,13 +218,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
 
                               // Clearance space so floating bottom navigation bar doesn't overlap cards
-                              SizedBox(height: 140.0),
+                              const SizedBox(height: 140.0),
                             ],
                           ),
                         ),
                       ),
                     ),
-                  ),
 
                   // Floating Bottom Navigation Bar (exact width: 292, centered, doesn't block side scroll gestures)
                   Positioned(

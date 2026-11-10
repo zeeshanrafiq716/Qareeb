@@ -29,7 +29,7 @@ class BrandingHeaderWidget extends StatelessWidget {
           textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
           children: [
             Text(
-              isArabic ? 'قريب' : 'QAREEB',
+              isArabic ? 'زشو' : 'ZESHO',
               style: isArabic
                   ? tr.font(
                       fontSize: titleFontSize,

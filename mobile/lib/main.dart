@@ -78,6 +78,18 @@ void main() async {
   );
 }
 
+class AppScrollBehavior extends MaterialScrollBehavior {
+  const AppScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) => const ClampingScrollPhysics();
+
+  @override
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
+    return child;
+  }
+}
+
 class QareebApp extends ConsumerWidget {
   final String initialMode;
 
@@ -93,13 +105,14 @@ class QareebApp extends ConsumerWidget {
     ProviderTextStyles.isArabic = isArabic;
 
     return MaterialApp(
-      title: 'QAREEB',
+      title: 'ZESHO',
       onGenerateTitle: (context) => context.l10n.appTitle,
       debugShowCheckedModeBanner: false,
       locale: locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       theme: AppTheme.darkTheme,
+      scrollBehavior: const AppScrollBehavior(),
       builder: (context, child) {
         return Directionality(
           textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,

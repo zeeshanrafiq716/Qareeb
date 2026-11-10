@@ -556,7 +556,7 @@ extension AppLocalizationsDomainExtension on AppLocalizations {
   String get accountBlockedTitle => isArabic ? 'الحساب محظور' : 'Account Blocked';
   String get accountBlockedDesc => isArabic
       ? 'تم حظر حسابك من قبل إدارة التطبيق. لا يمكنك استقبال الطلبات أو تقديم الخدمات.'
-      : 'Your provider account has been blocked by Qareeb administration. You cannot accept requests or go online.';
+      : 'Your provider account has been blocked by Zesho administration. You cannot accept requests or go online.';
 
   String get accountSuspendedTitle => isArabic ? 'الحساب معلق' : 'Account Suspended';
   String get accountSuspendedDesc => isArabic
@@ -1007,8 +1007,8 @@ extension AppLocalizationsDomainExtension on AppLocalizations {
     'profile views': 'مشاهدات الملف الشخصي',
     'customers viewed your profile': 'العملاء الذين شاهدوا ملفك الشخصي',
     'contacts received': 'جهات الاتصال المستلمة',
-    'customers contacted you through qareeb.': 'العملاء الذين تواصلوا معك عبر قريب.',
-    'customers contacted you through qareeb': 'العملاء الذين تواصلوا معك عبر قريب.',
+    'customers contacted you through zesho.': 'العملاء الذين تواصلوا معك عبر زشو.',
+    'customers contacted you through zesho': 'العملاء الذين تواصلوا معك عبر زشو.',
     'calls received': 'المكالمات المستلمة',
     'whatsapp tabs': 'نقرات واتساب',
     'whatsapp taps': 'نقرات واتساب',

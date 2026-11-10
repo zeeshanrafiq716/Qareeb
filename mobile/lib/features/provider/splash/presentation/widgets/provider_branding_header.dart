@@ -47,7 +47,7 @@ class ProviderBrandingHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                isArabic ? 'قريب' : 'QAREEB',
+                isArabic ? 'زشو' : 'ZESHO',
                 style: ProviderTextStyles.brandTitle,
               ),
               const SizedBox(width: 6.0),

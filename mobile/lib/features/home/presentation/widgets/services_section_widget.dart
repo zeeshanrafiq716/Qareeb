@@ -1,22 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/localization/app_locale.dart';
 import '../../../../models/category_model.dart';
 import '../../../../providers/backend_provider.dart';
 import 'category_card_widget.dart';
 
 /// Services / Main Content section widget.
-/// Specifications:
-/// - Heading & Subtitle Branding (350px width, 12px text gap)
-///   - Heading: "Choose Your Ride" (14px, Inter Medium 500, #1C2926)
-///   - Subtitle: "Choose a service and see available options." (12px, Inter Regular 400, #566663)
-///
-/// Dynamic Category Grid:
-/// - Exact 2-card row layout (169px wide on 390 viewport, 120px tall)
-/// - 12px horizontal gap between cards
-/// - 12px vertical gap between rows
-/// - Admin extensible: when categories are added or fetched from backend,
-///   they automatically render with this exact identical branding layout.
+/// Renders ONLY real categories synced dynamically from the Admin Panel.
 class ServicesSectionWidget extends ConsumerWidget {
   final String heading;
   final String subtitle;
@@ -41,22 +32,15 @@ class ServicesSectionWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Active categories: real admin categories synced from backend,
-    // with CategoryModel.default26Categories as seamless baseline so the app is NEVER empty.
-    List<CategoryModel> activeCategories;
-    if (categories != null && categories!.isNotEmpty) {
-      final filtered = categories!.where((c) => c.isEnabled && c.slug != 'emergency').toList();
-      activeCategories = filtered.isNotEmpty ? filtered : CategoryModel.default26Categories;
-    } else {
-      final backendCategories = ref.watch(categoriesProvider);
-      activeCategories = backendCategories.maybeWhen(
-        data: (items) {
-          final enabled = items.where((c) => c.isEnabled && c.slug != 'emergency').toList();
-          return enabled.isNotEmpty ? enabled : CategoryModel.default26Categories;
-        },
-        orElse: () => CategoryModel.default26Categories,
-      );
-    }
+    // Dynamic real categories synced directly from Admin Panel / Backend API
+    final backendCategories = ref.watch(categoriesProvider);
+
+    final List<CategoryModel> activeCategories = categories != null
+        ? categories!.where((c) => c.isEnabled && c.slug != 'emergency').toList()
+        : backendCategories.maybeWhen(
+            data: (items) => items.where((c) => c.isEnabled && c.slug != 'emergency').toList(),
+            orElse: () => const [],
+          );
 
     final tr = ref.watch(translationsProvider);
     final String effectiveHeading =
@@ -114,7 +98,17 @@ class ServicesSectionWidget extends ConsumerWidget {
           // 2. Dynamic Categories Section (width: 350, left: 20px, gap: 12px)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: _buildCategoryGrid(activeCategories, tr),
+            child: backendCategories.isLoading && activeCategories.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 40.0),
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF8B53FE),
+                        strokeWidth: 2.5,
+                      ),
+                    ),
+                  )
+                : _buildCategoryGrid(activeCategories, tr),
           ),
         ],
       ),
@@ -124,6 +118,57 @@ class ServicesSectionWidget extends ConsumerWidget {
   /// Builds pairs of category cards with 12px vertical gap between rows
   /// and 12px horizontal gap between cards.
   Widget _buildCategoryGrid(List<CategoryModel> items, AppTranslations tr) {
+    if (items.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 36.0, horizontal: 20.0),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(16.0),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 50.0,
+              height: 50.0,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF0EAFE),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.dashboard_customize_outlined,
+                  size: 26.0,
+                  color: Color(0xFF8B53FE),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12.0),
+            Text(
+              tr.isArabic ? 'لا توجد خدمات حالياً' : 'No Services Available',
+              style: GoogleFonts.inter(
+                fontSize: 14.0,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1C2926),
+              ),
+            ),
+            const SizedBox(height: 4.0),
+            Text(
+              tr.isArabic
+                  ? 'الخدمات التي يضيفها المدير في لوحة التحكم ستظهر هنا'
+                  : 'Services added in Admin Panel will appear here',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 11.5,
+                color: const Color(0xFF6B7280),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     final List<Widget> rows = [];
 
     for (int i = 0; i < items.length; i += 2) {

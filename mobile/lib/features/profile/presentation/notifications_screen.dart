@@ -142,9 +142,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   // 2. Main Scrollable Content
                   Positioned.fill(
                     child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(
-                        parent: BouncingScrollPhysics(),
-                      ),
+                      physics: const ClampingScrollPhysics(),
                       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -51,7 +51,7 @@ export function VerificationMetricsSection({
           Verification Queue
         </h1>
         <p className="text-[13px] text-[#566663] font-normal mt-1 leading-snug">
-          Review and manage provider verification applications submitted to Qareeb.
+          Review and manage provider verification applications submitted to Zesho.
         </p>
       </div>
 

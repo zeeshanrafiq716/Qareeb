@@ -122,9 +122,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                 },
               ),
               child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
+                physics: const ClampingScrollPhysics(),
                 child: SizedBox(
                   width: containerWidth,
                   child: Column(

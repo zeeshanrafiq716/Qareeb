@@ -261,7 +261,7 @@ export function AdminSidebar({
             </svg>
           </div>
           <span className="font-bold text-base text-[#8B53FE] tracking-wide font-sans">
-            QAREEB
+            ZESHO
           </span>
         </div>
 
