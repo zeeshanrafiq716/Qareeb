@@ -178,6 +178,7 @@ class _BottomNavBarWidgetState extends ConsumerState<BottomNavBarWidget> {
                       width: 24.0,
                       height: 24.0,
                       fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
                       color: iconColor,
                       errorBuilder: (context, error, stackTrace) =>
                           fallbackBuilder(iconColor, isSelected),
@@ -268,6 +269,8 @@ class _StylizedHomePainter extends CustomPainter {
       // Solid filled with horizontal slit cutout
       final paint = Paint()
         ..color = color
+        ..isAntiAlias = true
+        ..filterQuality = FilterQuality.high
         ..style = PaintingStyle.fill;
 
       // Inner horizontal slit cutout
@@ -289,6 +292,7 @@ class _StylizedHomePainter extends CustomPainter {
       // Outline stroke
       final strokePaint = Paint()
         ..color = color
+        ..isAntiAlias = true
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.3
         ..strokeCap = StrokeCap.round
@@ -341,6 +345,7 @@ class _StylizedRequestPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final strokePaint = Paint()
       ..color = color
+      ..isAntiAlias = true
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.3
       ..strokeCap = StrokeCap.round
@@ -412,6 +417,7 @@ class _StylizedProfilePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final strokePaint = Paint()
       ..color = color
+      ..isAntiAlias = true
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.3
       ..strokeCap = StrokeCap.round
