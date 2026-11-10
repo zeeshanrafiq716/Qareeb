@@ -327,9 +327,9 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     return Container(
       padding: const EdgeInsets.all(4.0),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
+        color: const Color(0xFF2D2A3D),
         borderRadius: BorderRadius.circular(14.0),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: const Color(0xFF8B53FE).withValues(alpha: 0.25)),
       ),
       child: Row(
         children: List.generate(tabLabels.length, (index) {
@@ -345,12 +345,12 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 curve: Curves.easeInOut,
                 padding: const EdgeInsets.symmetric(vertical: 9.0),
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.white : Colors.transparent,
+                  color: isSelected ? const Color(0xFF8B53FE) : Colors.transparent,
                   borderRadius: BorderRadius.circular(10.0),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
+                            color: const Color(0xFF8B53FE).withValues(alpha: 0.25),
                             blurRadius: 4.0,
                             offset: const Offset(0, 1),
                           ),
@@ -364,12 +364,12 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                         ? GoogleFonts.cairo(
                             fontSize: 11.5,
                             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                            color: isSelected ? const Color(0xFF8B53FE) : const Color(0xFF6B7280),
+                            color: Colors.white,
                           )
                         : GoogleFonts.inter(
                             fontSize: 11.5,
                             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                            color: isSelected ? const Color(0xFF8B53FE) : const Color(0xFF6B7280),
+                            color: Colors.white,
                           ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

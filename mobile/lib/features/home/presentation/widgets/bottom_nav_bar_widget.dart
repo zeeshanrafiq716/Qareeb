@@ -77,14 +77,14 @@ class _BottomNavBarWidgetState extends ConsumerState<BottomNavBarWidget> {
         right: 0.0,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
+        color: const Color(0xFF2D2A3D),
         borderRadius: BorderRadius.circular(60.0),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x1F000000), // 0px 1px 16px 0px #0000001F
+            color: Color(0x33000000), // 0px 1px 16px 0px #00000033
             blurRadius: 16.0,
             spreadRadius: 0.0,
-            offset: Offset(0, 1),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -131,8 +131,8 @@ class _BottomNavBarWidgetState extends ConsumerState<BottomNavBarWidget> {
   }) {
     final int effectiveCurrent = widget.currentIndex ?? _currentIndex;
     final bool isSelected = effectiveCurrent == index;
-    final Color textColor = isSelected ? const Color(0xFFFFFFFF) : const Color(0xFF566663);
-    final Color iconColor = isSelected ? const Color(0xFFFFFFFF) : const Color(0xFF566663);
+    final Color textColor = isSelected ? const Color(0xFFFFFFFF) : const Color(0xFFFFFFFF).withValues(alpha: 0.90);
+    final Color iconColor = isSelected ? const Color(0xFFFFFFFF) : const Color(0xFFFFFFFF).withValues(alpha: 0.90);
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -147,7 +147,7 @@ class _BottomNavBarWidgetState extends ConsumerState<BottomNavBarWidget> {
           boxShadow: isSelected
               ? const [
                   BoxShadow(
-                    color: Color(0x0F000000), // 0px 0px 12px 0px #0000000F
+                    color: Color(0x338B53FE),
                     blurRadius: 12.0,
                     spreadRadius: 0.0,
                     offset: Offset(0, 0),
@@ -160,8 +160,8 @@ class _BottomNavBarWidgetState extends ConsumerState<BottomNavBarWidget> {
           borderRadius: BorderRadius.circular(60.0),
           child: InkWell(
             borderRadius: BorderRadius.circular(60.0),
-            splashColor: const Color(0xFF8B53FE).withValues(alpha: 0.15),
-            highlightColor: const Color(0xFF8B53FE).withValues(alpha: 0.08),
+            splashColor: const Color(0xFF8B53FE).withValues(alpha: 0.25),
+            highlightColor: const Color(0xFF8B53FE).withValues(alpha: 0.12),
             onTap: () => _handleTabTap(index),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12.0),

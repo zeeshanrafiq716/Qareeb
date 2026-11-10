@@ -259,7 +259,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                           decoration: BoxDecoration(
                                             color: _activeFilterIndex == 0
                                                 ? const Color(0xFF8B53FE)
-                                                : const Color(0xFFF2F5F4),
+                                                : const Color(0xFF2D2A3D),
                                             borderRadius:
                                                 BorderRadius.circular(12.0),
                                           ),
@@ -291,13 +291,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                     fontSize: 14.0,
                                                     fontWeight:
                                                         FontWeight.w500,
-                                                    color:
-                                                        _activeFilterIndex ==
-                                                                0
-                                                            ? const Color(
-                                                                0xFFFFFFFF)
-                                                            : const Color(
-                                                                0xFF1C2926),
+                                                    color: const Color(0xFFFFFFFF),
                                                     height: 1.15,
                                                     letterSpacing: 0.0,
                                                   ),
@@ -326,7 +320,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                           decoration: BoxDecoration(
                                             color: _activeFilterIndex == 1
                                                 ? const Color(0xFF8B53FE)
-                                                : const Color(0xFFF2F5F4),
+                                                : const Color(0xFF2D2A3D),
                                             borderRadius:
                                                 BorderRadius.circular(12.0),
                                           ),
@@ -358,13 +352,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                     fontSize: 14.0,
                                                     fontWeight:
                                                         FontWeight.w500,
-                                                    color:
-                                                        _activeFilterIndex ==
-                                                                1
-                                                            ? const Color(
-                                                                0xFFFFFFFF)
-                                                            : const Color(
-                                                                0xFF1C2926),
+                                                    color: const Color(0xFFFFFFFF),
                                                     height: 1.15,
                                                     letterSpacing: 0.0,
                                                   ),

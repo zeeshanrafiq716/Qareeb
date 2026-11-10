@@ -10,10 +10,12 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Core Brand Colors (Updated to brand purple)
-  static const Color primary = Color(0xFF8B53FE);
+  // Core Brand Colors
+  static const Color primary = Color(0xFF8B53FE); // Brand purple selection color #8B53FE
   static const Color primaryLight = Color(0xFFA67AFE);
   static const Color primaryDark = Color(0xFF7032F0);
+  static const Color darkTabs = Color(0xFF2D2A3D); // Brand dark black for tabs and unselected buttons #2D2A3D
+  static const Color brandPurple = Color(0xFF8B53FE); // Brand purple selection #8B53FE
 
   // Brand Accents
   static const Color mintAccent = Color(0xFFA67AFE);

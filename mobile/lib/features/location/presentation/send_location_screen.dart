@@ -682,12 +682,21 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
           child: Container(
             constraints: const BoxConstraints(minHeight: 106.0),
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFF0EAFE) : const Color(0xFFF2F5F4),
+              color: isSelected ? const Color(0xFF8B53FE) : const Color(0xFF2D2A3D),
               borderRadius: BorderRadius.circular(12.0),
               border: Border.all(
                 color: isSelected ? const Color(0xFF8B53FE) : Colors.transparent,
                 width: 0.8,
               ),
+              boxShadow: isSelected
+                  ? const [
+                      BoxShadow(
+                        color: Color(0x338B53FE),
+                        blurRadius: 8.0,
+                        offset: Offset(0, 2),
+                      ),
+                    ]
+                  : null,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
             child: Column(
@@ -717,7 +726,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                     style: tr.font(
                       fontSize: 12.0,
                       fontWeight: FontWeight.w500,
-                      color: const Color(0xFF1C2926),
+                      color: const Color(0xFFFFFFFF),
                       height: 1.1,
                       letterSpacing: 0.0,
                     ),
@@ -739,7 +748,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                     style: tr.font(
                       fontSize: 10.0,
                       fontWeight: FontWeight.w400,
-                      color: const Color(0xFF566663),
+                      color: const Color(0xFFFFFFFF).withValues(alpha: 0.8),
                       height: 1.1,
                       letterSpacing: 0.0,
                     ),

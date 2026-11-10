@@ -584,7 +584,7 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
       height: 45.0,
       padding: const EdgeInsets.all(4.0),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F2F5),
+        color: const Color(0xFF2D2A3D),
         borderRadius: BorderRadius.circular(12.0),
       ),
       child: Row(
@@ -624,17 +624,13 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                             ? GoogleFonts.cairo(
                                 fontSize: 12.0,
                                 fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                                color: isSelected
-                                    ? const Color(0xFFFFFFFF)
-                                    : const Color(0xFF616166),
+                                color: const Color(0xFFFFFFFF),
                                 height: 1.0,
                               )
                             : GoogleFonts.inter(
                                 fontSize: 12.0,
                                 fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                                color: isSelected
-                                    ? const Color(0xFFFFFFFF)
-                                    : const Color(0xFF616166),
+                                color: const Color(0xFFFFFFFF),
                                 height: 1.0,
                                 letterSpacing: 0.0,
                               ),

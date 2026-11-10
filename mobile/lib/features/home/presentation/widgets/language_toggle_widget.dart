@@ -27,20 +27,20 @@ class LanguageToggleWidget extends ConsumerWidget {
         height: height,
         padding: const EdgeInsets.all(2.5),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFF2D2A3D),
           borderRadius: BorderRadius.circular(height / 2.0),
           border: Border.all(
-            color: const Color(0xFF8B53FE).withValues(alpha: 0.22),
+            color: const Color(0xFF8B53FE).withValues(alpha: 0.4),
             width: 1.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF8B53FE).withValues(alpha: 0.08),
+              color: const Color(0xFF8B53FE).withValues(alpha: 0.15),
               blurRadius: 8.0,
               offset: const Offset(0, 2),
             ),
             const BoxShadow(
-              color: Color(0x0A000000),
+              color: Color(0x1F000000),
               blurRadius: 4.0,
               offset: Offset(0, 1),
             ),
@@ -96,13 +96,13 @@ class LanguageToggleWidget extends ConsumerWidget {
         ? GoogleFonts.cairo(
             fontSize: 11.0,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? Colors.white : const Color(0xFF566663),
+            color: Colors.white,
             height: 1.15,
           )
         : GoogleFonts.inter(
             fontSize: 11.0,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? Colors.white : const Color(0xFF566663),
+            color: Colors.white,
             height: 1.15,
             letterSpacing: 0.2,
           );

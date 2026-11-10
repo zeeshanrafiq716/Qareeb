@@ -909,18 +909,18 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
         duration: const Duration(milliseconds: 180),
         height: 44.4,
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF8B53FE) : Colors.white,
+          color: isSelected ? const Color(0xFF8B53FE) : const Color(0xFF2D2A3D),
           borderRadius: BorderRadius.circular(8.0),
           border: isSelected
               ? null
               : Border.all(
-                  color: const Color(0xFFEDF0EF),
+                  color: const Color(0xFF8B53FE).withValues(alpha: 0.3),
                   width: 1.2,
                 ),
           boxShadow: isSelected
               ? const [
                   BoxShadow(
-                    color: Color(0x268B53FE),
+                    color: Color(0x338B53FE),
                     blurRadius: 6.0,
                     offset: Offset(0, 2),
                   ),
@@ -937,7 +937,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
           style: tr.font(
             fontSize: 15.0,
             fontWeight: FontWeight.w500,
-            color: isSelected ? const Color(0xFFFFFFFF) : const Color(0xFF1C2926),
+            color: const Color(0xFFFFFFFF),
             height: 1.2,
           ),
         ),

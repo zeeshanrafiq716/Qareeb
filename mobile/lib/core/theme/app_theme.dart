@@ -13,13 +13,24 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
       primaryColor: AppColors.primary,
       colorScheme: const ColorScheme.dark(
-        primary: AppColors.primary,
-        secondary: AppColors.mintAccent,
-        surface: AppColors.surfaceDark,
+        primary: AppColors.brandPurple,
+        secondary: AppColors.brandPurple,
+        surface: AppColors.darkTabs,
         error: Color(0xFFFF5252),
         onPrimary: AppColors.textWhite,
         onSecondary: AppColors.background,
         onSurface: AppColors.textWhite,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.brandPurple,
+          foregroundColor: Colors.white,
+        ),
+      ),
+      tabBarTheme: const TabBarTheme(
+        indicatorColor: AppColors.brandPurple,
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white,
       ),
       textTheme: GoogleFonts.interTextTheme().apply(
         fontFamilyFallback: const ['Cairo', 'Tajawal', 'Inter', 'Roboto', 'Segoe UI', 'Arial', 'sans-serif'],
