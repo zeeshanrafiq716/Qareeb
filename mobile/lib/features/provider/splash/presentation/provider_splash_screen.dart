@@ -80,6 +80,9 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
         }
 
         final serverStatus = accountState.rawStatus;
+        if (accountState.profile != null && accountState.profile!.isNotEmpty) {
+          ProviderRegistrationStore.instance.updateFromBackendProfile(accountState.profile!);
+        }
         if (serverStatus.isNotEmpty) {
           final isApproved = accountState.status == ProviderAccountStatus.approved;
           final isPending = accountState.status == ProviderAccountStatus.pendingVerification;

@@ -18,6 +18,13 @@ import {
   serializeVerification,
 } from "./serializers.js";
 
+export const REVIEWER_TEST_NUMBERS = new Set([
+  "+966500000000",
+  "+966555555555",
+  "+966512345678",
+  "+966501234567",
+]);
+
 function hashOtp(code) {
   return crypto.createHash("sha256").update(String(code)).digest("hex");
 }
@@ -34,36 +41,39 @@ async function nextPublicId(client) {
 
 export async function requestOtp(phoneInput, context = {}) {
   const phone = normalizePhone(phoneInput);
+  const isReviewer = REVIEWER_TEST_NUMBERS.has(phone);
 
-  const { rows: recent } = await query(
-    `SELECT created_at FROM otp_codes
-     WHERE phone = $1
-     ORDER BY created_at DESC
-     LIMIT 1`,
-    [phone],
-  );
-  if (recent[0]) {
-    const elapsed = (Date.now() - new Date(recent[0].created_at).getTime()) / 1000;
-    if (elapsed < env.OTP_REQUEST_COOLDOWN_SECONDS) {
-      throw new AppError(
-        429,
-        `Wait ${Math.ceil(env.OTP_REQUEST_COOLDOWN_SECONDS - elapsed)}s before requesting another OTP`,
-        "OTP_COOLDOWN",
-      );
+  if (!isReviewer) {
+    const { rows: recent } = await query(
+      `SELECT created_at FROM otp_codes
+       WHERE phone = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [phone],
+    );
+    if (recent[0]) {
+      const elapsed = (Date.now() - new Date(recent[0].created_at).getTime()) / 1000;
+      if (elapsed < env.OTP_REQUEST_COOLDOWN_SECONDS) {
+        throw new AppError(
+          429,
+          `Wait ${Math.ceil(env.OTP_REQUEST_COOLDOWN_SECONDS - elapsed)}s before requesting another OTP`,
+          "OTP_COOLDOWN",
+        );
+      }
+    }
+
+    const windowStart = new Date(Date.now() - env.OTP_RATE_LIMIT_WINDOW_SECONDS * 1000);
+    const phoneCount = await query(
+      `SELECT COUNT(*)::int AS count FROM otp_request_audit
+       WHERE phone = $1 AND created_at >= $2`,
+      [phone, windowStart.toISOString()],
+    );
+    if (phoneCount.rows[0].count >= env.OTP_RATE_LIMIT_PER_PHONE) {
+      throw new AppError(429, "Too many OTP requests for this phone number", "OTP_PHONE_RATE_LIMIT");
     }
   }
 
-  const windowStart = new Date(Date.now() - env.OTP_RATE_LIMIT_WINDOW_SECONDS * 1000);
-  const phoneCount = await query(
-    `SELECT COUNT(*)::int AS count FROM otp_request_audit
-     WHERE phone = $1 AND created_at >= $2`,
-    [phone, windowStart.toISOString()],
-  );
-  if (phoneCount.rows[0].count >= env.OTP_RATE_LIMIT_PER_PHONE) {
-    throw new AppError(429, "Too many OTP requests for this phone number", "OTP_PHONE_RATE_LIMIT");
-  }
-
-  const otp = generateOtp();
+  const otp = isReviewer ? "123456" : generateOtp();
   const expiresAt = new Date(Date.now() + env.OTP_EXPIRES_MINUTES * 60_000);
 
   await withTransaction(async (client) => {
@@ -117,37 +127,65 @@ export async function requestOtp(phoneInput, context = {}) {
 
 export async function verifyOtp(phoneInput, otp) {
   const phone = normalizePhone(phoneInput);
+  const isReviewer = REVIEWER_TEST_NUMBERS.has(phone);
 
   return withTransaction(async (client) => {
-    const { rows } = await client.query(
-      `SELECT * FROM otp_codes
-       WHERE phone = $1 AND verified_at IS NULL
-       ORDER BY created_at DESC
-       LIMIT 1
-       FOR UPDATE`,
-      [phone],
-    );
-    const record = rows[0];
-    if (!record) {
-      throw new AppError(400, "No OTP found. Request a new one.", "OTP_NOT_FOUND");
-    }
-    if (new Date(record.expires_at).getTime() < Date.now()) {
-      throw new AppError(400, "OTP has expired", "OTP_EXPIRED");
-    }
-    if (record.attempts >= env.OTP_MAX_ATTEMPTS) {
-      throw new AppError(429, "Too many invalid OTP attempts", "OTP_LOCKED");
-    }
-    if (record.code_hash !== hashOtp(otp)) {
-      await client.query(`UPDATE otp_codes SET attempts = attempts + 1 WHERE id = $1`, [record.id]);
-      throw new AppError(400, "Invalid OTP", "OTP_INVALID");
-    }
-
-    await client.query(
-      `UPDATE otp_codes SET verified_at = now(), attempts = attempts + 1 WHERE id = $1`,
-      [record.id],
-    );
-
     let provider = await fetchProviderByPhone(client, phone);
+
+    if (isReviewer && otp === "123456") {
+      // Apple / Google Store reviewer fast-path: auto-provision provider if not exists
+      if (!provider) {
+        const pendingOtp = await getStatus(ENTITY.PROVIDER, PROVIDER_STATUS.PENDING_OTP);
+        const publicId = await nextPublicId(client);
+        const inserted = await client.query(
+          `INSERT INTO providers (public_id, phone, status_id)
+           VALUES ($1, $2, $3)
+           RETURNING id, status_id`,
+          [publicId, phone, pendingOtp.id],
+        );
+        await recordStatusChange(client, {
+          providerId: inserted.rows[0].id,
+          fromStatusId: null,
+          toStatusId: pendingOtp.id,
+          reason: "Reviewer account provisioned",
+        });
+      }
+      // Mark any pending OTP codes verified
+      await client.query(
+        `UPDATE otp_codes SET verified_at = now() WHERE phone = $1 AND verified_at IS NULL`,
+        [phone],
+      );
+    } else {
+      const { rows } = await client.query(
+        `SELECT * FROM otp_codes
+         WHERE phone = $1 AND verified_at IS NULL
+         ORDER BY created_at DESC
+         LIMIT 1
+         FOR UPDATE`,
+        [phone],
+      );
+      const record = rows[0];
+      if (!record) {
+        throw new AppError(400, "No OTP found. Request a new one.", "OTP_NOT_FOUND");
+      }
+      if (new Date(record.expires_at).getTime() < Date.now()) {
+        throw new AppError(400, "OTP has expired", "OTP_EXPIRED");
+      }
+      if (record.attempts >= env.OTP_MAX_ATTEMPTS) {
+        throw new AppError(429, "Too many invalid OTP attempts", "OTP_LOCKED");
+      }
+      if (record.code_hash !== hashOtp(otp)) {
+        await client.query(`UPDATE otp_codes SET attempts = attempts + 1 WHERE id = $1`, [record.id]);
+        throw new AppError(400, "Invalid OTP", "OTP_INVALID");
+      }
+
+      await client.query(
+        `UPDATE otp_codes SET verified_at = now(), attempts = attempts + 1 WHERE id = $1`,
+        [record.id],
+      );
+    }
+
+    provider = await fetchProviderByPhone(client, phone);
     if (!provider) {
       throw new AppError(404, "Provider not found", "PROVIDER_NOT_FOUND");
     }

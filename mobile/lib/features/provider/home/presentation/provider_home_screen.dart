@@ -73,11 +73,12 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
     super.initState();
     _currentTabIndex = widget.initialTabIndex;
     _isOnline = ProviderRegistrationStore.instance.data.isOnline;
-    if (_isOnline) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_isOnline) {
         _startGpsTrackingAndPresence();
-      });
-    }
+      }
+      _syncProviderAccountStatus();
+    });
     // High-frequency stats polling and account status synchronization (every 2.5s)
     // Instantly reacts if admin blocks, suspends, or deletes provider
     _statsRefreshTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
@@ -148,6 +149,12 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
           ),
           (route) => false,
         );
+      } else if (accountState.profile != null && accountState.profile!.isNotEmpty) {
+        ProviderRegistrationStore.instance.updateFromBackendProfile(accountState.profile!);
+        if (mounted) {
+          ref.read(providerRegistrationProvider.notifier).syncWithStore();
+          setState(() {});
+        }
       }
     } catch (_) {}
   }

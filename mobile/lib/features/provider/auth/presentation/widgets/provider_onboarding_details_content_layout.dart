@@ -45,7 +45,6 @@ class _ProviderOnboardingDetailsContentLayoutState
   VehicleTypeModel? _selectedVehicleTypeModel;
 
   List<String> _adminCategories = CategoryModel.defaultCategories.map((c) => c.name).toList();
-  List<String> _adminVehicleTypes = VehicleTypeModel.defaultVehicleTypes.map((v) => v.name).toList();
   List<CategoryModel> _adminCategoryModels = List.from(CategoryModel.defaultCategories);
   List<VehicleTypeModel> _adminVehicleTypeModels = List.from(VehicleTypeModel.defaultVehicleTypes);
   bool _isLoadingAdminOptions = false;
@@ -114,13 +113,11 @@ class _ProviderOnboardingDetailsContentLayoutState
             : (_adminVehicleTypeModels.isNotEmpty ? _adminVehicleTypeModels : VehicleTypeModel.defaultVehicleTypes);
 
         final newCats = finalCats.map((c) => c.name).toSet().toList();
-        final newTypes = finalTypes.map((v) => v.name).toSet().toList();
 
         setState(() {
           _adminCategoryModels = finalCats;
           _adminVehicleTypeModels = finalTypes;
           _adminCategories = newCats;
-          _adminVehicleTypes = newTypes;
           _isLoadingAdminOptions = false;
 
           // Maintain model selections
@@ -159,7 +156,6 @@ class _ProviderOnboardingDetailsContentLayoutState
           }
           if (_adminVehicleTypeModels.isEmpty) {
             _adminVehicleTypeModels = List.from(VehicleTypeModel.defaultVehicleTypes);
-            _adminVehicleTypes = _adminVehicleTypeModels.map((v) => v.name).toList();
           }
           _isLoadingAdminOptions = false;
         });
@@ -303,6 +299,17 @@ class _ProviderOnboardingDetailsContentLayoutState
                                 setState(() {
                                   _selectedCategoryModel = cat;
                                   _selectedCategory = cat.name;
+
+                                  // Clear conflicting vehicle type if it doesn't match new category
+                                  final newVehicleOptions = VehicleTypeModel.getVehicleTypesForCategory(
+                                    cat.name,
+                                    backendOptions: _adminVehicleTypeModels,
+                                  );
+                                  if (_selectedVehicleType != null &&
+                                      !newVehicleOptions.any((v) => v.name == _selectedVehicleType)) {
+                                    _selectedVehicleType = null;
+                                    _selectedVehicleTypeModel = null;
+                                  }
                                 });
                                 Navigator.of(context).pop();
                               },
@@ -343,13 +350,10 @@ class _ProviderOnboardingDetailsContentLayoutState
               }
             };
 
-            final options = _adminVehicleTypeModels.isNotEmpty
-                ? _adminVehicleTypeModels
-                : (_adminVehicleTypes.isNotEmpty
-                    ? _adminVehicleTypes
-                        .map((name) => VehicleTypeModel.fromString(name))
-                        .toList()
-                    : VehicleTypeModel.defaultVehicleTypes);
+            final options = VehicleTypeModel.getVehicleTypesForCategory(
+              _selectedCategory,
+              backendOptions: _adminVehicleTypeModels.isNotEmpty ? _adminVehicleTypeModels : null,
+            );
 
             return SafeArea(
               child: Padding(

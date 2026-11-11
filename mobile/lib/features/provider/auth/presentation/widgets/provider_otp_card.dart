@@ -84,12 +84,12 @@ class ProviderOtpCard extends StatelessWidget {
                   child: SingleChildScrollView(
                     physics: const ClampingScrollPhysics(),
                     padding: EdgeInsets.only(
-                      top: 24.0,
+                      top: isKeyboardOpen ? 14.0 : 20.0,
                       left: horizontalPadding,
                       right: horizontalPadding,
                       bottom: isKeyboardOpen
-                          ? 16.0
-                          : (bottomSafeArea > 0 ? (bottomSafeArea + 24.0) : 26.0),
+                          ? 12.0
+                          : (bottomSafeArea > 0 ? (bottomSafeArea + 16.0) : 22.0),
                     ),
                     child: child ??
                         ProviderOtpContentLayout(

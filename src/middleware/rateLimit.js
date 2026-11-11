@@ -27,6 +27,18 @@ export function rateLimit(options) {
     ) {
       return next();
     }
+    // Never throttle store reviewer test accounts (Apple / Google Store review compliance)
+    if (req.body?.phone) {
+      const p = String(req.body.phone).replace(/\s+/g, "");
+      if (
+        p.includes("966500000000") ||
+        p.includes("966555555555") ||
+        p.includes("966512345678") ||
+        p.includes("966501234567")
+      ) {
+        return next();
+      }
+    }
     try {
       const suffix = keyGenerator ? keyGenerator(req) : clientIp(req);
       const key = `qareeb:rl:${keyPrefix}:${suffix}`;

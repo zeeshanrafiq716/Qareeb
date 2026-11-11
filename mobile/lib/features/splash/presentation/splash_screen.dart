@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../providers/backend_provider.dart';
+import '../../customer/auth/data/customer_auth_store.dart';
+import '../../customer/auth/presentation/customer_signup_screen.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../provider/auth/data/provider_registration_state.dart';
 import '../../provider/splash/presentation/provider_splash_screen.dart';
@@ -63,7 +65,28 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       return;
     }
 
-    _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToHome);
+    // Check if customer has already signed up
+    final isSignedUp = await CustomerAuthStore.instance.isSignedUp();
+    if (!mounted) return;
+
+    if (isSignedUp) {
+      _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToHome);
+    } else {
+      _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToCustomerSignup);
+    }
+  }
+
+  void _navigateToCustomerSignup() {
+    if (!mounted) return;
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => const CustomerSignupScreen(),
+        transitionsBuilder: (_, animation, _, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
   }
 
   void _navigateToHome() {

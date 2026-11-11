@@ -1,3 +1,4 @@
+// ignore_for_file: use_null_aware_elements
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../core/api/api_client.dart';
@@ -219,6 +220,16 @@ class BackendService {
       }
     } catch (_) {}
     return null;
+  }
+
+  /// Delete/De-register current provider account (Apple Guideline 5.1.1(v) compliance)
+  Future<bool> deleteProviderAccount() async {
+    try {
+      final response = await _client.delete('/api/v1/provider/me');
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Unified account status check for providers:

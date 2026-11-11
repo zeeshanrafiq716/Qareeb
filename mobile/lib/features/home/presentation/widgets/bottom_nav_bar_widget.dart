@@ -247,22 +247,28 @@ class _StylizedHomePainter extends CustomPainter {
     final h = size.height;
 
     final outerPath = Path();
-    // Rounded pentagon / cottage outline
-    outerPath.moveTo(w * 0.5, h * 0.08);
-    // Top right slope towards shoulder
-    outerPath.quadraticBezierTo(w * 0.53, h * 0.08, w * 0.84, h * 0.32);
-    outerPath.quadraticBezierTo(w * 0.89, h * 0.36, w * 0.86, h * 0.44);
-    // Right side downwards
-    outerPath.lineTo(w * 0.83, h * 0.86);
-    outerPath.quadraticBezierTo(w * 0.81, h * 0.94, w * 0.72, h * 0.94);
-    // Bottom edge
-    outerPath.lineTo(w * 0.28, h * 0.94);
-    outerPath.quadraticBezierTo(w * 0.19, h * 0.94, w * 0.17, h * 0.86);
-    // Left side upwards
-    outerPath.lineTo(w * 0.14, h * 0.44);
-    outerPath.quadraticBezierTo(w * 0.11, h * 0.36, w * 0.16, h * 0.32);
-    // Left slope back to peak
-    outerPath.quadraticBezierTo(w * 0.47, h * 0.08, w * 0.5, h * 0.08);
+    // Authentic Home Pagoda / Eaved Cottage silhouette matching Vector1.png
+    outerPath.moveTo(w * 0.44, h * 0.04);
+    outerPath.lineTo(w * 0.56, h * 0.04);
+    outerPath.lineTo(w * 0.56, h * 0.16);
+    // Right slope flaring out to wide eave
+    outerPath.quadraticBezierTo(w * 0.72, h * 0.28, w * 0.98, h * 0.39);
+    outerPath.quadraticBezierTo(w * 1.00, h * 0.44, w * 0.94, h * 0.46);
+    // Inset to house body wall
+    outerPath.lineTo(w * 0.91, h * 0.48);
+    // Right wall downwards
+    outerPath.lineTo(w * 0.91, h * 0.88);
+    outerPath.quadraticBezierTo(w * 0.88, h * 0.96, w * 0.76, h * 0.96);
+    // Bottom floor
+    outerPath.lineTo(w * 0.24, h * 0.96);
+    outerPath.quadraticBezierTo(w * 0.12, h * 0.96, w * 0.09, h * 0.88);
+    // Left wall upwards
+    outerPath.lineTo(w * 0.09, h * 0.48);
+    // Outset to left eave
+    outerPath.lineTo(w * 0.06, h * 0.46);
+    outerPath.quadraticBezierTo(w * 0.00, h * 0.44, w * 0.02, h * 0.39);
+    // Left slope back to top spire
+    outerPath.quadraticBezierTo(w * 0.28, h * 0.28, w * 0.44, h * 0.16);
     outerPath.close();
 
     if (isFilled) {

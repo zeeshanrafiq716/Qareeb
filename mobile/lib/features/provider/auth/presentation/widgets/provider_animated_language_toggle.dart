@@ -52,6 +52,7 @@ class _ProviderAnimatedLanguageToggleState
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
+        onTap: () => _switchLanguage(!isArabic),
         onTapDown: (_) => setState(() => _isPressed = true),
         onTapUp: (_) => setState(() => _isPressed = false),
         onTapCancel: () => setState(() => _isPressed = false),

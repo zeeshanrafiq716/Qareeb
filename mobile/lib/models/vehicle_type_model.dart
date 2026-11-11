@@ -67,6 +67,104 @@ class VehicleTypeModel {
     ),
   ];
 
+  /// Returns authentic vehicle types matching the selected service category
+  static List<VehicleTypeModel> getVehicleTypesForCategory(
+    String? categoryName, {
+    List<VehicleTypeModel>? backendOptions,
+  }) {
+    if (categoryName == null || categoryName.trim().isEmpty) {
+      if (backendOptions != null && backendOptions.isNotEmpty) return backendOptions;
+      return defaultVehicleTypes;
+    }
+
+    final lower = categoryName.toLowerCase().trim();
+
+    if (lower.contains('tow') || lower.contains('سطحة')) {
+      if (backendOptions != null && backendOptions.isNotEmpty) {
+        return backendOptions;
+      }
+      return defaultVehicleTypes;
+    }
+
+    if (lower.contains('water') || lower.contains('tank') || lower.contains('صهريج') || lower.contains('مياه')) {
+      return const [
+        VehicleTypeModel(id: 'wt_1', name: 'Large Water Tanker (10,000L+)', nameAr: 'صهريج مياه كبير (١٠،٠٠٠+ لتر)', slug: 'large-water-tanker'),
+        VehicleTypeModel(id: 'wt_2', name: 'Medium Water Tanker (5,000L)', nameAr: 'صهريج مياه متوسط (٥،٠٠٠ لتر)', slug: 'medium-water-tanker'),
+        VehicleTypeModel(id: 'wt_3', name: 'Small Water Tanker (3,000L)', nameAr: 'صهريج مياه صغير (٣،٠٠٠ لتر)', slug: 'small-water-tanker'),
+        VehicleTypeModel(id: 'wt_4', name: 'Drinking Water Potable Tanker', nameAr: 'صهريج مياه شرب محلاة', slug: 'potable-water-tanker'),
+      ];
+    }
+
+    if (lower.contains('tyre') || lower.contains('tire') || lower.contains('puncture') || lower.contains('بنشر')) {
+      return const [
+        VehicleTypeModel(id: 'ty_1', name: 'Mobile Tyre Service Van', nameAr: 'فان صيانة إطارات متنقل', slug: 'mobile-tyre-van'),
+        VehicleTypeModel(id: 'ty_2', name: 'Tyre Workshop Truck', nameAr: 'شاحنة ورشة إطارات متكاملة', slug: 'tyre-workshop-truck'),
+        VehicleTypeModel(id: 'ty_3', name: 'Rapid Response Service Pickup', nameAr: 'وانيت خدمة إطارات سريع', slug: 'tyre-service-pickup'),
+      ];
+    }
+
+    if (lower.contains('fuel') || lower.contains('وقود') || lower.contains('بنزين')) {
+      return const [
+        VehicleTypeModel(id: 'fd_1', name: 'Fuel Delivery Tanker Truck', nameAr: 'شاحنة صهريج توصيل وقود', slug: 'fuel-delivery-tanker'),
+        VehicleTypeModel(id: 'fd_2', name: 'Emergency Mobile Fuel Van', nameAr: 'فان توصيل وقود طارئ', slug: 'fuel-delivery-van'),
+        VehicleTypeModel(id: 'fd_3', name: 'Mobile Dispenser Pickup', nameAr: 'وانيت مضخة وقود متنقلة', slug: 'fuel-dispenser-pickup'),
+      ];
+    }
+
+    if (lower.contains('mechanic') || lower.contains('ميكانيك')) {
+      return const [
+        VehicleTypeModel(id: 'mc_1', name: 'Mobile Mechanical Workshop Van', nameAr: 'فان ورشة ميكانيكا متنقلة', slug: 'mobile-mechanic-van'),
+        VehicleTypeModel(id: 'mc_2', name: 'Diagnostic & Repair Truck', nameAr: 'شاحنة فحص وصيانة أعطال', slug: 'diagnostic-truck'),
+        VehicleTypeModel(id: 'mc_3', name: 'Quick Service Mechanic Pickup', nameAr: 'وانيت ميكانيكا سريع', slug: 'mechanic-pickup'),
+      ];
+    }
+
+    if (lower.contains('battery') || lower.contains('بطارية') || lower.contains('jump')) {
+      return const [
+        VehicleTypeModel(id: 'bt_1', name: 'Rapid Battery Jump Start Van', nameAr: 'فان خدمة واشتراك بطاريات', slug: 'battery-van'),
+        VehicleTypeModel(id: 'bt_2', name: 'Mobile Battery Response Car', nameAr: 'سيارة خدمة بطاريات سريعة', slug: 'battery-car'),
+        VehicleTypeModel(id: 'bt_3', name: 'Fast Courier Motorcycle', nameAr: 'دراجة توصيل واشتراك بطاريات', slug: 'battery-bike'),
+      ];
+    }
+
+    if (lower.contains('small_pickup') || (lower.contains('pickup') && lower.contains('small')) || lower.contains('دينا صغيرة')) {
+      return const [
+        VehicleTypeModel(id: 'pk_1', name: 'Small Dyna (3-Ton)', nameAr: 'دينا صغيرة (٣ طن)', slug: 'small-dyna'),
+        VehicleTypeModel(id: 'pk_2', name: 'Open Flatbed Pickup', nameAr: 'وانيت نقل مفتوح', slug: 'flatbed-pickup'),
+        VehicleTypeModel(id: 'pk_3', name: 'Closed Box Dyna', nameAr: 'دينا صندوق مغلق', slug: 'closed-box-dyna'),
+      ];
+    }
+
+    if (lower.contains('large_pickup') || (lower.contains('pickup') && lower.contains('large')) || lower.contains('دينا كبيرة')) {
+      return const [
+        VehicleTypeModel(id: 'lp_1', name: 'Large Dyna (5-Ton)', nameAr: 'دينا كبيرة (٥ طن)', slug: 'large-dyna'),
+        VehicleTypeModel(id: 'lp_2', name: 'Long Bed Freight Truck', nameAr: 'شاحنة شحن طويلة', slug: 'long-bed-freight'),
+        VehicleTypeModel(id: 'lp_3', name: 'Heavy Duty Box Truck', nameAr: 'شاحنة صندوق ثقيلة', slug: 'heavy-box-truck'),
+      ];
+    }
+
+    if (lower.contains('ride') || lower.contains('sedan') || lower.contains('مشوار')) {
+      return const [
+        VehicleTypeModel(id: 'rd_1', name: 'Comfort Sedan', nameAr: 'سيارة سيدان مريحة', slug: 'comfort-sedan'),
+        VehicleTypeModel(id: 'rd_2', name: 'Family SUV', nameAr: 'سيارة عائلية SUV', slug: 'family-suv'),
+        VehicleTypeModel(id: 'rd_3', name: 'Economy Sedan', nameAr: 'سيارة سيدان اقتصادية', slug: 'economy-sedan'),
+      ];
+    }
+
+    if (lower.contains('bike') || lower.contains('moto') || lower.contains('دراجة')) {
+      return const [
+        VehicleTypeModel(id: 'bk_1', name: 'Delivery Motorbike', nameAr: 'دراجة توصيل', slug: 'delivery-bike'),
+        VehicleTypeModel(id: 'bk_2', name: 'Scooter Courier', nameAr: 'سكوتر توصيل سريع', slug: 'scooter-courier'),
+      ];
+    }
+
+    return const [
+      VehicleTypeModel(id: 'gn_1', name: 'Mobile Service Van', nameAr: 'فان صيانة وخدمات متنقل', slug: 'service-van'),
+      VehicleTypeModel(id: 'gn_2', name: 'Service Pickup Truck', nameAr: 'وانيت صيانة ونقل معدات', slug: 'service-pickup'),
+      VehicleTypeModel(id: 'gn_3', name: 'Maintenance Unit Car', nameAr: 'سيارة صيانة سريعة', slug: 'maintenance-car'),
+    ];
+  }
+
   factory VehicleTypeModel.fromJson(Map<String, dynamic> json) {
     final rawName = json['name'] as String? ?? '';
     String? rawNameAr = json['nameAr'] as String? ??

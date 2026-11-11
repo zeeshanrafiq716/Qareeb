@@ -112,4 +112,18 @@ class ApiClient {
       options: options,
     );
   }
+
+  Future<Response<T>> delete<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) async {
+    return _dio.delete<T>(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: options,
+    );
+  }
 }

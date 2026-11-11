@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/localization/app_locale.dart';
@@ -87,12 +86,12 @@ class ProviderOtpContentLayout extends StatelessWidget {
               // 2. inner content layout
               innerContent ??
                   ProviderOtpInnerContentLayout(
-                    children: children,
                     phoneNumber: phoneNumber,
                     fullPhone: fullPhone,
                     dummyOtp: dummyOtp,
                     isWhatsApp: isWhatsApp,
                     onVerified: onVerified,
+                    children: children,
                   ),
             ],
           ),
@@ -169,6 +168,10 @@ class _ProviderOtpInnerContentLayoutState extends State<ProviderOtpInnerContentL
       final providerStatus = result.provider?['status']?.toString();
       final isAlreadyApproved = providerStatus == 'APPROVED';
       final isPendingVerification = providerStatus == 'PENDING_VERIFICATION';
+
+      if (result.provider != null) {
+        ProviderRegistrationStore.instance.updateFromBackendProfile(result.provider!);
+      }
 
       ProviderRegistrationStore.instance.update(
         (data) => data.copyWith(

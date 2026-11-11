@@ -252,6 +252,7 @@ class ProviderRegistrationStore {
 
   ProviderRegistrationData data = const ProviderRegistrationData();
   bool isLoaded = false;
+  VoidCallback? onDataChanged;
 
   /// Returns 'provider' if provider mode is active, otherwise 'customer'.
   Future<String> getActiveAppMode() async {
@@ -336,6 +337,131 @@ class ProviderRegistrationStore {
     }
 
     saveToPrefs();
+    try {
+      onDataChanged?.call();
+    } catch (_) {}
+  }
+
+  /// Updates store with authentic provider profile returned by backend
+  void updateFromBackendProfile(Map<String, dynamic> profile) {
+    try {
+      final name = profile['name']?.toString() ?? profile['fullName']?.toString();
+      final phone = profile['phone']?.toString();
+      final whatsapp = profile['whatsappNumber']?.toString() ??
+          profile['whatsapp']?.toString() ??
+          profile['contactPhone']?.toString();
+
+      // Extract real category name
+      String? categoryName;
+      final rawCat = profile['category'];
+      if (rawCat is Map<String, dynamic>) {
+        categoryName = rawCat['name']?.toString();
+      } else if (rawCat is String && rawCat.isNotEmpty) {
+        categoryName = rawCat;
+      } else if (profile['categoryName'] != null) {
+        categoryName = profile['categoryName']?.toString();
+      } else if (profile['serviceCategory'] != null) {
+        categoryName = profile['serviceCategory']?.toString();
+      }
+
+      final vehicleType = profile['vehicleType']?.toString() ??
+          profile['vehicle_type_name']?.toString() ??
+          profile['vehicle_type']?.toString();
+      final vehicleModel = profile['vehicleModel']?.toString() ??
+          profile['vehicle_model']?.toString();
+      final plateNumber = profile['plateNumber']?.toString() ??
+          profile['plate_number']?.toString();
+      final vehicleColor = profile['vehicleColor']?.toString() ??
+          profile['vehicle_color']?.toString();
+      final iqama = profile['nationalId']?.toString() ??
+          profile['iqamaNumber']?.toString() ??
+          profile['iqama_number']?.toString();
+      final iqamaExpiry = profile['iqamaExpiry']?.toString() ??
+          profile['iqama_expiry']?.toString();
+      final status = profile['status']?.toString() ??
+          profile['status_code']?.toString();
+      final publicId = profile['providerId']?.toString() ??
+          profile['public_id']?.toString() ??
+          profile['publicId']?.toString();
+
+      // Resolve vehicle type without carrying over conflicting tow truck values for non-towing categories
+      final catLower = (categoryName ?? data.serviceCategory).toLowerCase().trim();
+      final isTowCategory = catLower.contains('tow') || catLower.contains('سطحة');
+      final String resolvedVehicleType;
+      if (vehicleType != null && vehicleType.isNotEmpty) {
+        if (!isTowCategory &&
+            (vehicleType.toLowerCase().contains('recovery truck') ||
+                vehicleType.toLowerCase().contains('flatbed') ||
+                vehicleType.toLowerCase().contains('wheel lift'))) {
+          resolvedVehicleType = '';
+        } else {
+          resolvedVehicleType = vehicleType;
+        }
+      } else {
+        final currentTypeLower = data.vehicleType.toLowerCase();
+        if (!isTowCategory &&
+            (currentTypeLower.contains('recovery truck') ||
+                currentTypeLower.contains('flatbed') ||
+                currentTypeLower.contains('wheel lift'))) {
+          resolvedVehicleType = '';
+        } else {
+          resolvedVehicleType = data.vehicleType;
+        }
+      }
+
+      // Collect real uploaded vehicle photos
+      final List<String> photos = List<String>.from(data.vehiclePhotos);
+      if (profile['vehiclePhotos'] is List) {
+        for (final p in profile['vehiclePhotos']) {
+          if (p != null && p.toString().isNotEmpty && !photos.contains(p.toString())) {
+            photos.add(p.toString());
+          }
+        }
+      }
+      if (profile['documents'] is List) {
+        for (final d in profile['documents']) {
+          if (d is Map) {
+            final type = d['documentType']?.toString() ?? d['document_type']?.toString() ?? '';
+            final url = d['documentUrl']?.toString() ?? d['document_url']?.toString() ?? '';
+            if (type.toLowerCase().contains('vehicle') && url.isNotEmpty && !photos.contains(url)) {
+              photos.add(url);
+            }
+          }
+        }
+      }
+      if (profile['photoUrl'] != null && profile['photoUrl'].toString().isNotEmpty) {
+        final pUrl = profile['photoUrl'].toString();
+        if (!photos.contains(pUrl)) photos.insert(0, pUrl);
+      }
+
+      // Location coordinates
+      double? lat;
+      double? lng;
+      if (profile['location'] is Map) {
+        lat = (profile['location']['latitude'] as num?)?.toDouble();
+        lng = (profile['location']['longitude'] as num?)?.toDouble();
+      }
+
+      update((current) => current.copyWith(
+        fullName: (name != null && name.isNotEmpty) ? name : current.fullName,
+        phone: (phone != null && phone.isNotEmpty) ? phone : current.phone,
+        whatsappNumber: (whatsapp != null && whatsapp.isNotEmpty) ? whatsapp : current.whatsappNumber,
+        serviceCategory: (categoryName != null && categoryName.isNotEmpty) ? categoryName : current.serviceCategory,
+        vehicleType: resolvedVehicleType,
+        vehicleModel: (vehicleModel != null && vehicleModel.isNotEmpty) ? vehicleModel : current.vehicleModel,
+        plateNumber: (plateNumber != null && plateNumber.isNotEmpty) ? plateNumber : current.plateNumber,
+        vehicleColor: (vehicleColor != null && vehicleColor.isNotEmpty) ? vehicleColor : current.vehicleColor,
+        iqamaNumber: (iqama != null && iqama.isNotEmpty) ? iqama : current.iqamaNumber,
+        iqamaExpiry: (iqamaExpiry != null && iqamaExpiry.isNotEmpty) ? iqamaExpiry : current.iqamaExpiry,
+        status: (status != null && status.isNotEmpty) ? status : current.status,
+        publicId: (publicId != null && publicId.isNotEmpty) ? publicId : current.publicId,
+        vehiclePhotos: photos.isNotEmpty ? photos : current.vehiclePhotos,
+        latitude: lat ?? current.latitude,
+        longitude: lng ?? current.longitude,
+      ));
+    } catch (e) {
+      debugPrint('Error updating ProviderRegistrationStore from backend profile: $e');
+    }
   }
 
   /// Clear session and onboarding data on logout or reset
@@ -356,7 +482,17 @@ class ProviderRegistrationStore {
 class ProviderRegistrationNotifier extends Notifier<ProviderRegistrationData> {
   @override
   ProviderRegistrationData build() {
+    ProviderRegistrationStore.instance.onDataChanged = () {
+      state = ProviderRegistrationStore.instance.data;
+    };
+    ref.onDispose(() {
+      ProviderRegistrationStore.instance.onDataChanged = null;
+    });
     return ProviderRegistrationStore.instance.data;
+  }
+
+  void syncWithStore() {
+    state = ProviderRegistrationStore.instance.data;
   }
 
   void setPhone(String phone, {bool isWhatsApp = false}) {

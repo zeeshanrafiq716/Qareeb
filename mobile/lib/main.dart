@@ -5,9 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/localization/app_locale.dart';
 import 'core/theme/app_theme.dart';
+import 'features/customer/auth/data/customer_auth_store.dart';
+import 'features/customer/auth/presentation/customer_otp_verification_screen.dart';
+import 'features/customer/auth/presentation/customer_signup_screen.dart';
 import 'features/emergency/presentation/emergency_services_screen.dart';
 import 'features/home/presentation/home_screen.dart';
 import 'features/profile/presentation/customer_feedback_support_screen.dart';
+import 'features/profile/presentation/customer_personal_info_screen.dart';
 import 'features/profile/presentation/notifications_screen.dart';
 import 'features/profile/presentation/privacy_security_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
@@ -38,6 +42,7 @@ void main() async {
   // Pre-load active mode from persistence before app boots up
   // Ensures provider side directly launches ProviderSplashScreen, never flashing customer splash
   await ProviderRegistrationStore.instance.loadFromPrefs();
+  await CustomerAuthStore.instance.loadFromPrefs();
   final initialMode = await ProviderRegistrationStore.instance.getActiveAppMode();
 
   // Gracefully handle font loading network errors so offline/CORS issues never crash the app
@@ -125,6 +130,9 @@ class QareebApp extends ConsumerWidget {
       routes: {
         '/splash': (context) => const SplashScreen(),
         '/home': (context) => const HomeScreen(),
+        '/customer/signup': (context) => const CustomerSignupScreen(),
+        '/customer/otp': (context) => const CustomerOtpVerificationScreen(),
+        '/customer/personal-info': (context) => const CustomerPersonalInfoScreen(),
         '/requests': (context) => const RequestsScreen(),
         '/profile': (context) => const ProfileScreen(),
         '/notifications': (context) => const NotificationsScreen(),

@@ -1,6 +1,6 @@
 import { ROLES } from "../config/constants.js";
 import { query } from "../db/pool.js";
-import { ForbiddenError, UnauthorizedError } from "../utils/AppError.js";
+import { AppError, ForbiddenError, UnauthorizedError } from "../utils/AppError.js";
 import { verifyToken } from "../utils/tokens.js";
 
 function readToken(req) {

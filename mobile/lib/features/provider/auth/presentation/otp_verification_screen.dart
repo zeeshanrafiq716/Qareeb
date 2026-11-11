@@ -80,14 +80,12 @@ class OtpVerificationScreen extends StatelessWidget {
               final double availableHeightAboveKeyboard = containerHeight - effectiveBottomInset;
 
               // Card layout geometry:
-              // When keyboard is open, the card stays flexible at the bottom only,
-              // taking only the required height for OTP fields (~300px) instead of jumping
-              // to the top of the screen.
+              // Stays docked at bottom above keyboard without clamping so tightly that buttons hide
               final double cardHeight = isDesktopWeb
-                  ? ProviderOtpCard.designHeight
+                  ? 440.0
                   : (isKeyboardOpen
-                      ? (availableHeightAboveKeyboard - (topSafeArea + 80.0)).clamp(260.0, 340.0)
-                      : ProviderOtpCard.designHeight);
+                      ? (availableHeightAboveKeyboard - (topSafeArea + 24.0)).clamp(390.0, 520.0)
+                      : (containerHeight * 0.58).clamp(430.0, 500.0));
 
               final Widget screenContent = Opacity(
                 opacity: 1.0, // opacity: 1

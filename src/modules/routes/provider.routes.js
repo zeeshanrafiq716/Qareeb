@@ -9,6 +9,7 @@ import { ForbiddenError } from "../../utils/AppError.js";
 import { kycTokenSchema, profileSchema, verificationSchema } from "../schemas.js";
 import * as authService from "../auth.service.js";
 import * as providerService from "../providers.service.js";
+import * as adminService from "../admin.service.js";
 import { getProviderPresence, setOnline, setOffline } from "../presence.service.js";
 import { processLocationUpdate } from "../location.service.js";
 import {
@@ -34,6 +35,19 @@ providerRoutes.get(
   requireProvider,
   asyncHandler(async (req, res) => {
     ok(res, await authService.getMe(req.provider.id));
+  }),
+);
+
+providerRoutes.delete(
+  "/me",
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    const result = await adminService.deleteProvider(req.provider.id);
+    ok(res, {
+      success: true,
+      message: "Provider account de-registered and data deleted successfully",
+      ...result,
+    });
   }),
 );
 

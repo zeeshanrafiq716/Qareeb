@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../services/profile_stats_service.dart';
+import '../../customer/auth/data/customer_auth_store.dart';
 import '../../home/presentation/widgets/bottom_nav_bar_widget.dart';
 import '../../provider/auth/data/provider_registration_state.dart';
 import '../../provider/auth/presentation/provider_profile_details_screen.dart';
@@ -16,6 +17,7 @@ import '../../provider/auth/presentation/vehicle_service_details_screen.dart';
 import '../../provider/splash/presentation/provider_splash_screen.dart';
 import '../../splash/presentation/splash_screen.dart';
 import 'customer_feedback_support_screen.dart';
+import 'customer_personal_info_screen.dart';
 import 'notifications_screen.dart';
 import 'privacy_security_screen.dart';
 import 'provider_help_support_screen.dart';
@@ -67,20 +69,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _loadCustomerName() async {
     try {
+      await CustomerAuthStore.instance.loadFromPrefs();
+      final storeName = CustomerAuthStore.instance.fullName.trim();
+      if (storeName.isNotEmpty && mounted) {
+        setState(() => _customerName = storeName);
+        return;
+      }
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getString('customer_profile_name') ?? '';
       if (mounted) {
         setState(() => _customerName = saved);
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _saveCustomerName(String name) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('customer_profile_name', name.trim());
-      if (mounted) {
-        setState(() => _customerName = name.trim());
       }
     } catch (_) {}
   }
@@ -464,7 +462,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               const SizedBox(height: 14.0),
 
                               // Menu Options Cards (Each item with equal left/right margins)
-                              // 1. Personal Information (Only displayed on Provider side)
+                              // 1. Personal Information (Provider & Customer)
                               if (widget.isProvider) ...[
                                 _buildProfileMenuCard(
                                   tr: tr,
@@ -497,6 +495,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         builder: (_) => const VehicleServiceDetailsScreen(),
                                       ),
                                     );
+                                  },
+                                ),
+                                const SizedBox(height: 10.0),
+                              ] else ...[
+                                // Customer Personal Information Card
+                                _buildProfileMenuCard(
+                                  tr: tr,
+                                  icon: Icons.person_rounded,
+                                  title: tr.personalInfo,
+                                  subtitle: tr.personalInfoSubtitle,
+                                  onTap: () async {
+                                    final updated = await Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const CustomerPersonalInfoScreen(),
+                                      ),
+                                    );
+                                    if (updated == true || mounted) {
+                                      _loadCustomerName();
+                                      _loadProfileData();
+                                    }
                                   },
                                 ),
                                 const SizedBox(height: 10.0),
@@ -782,90 +800,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  void _showEditCustomerNameDialog(BuildContext context, bool isArabic) {
-    HapticFeedback.lightImpact();
-    final controller = TextEditingController(text: _customerName);
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
-        title: Text(
-          isArabic ? 'تعديل اسم الملف الشخصي' : 'Edit Profile Name',
-          style: isArabic
-              ? GoogleFonts.cairo(
-                  fontSize: 17.0,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1C2926),
-                )
-              : GoogleFonts.inter(
-                  fontSize: 17.0,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1C2926),
-                ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              isArabic
-                  ? 'أدخل اسمك الحقيقي الذي يظهر لمقدمي الخدمة'
-                  : 'Enter your real name as it will appear to service providers',
-              style: isArabic
-                  ? GoogleFonts.cairo(fontSize: 12.0, color: const Color(0xFF616166))
-                  : GoogleFonts.inter(fontSize: 12.0, color: const Color(0xFF616166)),
-            ),
-            const SizedBox(height: 12.0),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              style: GoogleFonts.inter(fontSize: 14.0, color: const Color(0xFF1C2926)),
-              decoration: InputDecoration(
-                hintText: isArabic ? 'مثال: أحمد محمد' : 'e.g. Ahmed Mohammed',
-                isDense: true,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                  borderSide: const BorderSide(color: Color(0xFF8B53FE), width: 1.5),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: Text(
-              isArabic ? 'إلغاء' : 'Cancel',
-              style: GoogleFonts.inter(color: const Color(0xFF616166)),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF8B53FE),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
-            ),
-            onPressed: () {
-              final newName = controller.text.trim();
-              Navigator.of(dialogCtx).pop();
-              _saveCustomerName(newName);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    isArabic ? 'تم تحديث الاسم بنجاح' : 'Name updated successfully',
-                  ),
-                  backgroundColor: const Color(0xFF10B981),
-                ),
-              );
-            },
-            child: Text(isArabic ? 'حفظ' : 'Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Top Profile Section with large centered avatar, photo picker, name, verified badge, and real reviews rating
   Widget _buildTopProfileSection(BuildContext context, AppTranslations tr, bool isArabic) {
     final String displayName;
@@ -875,8 +809,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ? providerName
           : (isArabic ? 'شريك زشو' : 'Zesho Partner');
     } else {
-      displayName = _customerName.isNotEmpty
-          ? _customerName
+      final storeName = CustomerAuthStore.instance.fullName.trim();
+      final name = storeName.isNotEmpty ? storeName : _customerName;
+      displayName = name.isNotEmpty
+          ? name
           : (isArabic ? 'عميل زشو' : 'Zesho User');
     }
 
@@ -970,7 +906,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         GestureDetector(
           onTap: widget.isProvider
               ? null
-              : () => _showEditCustomerNameDialog(context, isArabic),
+              : () async {
+                  final updated = await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CustomerPersonalInfoScreen(),
+                    ),
+                  );
+                  if (updated == true || mounted) {
+                    _loadCustomerName();
+                    _loadProfileData();
+                  }
+                },
           behavior: HitTestBehavior.opaque,
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -1021,7 +967,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
 
-        // Real Rating & Reviews row: ★ 4.8 (120 reviews) - Only visible on Provider side
+        // Real Rating & Reviews row on Provider side, or Customer Phone row on Customer side
         if (widget.isProvider) ...[
           const SizedBox(height: 6.0),
           Row(
@@ -1049,6 +995,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   fontSize: 13.0,
                   fontWeight: FontWeight.w400,
                   color: const Color(0xFF566663),
+                ),
+              ),
+            ],
+          ),
+        ] else if (CustomerAuthStore.instance.phone.isNotEmpty) ...[
+          const SizedBox(height: 6.0),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.phone_outlined,
+                size: 14.0,
+                color: Color(0xFF71717A),
+              ),
+              const SizedBox(width: 4.0),
+              Text(
+                CustomerAuthStore.instance.phone,
+                style: GoogleFonts.inter(
+                  fontSize: 13.0,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF616166),
                 ),
               ),
             ],
