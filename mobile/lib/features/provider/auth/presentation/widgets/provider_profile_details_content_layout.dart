@@ -200,8 +200,8 @@ class _ProviderProfileDetailsContentLayoutState
         ),
         content: Text(
           isArabic
-              ? 'لحماية أمان حسابك، يتطلب تغيير رقم الهاتف المسجل التحقق من الهوية عبر فريق دعم قريب. يرجى التواصل معنا للمتابعة.'
-              : 'For security and account safety, changing your registered login phone number requires identity verification via Qareeb Partner Support.',
+              ? 'لحماية أمان حسابك، يتطلب تغيير رقم الهاتف المسجل التحقق من الهوية عبر فريق دعم زيشو (Zesho). يرجى التواصل معنا للمتابعة.'
+              : 'For security and account safety, changing your registered login phone number requires identity verification via Zesho Partner Support.',
           style: GoogleFonts.inter(fontSize: 13.0, color: const Color(0xFF566663), height: 1.4),
         ),
         actions: [

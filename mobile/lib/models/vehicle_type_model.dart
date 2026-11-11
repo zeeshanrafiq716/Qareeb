@@ -15,6 +15,58 @@ class VehicleTypeModel {
     this.sortOrder = 0,
   });
 
+  /// Official built-in vehicle types from platform database
+  static const List<VehicleTypeModel> defaultVehicleTypes = [
+    VehicleTypeModel(
+      id: '1',
+      name: 'Flatbed Tow Truck',
+      nameAr: 'سطحة عادية',
+      slug: 'flatbed-tow-truck',
+      sortOrder: 1,
+      isEnabled: true,
+    ),
+    VehicleTypeModel(
+      id: '2',
+      name: 'Hydraulic Low Flatbed',
+      nameAr: 'سطحة هيدروليك',
+      slug: 'hydraulic-low-flatbed',
+      sortOrder: 2,
+      isEnabled: true,
+    ),
+    VehicleTypeModel(
+      id: '3',
+      name: 'Wheel Lift Tow Truck',
+      nameAr: 'ونش رفع',
+      slug: 'wheel-lift-tow-truck',
+      sortOrder: 3,
+      isEnabled: true,
+    ),
+    VehicleTypeModel(
+      id: '4',
+      name: 'Heavy Duty Recovery Truck',
+      nameAr: 'سطحة ثقيل',
+      slug: 'heavy-duty-recovery-truck',
+      sortOrder: 4,
+      isEnabled: true,
+    ),
+    VehicleTypeModel(
+      id: '5',
+      name: 'Covered Carrier (VIP)',
+      nameAr: 'سطحة مغلقة VIP',
+      slug: 'covered-carrier-vip',
+      sortOrder: 5,
+      isEnabled: true,
+    ),
+    VehicleTypeModel(
+      id: '6',
+      name: 'Motorbike Carrier',
+      nameAr: 'سطحة دبابات',
+      slug: 'motorbike-carrier',
+      sortOrder: 6,
+      isEnabled: true,
+    ),
+  ];
+
   factory VehicleTypeModel.fromJson(Map<String, dynamic> json) {
     final rawName = json['name'] as String? ?? '';
     String? rawNameAr = json['nameAr'] as String? ??

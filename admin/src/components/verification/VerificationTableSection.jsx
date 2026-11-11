@@ -50,6 +50,22 @@ export function VerificationTableSection({
   const [currentPage, setCurrentPage] = useState(1)
   const [applicationsList, setApplicationsList] = useState([])
   const [loading, setLoading] = useState(true)
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastType, setToastType] = useState('success')
+
+  const showToast = (msg, type = 'success') => {
+    setToastMessage(msg)
+    setToastType(type)
+    setTimeout(() => setToastMessage(''), 3500)
+  }
+
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setActiveRowMenu(null)
+    }
+    document.addEventListener('click', handleOutsideClick)
+    return () => document.removeEventListener('click', handleOutsideClick)
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -271,70 +287,110 @@ export function VerificationTableSection({
 
   const handleApprove = async (app) => {
     setActiveRowMenu(null)
+    const prevStatus = app.status
+    const prevStatusType = app.statusType
     setApplicationsList((prev) =>
       prev.map((a) => (a.id === app.id ? { ...a, status: 'Approved', statusType: 'approved' } : a))
     )
     if (app.backendId) {
       try {
         await approveProviderApi(app.backendId, 'Approved by admin')
+        showToast(`Provider "${app.name}" approved successfully!`)
       } catch (err) {
         console.error('Failed to approve application on backend:', err)
+        const msg = err.response?.data?.message || err.response?.data?.error?.message || err.message
+        showToast(`Failed to approve: ${msg}`, 'error')
+        setApplicationsList((prev) =>
+          prev.map((a) => (a.id === app.id ? { ...a, status: prevStatus, statusType: prevStatusType } : a))
+        )
       }
     }
   }
 
   const handleReject = async (app) => {
     setActiveRowMenu(null)
+    const prevStatus = app.status
+    const prevStatusType = app.statusType
     setApplicationsList((prev) =>
       prev.map((a) => (a.id === app.id ? { ...a, status: 'Rejected', statusType: 'rejected' } : a))
     )
     if (app.backendId) {
       try {
         await rejectProviderApi(app.backendId, 'Rejected by admin')
+        showToast(`Provider "${app.name}" marked as Rejected`)
       } catch (err) {
         console.error('Failed to reject application on backend:', err)
+        const msg = err.response?.data?.message || err.response?.data?.error?.message || err.message
+        showToast(`Failed to reject: ${msg}`, 'error')
+        setApplicationsList((prev) =>
+          prev.map((a) => (a.id === app.id ? { ...a, status: prevStatus, statusType: prevStatusType } : a))
+        )
       }
     }
   }
 
   const handleRequestResubmission = async (app) => {
     setActiveRowMenu(null)
+    const prevStatus = app.status
+    const prevStatusType = app.statusType
     setApplicationsList((prev) =>
       prev.map((a) => (a.id === app.id ? { ...a, status: 'Resubmission', statusType: 'resubmission' } : a))
     )
     if (app.backendId) {
       try {
         await rejectProviderApi(app.backendId, 'Resubmission requested: please re-upload clear documents')
+        showToast(`Resubmission requested for "${app.name}"`)
       } catch (err) {
         console.error('Failed to request resubmission on backend:', err)
+        const msg = err.response?.data?.message || err.response?.data?.error?.message || err.message
+        showToast(`Failed to request resubmission: ${msg}`, 'error')
+        setApplicationsList((prev) =>
+          prev.map((a) => (a.id === app.id ? { ...a, status: prevStatus, statusType: prevStatusType } : a))
+        )
       }
     }
   }
 
   const handleSuspend = async (app) => {
     setActiveRowMenu(null)
+    const prevStatus = app.status
+    const prevStatusType = app.statusType
     setApplicationsList((prev) =>
       prev.map((a) => (a.id === app.id ? { ...a, status: 'Suspended', statusType: 'suspended' } : a))
     )
     if (app.backendId) {
       try {
         await suspendProviderApi(app.backendId, 'Suspended by admin')
+        showToast(`Provider "${app.name}" suspended`)
       } catch (err) {
         console.error('Failed to suspend provider on backend:', err)
+        const msg = err.response?.data?.message || err.response?.data?.error?.message || err.message
+        showToast(`Failed to suspend: ${msg}`, 'error')
+        setApplicationsList((prev) =>
+          prev.map((a) => (a.id === app.id ? { ...a, status: prevStatus, statusType: prevStatusType } : a))
+        )
       }
     }
   }
 
   const handleBlock = async (app) => {
     setActiveRowMenu(null)
+    const prevStatus = app.status
+    const prevStatusType = app.statusType
     setApplicationsList((prev) =>
       prev.map((a) => (a.id === app.id ? { ...a, status: 'Blocked', statusType: 'blocked' } : a))
     )
     if (app.backendId) {
       try {
         await blockProviderApi(app.backendId, 'Blocked by admin')
+        showToast(`Provider "${app.name}" blocked`)
       } catch (err) {
         console.error('Failed to block provider on backend:', err)
+        const msg = err.response?.data?.message || err.response?.data?.error?.message || err.message
+        showToast(`Failed to block: ${msg}`, 'error')
+        setApplicationsList((prev) =>
+          prev.map((a) => (a.id === app.id ? { ...a, status: prevStatus, statusType: prevStatusType } : a))
+        )
       }
     }
   }
@@ -344,12 +400,17 @@ export function VerificationTableSection({
     if (!window.confirm(`Are you sure you want to delete application for "${app.name}"? This action cannot be undone.`)) {
       return
     }
+    const prevList = [...applicationsList]
     setApplicationsList((prev) => prev.filter((a) => a.id !== app.id))
     if (app.backendId) {
       try {
         await deleteProviderApi(app.backendId)
+        showToast(`Provider "${app.name}" deleted successfully`)
       } catch (err) {
         console.error('Failed to delete provider on backend:', err)
+        const msg = err.response?.data?.message || err.response?.data?.error?.message || err.message
+        showToast(`Failed to delete: ${msg}`, 'error')
+        setApplicationsList(prevList)
       }
     }
   }
@@ -362,8 +423,23 @@ export function VerificationTableSection({
         background: '#FFFFFF',
         boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
       }}
-      className="w-full max-w-[1084px] flex flex-col justify-between shrink-0 overflow-hidden select-none animate-in fade-in duration-150"
+      className="w-full max-w-[1084px] flex flex-col justify-between shrink-0 overflow-visible select-none animate-in fade-in duration-150 relative"
     >
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div
+          className={`fixed top-6 right-8 text-white text-xs px-4 py-2.5 rounded-xl shadow-xl z-50 flex items-center gap-2 animate-in slide-in-from-top-2 ${
+            toastType === 'error' ? 'bg-[#DC2626]' : 'bg-[#1C2926]'
+          }`}
+        >
+          {toastType === 'error' ? (
+            <XCircle className="w-4 h-4 text-white" />
+          ) : (
+            <Check className="w-4 h-4 text-[#22C55E]" />
+          )}
+          <span>{toastMessage}</span>
+        </div>
+      )}
       {/* Filters Row */}
       <div className="w-full px-5 py-3.5 flex items-center justify-between shrink-0">
         <div className="relative w-full max-w-[380px] flex items-center">
@@ -549,9 +625,10 @@ export function VerificationTableSection({
               </p>
             </div>
           ) : (
-            filteredApplications.map((app) => {
+            filteredApplications.map((app, idx) => {
               const CategoryIcon = app.categoryIcon || Disc
               const isSelected = selectedRows.includes(app.id)
+              const isBottomRow = idx >= filteredApplications.length - 2 && filteredApplications.length > 1
 
               return (
                 <div
@@ -659,16 +736,21 @@ export function VerificationTableSection({
                     <div className="relative shrink-0">
                       <button
                         type="button"
-                        onClick={() =>
+                        onClick={(e) => {
+                          e.stopPropagation()
                           setActiveRowMenu((prev) => (prev === app.id ? null : app.id))
-                        }
+                        }}
                         className="p-1 rounded-md text-[#9EAFA9] hover:text-[#1C2926] hover:bg-[#F3F4F6] transition-colors cursor-pointer"
                       >
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
 
                       {activeRowMenu === app.id && (
-                        <div className="absolute right-0 mt-1 w-44 bg-white border border-[#EFF0ED] rounded-xl shadow-lg py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100">
+                        <div
+                          className={`absolute right-0 w-44 bg-white border border-[#EFF0ED] rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 ${
+                            isBottomRow ? 'bottom-full mb-1' : 'top-full mt-1'
+                          }`}
+                        >
                           <button
                             type="button"
                             onClick={() => {

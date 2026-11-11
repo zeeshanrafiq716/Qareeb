@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/vehicle_service_details_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
-import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Continue Button Widget
@@ -51,13 +50,9 @@ class ProviderContinueButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color backgroundColor = isPrimary
-        ? ProviderColors.primaryButton // #1D8070
-        : ProviderColors.inputBackground; // #F2F5F4
+    const Color backgroundColor = Color(0xFF2D2A3D);
 
-    final Color foregroundColor = isPrimary
-        ? Colors.white
-        : ProviderColors.cardTitle; // #1C2926
+    final Color foregroundColor = Colors.white;
 
     final TextStyle textStyle = isPrimary
         ? ProviderTextStyles.continueButtonText

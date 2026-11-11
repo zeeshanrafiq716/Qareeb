@@ -10,7 +10,7 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
-  String get appTitle => 'قريب';
+  String get appTitle => 'Zesho';
 
   @override
   String get profileTitle => 'الملف الشخصي';
@@ -436,7 +436,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get requestCompletedSuccess =>
-      'تم إكمال طلبك بنجاح\nشكراً لاختيارك تطبيق قريب';
+      'تم إكمال طلبك بنجاح\nشكراً لاختيارك تطبيق Zesho';
 
   @override
   String reviewsCount(int count) {

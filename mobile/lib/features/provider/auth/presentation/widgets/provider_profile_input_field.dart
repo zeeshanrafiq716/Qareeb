@@ -134,7 +134,7 @@ class ProviderProfileInputField extends StatelessWidget {
                           onTap: onTap,
                           keyboardType: keyboardType,
                           style: ProviderTextStyles.profileInputText,
-                          cursorColor: ProviderColors.primaryButton,
+                          cursorColor: ProviderColors.brandPurple,
                           decoration: InputDecoration(
                             hintText: displayPlaceholder,
                             hintStyle: ProviderTextStyles.profileInputPlaceholder,

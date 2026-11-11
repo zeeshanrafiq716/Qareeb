@@ -233,7 +233,7 @@ class _ProviderOtpInnerContentLayoutState extends State<ProviderOtpInnerContentL
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
         content: Row(
           children: [
-            const Icon(Icons.mark_email_read_outlined, color: ProviderColors.primaryButton, size: 20.0),
+            const Icon(Icons.mark_email_read_outlined, color: ProviderColors.brandPurple, size: 20.0),
             const SizedBox(width: 10.0),
             Expanded(
               child: Text(

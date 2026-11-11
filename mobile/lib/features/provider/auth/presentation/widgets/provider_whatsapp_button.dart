@@ -60,8 +60,8 @@ class ProviderWhatsAppButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ProviderAnimatedButton(
       height: designHeight,
-      backgroundColor: ProviderColors.inputBackground, // #F2F5F4
-      foregroundColor: ProviderColors.cardTitle, // #1C2926
+      backgroundColor: const Color(0xFF2D2A3D),
+      foregroundColor: Colors.white,
       isPrimary: false,
       onTap: onTap,
       child: Padding(
@@ -221,8 +221,8 @@ class _RightChevronPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = ProviderColors.dropdownBorder // #566663
-      ..strokeWidth = 1.0
+      ..color = Colors.white
+      ..strokeWidth = 1.2
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;

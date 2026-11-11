@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
-import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Change Phone Number Button Widget
@@ -33,8 +32,8 @@ class ProviderChangePhoneButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ProviderAnimatedButton(
       height: designHeight,
-      backgroundColor: ProviderColors.inputBackground,
-      foregroundColor: ProviderColors.cardTitle,
+      backgroundColor: const Color(0xFF2D2A3D),
+      foregroundColor: Colors.white,
       isPrimary: false,
       onTap: onTap ?? () => Navigator.of(context).maybePop(),
       child: Row(
@@ -76,7 +75,7 @@ class _BackArrowPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = ProviderColors.cardTitle // #1C2926
+      ..color = Colors.white
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round

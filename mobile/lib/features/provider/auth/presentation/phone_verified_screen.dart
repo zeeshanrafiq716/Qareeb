@@ -85,12 +85,6 @@ class PhoneVerifiedScreen extends StatelessWidget {
                     ? (topSafeArea + 12.0)
                     : ProviderScreenHeader.designTop);
 
-            final double contentTop = isDesktopWeb
-                ? ProviderPhoneVerifiedContentLayout.designTop
-                : (headerTop +
-                    (ProviderPhoneVerifiedContentLayout.designTop -
-                        ProviderScreenHeader.designTop));
-
             final Widget screenContent = Opacity(
               opacity: 1.0, // opacity: 1
               child: Transform.rotate(

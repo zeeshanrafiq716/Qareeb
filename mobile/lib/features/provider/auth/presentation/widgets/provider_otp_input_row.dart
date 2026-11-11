@@ -175,7 +175,7 @@ class _ProviderOtpInputRowState extends State<ProviderOtpInputRow> {
         borderRadius: BorderRadius.circular(12.0), // border-radius: 12px
         border: isActive
             ? Border.all(
-                color: ProviderColors.primaryButton, // border: 1px solid #1D8070
+                color: ProviderColors.brandPurple, // border: 1px solid active purple
                 width: 1.0,
               )
             : null,
@@ -208,7 +208,7 @@ class _ProviderOtpInputRowState extends State<ProviderOtpInputRow> {
                 LengthLimitingTextInputFormatter(1),
               ],
               style: ProviderTextStyles.otpDigit, // Inter 400 Regular 20px #000000
-              cursorColor: ProviderColors.primaryButton,
+              cursorColor: ProviderColors.brandPurple,
               showCursor: isFocused && !isFilled,
               decoration: const InputDecoration(
                 border: InputBorder.none,

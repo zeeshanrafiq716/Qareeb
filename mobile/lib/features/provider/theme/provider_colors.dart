@@ -10,6 +10,8 @@ class ProviderColors {
 
   // Provider Renewed Brand Colors
   static const Color providerPrimary = Color(0xFF8B53FE); // indicator loader: #8B53FE
+  static const Color darkTabs = Color(0xFF2D2A3D); // #2D2A3D black tabs and buttons
+  static const Color brandPurple = Color(0xFF8B53FE); // #8B53FE purple selection color
   static const Color splashOverlay = Color(0x1AFFFFFF);   // background: #FFFFFF1A
   static const double splashBlur = 200.5124053955078;     // backdrop-filter: blur(200.5124053955078px)
   static const Color splashBackground = Color(0xFFFFFFFF); // clean white canvas
@@ -55,8 +57,10 @@ class ProviderColors {
   // Phone Number Widget Layout & Buttons
   // background: #F2F5F4;
   static const Color inputBackground = Color(0xFFF2F5F4);
-  // background: #8B53FE;
+  // background: #8B53FE; primary action button
   static const Color primaryButton = Color(0xFF8B53FE);
+  // background: #2D2A3D; secondary / single action button
+  static const Color darkButton = Color(0xFF2D2A3D);
   // border: 1px solid #566663 / placeholder
   static const Color dropdownBorder = Color(0xFF566663);
   static const Color inputPlaceholder = Color(0xFF566663);

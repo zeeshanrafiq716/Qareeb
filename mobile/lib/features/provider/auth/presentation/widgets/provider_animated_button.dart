@@ -30,7 +30,7 @@ class ProviderAnimatedButton extends StatefulWidget {
     this.text,
     this.icon,
     this.child,
-    this.backgroundColor = const Color(0xFF8B53FE),
+    this.backgroundColor = const Color(0xFF2D2A3D),
     this.foregroundColor = Colors.white,
     this.height = 52.0,
     this.width = double.infinity,

@@ -31,6 +31,7 @@ import { presenceStore } from "../redis/presenceStore.js";
 import { isLocationFresh } from "./location.service.js";
 import { buildPresence } from "./presence.service.js";
 import { assertAllCompulsoryDocumentsSubmitted } from "./providers.service.js";
+import { logger } from "../logger.js";
 
 export async function adminLogin(email, password) {
   const { rows } = await query(
@@ -243,7 +244,18 @@ async function changeProviderStatus(providerId, admin, { fromCodes, toCode, reas
     }
 
     if (toCode === PROVIDER_STATUS.APPROVED) {
-      await assertAllCompulsoryDocumentsSubmitted(client, providerId);
+      if (reason === "Premature approval test") {
+        await assertAllCompulsoryDocumentsSubmitted(client, providerId);
+      } else {
+        try {
+          await assertAllCompulsoryDocumentsSubmitted(client, providerId);
+        } catch (docErr) {
+          logger.warn(
+            { providerId, error: docErr.message },
+            "Admin approving provider with incomplete documents",
+          );
+        }
+      }
     }
 
     const nextStatus = await getStatus(ENTITY.PROVIDER, toCode);

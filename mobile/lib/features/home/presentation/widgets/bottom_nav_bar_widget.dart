@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/localization/app_locale.dart';
 
 /// Floating Bottom Navigation Bar strictly following Figma branding:
@@ -70,12 +69,7 @@ class _BottomNavBarWidgetState extends ConsumerState<BottomNavBarWidget> {
     return Container(
       width: 292.0,
       height: 65.0,
-      padding: const EdgeInsets.only(
-        top: 4.0,
-        bottom: 4.0,
-        left: 4.0,
-        right: 0.0,
-      ),
+      padding: const EdgeInsets.all(4.0),
       decoration: BoxDecoration(
         color: const Color(0xFF2D2A3D),
         borderRadius: BorderRadius.circular(60.0),
@@ -91,31 +85,37 @@ class _BottomNavBarWidgetState extends ConsumerState<BottomNavBarWidget> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 1. Home Tab (width: 96, height: 57) - Vector1.png
-          _buildTabItem(
-            index: 0,
-            label: tr.navHome,
-            iconAsset: 'assets/images/Vector1.png',
-            fallbackBuilder: (color, isActive) => StylizedHomeIcon(color: color, isFilled: isActive),
-            tr: tr,
+          // 1. Home Tab
+          Expanded(
+            child: _buildTabItem(
+              index: 0,
+              label: tr.navHome,
+              iconAsset: 'assets/images/Vector1.png',
+              fallbackBuilder: (color, isActive) => StylizedHomeIcon(color: color, isFilled: isActive),
+              tr: tr,
+            ),
           ),
 
-          // 2. Request Tab (width: 96, height: 57) - Vector2.png
-          _buildTabItem(
-            index: 1,
-            label: tr.navRequests,
-            iconAsset: 'assets/images/Vector2.png',
-            fallbackBuilder: (color, isActive) => StylizedRequestIcon(color: color),
-            tr: tr,
+          // 2. Request Tab
+          Expanded(
+            child: _buildTabItem(
+              index: 1,
+              label: tr.navRequests,
+              iconAsset: 'assets/images/Vector2.png',
+              fallbackBuilder: (color, isActive) => StylizedRequestIcon(color: color),
+              tr: tr,
+            ),
           ),
 
-          // 3. Profile Tab (width: 96, height: 57) - vector3.png
-          _buildTabItem(
-            index: 2,
-            label: tr.navProfile,
-            iconAsset: 'assets/images/vector3.png',
-            fallbackBuilder: (color, isActive) => StylizedProfileIcon(color: color),
-            tr: tr,
+          // 3. Profile Tab
+          Expanded(
+            child: _buildTabItem(
+              index: 2,
+              label: tr.navProfile,
+              iconAsset: 'assets/images/vector3.png',
+              fallbackBuilder: (color, isActive) => StylizedProfileIcon(color: color),
+              tr: tr,
+            ),
           ),
         ],
       ),
@@ -139,7 +139,7 @@ class _BottomNavBarWidgetState extends ConsumerState<BottomNavBarWidget> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeInOut,
-        width: 96.0,
+        width: double.infinity,
         height: 57.0,
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF8B53FE) : Colors.transparent,
@@ -178,6 +178,7 @@ class _BottomNavBarWidgetState extends ConsumerState<BottomNavBarWidget> {
                       width: 24.0,
                       height: 24.0,
                       fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
                       color: iconColor,
                       errorBuilder: (context, error, stackTrace) =>
                           fallbackBuilder(iconColor, isSelected),
@@ -268,6 +269,8 @@ class _StylizedHomePainter extends CustomPainter {
       // Solid filled with horizontal slit cutout
       final paint = Paint()
         ..color = color
+        ..isAntiAlias = true
+        ..filterQuality = FilterQuality.high
         ..style = PaintingStyle.fill;
 
       // Inner horizontal slit cutout
@@ -289,6 +292,7 @@ class _StylizedHomePainter extends CustomPainter {
       // Outline stroke
       final strokePaint = Paint()
         ..color = color
+        ..isAntiAlias = true
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.3
         ..strokeCap = StrokeCap.round
@@ -341,6 +345,7 @@ class _StylizedRequestPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final strokePaint = Paint()
       ..color = color
+      ..isAntiAlias = true
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.3
       ..strokeCap = StrokeCap.round
@@ -412,6 +417,7 @@ class _StylizedProfilePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final strokePaint = Paint()
       ..color = color
+      ..isAntiAlias = true
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.3
       ..strokeCap = StrokeCap.round

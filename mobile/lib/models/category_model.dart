@@ -142,6 +142,7 @@ class CategoryModel {
   }
 
   /// Official 26 Categories from user's master reference list
+  static const List<CategoryModel> defaultCategories = default26Categories;
   static const List<CategoryModel> default26Categories = [
     CategoryModel(
       id: '1',

@@ -328,8 +328,9 @@ class _ProviderBlockedScreenState extends State<ProviderBlockedScreen> {
                             child: OutlinedButton(
                               onPressed: _handleSignOut,
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF566663),
-                                side: const BorderSide(color: Color(0xFFE2E8F0)),
+                                backgroundColor: const Color(0xFF2D2A3D),
+                                foregroundColor: Colors.white,
+                                side: BorderSide.none,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12.0),
                                 ),

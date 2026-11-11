@@ -64,10 +64,10 @@ class _ProviderAnimatedLanguageToggleState
             height: widget.height,
             padding: EdgeInsets.all(pad),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF2D2A3D),
               borderRadius: BorderRadius.circular(widget.height / 2.0),
               border: Border.all(
-                color: const Color(0xFF8B53FE).withValues(alpha: 0.28),
+                color: const Color(0xFF8B53FE).withValues(alpha: 0.4),
                 width: 1.2,
               ),
               boxShadow: [
@@ -77,7 +77,7 @@ class _ProviderAnimatedLanguageToggleState
                   offset: const Offset(0, 3),
                 ),
                 const BoxShadow(
-                  color: Color(0x0F000000),
+                  color: Color(0x1F000000),
                   blurRadius: 4.0,
                   offset: Offset(0, 1),
                 ),
@@ -144,7 +144,7 @@ class _ProviderAnimatedLanguageToggleState
                                     : FontWeight.w600,
                                 color: isArabic
                                     ? Colors.white
-                                    : const Color(0xFF566663),
+                                    : Colors.white.withValues(alpha: 0.85),
                                 height: 1.15,
                               ),
                               child: const Text('عربي'),
@@ -171,7 +171,7 @@ class _ProviderAnimatedLanguageToggleState
                                     : FontWeight.w600,
                                 color: !isArabic
                                     ? Colors.white
-                                    : const Color(0xFF566663),
+                                    : Colors.white.withValues(alpha: 0.85),
                                 height: 1.15,
                                 letterSpacing: 0.3,
                               ),

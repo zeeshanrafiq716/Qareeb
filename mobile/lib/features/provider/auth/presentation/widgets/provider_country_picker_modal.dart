@@ -166,7 +166,7 @@ class _ProviderCountryPickerModalState extends State<ProviderCountryPickerModal>
                     child: TextField(
                       controller: _searchController,
                       style: ProviderTextStyles.phoneInput,
-                      cursorColor: ProviderColors.primaryButton,
+                      cursorColor: ProviderColors.brandPurple,
                       decoration: InputDecoration(
                         hintText: isArabic ? 'ابحث باسم الدولة أو رمز الاتصال...' : 'Search by country or dial code...',
                         hintStyle: ProviderTextStyles.phonePlaceholder,
@@ -247,7 +247,7 @@ class _ProviderCountryPickerModalState extends State<ProviderCountryPickerModal>
                                         fontFamily: 'Inter',
                                         fontSize: 15.0,
                                         fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                        color: isSelected ? ProviderColors.primaryButton : const Color(0xFF1C2926),
+                                        color: isSelected ? ProviderColors.brandPurple : const Color(0xFF1C2926),
                                       ),
                                     ),
                                     Text(
@@ -269,7 +269,7 @@ class _ProviderCountryPickerModalState extends State<ProviderCountryPickerModal>
                                   fontFamily: 'Inter',
                                   fontSize: 14.0,
                                   fontWeight: FontWeight.w600,
-                                  color: isSelected ? ProviderColors.primaryButton : const Color(0xFF566663),
+                                  color: isSelected ? ProviderColors.brandPurple : const Color(0xFF566663),
                                 ),
                               ),
 
@@ -279,7 +279,7 @@ class _ProviderCountryPickerModalState extends State<ProviderCountryPickerModal>
                               if (isSelected)
                                 const Icon(
                                   Icons.check_circle_rounded,
-                                  color: ProviderColors.primaryButton,
+                                  color: ProviderColors.brandPurple,
                                   size: 18.0,
                                 )
                               else

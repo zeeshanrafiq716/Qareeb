@@ -1,4 +1,3 @@
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_typography.dart';
 
@@ -153,7 +152,7 @@ class ProviderTextStyles {
   static TextStyle get whatsappButtonText => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w500,
-    color: const Color(0xFF1C2926),
+    color: const Color(0xFFFFFFFF),
     letterSpacing: 0.0,
     height: 22.0 / 14.0,
   );
@@ -198,7 +197,7 @@ class ProviderTextStyles {
   static TextStyle get changePhoneButtonText => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w500,
-    color: const Color(0xFF1C2926),
+    color: const Color(0xFFFFFFFF),
     letterSpacing: 0.0,
     height: 22.0 / 14.0,
   );
@@ -297,7 +296,7 @@ class ProviderTextStyles {
   static TextStyle get backToHomeDarkButtonText => _font(
     fontSize: 14.0,
     fontWeight: FontWeight.w500,
-    color: const Color(0xFF1C2926),
+    color: const Color(0xFFFFFFFF),
     letterSpacing: 0.0,
     height: 22.0 / 14.0,
   );

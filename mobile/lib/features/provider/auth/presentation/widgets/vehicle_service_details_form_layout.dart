@@ -7,6 +7,8 @@ import 'package:mobile/features/provider/auth/data/provider_registration_state.d
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
+import 'package:mobile/models/category_model.dart';
+import 'package:mobile/models/vehicle_type_model.dart';
 import 'package:mobile/services/backend_service.dart';
 
 /// Vehicle & Service Details Form Layout Widget
@@ -42,17 +44,17 @@ class _VehicleServiceDetailsFormLayoutState
   late final TextEditingController _vehicleColorCtrl;
   bool _isLoading = false;
   late final BackendService _backendService;
-  List<String> _liveServiceCategories = [];
-  List<String> _liveVehicleTypes = [];
+  List<String> _liveServiceCategories = CategoryModel.defaultCategories.map((c) => c.name).toList();
+  List<String> _liveVehicleTypes = VehicleTypeModel.defaultVehicleTypes.map((v) => v.name).toList();
 
   Future<void> _loadLiveCategoriesAndTypes() async {
     try {
       final results = await Future.wait([
-        _backendService.getCategories(),
-        _backendService.getVehicleTypes(),
+        _backendService.getCategories().catchError((_) => CategoryModel.defaultCategories),
+        _backendService.getVehicleTypes().catchError((_) => VehicleTypeModel.defaultVehicleTypes.map((v) => v.name).toList()),
       ]);
 
-      final cats = results[0] as List<dynamic>;
+      final cats = results[0] as List<CategoryModel>;
       final types = results[1] as List<String>;
 
       if (mounted) {
@@ -351,7 +353,7 @@ class _VehicleServiceDetailsFormLayoutState
                     ? _liveVehicleTypes
                     : (_vehicleTypeCtrl.text.isNotEmpty
                         ? [_vehicleTypeCtrl.text]
-                        : <String>[]),
+                        : VehicleTypeModel.defaultVehicleTypes.map((v) => v.localizedName(isArabic)).toList()),
                 selectedValue: _vehicleTypeCtrl.text,
                 onSelected: (val) {
                   setState(() => _vehicleTypeCtrl.text = val);
@@ -541,7 +543,7 @@ class _VehicleServiceDetailsFormLayoutState
                     ? _liveServiceCategories
                     : (_serviceCategoryCtrl.text.isNotEmpty
                         ? [_serviceCategoryCtrl.text]
-                        : ['Service']),
+                        : CategoryModel.defaultCategories.map((c) => c.localizedName(isArabic)).toList()),
                 selectedValue: _serviceCategoryCtrl.text,
                 onSelected: (val) {
                   setState(() => _serviceCategoryCtrl.text = val);

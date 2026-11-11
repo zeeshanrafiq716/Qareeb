@@ -315,7 +315,7 @@ class _ProviderContactsReceivedCardState
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? const Color(0xFF8B53FE)
-                                  : const Color(0xFFF3F2F5),
+                                  : const Color(0xFF2D2A3D),
                               borderRadius: BorderRadius.circular(20.0),
                             ),
                             alignment: Alignment.center,
@@ -324,9 +324,7 @@ class _ProviderContactsReceivedCardState
                               style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
                                 fontSize: 10.0,
                                 fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                                color: isSelected
-                                    ? const Color(0xFFFFFFFF)
-                                    : const Color(0xFF616166),
+                                color: const Color(0xFFFFFFFF),
                                 height: 1.0,
                                 letterSpacing: 0.0,
                               ),

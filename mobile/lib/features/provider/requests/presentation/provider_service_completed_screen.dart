@@ -672,7 +672,7 @@ class _ProviderServiceCompletedScreenState
                             constraints: const BoxConstraints(maxWidth: 350.0),
                             height: isCompactMobile ? 48.0 : 52.0,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF3F2F5),
+                              color: const Color(0xFF2D2A3D),
                               borderRadius: BorderRadius.circular(12.0),
                             ),
                             alignment: Alignment.center,
@@ -689,7 +689,7 @@ class _ProviderServiceCompletedScreenState
                                       : GoogleFonts.inter)(
                                     fontSize: 14.0,
                                     fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF252527),
+                                    color: const Color(0xFFFFFFFF),
                                     height: 22.0 / 14.0,
                                     letterSpacing: 0.0,
                                   ),
@@ -700,7 +700,7 @@ class _ProviderServiceCompletedScreenState
                                       ? Icons.arrow_back_rounded
                                       : Icons.arrow_forward_rounded,
                                   size: 18.0,
-                                  color: const Color(0xFF252527),
+                                  color: const Color(0xFFFFFFFF),
                                 ),
                               ],
                             ),

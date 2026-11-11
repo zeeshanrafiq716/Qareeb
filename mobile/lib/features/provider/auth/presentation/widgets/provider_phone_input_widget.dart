@@ -229,7 +229,7 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
           content: Row(
             children: [
-              const Icon(Icons.mark_email_read_outlined, color: ProviderColors.primaryButton, size: 20.0),
+              const Icon(Icons.mark_email_read_outlined, color: ProviderColors.brandPurple, size: 20.0),
               const SizedBox(width: 10.0),
               Expanded(
                 child: Text(
@@ -442,7 +442,7 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
                 setState(() {});
               },
               style: ProviderTextStyles.phoneInput,
-              cursorColor: ProviderColors.primaryButton,
+              cursorColor: ProviderColors.brandPurple,
               decoration: InputDecoration(
                 hintText: _selectedCountry.exampleNumber,
                 hintStyle: ProviderTextStyles.phonePlaceholder,

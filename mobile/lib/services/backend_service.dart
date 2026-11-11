@@ -613,15 +613,16 @@ class BackendService {
           items = data;
         }
 
-        return items
+        final list = items
             .map((item) => CategoryModel.fromJson(item as Map<String, dynamic>))
             .toList();
+        if (list.isNotEmpty) return list;
       }
     } catch (_) {
       // Server error or offline
     }
 
-    return const [];
+    return CategoryModel.defaultCategories;
   }
 
   /// Fetch admin-configured vehicle types (models with bilingual names)
@@ -643,7 +644,7 @@ class BackendService {
           items = data['data'] as List<dynamic>;
         }
 
-        return items.map((e) {
+        final list = items.map((e) {
           if (e is Map<String, dynamic>) {
             return VehicleTypeModel.fromJson(e);
           } else if (e is Map) {
@@ -652,12 +653,14 @@ class BackendService {
             return VehicleTypeModel.fromString(e.toString());
           }
         }).toList();
+
+        if (list.isNotEmpty) return list;
       }
     } catch (_) {
       // Graceful offline fallback
     }
 
-    return const [];
+    return VehicleTypeModel.defaultVehicleTypes;
   }
 
   /// Fetch admin-configured vehicle types (names only)
@@ -669,21 +672,22 @@ class BackendService {
       );
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
+        List<String> list = [];
         if (data is List) {
-          return data
+          list = data
               .map((e) => e is Map && e['name'] != null ? e['name'].toString() : e.toString())
               .toList();
         } else if (data is Map<String, dynamic> && data['data'] is List) {
-          return (data['data'] as List)
+          list = (data['data'] as List)
               .map((e) => e is Map && e['name'] != null ? e['name'].toString() : e.toString())
               .toList();
         }
+        if (list.isNotEmpty) return list;
       }
     } catch (_) {
       // Graceful offline fallback
     }
 
-    // Return empty list if no custom types returned by server (no hardcoded seed data)
-    return const [];
+    return VehicleTypeModel.defaultVehicleTypes.map((v) => v.name).toList();
   }
 }

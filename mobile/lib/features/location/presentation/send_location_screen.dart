@@ -661,7 +661,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
               );
             } else if (index == 1) {
               Clipboard.setData(
-                const ClipboardData(text: 'https://qareeb.app/location/live/track-8492'),
+                const ClipboardData(text: 'https://zesho.tech/location/live/track-8492'),
               );
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

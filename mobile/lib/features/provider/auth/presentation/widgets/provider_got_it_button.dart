@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
 import 'package:mobile/features/provider/home/presentation/provider_home_screen.dart';
-import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
 /// Provider Got It Button Widget
@@ -39,7 +38,8 @@ class ProviderGotItButton extends StatelessWidget {
     return ProviderAnimatedButton(
       onTap: onTap ?? () => _defaultOnTap(context),
       height: designHeight,
-      backgroundColor: ProviderColors.primaryButton,
+      backgroundColor: const Color(0xFF2D2A3D),
+      foregroundColor: Colors.white,
       text: title ?? (context.isArabic ? 'فهمت ذلك' : 'Got it'),
       textStyle: ProviderTextStyles.backToHomeButtonText,
     );

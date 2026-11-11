@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/api/api_client.dart';
@@ -45,11 +44,11 @@ class _ProviderOnboardingDetailsContentLayoutState
   CategoryModel? _selectedCategoryModel;
   VehicleTypeModel? _selectedVehicleTypeModel;
 
-  List<String> _adminCategories = [];
-  List<String> _adminVehicleTypes = [];
-  List<CategoryModel> _adminCategoryModels = [];
-  List<VehicleTypeModel> _adminVehicleTypeModels = [];
-  bool _isLoadingAdminOptions = true;
+  List<String> _adminCategories = CategoryModel.defaultCategories.map((c) => c.name).toList();
+  List<String> _adminVehicleTypes = VehicleTypeModel.defaultVehicleTypes.map((v) => v.name).toList();
+  List<CategoryModel> _adminCategoryModels = List.from(CategoryModel.defaultCategories);
+  List<VehicleTypeModel> _adminVehicleTypeModels = List.from(VehicleTypeModel.defaultVehicleTypes);
+  bool _isLoadingAdminOptions = false;
 
   bool _isLoading = false;
   late final BackendService _backendService;
@@ -62,16 +61,26 @@ class _ProviderOnboardingDetailsContentLayoutState
     final savedData = ProviderRegistrationStore.instance.data;
 
     // All editable input fields start 100% empty (no default text in name, vehicle color, plate, etc.)
-    _nameCtrl = TextEditingController();
+    _nameCtrl = TextEditingController(text: savedData.fullName.isNotEmpty ? savedData.fullName : '');
     _registeredPhone = savedData.phone.isNotEmpty ? savedData.phone : '';
-    _whatsappCtrl = TextEditingController();
-    _plateCtrl = TextEditingController();
-    _colorCtrl = TextEditingController();
+    _whatsappCtrl = TextEditingController(text: savedData.whatsappNumber);
+    _plateCtrl = TextEditingController(text: savedData.plateNumber);
+    _colorCtrl = TextEditingController(text: savedData.vehicleColor);
 
-    _selectedCategory = null;
-    _selectedVehicleType = null;
-    _selectedCategoryModel = null;
-    _selectedVehicleTypeModel = null;
+    _selectedCategory = savedData.serviceCategory.isNotEmpty ? savedData.serviceCategory : null;
+    _selectedVehicleType = savedData.vehicleType.isNotEmpty ? savedData.vehicleType : null;
+    _selectedCategoryModel = _selectedCategory != null
+        ? _adminCategoryModels.cast<CategoryModel?>().firstWhere(
+              (c) => c?.name == _selectedCategory,
+              orElse: () => null,
+            )
+        : null;
+    _selectedVehicleTypeModel = _selectedVehicleType != null
+        ? _adminVehicleTypeModels.cast<VehicleTypeModel?>().firstWhere(
+              (v) => v?.name == _selectedVehicleType,
+              orElse: () => null,
+            )
+        : null;
 
     _backendService = BackendService(ApiClient());
     _loadAdminOptions();
@@ -84,73 +93,74 @@ class _ProviderOnboardingDetailsContentLayoutState
 
   Future<void> _loadAdminOptions({bool silent = false, VoidCallback? onRefreshed}) async {
     try {
-      // Parallel high-speed fetch
+      // Independent parallel fetches so if one endpoint has network delay/error, other still succeeds
       final results = await Future.wait([
-        _backendService.getCategories(),
-        _backendService.getVehicleTypeModels(),
+        _backendService.getCategories().catchError((_) => CategoryModel.defaultCategories),
+        _backendService.getVehicleTypeModels().catchError((_) => VehicleTypeModel.defaultVehicleTypes),
       ]);
 
       final categories = results[0] as List<CategoryModel>;
       final vehicleTypes = results[1] as List<VehicleTypeModel>;
 
       if (mounted) {
-        final newCats = categories
-            .where((c) => c.isEnabled)
-            .map((c) => c.name)
-            .toSet()
-            .toList();
-        final newTypes = vehicleTypes
-            .where((v) => v.isEnabled)
-            .map((v) => v.name)
-            .toSet()
-            .toList();
+        final activeCats = categories.where((c) => c.isEnabled).toList();
+        final activeTypes = vehicleTypes.where((v) => v.isEnabled).toList();
 
-        final bool hasChanged = !listEquals(_adminCategories, newCats) ||
-            !listEquals(_adminVehicleTypes, newTypes);
+        final finalCats = activeCats.isNotEmpty
+            ? activeCats
+            : (_adminCategoryModels.isNotEmpty ? _adminCategoryModels : CategoryModel.defaultCategories);
+        final finalTypes = activeTypes.isNotEmpty
+            ? activeTypes
+            : (_adminVehicleTypeModels.isNotEmpty ? _adminVehicleTypeModels : VehicleTypeModel.defaultVehicleTypes);
 
-        if (hasChanged || !silent) {
-          setState(() {
-            _adminCategoryModels = categories.where((c) => c.isEnabled).toList();
-            _adminVehicleTypeModels = vehicleTypes.where((v) => v.isEnabled).toList();
-            _adminCategories = newCats;
-            _adminVehicleTypes = newTypes;
-            _isLoadingAdminOptions = false;
+        final newCats = finalCats.map((c) => c.name).toSet().toList();
+        final newTypes = finalTypes.map((v) => v.name).toSet().toList();
 
-            // Maintain model selections
-            if (_selectedCategory != null) {
-              final found = _adminCategoryModels.cast<CategoryModel?>().firstWhere(
-                    (c) => c?.name == _selectedCategory,
-                    orElse: () => null,
-                  );
-              if (found != null) {
-                _selectedCategoryModel = found;
-              } else {
-                _selectedCategory = null;
-                _selectedCategoryModel = null;
-              }
+        setState(() {
+          _adminCategoryModels = finalCats;
+          _adminVehicleTypeModels = finalTypes;
+          _adminCategories = newCats;
+          _adminVehicleTypes = newTypes;
+          _isLoadingAdminOptions = false;
+
+          // Maintain model selections
+          if (_selectedCategory != null) {
+            final found = _adminCategoryModels.cast<CategoryModel?>().firstWhere(
+                  (c) => c?.name == _selectedCategory || c?.id.toString() == _selectedCategory,
+                  orElse: () => null,
+                );
+            if (found != null) {
+              _selectedCategoryModel = found;
+              _selectedCategory = found.name;
             }
+          }
 
-            if (_selectedVehicleType != null) {
-              final found = _adminVehicleTypeModels.cast<VehicleTypeModel?>().firstWhere(
-                    (v) => v?.name == _selectedVehicleType,
-                    orElse: () => null,
-                  );
-              if (found != null) {
-                _selectedVehicleTypeModel = found;
-              } else {
-                _selectedVehicleType = null;
-                _selectedVehicleTypeModel = null;
-              }
+          if (_selectedVehicleType != null) {
+            final found = _adminVehicleTypeModels.cast<VehicleTypeModel?>().firstWhere(
+                  (v) => v?.name == _selectedVehicleType || v?.id.toString() == _selectedVehicleType,
+                  orElse: () => null,
+                );
+            if (found != null) {
+              _selectedVehicleTypeModel = found;
+              _selectedVehicleType = found.name;
             }
-          });
-        }
+          }
+        });
 
         _activeSheetUpdater?.call();
         onRefreshed?.call();
       }
     } catch (_) {
-      if (mounted && !silent) {
+      if (mounted) {
         setState(() {
+          if (_adminCategoryModels.isEmpty) {
+            _adminCategoryModels = List.from(CategoryModel.defaultCategories);
+            _adminCategories = _adminCategoryModels.map((c) => c.name).toList();
+          }
+          if (_adminVehicleTypeModels.isEmpty) {
+            _adminVehicleTypeModels = List.from(VehicleTypeModel.defaultVehicleTypes);
+            _adminVehicleTypes = _adminVehicleTypeModels.map((v) => v.name).toList();
+          }
           _isLoadingAdminOptions = false;
         });
         _activeSheetUpdater?.call();
@@ -193,9 +203,11 @@ class _ProviderOnboardingDetailsContentLayoutState
 
             final options = _adminCategoryModels.isNotEmpty
                 ? _adminCategoryModels
-                : _adminCategories
-                    .map((name) => CategoryModel(id: name, name: name, slug: name))
-                    .toList();
+                : (_adminCategories.isNotEmpty
+                    ? _adminCategories
+                        .map((name) => CategoryModel(id: name, name: name, slug: name))
+                        .toList()
+                    : CategoryModel.defaultCategories);
 
             return SafeArea(
               child: Padding(
@@ -333,9 +345,11 @@ class _ProviderOnboardingDetailsContentLayoutState
 
             final options = _adminVehicleTypeModels.isNotEmpty
                 ? _adminVehicleTypeModels
-                : _adminVehicleTypes
-                    .map((name) => VehicleTypeModel.fromString(name))
-                    .toList();
+                : (_adminVehicleTypes.isNotEmpty
+                    ? _adminVehicleTypes
+                        .map((name) => VehicleTypeModel.fromString(name))
+                        .toList()
+                    : VehicleTypeModel.defaultVehicleTypes);
 
             return SafeArea(
               child: Padding(
@@ -898,6 +912,8 @@ class _ProviderOnboardingDetailsContentLayoutState
         ProviderAnimatedButton(
           onTap: _handleContinue,
           isLoading: _isLoading,
+          backgroundColor: const Color(0xFF2D2A3D),
+          foregroundColor: Colors.white,
           text: isArabic ? 'المتابعة' : 'Continue',
           icon: Icon(
             isArabic ? Icons.arrow_back_rounded : Icons.arrow_forward_rounded,

@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// Application title
   ///
   /// In en, this message translates to:
-  /// **'QAREEB'**
+  /// **'Zesho'**
   String get appTitle;
 
   /// No description provided for @profileTitle.

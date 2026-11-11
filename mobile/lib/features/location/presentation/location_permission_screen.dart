@@ -241,7 +241,7 @@ class _LocationPermissionScreenState
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8B53FE),
+                    backgroundColor: const Color(0xFF2D2A3D),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -262,7 +262,7 @@ class _LocationPermissionScreenState
                     _handleAllowLocation();
                   },
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF8B53FE), width: 1.2),
+                    side: const BorderSide(color: Color(0xFF2D2A3D), width: 1.2),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12.0),
                     ),
@@ -272,7 +272,7 @@ class _LocationPermissionScreenState
                     style: tr.font(
                       fontSize: 14.0,
                       fontWeight: FontWeight.w500,
-                      color: const Color(0xFF8B53FE),
+                      color: const Color(0xFF2D2A3D),
                     ),
                   ),
                 ),
@@ -861,13 +861,11 @@ class _LocationPermissionScreenState
                                     width: double.infinity,
                                     height: 52.0,
                                     decoration: BoxDecoration(
-                                      color: _isLocating
-                                          ? const Color(0xFF7A45E5)
-                                          : const Color(0xFF8B53FE),
+                                      color: const Color(0xFF2D2A3D),
                                       borderRadius: BorderRadius.circular(12.0),
                                       boxShadow: const [
                                         BoxShadow(
-                                          color: Color(0x268B53FE),
+                                          color: Color(0x33000000),
                                           blurRadius: 10.0,
                                           offset: Offset(0, 4),
                                         ),
@@ -1352,8 +1350,8 @@ class _NearbyPinPainter extends CustomPainter {
 
 /// Outlined GPS crosshairs target icon matching Figma #8B53FE branding
 class _GpsCrosshairsPainter extends CustomPainter {
-  final Color color;
-  const _GpsCrosshairsPainter({this.color = const Color(0xFF8B53FE)});
+  final Color color = const Color(0xFF8B53FE);
+  const _GpsCrosshairsPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1409,8 +1407,8 @@ class _GpsCrosshairsPainter extends CustomPainter {
 
 /// Fast service lightning bolt icon matching Figma #8B53FE branding
 class _FastServiceBoltPainter extends CustomPainter {
-  final Color color;
-  const _FastServiceBoltPainter({this.color = const Color(0xFF8B53FE)});
+  final Color color = const Color(0xFF8B53FE);
+  const _FastServiceBoltPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1439,8 +1437,8 @@ class _FastServiceBoltPainter extends CustomPainter {
 
 /// Privacy shield icon with checkmark matching Figma #8B53FE branding
 class _PrivacyShieldPainter extends CustomPainter {
-  final Color color;
-  const _PrivacyShieldPainter({this.color = const Color(0xFF8B53FE)});
+  final Color color = const Color(0xFF8B53FE);
+  const _PrivacyShieldPainter();
 
   @override
   void paint(Canvas canvas, Size size) {

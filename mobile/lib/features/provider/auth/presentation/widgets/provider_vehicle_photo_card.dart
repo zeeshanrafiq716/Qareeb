@@ -78,7 +78,7 @@ class ProviderVehiclePhotoCard extends StatelessWidget {
           height: cardHeight,
           child: CustomPaint(
             painter: const _DashedCardBorderPainter(
-              color: ProviderColors.primaryButton, // border: 1px dashed #1D8070
+              color: ProviderColors.brandPurple, // border: 1px dashed purple
               strokeWidth: 1.0,
               radius: 16.0,
               dashLength: 4.0,
@@ -350,7 +350,7 @@ class _VehiclePhotoFallback extends StatelessWidget {
         child: Icon(
           Icons.local_shipping_outlined,
           size: 32.0,
-          color: ProviderColors.primaryButton.withValues(alpha: 0.60),
+          color: ProviderColors.brandPurple.withValues(alpha: 0.60),
         ),
       ),
     );

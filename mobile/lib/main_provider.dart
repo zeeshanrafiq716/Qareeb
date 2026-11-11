@@ -103,11 +103,22 @@ class QareebProviderApp extends ConsumerWidget {
         scaffoldBackgroundColor: ProviderColors.background,
         primaryColor: ProviderColors.mintAccent,
         colorScheme: const ColorScheme.dark(
-          primary: ProviderColors.mintAccent,
-          secondary: ProviderColors.mintGlow,
-          surface: Color(0xFF253330),
-          onPrimary: ProviderColors.background,
+          primary: Color(0xFF8B53FE),
+          secondary: Color(0xFF8B53FE),
+          surface: Color(0xFF2D2A3D),
+          onPrimary: Colors.white,
           onSurface: Colors.white,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2D2A3D),
+            foregroundColor: Colors.white,
+          ),
+        ),
+        tabBarTheme: const TabBarThemeData(
+          indicatorColor: Color(0xFF8B53FE),
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white,
         ),
       ),
       initialRoute: '/',

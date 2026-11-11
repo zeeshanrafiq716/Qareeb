@@ -5,7 +5,6 @@ import 'package:mobile/features/provider/auth/presentation/widgets/provider_anim
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_auth_card.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_branding_header.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_splash_background.dart';
-import 'package:mobile/features/provider/theme/provider_colors.dart';
 
 /// Provider Phone Number Verification Screen (2nd Screen)
 /// Implements exact branding specifications:

@@ -1,7 +1,7 @@
 {
   "@@locale": "ar",
 
-  "appTitle": "قريب",
+  "appTitle": "Zesho",
   "profileTitle": "الملف الشخصي",
   "profileSubtitle": "إدارة حسابك وتفضيلاتك بكل سهولة",
   "verifiedUser": "مستخدم موثق",
@@ -139,7 +139,7 @@
 
   "serviceCompleteHeader": "اكتملت الخدمة",
   "serviceCompleted": "تمت الخدمة بنجاح!",
-  "requestCompletedSuccess": "تم إكمال طلبك بنجاح\nشكراً لاختيارك تطبيق قريب",
+  "requestCompletedSuccess": "تم إكمال طلبك بنجاح\nشكراً لاختيارك تطبيق Zesho",
   "reviewsCount": "({count} تقييم)",
   "completedOn": "تاريخ الإكمال",
   "sampleCompletedDateTime": "12 سبتمبر 2026، 9:58 م",

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_back_to_home_button.dart';
-import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_phone_verified_first_part.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_step_cards_list.dart';
 

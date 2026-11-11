@@ -235,7 +235,7 @@ class _UploadBoxWidget extends StatelessWidget {
             ),
             decoration: BoxDecoration(
               color: isUploaded
-                  ? ProviderColors.primaryButton.withValues(alpha: 0.08)
+                  ? ProviderColors.brandPurple.withValues(alpha: 0.08)
                   : const Color(0xFFF2F5F4), // background: #F2F5F4
               borderRadius: BorderRadius.circular(8.0), // border-radius: 8px
             ),
@@ -277,7 +277,7 @@ class _UploadBoxWidget extends StatelessWidget {
                     style: ProviderTextStyles.stepCardSubtitle.copyWith(
                       fontSize: 9.0,
                       fontWeight: FontWeight.w600,
-                      color: ProviderColors.primaryButton,
+                      color: ProviderColors.brandPurple,
                     ),
                     textAlign: TextAlign.center,
                   ),
