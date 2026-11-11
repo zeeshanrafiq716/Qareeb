@@ -283,8 +283,23 @@ class BackendService {
         }
       }
     } on DioException catch (dioErr) {
-      final code = dioErr.response?.statusCode;
-      if (code == 401 || code == 404) {
+      final resData = dioErr.response?.data;
+      final errorCode = resData is Map<String, dynamic>
+          ? (resData['error'] is Map<String, dynamic>
+              ? resData['error']['code']?.toString()
+              : resData['code']?.toString())
+          : null;
+      final errorMessage = resData is Map<String, dynamic>
+          ? (resData['error'] is Map<String, dynamic>
+              ? resData['error']['message']?.toString()
+              : resData['message']?.toString())
+          : null;
+
+      // Only treat as deleted if backend explicitly signaled ACCOUNT_DELETED or deleted by administration
+      if (errorCode == 'ACCOUNT_DELETED' ||
+          errorCode == 'PROVIDER_DELETED' ||
+          (errorMessage != null &&
+              errorMessage.toLowerCase().contains('deleted by admin'))) {
         return const ProviderAccountState(
           status: ProviderAccountStatus.deleted,
           rawStatus: 'DELETED',

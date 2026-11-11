@@ -27,7 +27,9 @@ export async function requireProvider(req, _res, next) {
       [payload.sub],
     );
 
-    if (!rows[0]) throw new UnauthorizedError("Provider not found");
+    if (!rows[0]) {
+      throw new AppError(401, "Your provider account has been deleted by administration", "ACCOUNT_DELETED");
+    }
     req.user = payload;
     req.provider = rows[0];
     next();

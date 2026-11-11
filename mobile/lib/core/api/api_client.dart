@@ -36,6 +36,12 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
+          final effectiveToken = authToken ?? _globalAuthToken;
+          if (effectiveToken != null &&
+              effectiveToken.isNotEmpty &&
+              !options.headers.containsKey('Authorization')) {
+            options.headers['Authorization'] = 'Bearer $effectiveToken';
+          }
           developer.log('--> ${options.method} ${options.uri}', name: 'ApiClient');
           return handler.next(options);
         },
