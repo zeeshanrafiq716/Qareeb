@@ -821,14 +821,17 @@ class CountryModel {
     ),
   ];
 
-  static CountryModel findByCode(String code) {
+  static CountryModel findByCode(String? code) {
+    if (code == null || code.isEmpty) return defaultCountry;
+    final normalized = code.toUpperCase();
     return allCountries.firstWhere(
-      (c) => c.code.toUpperCase() == code.toUpperCase(),
+      (c) => c.code.toUpperCase() == normalized,
       orElse: () => defaultCountry,
     );
   }
 
-  static CountryModel findByDialCode(String dialCode) {
+  static CountryModel findByDialCode(String? dialCode) {
+    if (dialCode == null || dialCode.isEmpty) return defaultCountry;
     return allCountries.firstWhere(
       (c) => c.dialCode == dialCode,
       orElse: () => defaultCountry,

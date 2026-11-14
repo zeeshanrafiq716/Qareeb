@@ -2,7 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/localization/app_locale.dart';
+import '../../../core/security/biometric_helper.dart';
 import '../../../providers/backend_provider.dart';
 import '../../customer/auth/data/customer_auth_store.dart';
 import '../../customer/auth/presentation/customer_signup_screen.dart';
@@ -27,6 +30,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late AnimationController _loadingProgressController;
 
   Timer? _navTimer;
+  bool _requiresBiometricUnlock = false;
 
   @override
   void initState() {
@@ -70,7 +74,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     if (!mounted) return;
 
     if (isSignedUp) {
-      _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToHome);
+      final prefs = await SharedPreferences.getInstance();
+      final biometricEnabled = prefs.getBool('customer_biometric_login') ?? false;
+
+      if (biometricEnabled) {
+        _navTimer = Timer(const Duration(milliseconds: 1600), () async {
+          if (!mounted) return;
+          final tr = ref.read(translationsProvider);
+          final authenticated = await BiometricHelper.authenticate(
+            localizedReason: tr.isArabic
+                ? 'يرجى تأكيد الهوية بالبصمة لفتح تطبيق زشو'
+                : 'Authenticate with Face ID or fingerprint to unlock Zesho',
+          );
+          if (!mounted) return;
+          if (authenticated) {
+            _navigateToHome();
+          } else {
+            setState(() {
+              _requiresBiometricUnlock = true;
+            });
+          }
+        });
+      } else {
+        _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToHome);
+      }
     } else {
       _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToCustomerSignup);
     }
@@ -213,6 +240,63 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         },
                       ),
                     ),
+
+                    if (_requiresBiometricUnlock)
+                      Positioned(
+                        bottom: (isDesktopWeb ? 12 : (MediaQuery.of(context).padding.bottom + 8)) + 60,
+                        left: 20,
+                        right: 20,
+                        child: Center(
+                          child: InkWell(
+                            onTap: () async {
+                              HapticFeedback.lightImpact();
+                              final tr = ref.read(translationsProvider);
+                              final authenticated = await BiometricHelper.authenticate(
+                                localizedReason: tr.isArabic
+                                    ? 'يرجى تأكيد الهوية بالبصمة لفتح تطبيق زشو'
+                                    : 'Authenticate with biometrics to unlock Zesho',
+                              );
+                              if (authenticated && mounted) {
+                                _navigateToHome();
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(16.0),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF252527),
+                                borderRadius: BorderRadius.circular(16.0),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.14),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 22.0),
+                                  const SizedBox(width: 8.0),
+                                  Text(
+                                    ref.watch(translationsProvider).isArabic
+                                        ? 'فتح القفل بالبصمة'
+                                        : 'Unlock with Biometrics',
+                                    style: (ref.watch(translationsProvider).isArabic
+                                            ? GoogleFonts.cairo
+                                            : GoogleFonts.inter)(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

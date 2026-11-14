@@ -44,6 +44,9 @@ dependencies:
   google_maps_flutter: ^2.19.0
   geolocator: ^14.1.2
   image_picker: ^1.2.4
+  crypto: ^3.0.6
+  local_auth: ^3.0.2
+  device_info_plus: ^13.3.0
 
 dev_dependencies:
   flutter_test:

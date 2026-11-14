@@ -9,6 +9,7 @@ import '../../../../models/country_model.dart';
 import '../../../../services/backend_service.dart';
 import '../../../provider/auth/data/provider_registration_state.dart';
 import '../../../provider/auth/presentation/phone_verification_screen.dart';
+import '../../../provider/auth/presentation/widgets/provider_animated_button.dart';
 import '../../../provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import '../../../provider/auth/presentation/widgets/provider_country_picker_modal.dart';
 import '../data/customer_auth_store.dart';
@@ -71,6 +72,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen> {
   }
 
   Future<void> _handleSignup() async {
+    FocusScope.of(context).unfocus();
     final name = _nameController.text.trim();
     final phone = _phoneController.text.trim().replaceAll(RegExp(r'\s+'), '');
     final isArabic = context.isArabic;
@@ -542,51 +544,26 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen> {
 
                           const SizedBox(height: 28.0),
 
-                          // 3. Continue / Sign Up Button (Branded Black Button with White Text)
-                          SizedBox(
-                            width: double.infinity,
+                          // 3. Continue / Sign Up Button (Animated Branded Button - Never Disappears On Click)
+                          ProviderAnimatedButton(
                             height: 52.0,
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _handleSignup,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF252527),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shadowColor: Colors.transparent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                ),
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      width: 22.0,
-                                      height: 22.0,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          isArabic ? 'متابعة' : 'Continue',
-                                          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                            fontSize: 15.0,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8.0),
-                                        Icon(
-                                          isArabic
-                                              ? Icons.arrow_back_rounded
-                                              : Icons.arrow_forward_rounded,
-                                          size: 18.0,
-                                          color: Colors.white,
-                                        ),
-                                      ],
-                                    ),
+                            isLoading: _isLoading,
+                            backgroundColor: const Color(0xFF252527),
+                            foregroundColor: Colors.white,
+                            borderRadius: BorderRadius.circular(12.0),
+                            onTap: _isLoading ? null : _handleSignup,
+                            text: isArabic ? 'متابعة' : 'Continue',
+                            textStyle: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                              fontSize: 15.0,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                            icon: Icon(
+                              isArabic
+                                  ? Icons.arrow_back_rounded
+                                  : Icons.arrow_forward_rounded,
+                              size: 18.0,
+                              color: Colors.white,
                             ),
                           ),
 

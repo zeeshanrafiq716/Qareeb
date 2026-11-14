@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/core/api/api_client.dart';
+import 'package:mobile/core/security/biometric_helper.dart';
+import 'package:mobile/core/security/device_session_service.dart';
 import 'package:mobile/services/backend_service.dart';
 import 'package:mobile/features/customer/auth/data/customer_auth_store.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
@@ -49,6 +51,45 @@ void main() {
       // Disable Provider 2FA
       await prefs.setBool('provider_2fa_enabled', false);
       expect(prefs.getBool('provider_2fa_enabled'), isFalse);
+    });
+  });
+
+  group('Biometric Authentication & Device Session Management Tests', () {
+    test('BiometricHelper availability check returns without throwing', () async {
+      final available = await BiometricHelper.isBiometricsAvailable();
+      expect(available, isA<bool>());
+    });
+
+    test('DeviceSessionService manages active sessions and sign-outs', () async {
+      final currentDevice = await DeviceSessionService.resolveCurrentDevice();
+      expect(currentDevice.id, isNotEmpty);
+      expect(currentDevice.name, isNotEmpty);
+      expect(currentDevice.isCurrent, isTrue);
+
+      final sessions = await DeviceSessionService.getActiveSessions();
+      expect(sessions, isNotEmpty);
+      expect(sessions.first.isCurrent, isTrue);
+
+      // We should have seeded secondary sessions
+      final otherCountBefore = sessions.where((s) => !s.isCurrent).length;
+      expect(otherCountBefore, greaterThan(0));
+
+      // Sign out individual remote session
+      final remoteDevice = sessions.firstWhere((s) => !s.isCurrent);
+      final didSignOutOne = await DeviceSessionService.signOutDevice(remoteDevice.id);
+      expect(didSignOutOne, isTrue);
+
+      final sessionsAfterOne = await DeviceSessionService.getActiveSessions();
+      expect(sessionsAfterOne.any((s) => s.id == remoteDevice.id), isFalse);
+
+      // Sign out all remaining other devices
+      final removed = await DeviceSessionService.signOutOtherDevices();
+      expect(removed, greaterThanOrEqualTo(0));
+
+      final finalSessions = await DeviceSessionService.getActiveSessions();
+      // Only current device remains
+      expect(finalSessions.length, equals(1));
+      expect(finalSessions.first.isCurrent, isTrue);
     });
   });
 

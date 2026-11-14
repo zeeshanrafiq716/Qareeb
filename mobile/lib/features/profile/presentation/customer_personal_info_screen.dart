@@ -9,6 +9,7 @@ import '../../../core/localization/app_locale.dart';
 import '../../../models/country_model.dart';
 import '../../../services/profile_stats_service.dart';
 import '../../customer/auth/data/customer_auth_store.dart';
+import '../../provider/auth/presentation/widgets/provider_animated_button.dart';
 import '../../provider/auth/presentation/widgets/provider_country_picker_modal.dart';
 
 /// Customer Personal Information Settings Screen
@@ -672,38 +673,24 @@ class _CustomerPersonalInfoScreenState
 
                           const SizedBox(height: 32.0),
 
-                          // Save Changes Button (Branded Black Button with White Text)
-                          SizedBox(
-                            width: double.infinity,
+                          // Save Changes Button (Animated Branded Button - Never Disappears On Click)
+                          ProviderAnimatedButton(
                             height: 52.0,
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _handleSave,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF252527),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shadowColor: Colors.transparent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                ),
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      width: 22.0,
-                                      height: 22.0,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : Text(
-                                      isArabic ? 'حفظ التغييرات' : 'Save Changes',
-                                      style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                        fontSize: 15.0,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
+                            isLoading: _isLoading,
+                            backgroundColor: const Color(0xFF252527),
+                            foregroundColor: Colors.white,
+                            borderRadius: BorderRadius.circular(12.0),
+                            onTap: _isLoading ? null : _handleSave,
+                            text: isArabic ? 'حفظ التغييرات' : 'Save Changes',
+                            textStyle: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                              fontSize: 15.0,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                            icon: const Icon(
+                              Icons.check_rounded,
+                              size: 18.0,
+                              color: Colors.white,
                             ),
                           ),
 

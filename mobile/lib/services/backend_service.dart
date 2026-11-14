@@ -243,7 +243,7 @@ class BackendService {
             ? resData['data'] as Map<String, dynamic>
             : (resData is Map<String, dynamic> ? resData : <String, dynamic>{});
 
-        final rawStatus = profile['status']?.toString().toUpperCase() ?? '';
+        final rawStatus = (profile['status']?.toString() ?? '').toUpperCase();
         final statusReason = profile['statusReason']?.toString() ?? '';
 
         if (rawStatus == 'BLOCKED') {
