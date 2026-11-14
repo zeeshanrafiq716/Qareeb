@@ -119,3 +119,30 @@ publicRoutes.post(
     ok(res, await authService.verifyOtp(req.body.phone, req.body.otp));
   }),
 );
+
+publicRoutes.post(
+  "/support/tickets",
+  asyncHandler(async (req, res) => {
+    const { category, description, phone, name, photos, source } = req.body;
+    if (!description || !description.trim()) {
+      return res.status(400).json({ success: false, error: "Description is required" });
+    }
+    const ticketNumber = `TKT-${Math.floor(100000 + Math.random() * 900000)}`;
+    const { rows } = await query(
+      `INSERT INTO support_tickets (ticket_number, category, description, customer_phone, customer_name, photos, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, ticket_number, category, description, customer_phone, customer_name, photos, status, source, created_at`,
+      [
+        ticketNumber,
+        category || "General Support",
+        description.trim(),
+        phone || null,
+        name || null,
+        JSON.stringify(photos || []),
+        source || "customer_mobile",
+      ]
+    );
+
+    return ok(res, rows[0], 201);
+  }),
+);

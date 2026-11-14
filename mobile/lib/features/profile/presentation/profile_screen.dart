@@ -647,11 +647,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 },
                               ),
 
-                              // 8. Logout Button (Only on Provider Side after card tabs)
-                              if (widget.isProvider) ...[
-                                const SizedBox(height: 12.0),
-                                _buildLogoutButton(context, tr, isArabic),
-                              ],
+                              // 8. Logout Button (Available after last card on both Customer and Provider)
+                              const SizedBox(height: 10.0),
+                              _buildLogoutButton(context, tr, isArabic),
 
                               const SizedBox(height: 120.0), // Generous clearance for bottom nav bar
                             ],
@@ -800,20 +798,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  /// Top Profile Section with large centered avatar, photo picker, name, verified badge, and real reviews rating
+  /// Top Profile Section with large centered avatar, photo picker, name, verified badge, and phone number
   Widget _buildTopProfileSection(BuildContext context, AppTranslations tr, bool isArabic) {
     final String displayName;
+    final String displayPhone;
     if (widget.isProvider) {
       final String providerName = ProviderRegistrationStore.instance.data.fullName.trim();
       displayName = providerName.isNotEmpty
           ? providerName
           : (isArabic ? 'شريك زشو' : 'Zesho Partner');
+      displayPhone = ProviderRegistrationStore.instance.data.phone.trim();
     } else {
       final storeName = CustomerAuthStore.instance.fullName.trim();
       final name = storeName.isNotEmpty ? storeName : _customerName;
       displayName = name.isNotEmpty
           ? name
           : (isArabic ? 'عميل زشو' : 'Zesho User');
+      final storePhone = CustomerAuthStore.instance.phone.trim();
+      displayPhone = storePhone;
     }
 
     final bool hasCustomPhoto = _stats.photoPath != null &&
@@ -967,39 +969,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
 
-        // Real Rating & Reviews row on Provider side, or Customer Phone row on Customer side
-        if (widget.isProvider) ...[
-          const SizedBox(height: 6.0),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.star_rounded,
-                size: 18.0,
-                color: Color(0xFFF59E0B),
-              ),
-              const SizedBox(width: 4.0),
-              Text(
-                _stats.rating.toStringAsFixed(1),
-                style: tr.font(
-                  fontSize: 14.0,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1C2926),
-                ),
-              ),
-              Text(
-                isArabic ? ' (${_stats.reviewsCount} تقييم)' : ' (${_stats.reviewsCount} reviews)',
-                style: tr.font(
-                  fontSize: 13.0,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF566663),
-                ),
-              ),
-            ],
-          ),
-        ] else if (CustomerAuthStore.instance.phone.isNotEmpty) ...[
+        // User Phone row (Fake reviews removed after provider name)
+        if (displayPhone.isNotEmpty) ...[
           const SizedBox(height: 6.0),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -1012,11 +983,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               const SizedBox(width: 4.0),
               Text(
-                CustomerAuthStore.instance.phone,
+                displayPhone,
                 style: GoogleFonts.inter(
                   fontSize: 13.0,
                   fontWeight: FontWeight.w500,
                   color: const Color(0xFF616166),
+                  letterSpacing: 0.3,
                 ),
               ),
             ],
@@ -1244,12 +1216,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  /// Logout Button widget exclusively for the Provider side
+  /// Logout Button widget displayed after the last card
   Widget _buildLogoutButton(BuildContext context, AppTranslations tr, bool isArabic) {
     final String logoutText = isArabic ? 'تسجيل الخروج' : 'Log Out';
     final String logoutSubtitle = isArabic
-        ? 'تسجيل الخروج من حساب مزود الخدمة'
-        : 'Sign out from provider account';
+        ? (widget.isProvider
+            ? 'تسجيل الخروج من حساب مزود الخدمة'
+            : 'تسجيل الخروج والعودة لشاشة البداية')
+        : (widget.isProvider
+            ? 'Sign out from provider account'
+            : 'Sign out and return to welcome');
 
     return Container(
       decoration: BoxDecoration(
@@ -1271,7 +1247,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          key: const Key('provider_profile_logout_button'),
+          key: const Key('profile_logout_button'),
           borderRadius: BorderRadius.circular(16.0),
           onTap: () => _showLogoutConfirmation(context, tr, isArabic),
           child: Padding(
@@ -1343,7 +1319,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  /// Confirmation dialog before logging out from provider account
+  /// Confirmation dialog before logging out
   void _showLogoutConfirmation(BuildContext context, AppTranslations tr, bool isArabic) {
     HapticFeedback.lightImpact();
     showDialog(
@@ -1361,8 +1337,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
         content: Text(
           isArabic
-              ? 'هل أنت متأكد من رغبتك في تسجيل الخروج من حساب مزود الخدمة؟'
-              : 'Are you sure you want to log out from your provider account?',
+              ? (widget.isProvider
+                  ? 'هل أنت متأكد من رغبتك في تسجيل الخروج من حساب مزود الخدمة؟'
+                  : 'هل أنت متأكد من رغبتك في تسجيل الخروج من حسابك؟')
+              : (widget.isProvider
+                  ? 'Are you sure you want to log out from your provider account?'
+                  : 'Are you sure you want to log out from your account?'),
           style: tr.font(
             fontSize: 14.0,
             color: const Color(0xFF566663),
@@ -1384,8 +1364,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(dialogCtx).pop();
-              await ProviderRegistrationStore.instance.clear();
-              await ProviderRegistrationStore.instance.setActiveAppMode('customer');
+              if (widget.isProvider) {
+                await ProviderRegistrationStore.instance.clear();
+                await ProviderRegistrationStore.instance.setActiveAppMode('customer');
+              } else {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.remove('customer_token');
+                await prefs.remove('auth_token');
+                await prefs.remove('user_id');
+                await prefs.remove('customer_name');
+                await prefs.remove('customer_phone');
+                await ProviderRegistrationStore.instance.setActiveAppMode('customer');
+              }
               if (!context.mounted) return;
               Navigator.of(context).pushAndRemoveUntil(
                 PageRouteBuilder(

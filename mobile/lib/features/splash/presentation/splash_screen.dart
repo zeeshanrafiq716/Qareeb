@@ -75,17 +75,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     if (isSignedUp) {
       final prefs = await SharedPreferences.getInstance();
-      final biometricEnabled = prefs.getBool('customer_biometric_login') ?? false;
+      final biometricEnabled = prefs.getBool('customer_biometric_login') ?? true;
 
       if (biometricEnabled) {
-        _navTimer = Timer(const Duration(milliseconds: 1600), () async {
+        _navTimer = Timer(const Duration(milliseconds: 1400), () async {
           if (!mounted) return;
           final tr = ref.read(translationsProvider);
           final authenticated = await BiometricHelper.authenticate(
             context: context,
             localizedReason: tr.isArabic
-                ? 'يرجى تأكيد الهوية بالبصمة لفتح تطبيق زشو'
-                : 'Authenticate with Face ID or fingerprint to unlock Zesho',
+                ? 'يرجى تأكيد الهوية بالبصمة لفتح تطبيق قريب'
+                : 'Authenticate with Face ID or fingerprint to unlock Qareeb',
           );
           if (!mounted) return;
           if (authenticated) {
@@ -255,8 +255,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                               final authenticated = await BiometricHelper.authenticate(
                                 context: context,
                                 localizedReason: tr.isArabic
-                                    ? 'يرجى تأكيد الهوية بالبصمة لفتح تطبيق زشو'
-                                    : 'Authenticate with biometrics to unlock Zesho',
+                                    ? 'يرجى تأكيد الهوية بالبصمة لفتح تطبيق قريب'
+                                    : 'Authenticate with biometrics to unlock Qareeb',
                               );
                               if (authenticated && mounted) {
                                 _navigateToHome();
@@ -266,12 +266,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF252527),
+                                color: const Color(0xFF8B53FE),
                                 borderRadius: BorderRadius.circular(16.0),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.14),
-                                    blurRadius: 12,
+                                    color: const Color(0xFF8B53FE).withValues(alpha: 0.35),
+                                    blurRadius: 14,
                                     offset: const Offset(0, 4),
                                   ),
                                 ],

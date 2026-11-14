@@ -289,6 +289,26 @@ export async function deleteCityApi(id) {
   return response.data?.data || response.data
 }
 
+export async function fetchReportsApi(params = {}) {
+  const response = await apiClient.get('/admin/reports', { params })
+  return Array.isArray(response.data?.data)
+    ? response.data.data
+    : Array.isArray(response.data)
+    ? response.data
+    : []
+}
+
+export async function fetchReportsStatsApi() {
+  const response = await apiClient.get('/admin/reports/stats')
+  return response.data?.data || response.data || { open: 0, resolved: 0, total: 0 }
+}
+
+export async function patchReportStatusApi(id, data = {}) {
+  const response = await apiClient.patch(`/admin/reports/${id}/status`, data)
+  return response.data?.data || response.data
+}
+
+
 
 
 

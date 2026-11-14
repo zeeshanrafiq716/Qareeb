@@ -32,14 +32,14 @@ class BiometricHelper {
   }
 
   /// Triggers Face ID or Fingerprint prompt with localized reason.
-  /// On real Android/iOS mobile devices: triggers real OS biometric sensor.
+  /// On real Android/iOS mobile devices: triggers real OS native biometric sensor (BiometricPrompt / LocalAuthentication).
   /// On Web/Desktop: provides an interactive UI dialog to test Face ID / Fingerprint simulation.
   static Future<bool> authenticate({
     required String localizedReason,
     BuildContext? context,
     bool stickyAuth = true,
   }) async {
-    // 1. Web or Desktop preview simulation modal
+    // 1. Web simulation modal (Web environment lacks OS biometric sensor)
     if (kIsWeb) {
       if (context != null && context.mounted) {
         return await _showWebBiometricModal(context, localizedReason);
@@ -47,24 +47,43 @@ class BiometricHelper {
       return true;
     }
 
-    // 2. Real Native Device Biometric sensor
+    // 2. Real Native Device Biometric sensor (Android / iOS)
     try {
       final bool isAvailable = await isBiometricsAvailable();
       if (!isAvailable) {
+        // Fallback simulation modal only if hardware has no enrolled biometrics
         if (context != null && context.mounted) {
           return await _showWebBiometricModal(context, localizedReason);
         }
-        return true;
+        return false;
       }
 
-      return await _auth.authenticate(
+      // Triggers real OS biometric dialog (BiometricPrompt on Android, LAContext on iOS)
+      final bool didAuthenticate = await _auth.authenticate(
         localizedReason: localizedReason,
         persistAcrossBackgrounding: stickyAuth,
-        biometricOnly: false,
+        biometricOnly: false, // Allows device PIN/pattern fallback if sensor fails
+        sensitiveTransaction: false,
       );
+
+      return didAuthenticate;
+    } on LocalAuthException catch (e) {
+      debugPrint('Real biometric LocalAuth error: ${e.code} - ${e.description}');
+      // Fallback only if hardware is un-enrolled on an emulator
+      if ((e.code == LocalAuthExceptionCode.noBiometricsEnrolled ||
+              e.code == LocalAuthExceptionCode.noCredentialsSet ||
+              e.code == LocalAuthExceptionCode.noBiometricHardware) &&
+          context != null &&
+          context.mounted) {
+        return await _showWebBiometricModal(context, localizedReason);
+      }
+      return false;
     } on PlatformException catch (e) {
-      debugPrint('Biometric authentication error: ${e.code} - ${e.message}');
-      if (context != null && context.mounted) {
+      debugPrint('Real biometric authentication error: ${e.code} - ${e.message}');
+      // Fallback only if hardware is un-enrolled on an emulator
+      if ((e.code == 'NotAvailable' || e.code == 'NotEnrolled' || e.code == 'PasscodeNotSet') &&
+          context != null &&
+          context.mounted) {
         return await _showWebBiometricModal(context, localizedReason);
       }
       return false;

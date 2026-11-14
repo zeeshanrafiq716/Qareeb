@@ -570,9 +570,11 @@ export function ProviderDirectoryView({
                 </p>
               </div>
             ) : (
-              filteredProviders.map((p) => {
+              filteredProviders.map((p, idx) => {
                 const CategoryIcon = p.categoryIcon || Disc
                 const isSelected = selectedRows.includes(p.id)
+                // Only open upwards if genuinely in the lower half of a longer table (never for top rows 0, 1, 2)
+                const isBottomRow = filteredProviders.length >= 4 && idx >= 3 && idx >= filteredProviders.length - 2
 
                 return (
                   <div
@@ -582,7 +584,7 @@ export function ProviderDirectoryView({
                     }}
                     className={`w-full px-5 flex items-center shrink-0 border-b border-[#F0EFF2] transition-colors hover:bg-[#FAF9FD] ${
                       isSelected ? 'bg-[#F9F7FE]' : 'bg-white'
-                    }`}
+                    } ${activeRowMenu === p.id ? 'relative z-30' : 'relative z-0'}`}
                   >
                     <div className="w-[32px] flex items-center justify-start shrink-0">
                       <input
@@ -707,7 +709,11 @@ export function ProviderDirectoryView({
                         </button>
 
                         {activeRowMenu === p.id && (
-                          <div className="absolute right-0 mt-1 w-44 bg-white border border-[#EFF0ED] rounded-xl shadow-lg py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100">
+                          <div
+                            className={`absolute right-0 w-44 bg-white border border-[#EFF0ED] rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 ${
+                              isBottomRow ? 'bottom-full mb-1' : 'top-full mt-1'
+                            }`}
+                          >
                             <button
                               type="button"
                               onClick={() => {

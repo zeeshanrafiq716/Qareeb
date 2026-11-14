@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../services/backend_service.dart';
@@ -230,7 +231,12 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                             else
                               _buildCustomerTabContent(context, isArabic),
 
-                            const SizedBox(height: 80.0),
+                            SizedBox(
+                              height: math.max(
+                                MediaQuery.of(context).padding.bottom + 64.0,
+                                88.0,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -398,27 +404,32 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
-                padding: const EdgeInsets.symmetric(vertical: 9.0),
+                padding: const EdgeInsets.symmetric(vertical: 9.0, horizontal: 4.0),
                 decoration: BoxDecoration(
                   color: isSelected ? const Color(0xFF8B53FE) : Colors.transparent,
                   borderRadius: BorderRadius.circular(10.0),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: const Color(0xFF8B53FE).withValues(alpha: 0.25),
-                            blurRadius: 4.0,
-                            offset: const Offset(0, 1),
+                            color: const Color(0xFF8B53FE).withValues(alpha: 0.35),
+                            blurRadius: 6.0,
+                            offset: const Offset(0, 1.5),
                           ),
                         ]
                       : null,
                 ),
                 child: Center(
-                  child: Text(
-                    tabLabels[index],
-                    style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                      fontSize: 11.5,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: Colors.white,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      tabLabels[index],
+                      maxLines: 1,
+                      style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                        fontSize: 12.0,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected ? Colors.white : const Color(0xFFD1D5DB),
+                        letterSpacing: isSelected ? 0.2 : 0.0,
+                      ),
                     ),
                   ),
                 ),
@@ -675,13 +686,6 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 ? 'مشاركة إحداثيات دقيقة لضمان وصول مزود الخدمة إلى موقعك بسرعة'
                 : 'Share exact coordinates to ensure accurate vehicle recovery arrival',
             value: _preciseLocation,
-            badge: _preciseLocation
-                ? _buildStatusPill(
-                    isArabic ? 'دقيق' : 'Active',
-                    const Color(0xFF059669),
-                    const Color(0xFFECFDF5),
-                  )
-                : null,
             onChanged: (val) => _toggleHighPrecisionGps(val, isArabic),
             isArabic: isArabic,
           ),
@@ -693,13 +697,6 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 ? 'إرسال رابط تتبع مباشر لجهات الاتصال الموثوقة أثناء الطلب النشط'
                 : 'Send live tracking link to emergency contacts during active requests',
             value: _shareTripStatus,
-            badge: _shareTripStatus
-                ? _buildStatusPill(
-                    isArabic ? 'مفعل' : 'Active',
-                    const Color(0xFF059669),
-                    const Color(0xFFECFDF5),
-                  )
-                : null,
             onChanged: (val) => _toggleShareTripStatus(val, isArabic),
             isArabic: isArabic,
           ),
@@ -794,8 +791,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isArabic ? 'المساعدة والطوارئ 24/7' : '24/7 Emergency Support',
-                          style: GoogleFonts.inter(
+                          isArabic ? 'المساعدة والدعم 24/7' : '24/7 Support & Safety',
+                          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
                             fontSize: 14.0,
                             fontWeight: FontWeight.w700,
                             color: const Color(0xFF991B1B),
@@ -803,9 +800,9 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                         ),
                         Text(
                           isArabic
-                            ? 'اتصال فوري مع خدمات الطوارئ أو عمليات زشو'
-                            : 'Immediate connection to Saudi emergency & Zesho ops',
-                          style: GoogleFonts.inter(
+                            ? 'اتصال فوري أو محادثة عبر واتساب: +966556213861'
+                            : 'Direct call or WhatsApp chat: +966556213861',
+                          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
                             fontSize: 10.5,
                             color: const Color(0xFFB91C1C),
                           ),
@@ -816,6 +813,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 ],
               ),
               const SizedBox(height: 14.0),
+              // Support Buttons: 1. Call (+966556213861), 2. WhatsApp (+966556213861) with real icons
               Row(
                 children: [
                   Expanded(
@@ -824,56 +822,117 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                         backgroundColor: const Color(0xFFEF4444),
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 10.0),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                        padding: const EdgeInsets.symmetric(vertical: 11.0, horizontal: 8.0),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                       ),
-                      onPressed: () => _triggerEmergencyCall(context, '911', isArabic),
-                      icon: const Icon(Icons.phone_in_talk_rounded, size: 16.0),
+                      onPressed: () => _launchCall(context, '+966556213861', isArabic),
+                      icon: const Icon(Icons.phone_in_talk_rounded, size: 17.0, color: Colors.white),
                       label: Text(
-                        isArabic ? 'طوارئ 911' : 'Call 911',
-                        style: GoogleFonts.inter(fontSize: 12.0, fontWeight: FontWeight.w700),
+                        isArabic ? 'اتصال بالدعم' : 'Call Support',
+                        style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                          fontSize: 12.0,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
                   const SizedBox(width: 8.0),
                   Expanded(
-                    child: ElevatedButton.icon(
+                    child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E293B),
+                        backgroundColor: const Color(0xFF25D366),
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 10.0),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                        padding: const EdgeInsets.symmetric(vertical: 11.0, horizontal: 8.0),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                       ),
-                      onPressed: () => _triggerEmergencyCall(context, '920000560', isArabic),
-                      icon: const Icon(Icons.car_crash_rounded, size: 16.0),
-                      label: Text(
-                        isArabic ? 'نجم للحوادث' : 'Najm (92000)',
-                        style: GoogleFonts.inter(fontSize: 12.0, fontWeight: FontWeight.w600),
+                      onPressed: () => _launchWhatsApp(context, '+966556213861', isArabic),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 17.0,
+                            height: 17.0,
+                            child: CustomPaint(
+                              painter: _WhatsAppIconPainter(),
+                            ),
+                          ),
+                          const SizedBox(width: 7.0),
+                          Flexible(
+                            child: Text(
+                              isArabic ? 'واتساب' : 'WhatsApp',
+                              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                                fontSize: 12.0,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8.0),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF991B1B),
-                    side: const BorderSide(color: Color(0xFFFCA5A5)),
-                    backgroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 10.0),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+              const SizedBox(height: 10.0),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    isArabic ? 'طوارئ المملكة:' : 'KSA Emergency:',
+                    style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF991B1B),
+                    ),
                   ),
-                  onPressed: () => _triggerEmergencyCall(context, '+966545456467', isArabic),
-                  icon: const Icon(Icons.support_agent_rounded, size: 17.0, color: Color(0xFFDC2626)),
-                  label: Text(
-                    isArabic ? 'غرفة عمليات زشو للطوارئ' : 'Zesho 24/7 Safety Hotline',
-                    style: GoogleFonts.inter(fontSize: 12.0, fontWeight: FontWeight.w600),
+                  const SizedBox(width: 6.0),
+                  InkWell(
+                    onTap: () => _launchCall(context, '911', isArabic),
+                    borderRadius: BorderRadius.circular(6.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7.0, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6.0),
+                        border: Border.all(color: const Color(0xFFFCA5A5)),
+                      ),
+                      child: Text(
+                        isArabic ? 'طوارئ 911' : 'Call 911',
+                        style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFDC2626),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 6.0),
+                  InkWell(
+                    onTap: () => _launchCall(context, '920000560', isArabic),
+                    borderRadius: BorderRadius.circular(6.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7.0, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6.0),
+                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                      ),
+                      child: Text(
+                        isArabic ? 'نجم 92000' : 'Najm 92000',
+                        style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1E293B),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -946,7 +1005,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           isArabic ? 'حماية الحساب والتحويلات' : 'Account & Payout Protection',
           isArabic,
         ),
-        const SizedBox(height: 10.0),
+        const SizedBox(height: 8.0),
         _buildCardGroup([
           _buildSwitchTile(
             icon: Icons.fingerprint_rounded,
@@ -1031,7 +1090,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           isArabic ? 'الأجهزة ومحطات القيادة المعتمدة' : 'Fleet Terminals & Authorized Devices',
           isArabic,
         ),
-        const SizedBox(height: 10.0),
+        const SizedBox(height: 8.0),
         _buildCardGroup([
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
@@ -1167,7 +1226,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           isArabic ? 'تتبع الإحداثيات أثناء الخدمة' : 'Duty Telemetry & GPS',
           isArabic,
         ),
-        const SizedBox(height: 10.0),
+        const SizedBox(height: 8.0),
         _buildCardGroup([
           _buildSwitchTile(
             icon: Icons.my_location_rounded,
@@ -1176,13 +1235,6 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 ? 'يتم إرسال إحداثيات موقعك فقط عندما تكون متاحاً (متصل) أو في مهمة نشطة'
                 : 'Coordinates are only transmitted while status is Online or actively dispatched',
             value: _dutyOnlyGps,
-            badge: _dutyOnlyGps
-                ? _buildStatusPill(
-                    isArabic ? 'نشط' : 'Active',
-                    const Color(0xFF059669),
-                    const Color(0xFFECFDF5),
-                  )
-                : null,
             onChanged: (val) => _toggleProviderDutyGps(val, isArabic),
             isArabic: isArabic,
           ),
@@ -1194,13 +1246,6 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 ? 'إخفاء نقطة توقف شاحنتك الدقيقة عن العملاء حتى يتم قبول الطلب رسمياً'
                 : 'Keep your exact parking spot hidden until the dispatch is formally accepted',
             value: _maskCustomerDistance,
-            badge: _maskCustomerDistance
-                ? _buildStatusPill(
-                    isArabic ? 'نشط' : 'Active',
-                    const Color(0xFF059669),
-                    const Color(0xFFECFDF5),
-                  )
-                : null,
             onChanged: (val) => _toggleProviderTelemetry('mask_customer_distance', val, isArabic),
             isArabic: isArabic,
           ),
@@ -1212,13 +1257,6 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 ? 'استخدام خادم اتصال وسيط آمن لحماية رقمك الشخصي عند الاتصال بالعميل'
                 : 'Route customer calls through secure proxy relay to hide driver phone number',
             value: _maskedPhoneCalls,
-            badge: _maskedPhoneCalls
-                ? _buildStatusPill(
-                    isArabic ? 'نشط' : 'Active',
-                    const Color(0xFF059669),
-                    const Color(0xFFECFDF5),
-                  )
-                : null,
             onChanged: (val) => _toggleProviderTelemetry('masked_phone_calls', val, isArabic),
             isArabic: isArabic,
           ),
@@ -1230,13 +1268,6 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 ? 'بث مسار المركبة لغرفة عمليات زشو لضمان سرعة الدعم والمساعدة الفنية'
                 : 'Stream route telemetry to Zesho Dispatch Hub for quick roadside assist',
             value: _routeTelemetry,
-            badge: _routeTelemetry
-                ? _buildStatusPill(
-                    isArabic ? 'نشط' : 'Active',
-                    const Color(0xFF059669),
-                    const Color(0xFFECFDF5),
-                  )
-                : null,
             onChanged: (val) => _toggleProviderTelemetry('route_telemetry', val, isArabic),
             isArabic: isArabic,
           ),
@@ -1248,7 +1279,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           isArabic ? 'سياسات العمل وهيئة النقل' : 'Regulatory Privacy & TGA Terms',
           isArabic,
         ),
-        const SizedBox(height: 10.0),
+        const SizedBox(height: 8.0),
         _buildCardGroup([
           _buildActionTile(
             icon: Icons.description_outlined,
@@ -1303,7 +1334,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                             Expanded(
                               child: Text(
                                 isArabic ? 'الهوية الوطنية / الإقامة موثقة' : 'National ID / Iqama Verified',
-                                style: GoogleFonts.inter(
+                                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.w700,
                                   color: const Color(0xFF166534),
@@ -1322,7 +1353,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                           isArabic
                               ? 'رقم الهوية: ••••••7821 (مشفر ومحمي وفق نظام حماية البيانات الشخصية)'
                               : 'ID Record: ••••••7821 (Masked & encrypted per Saudi PDPL)',
-                          style: GoogleFonts.inter(
+                          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
                             fontSize: 11.0,
                             color: const Color(0xFF15803D),
                           ),
@@ -1332,7 +1363,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                           children: [
                             Text(
                               isArabic ? 'عرض وثيقة الاعتماد والتصريح' : 'View compliance credentials',
-                              style: GoogleFonts.inter(
+                              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
                                 fontSize: 11.0,
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFF047857),
@@ -1361,7 +1392,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           isArabic ? 'طوارئ الطرق وأمن الطرق' : 'Highway Emergency & Roadside SOS',
           isArabic,
         ),
-        const SizedBox(height: 10.0),
+        const SizedBox(height: 8.0),
         _buildCardGroup([
           _buildActionTile(
             icon: Icons.emergency_rounded,
@@ -1400,11 +1431,11 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 ? 'فريق الدعم الفني المباشر للمزودين والسائقين'
                 : 'Instant response line for towing partners & drivers',
             trailing: _buildStatusPill(
-              '+966 54 545 6467',
+              '+966 55 621 3861',
               const Color(0xFF8B53FE),
               const Color(0xFFF0EAFE),
             ),
-            onTap: () => _triggerEmergencyCall(context, '+966545456467', isArabic),
+            onTap: () => _triggerEmergencyCall(context, '+966556213861', isArabic),
             isArabic: isArabic,
           ),
         ]),
@@ -1415,7 +1446,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           isArabic ? 'إنهاء الشراكة والحساب' : 'Partner De-registration',
           isArabic,
         ),
-        const SizedBox(height: 10.0),
+        const SizedBox(height: 8.0),
         _buildDeleteAccountCard(context, isArabic, true),
       ],
     );
@@ -1430,18 +1461,12 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: Text(
         text,
-        style: isArabic
-            ? GoogleFonts.cairo(
-                fontSize: 12.0,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF4B5563),
-              )
-            : GoogleFonts.inter(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF4B5563),
-                letterSpacing: 0.2,
-              ),
+        style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
+          color: const Color(0xFF374151),
+          letterSpacing: 0.2,
+        ),
       ),
     );
   }
@@ -1654,14 +1679,29 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  title,
-                  style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1C2926),
-                    height: 1.25,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: isArabic ? Alignment.centerRight : Alignment.centerLeft,
+                        child: Text(
+                          title,
+                          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1C2926),
+                            height: 1.25,
+                          ),
+                          maxLines: 1,
+                        ),
+                      ),
+                    ),
+                    if (badge != null) ...[
+                      const SizedBox(width: 8.0),
+                      badge,
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 3.0),
                 Text(
@@ -1676,11 +1716,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
               ],
             ),
           ),
-          if (badge != null) ...[
-            const SizedBox(width: 8.0),
-            badge,
-          ],
-          const SizedBox(width: 8.0),
+          const SizedBox(width: 10.0),
           Transform.scale(
             scale: 0.78,
             child: CupertinoSwitch(
@@ -2624,8 +2660,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                               : (!isCodeSent ? sendCode : verifyAndActivate)),
                       isLoading: isVerifying,
                       backgroundColor: canSubmit
-                          ? const Color(0xFF252527)
-                          : const Color(0xFF252527).withValues(alpha: 0.65),
+                          ? const Color(0xFF8B53FE)
+                          : const Color(0xFF8B53FE).withValues(alpha: 0.5),
                       foregroundColor: Colors.white,
                       height: 50.0,
                       borderRadius: BorderRadius.circular(14.0),
@@ -2662,15 +2698,31 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.0)),
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
           title: Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 24.0),
-              const SizedBox(width: 8.0),
+              Container(
+                width: 36.0,
+                height: 36.0,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+                child: const Center(
+                  child: Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 20.0),
+                ),
+              ),
+              const SizedBox(width: 10.0),
               Expanded(
                 child: Text(
-                  isArabic ? 'تعطيل المصادقة الثنائية؟' : 'Disable Two-Factor Authentication?',
-                  style: GoogleFonts.inter(fontSize: 15.0, fontWeight: FontWeight.w700),
+                  isArabic ? 'تعطيل المصادقة الثنائية؟' : 'Disable Two-Factor?',
+                  style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1C2926),
+                  ),
                 ),
               ),
             ],
@@ -2678,21 +2730,35 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           content: Text(
             isArabic
                 ? 'سيؤدي هذا إلى تقليل أمان حسابك وجعله أكثر عرضة لمحاولات الدخول غير المصرح بها أو هجمات السبام.'
-                : 'This will reduce your account security and remove the secondary verification shield against spam and unauthorized logins.',
-            style: GoogleFonts.inter(fontSize: 12.5, color: const Color(0xFF6B7280)),
+                : 'This will reduce your account security and remove the secondary verification shield against unauthorized logins.',
+            style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+              fontSize: 12.5,
+              color: const Color(0xFF4B5563),
+              height: 1.4,
+            ),
           ),
           actions: [
-            TextButton(
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFFE5E7EB)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+              ),
               onPressed: () => Navigator.of(ctx).pop(),
               child: Text(
-                isArabic ? 'إلغاء وإبقاء التفعيل' : 'Cancel & Keep Protected',
-                style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF8B53FE)),
+                isArabic ? 'إلغاء وإبقاء التفعيل' : 'Keep Protected',
+                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF6B7280),
+                ),
               ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFEF4444),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
               ),
               onPressed: () async {
                 Navigator.of(ctx).pop();
@@ -3490,8 +3556,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                               : (!isCodeSent ? sendCode : verifyAndActivate)),
                       isLoading: isVerifying,
                       backgroundColor: canSubmit
-                          ? const Color(0xFF252527)
-                          : const Color(0xFF252527).withValues(alpha: 0.65),
+                          ? const Color(0xFF8B53FE)
+                          : const Color(0xFF8B53FE).withValues(alpha: 0.5),
                       foregroundColor: Colors.white,
                       height: 50.0,
                       borderRadius: BorderRadius.circular(14.0),
@@ -3528,15 +3594,31 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.0)),
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
           title: Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 24.0),
-              const SizedBox(width: 8.0),
+              Container(
+                width: 36.0,
+                height: 36.0,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+                child: const Center(
+                  child: Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 20.0),
+                ),
+              ),
+              const SizedBox(width: 10.0),
               Expanded(
                 child: Text(
                   isArabic ? 'تعطيل حماية الشريك (2FA)؟' : 'Disable Partner 2FA?',
-                  style: GoogleFonts.inter(fontSize: 15.0, fontWeight: FontWeight.w700),
+                  style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1C2926),
+                  ),
                 ),
               ),
             ],
@@ -3545,20 +3627,34 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
             isArabic
                 ? 'سيؤدي هذا إلى جعل حساب المزود والآيبان البنكي وسحب الأرباح أكثر عرضة لمحاولات الاختراق.'
                 : 'This will remove the secondary verification shield protecting your partner earnings and bank payouts against unauthorized access.',
-            style: GoogleFonts.inter(fontSize: 12.5, color: const Color(0xFF6B7280)),
+            style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+              fontSize: 12.5,
+              color: const Color(0xFF4B5563),
+              height: 1.4,
+            ),
           ),
           actions: [
-            TextButton(
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFFE5E7EB)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+              ),
               onPressed: () => Navigator.of(ctx).pop(),
               child: Text(
-                isArabic ? 'إلغاء وإبقاء التفعيل' : 'Cancel & Keep Protected',
-                style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF8B53FE)),
+                isArabic ? 'إلغاء وإبقاء التفعيل' : 'Keep Protected',
+                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF6B7280),
+                ),
               ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFEF4444),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
               ),
               onPressed: () async {
                 Navigator.of(ctx).pop();
@@ -3596,6 +3692,91 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     );
   }
 
+  Future<void> _launchCall(BuildContext context, String phone, bool isArabic) async {
+    HapticFeedback.mediumImpact();
+    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final Uri callUri = Uri(scheme: 'tel', path: cleanPhone);
+    try {
+      final canLaunch = await canLaunchUrl(callUri);
+      if (canLaunch) {
+        await launchUrl(callUri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(callUri);
+      }
+    } catch (e) {
+      debugPrint('Error launching call to $phone: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isArabic
+                  ? 'تعذر بدء الاتصال بالرقم: $phone'
+                  : 'Unable to start call to: $phone',
+              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _launchWhatsApp(BuildContext context, String phone, bool isArabic) async {
+    HapticFeedback.mediumImpact();
+    final digitsOnly = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    final defaultMessage = isArabic
+        ? Uri.encodeComponent('مرحباً، أحتاج مساعدة بخصوص تطبيق قريب')
+        : Uri.encodeComponent('Hello, I need assistance with Qareeb app');
+
+    final Uri nativeWhatsAppUri = Uri.parse('whatsapp://send?phone=$digitsOnly&text=$defaultMessage');
+    final Uri webWhatsAppUri = Uri.parse('https://wa.me/$digitsOnly?text=$defaultMessage');
+
+    try {
+      bool launched = false;
+      if (await canLaunchUrl(nativeWhatsAppUri)) {
+        launched = await launchUrl(nativeWhatsAppUri, mode: LaunchMode.externalApplication);
+      }
+      if (!launched && await canLaunchUrl(webWhatsAppUri)) {
+        launched = await launchUrl(webWhatsAppUri, mode: LaunchMode.externalApplication);
+      }
+      if (!launched) {
+        launched = await launchUrl(webWhatsAppUri, mode: LaunchMode.externalApplication);
+      }
+
+      if (!launched && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isArabic
+                  ? 'تعذر فتح واتساب. يرجى التأكد من تثبيت التطبيق ($phone)'
+                  : 'Could not open WhatsApp. Please ensure WhatsApp is installed ($phone)',
+              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error launching WhatsApp to $phone: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isArabic
+                  ? 'تعذر فتح تطبيق واتساب ($phone)'
+                  : 'Could not open WhatsApp ($phone)',
+              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   void _triggerEmergencyCall(BuildContext context, String number, bool isArabic) {
     HapticFeedback.mediumImpact();
     String serviceName;
@@ -3606,21 +3787,37 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     } else if (number.contains('911')) {
       serviceName = isArabic ? 'الطوارئ الموحد (911)' : 'Unified Emergency (911)';
     } else {
-      serviceName = isArabic ? 'عمليات أسطول زشو 24/7' : 'Zesho Fleet Dispatch Ops';
+      serviceName = isArabic ? 'عمليات دعم قريب 24/7' : 'Qareeb 24/7 Support Ops';
     }
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
         title: Row(
           children: [
-            const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFEF4444)),
-            const SizedBox(width: 8.0),
+            Container(
+              width: 36.0,
+              height: 36.0,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEE2E2),
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              child: const Center(
+                child: Icon(Icons.phone_in_talk_rounded, color: Color(0xFFEF4444), size: 20.0),
+              ),
+            ),
+            const SizedBox(width: 10.0),
             Expanded(
               child: Text(
                 isArabic ? 'اتصال الطوارئ' : 'Emergency Call',
-                style: GoogleFonts.inter(fontSize: 16.0, fontWeight: FontWeight.w700),
+                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1C2926),
+                ),
               ),
             ),
           ],
@@ -3629,41 +3826,45 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           isArabic
               ? 'هل ترغب في بدء اتصال فوري مع $serviceName ؟'
               : 'Would you like to initiate a direct call to $serviceName ($number)?',
-          style: GoogleFonts.inter(fontSize: 13.0, height: 1.4, color: const Color(0xFF4B5563)),
+          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+            fontSize: 13.0,
+            height: 1.4,
+            color: const Color(0xFF4B5563),
+          ),
         ),
         actions: [
-          TextButton(
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFFE5E7EB)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+            ),
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
               isArabic ? 'إلغاء' : 'Cancel',
-              style: GoogleFonts.inter(color: const Color(0xFF6B7280)),
+              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                color: const Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
               foregroundColor: Colors.white,
+              elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
             ),
             onPressed: () {
               Navigator.of(ctx).pop();
-              HapticFeedback.heavyImpact();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    isArabic
-                        ? 'جاري بدء الاتصال بـ $serviceName: $number'
-                        : 'Connecting emergency dispatch to $serviceName ($number)...',
-                  ),
-                  backgroundColor: const Color(0xFFEF4444),
-                  duration: const Duration(seconds: 3),
-                ),
-              );
+              _launchCall(context, number, isArabic);
             },
             child: Text(
               isArabic ? 'اتصال فوري' : 'Call Now',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -3721,7 +3922,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                       children: [
                         Text(
                           isArabic ? 'اعتماد الهيئة العامة للنقل (TGA)' : 'TGA Regulatory Compliance',
-                          style: GoogleFonts.inter(
+                          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
                             fontSize: 15.0,
                             fontWeight: FontWeight.w700,
                             color: const Color(0xFF1C2926),
@@ -3731,7 +3932,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                           isArabic
                               ? 'سجل التراخيص الميدانية وسندات العمل الحر'
                               : 'Licensed fleet operator credentials & permits',
-                          style: GoogleFonts.inter(
+                          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
                             fontSize: 11.5,
                             color: const Color(0xFF6B7280),
                           ),
@@ -3756,6 +3957,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                       value: '••••••7821',
                       badgeText: isArabic ? 'موثق عبر نفاذ' : 'Nafath Verified',
                       badgeColor: const Color(0xFF059669),
+                      isArabic: isArabic,
                     ),
                     const Divider(height: 20.0, color: Color(0xFFE5E7EB)),
                     _buildComplianceDetailRow(
@@ -3763,6 +3965,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                       value: 'FL-8839201-TR',
                       badgeText: isArabic ? 'سارية' : 'Valid',
                       badgeColor: const Color(0xFF059669),
+                      isArabic: isArabic,
                     ),
                     const Divider(height: 20.0, color: Color(0xFFE5E7EB)),
                     _buildComplianceDetailRow(
@@ -3770,6 +3973,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                       value: 'TGA-TOW-2026-SA',
                       badgeText: isArabic ? 'معتمد' : 'Authorized',
                       badgeColor: const Color(0xFF2563EB),
+                      isArabic: isArabic,
                     ),
                     const Divider(height: 20.0, color: Color(0xFFE5E7EB)),
                     _buildComplianceDetailRow(
@@ -3777,6 +3981,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                       value: 'Saudi PDPL 2026',
                       badgeText: isArabic ? 'مشفر' : 'Encrypted',
                       badgeColor: const Color(0xFF7C3AED),
+                      isArabic: isArabic,
                     ),
                   ],
                 ),
@@ -3793,7 +3998,11 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 icon: const Icon(Icons.sync_rounded, size: 18.0),
                 label: Text(
                   isArabic ? 'إعادة التحقق من صلاحية الوثيقة' : 'Re-verify with TGA & Nafath',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13.0),
+                  style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13.0,
+                    color: Colors.white,
+                  ),
                 ),
                 onPressed: () {
                   Navigator.of(ctx).pop();
@@ -3823,6 +4032,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     required String value,
     required String badgeText,
     required Color badgeColor,
+    required bool isArabic,
   }) {
     return Row(
       children: [
@@ -3832,7 +4042,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
             children: [
               Text(
                 label,
-                style: GoogleFonts.inter(
+                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
                   fontSize: 11.5,
                   color: const Color(0xFF6B7280),
                   fontWeight: FontWeight.w500,
@@ -3841,7 +4051,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
               const SizedBox(height: 2.0),
               Text(
                 value,
-                style: GoogleFonts.inter(
+                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
                   fontSize: 13.0,
                   color: const Color(0xFF1F2937),
                   fontWeight: FontWeight.w700,
@@ -3858,7 +4068,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           ),
           child: Text(
             badgeText,
-            style: GoogleFonts.inter(
+            style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
               fontSize: 11.0,
               fontWeight: FontWeight.w600,
               color: badgeColor,
@@ -3872,66 +4082,285 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
   void _showChangePasswordDialog(BuildContext context, bool isArabic) {
     final oldPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
+    bool obscureOld = true;
+    bool obscureNew = true;
+    String? errorText;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
-        title: Text(
-          isArabic ? 'تغيير كلمة المرور' : 'Change Password',
-          style: GoogleFonts.inter(fontSize: 17.0, fontWeight: FontWeight.w600),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: oldPasswordController,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: isArabic ? 'كلمة المرور الحالية' : 'Current Password',
-                isDense: true,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
-              ),
-            ),
-            const SizedBox(height: 12.0),
-            TextField(
-              controller: newPasswordController,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: isArabic ? 'كلمة المرور الجديدة' : 'New Password',
-                isDense: true,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(isArabic ? 'إلغاء' : 'Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF8B53FE),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
-            ),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).clearSnackBars();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(isArabic ? 'تم تحديث كلمة المرور بنجاح' : 'Password updated successfully'),
-                    backgroundColor: const Color(0xFF10B981),
+      barrierDismissible: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return Dialog(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.0)),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(22.0, 24.0, 22.0, 22.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Top Branded Lock Icon
+                  Center(
+                    child: Container(
+                      width: 52.0,
+                      height: 52.0,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0EAFE),
+                        borderRadius: BorderRadius.circular(16.0),
+                        border: Border.all(color: const Color(0xFF8B53FE).withValues(alpha: 0.2)),
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.lock_reset_rounded,
+                          size: 26.0,
+                          color: Color(0xFF8B53FE),
+                        ),
+                      ),
+                    ),
                   ),
-                );
-              });
-            },
-            child: Text(isArabic ? 'تحديث' : 'Update'),
-          ),
-        ],
+                  const SizedBox(height: 16.0),
+
+                  // Title
+                  Text(
+                    isArabic ? 'تغيير كلمة مرور الشريك' : 'Change Partner Password',
+                    textAlign: TextAlign.center,
+                    style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                      fontSize: 17.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1C2926),
+                    ),
+                  ),
+                  const SizedBox(height: 6.0),
+
+                  // Subtitle
+                  Text(
+                    isArabic
+                        ? 'أدخل كلمة المرور الحالية وكلمة المرور الجديدة لتحديث بيانات تسجيل الدخول'
+                        : 'Enter your current password and your new secure password to update your fleet credentials',
+                    textAlign: TextAlign.center,
+                    style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                      fontSize: 12.0,
+                      color: const Color(0xFF6B7280),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 18.0),
+
+                  // Validation Error (if any)
+                  if (errorText != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEE2E2),
+                        borderRadius: BorderRadius.circular(10.0),
+                        border: Border.all(color: const Color(0xFFFCA5A5)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline_rounded, size: 16.0, color: Color(0xFFDC2626)),
+                          const SizedBox(width: 8.0),
+                          Expanded(
+                            child: Text(
+                              errorText!,
+                              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                                fontSize: 11.5,
+                                color: const Color(0xFFB91C1C),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12.0),
+                  ],
+
+                  // Current Password Label & Input
+                  Text(
+                    isArabic ? 'كلمة المرور الحالية' : 'Current Password',
+                    style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                      fontSize: 12.0,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF374151),
+                    ),
+                  ),
+                  const SizedBox(height: 6.0),
+                  TextField(
+                    controller: oldPasswordController,
+                    obscureText: obscureOld,
+                    style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                      fontSize: 13.5,
+                      color: const Color(0xFF1C2926),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: isArabic ? 'أدخل كلمة المرور الحالية' : 'Enter current password',
+                      hintStyle: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                        fontSize: 12.5,
+                        color: const Color(0xFF9CA3AF),
+                      ),
+                      prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFF8B53FE), size: 19.0),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscureOld ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          color: const Color(0xFF9CA3AF),
+                          size: 19.0,
+                        ),
+                        onPressed: () => setDialogState(() => obscureOld = !obscureOld),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                        borderSide: const BorderSide(color: Color(0xFF8B53FE), width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14.0),
+
+                  // New Password Label & Input
+                  Text(
+                    isArabic ? 'كلمة المرور الجديدة' : 'New Password',
+                    style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                      fontSize: 12.0,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF374151),
+                    ),
+                  ),
+                  const SizedBox(height: 6.0),
+                  TextField(
+                    controller: newPasswordController,
+                    obscureText: obscureNew,
+                    style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                      fontSize: 13.5,
+                      color: const Color(0xFF1C2926),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: isArabic ? 'أدخل كلمة المرور الجديدة (6 خانات على الأقل)' : 'Enter new password (min. 6 chars)',
+                      hintStyle: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                        fontSize: 12.5,
+                        color: const Color(0xFF9CA3AF),
+                      ),
+                      prefixIcon: const Icon(Icons.lock_reset_rounded, color: Color(0xFF8B53FE), size: 19.0),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscureNew ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          color: const Color(0xFF9CA3AF),
+                          size: 19.0,
+                        ),
+                        onPressed: () => setDialogState(() => obscureNew = !obscureNew),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                        borderSide: const BorderSide(color: Color(0xFF8B53FE), width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 22.0),
+
+                  // Actions
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFFE5E7EB)),
+                            padding: const EdgeInsets.symmetric(vertical: 12.0),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                          ),
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: Text(
+                            isArabic ? 'إلغاء' : 'Cancel',
+                            style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                              fontSize: 13.0,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF6B7280),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10.0),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF8B53FE),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 12.0),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                          ),
+                          onPressed: () {
+                            final oldP = oldPasswordController.text.trim();
+                            final newP = newPasswordController.text.trim();
+                            if (oldP.isEmpty) {
+                              setDialogState(() {
+                                errorText = isArabic
+                                    ? 'يرجى إدخال كلمة المرور الحالية'
+                                    : 'Please enter your current password';
+                              });
+                              return;
+                            }
+                            if (newP.length < 6) {
+                              setDialogState(() {
+                                errorText = isArabic
+                                    ? 'يجب ألا تقل كلمة المرور الجديدة عن 6 خانات'
+                                    : 'New password must be at least 6 characters';
+                              });
+                              return;
+                            }
+                            Navigator.of(ctx).pop();
+                            HapticFeedback.mediumImpact();
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    isArabic
+                                        ? 'تم تحديث كلمة مرور الشريك بنجاح'
+                                        : 'Partner password updated successfully',
+                                  ),
+                                  backgroundColor: const Color(0xFF10B981),
+                                  duration: const Duration(seconds: 3),
+                                ),
+                              );
+                            });
+                          },
+                          child: Text(
+                            isArabic ? 'تحديث' : 'Update',
+                            style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                              fontSize: 13.0,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -3940,12 +4369,14 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
             final mediaQuery = MediaQuery.of(ctx);
             final double screenHeight = mediaQuery.size.height;
+            final double bottomInset = math.max(16.0, mediaQuery.padding.bottom);
             final otherSessions = _activeSessions.where((s) => !s.isCurrent).toList();
             final currentSession = _currentDevice ??
                 _activeSessions.firstWhere(
@@ -3974,7 +4405,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
               ),
-              padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 24.0),
+              padding: EdgeInsets.fromLTRB(20.0, 14.0, 20.0, bottomInset + 16.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -4310,23 +4741,25 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
 
                   if (otherSessions.isNotEmpty)
                     SizedBox(
-                      height: 48.0,
+                      height: 50.0,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF252527),
+                          backgroundColor: const Color(0xFF8B53FE),
                           foregroundColor: Colors.white,
                           elevation: 0,
+                          shadowColor: const Color(0xFF8B53FE).withValues(alpha: 0.35),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.0),
+                            borderRadius: BorderRadius.circular(14.0),
                           ),
                         ),
-                        icon: const Icon(Icons.logout_rounded, size: 18.0, color: Colors.white),
+                        icon: const Icon(Icons.logout_rounded, size: 19.0, color: Colors.white),
                         label: Text(
                           isArabic ? 'تسجيل الخروج من كافة الأجهزة الأخرى' : 'Sign Out All Other Devices',
                           style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                            fontSize: 13.5,
+                            fontSize: 14.0,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
+                            letterSpacing: 0.2,
                           ),
                         ),
                         onPressed: () async {
@@ -4359,22 +4792,22 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                     )
                   else
                     SizedBox(
-                      height: 48.0,
+                      height: 50.0,
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF252527),
-                          side: const BorderSide(color: Color(0xFFE5E7EB)),
+                          foregroundColor: const Color(0xFF8B53FE),
+                          side: const BorderSide(color: Color(0xFF8B53FE), width: 1.2),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.0),
+                            borderRadius: BorderRadius.circular(14.0),
                           ),
                         ),
                         onPressed: () => Navigator.of(sheetContext).pop(),
                         child: Text(
                           isArabic ? 'تم وحفظ' : 'Done',
                           style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                            fontSize: 13.5,
+                            fontSize: 14.0,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF252527),
+                            color: const Color(0xFF8B53FE),
                           ),
                         ),
                       ),
@@ -4492,6 +4925,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
         title: Row(
           children: [
@@ -4543,7 +4978,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF252527),
+              backgroundColor: const Color(0xFF8B53FE),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
               elevation: 0,
@@ -4566,6 +5001,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
         title: Row(
           children: [
@@ -4669,6 +5106,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
       final openSettings = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
           title: Row(
             children: [
@@ -4720,7 +5159,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF252527),
+                backgroundColor: const Color(0xFF8B53FE),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
                 elevation: 0,
@@ -4749,6 +5188,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     final openSettings = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
         title: Row(
           children: [
@@ -4800,7 +5241,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF252527),
+              backgroundColor: const Color(0xFF8B53FE),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
               elevation: 0,
@@ -5030,23 +5471,62 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
-        title: Text(
-          isArabic ? 'سياسة الخصوصية وحماية البيانات' : 'Privacy & Data Protection',
-          style: GoogleFonts.inter(fontSize: 17.0, fontWeight: FontWeight.w600),
+        title: Row(
+          children: [
+            Container(
+              width: 36.0,
+              height: 36.0,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0EAFE),
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              child: const Center(
+                child: Icon(Icons.shield_rounded, color: Color(0xFF8B53FE), size: 20.0),
+              ),
+            ),
+            const SizedBox(width: 10.0),
+            Expanded(
+              child: Text(
+                isArabic ? 'سياسة الخصوصية وحماية البيانات' : 'Privacy & Data Protection',
+                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1C2926),
+                ),
+              ),
+            ),
+          ],
         ),
         content: Text(
           isArabic
-              ? 'يلتزم تطبيق زشو بحماية خصوصية وأمان بياناتك وفق الأنظمة واللوائح السعودية. لا يتم مشاركة موقعك أو أرقام الاتصال إلا مع الطرف المقابل أثناء سير الطلب النشط لضمان جودة وأمان تقديم الخدمة.'
-              : 'Zesho is fully committed to safeguarding user and partner privacy in compliance with Saudi national data privacy guidelines. Live GPS telemetry and telephone relays are only engaged during active dispatch windows.',
-          style: GoogleFonts.inter(fontSize: 12.5, height: 1.45, color: const Color(0xFF566663)),
+              ? 'يلتزم تطبيق قريب بحماية خصوصية وأمان بياناتك وفق نظام حماية البيانات الشخصية السعودي (PDPL). لا يتم مشاركة موقعك أو أرقام الاتصال إلا مع الطرف المقابل أثناء سير الطلب النشط لضمان جودة وأمان تقديم الخدمة.'
+              : 'Qareeb is fully committed to safeguarding user and partner privacy in compliance with Saudi national data privacy guidelines (Saudi PDPL). Live GPS telemetry and telephone relays are only engaged during active dispatch windows.',
+          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+            fontSize: 13.0,
+            height: 1.5,
+            color: const Color(0xFF4B5563),
+          ),
         ),
         actions: [
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8B53FE),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+            ),
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
-              isArabic ? 'فهمت' : 'Understood',
-              style: GoogleFonts.inter(color: const Color(0xFF8B53FE), fontWeight: FontWeight.w600),
+              isArabic ? 'فهمت ذلك' : 'Understood',
+              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -5058,16 +5538,34 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
         title: Row(
           children: [
-            const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444)),
-            const SizedBox(width: 8.0),
-            Text(
-              isProvider
-                  ? (isArabic ? 'إلغاء تسجيل الشريك' : 'Close Partner Account')
-                  : (isArabic ? 'حذف الحساب نهائياً' : 'Delete Account Permanently'),
-              style: GoogleFonts.inter(fontSize: 16.0, fontWeight: FontWeight.w600),
+            Container(
+              width: 36.0,
+              height: 36.0,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEE2E2),
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              child: const Center(
+                child: Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 20.0),
+              ),
+            ),
+            const SizedBox(width: 10.0),
+            Expanded(
+              child: Text(
+                isProvider
+                    ? (isArabic ? 'إلغاء تسجيل الشريك' : 'De-register Partner Account')
+                    : (isArabic ? 'حذف الحساب نهائياً' : 'Delete Account Permanently'),
+                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1C2926),
+                ),
+              ),
             ),
           ],
         ),
@@ -5079,17 +5577,32 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
               : (isArabic
                   ? 'هل أنت متأكد من رغبتك في حذف الحساب؟ سيتم حذف جميع بياناتك وسجل رحلاتك ومعلومات الدفع ولا يمكن التراجع عن هذا الإجراء.'
                   : 'Are you sure you want to delete your account? All your ride history, saved addresses, and profile data will be permanently removed. This action cannot be undone.'),
-          style: GoogleFonts.inter(fontSize: 12.5, height: 1.4, color: const Color(0xFF566663)),
+          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+            fontSize: 12.5,
+            height: 1.4,
+            color: const Color(0xFF4B5563),
+          ),
         ),
         actions: [
-          TextButton(
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFFE5E7EB)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+            ),
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(isArabic ? 'إلغاء' : 'Cancel'),
+            child: Text(
+              isArabic ? 'إلغاء' : 'Cancel',
+              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                color: const Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
               foregroundColor: Colors.white,
+              elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
             ),
             onPressed: () async {
@@ -5210,4 +5723,80 @@ class _ChevronPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ChevronPainter oldDelegate) =>
       oldDelegate.color != color || oldDelegate.strokeWidth != strokeWidth;
+}
+
+/// Real official WhatsApp vector logo painter matching official branding
+class _WhatsAppIconPainter extends CustomPainter {
+  const _WhatsAppIconPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    final double scale = size.width / 24.0;
+    canvas.save();
+    canvas.scale(scale, scale);
+
+    final path = Path()..fillType = PathFillType.evenOdd;
+
+    // 1. Outer speech-bubble contour
+    path.moveTo(12.04, 2.0);
+    path.cubicTo(6.58, 2.0, 2.13, 6.45, 2.13, 11.91);
+    path.cubicTo(2.13, 13.66, 2.59, 15.36, 3.45, 16.86);
+    path.lineTo(2.05, 22.0);
+    path.lineTo(7.3, 20.62);
+    path.cubicTo(8.75, 21.41, 10.38, 21.83, 12.04, 21.83);
+    path.cubicTo(17.5, 21.83, 21.95, 17.38, 21.95, 11.92);
+    path.cubicTo(21.95, 9.27, 20.92, 6.78, 19.05, 4.91);
+    path.cubicTo(17.18, 3.03, 14.69, 2.0, 12.04, 2.0);
+    path.close();
+
+    // 2. Inner speech-bubble hole (creating the crisp outline)
+    path.moveTo(12.05, 3.67);
+    path.cubicTo(14.25, 3.67, 16.31, 4.53, 17.87, 6.09);
+    path.cubicTo(19.42, 7.65, 20.28, 9.72, 20.28, 11.92);
+    path.cubicTo(20.28, 16.46, 16.58, 20.16, 12.04, 20.16);
+    path.cubicTo(10.66, 20.16, 9.3, 19.8, 8.1, 19.11);
+    path.lineTo(7.81, 18.94);
+    path.lineTo(4.7, 19.76);
+    path.lineTo(5.53, 16.73);
+    path.lineTo(5.34, 16.43);
+    path.cubicTo(4.56, 15.19, 4.15, 13.57, 4.15, 11.91);
+    path.cubicTo(4.15, 7.37, 7.85, 3.67, 12.05, 3.67);
+    path.close();
+
+    // 3. Official telephone handset inside
+    path.moveTo(8.53, 7.33);
+    path.cubicTo(8.37, 7.33, 8.1, 7.39, 7.87, 7.64);
+    path.cubicTo(7.65, 7.89, 7.02, 8.48, 7.02, 9.71);
+    path.cubicTo(7.02, 10.93, 7.91, 12.11, 8.03, 12.27);
+    path.cubicTo(8.16, 12.44, 9.75, 14.88, 12.19, 15.93);
+    path.cubicTo(14.22, 16.81, 14.63, 16.63, 15.08, 16.59);
+    path.cubicTo(15.53, 16.55, 16.53, 16.0, 16.74, 15.42);
+    path.cubicTo(16.95, 14.84, 16.95, 14.34, 16.89, 14.24);
+    path.cubicTo(16.82, 14.13, 16.66, 14.07, 16.41, 13.95);
+    path.cubicTo(16.16, 13.82, 14.94, 13.22, 14.71, 13.14);
+    path.cubicTo(14.49, 13.06, 14.32, 13.01, 14.16, 13.26);
+    path.cubicTo(13.99, 13.51, 13.52, 14.07, 13.37, 14.24);
+    path.cubicTo(13.23, 14.4, 13.08, 14.42, 12.83, 14.3);
+    path.cubicTo(12.58, 14.17, 11.78, 13.91, 10.83, 13.07);
+    path.cubicTo(10.09, 12.41, 9.59, 11.6, 9.47, 11.35);
+    path.cubicTo(9.34, 11.1, 9.45, 10.97, 9.58, 10.84);
+    path.cubicTo(9.69, 10.73, 9.83, 10.55, 9.95, 10.41);
+    path.cubicTo(10.08, 10.26, 10.12, 10.16, 10.2, 9.99);
+    path.cubicTo(10.28, 9.83, 10.24, 9.68, 10.18, 9.56);
+    path.cubicTo(10.12, 9.44, 9.63, 8.23, 9.42, 7.74);
+    path.cubicTo(9.22, 7.25, 9.02, 7.32, 8.87, 7.31);
+    path.cubicTo(8.72, 7.31, 8.55, 7.33, 8.53, 7.33);
+    path.close();
+
+    canvas.drawPath(path, paint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

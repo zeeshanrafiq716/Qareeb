@@ -175,4 +175,21 @@ void main() {
       expect(prefs.getBool('provider_route_telemetry'), isTrue);
     });
   });
+
+  group('Safety & Support Contact Tests', () {
+    test('Customer support phone and WhatsApp URIs are correctly formatted', () {
+      const supportNumber = '+966556213861';
+      final cleanPhone = supportNumber.replaceAll(RegExp(r'[^0-9+]'), '');
+      final callUri = Uri(scheme: 'tel', path: cleanPhone);
+      expect(callUri.toString(), equals('tel:+966556213861'));
+
+      final digitsOnly = supportNumber.replaceAll(RegExp(r'[^0-9]'), '');
+      final nativeWhatsAppUri = Uri.parse('whatsapp://send?phone=$digitsOnly');
+      expect(nativeWhatsAppUri.scheme, equals('whatsapp'));
+      expect(nativeWhatsAppUri.queryParameters['phone'], equals('966556213861'));
+
+      final webWhatsAppUri = Uri.parse('https://wa.me/$digitsOnly');
+      expect(webWhatsAppUri.toString(), equals('https://wa.me/966556213861'));
+    });
+  });
 }

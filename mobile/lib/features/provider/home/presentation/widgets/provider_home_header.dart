@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +7,7 @@ import 'package:mobile/features/home/presentation/widgets/notification_bell_butt
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import 'package:mobile/providers/notifications_provider.dart';
+import 'package:mobile/services/profile_stats_service.dart';
 
 /// Provider Home Screen Header Widget
 /// Implements exact Figma branding specifications:
@@ -106,12 +108,32 @@ class ProviderHomeHeader extends ConsumerWidget {
     final String effectiveRawName = (providerName != null && providerName!.isNotEmpty)
         ? providerName!
         : (storedName.isNotEmpty ? storedName : 'Ahmed Raza');
-    final String effectiveGreeting = greeting ??
-        (isArabic ? 'صباح الخير،' : 'Good morning,');
+
+    // Dynamic timeline-based greeting:
+    // 05:00 - 11:59: Good morning
+    // 12:00 - 16:59: Good afternoon
+    // 17:00 - 21:59: Good evening
+    // 22:00 - 04:59: Good evening / night
+    final int hour = DateTime.now().hour;
+    final String timelineGreeting;
+    if (hour >= 5 && hour < 12) {
+      timelineGreeting = isArabic ? 'صباح الخير،' : 'Good morning,';
+    } else if (hour >= 12 && hour < 17) {
+      timelineGreeting = isArabic ? 'مساء الخير،' : 'Good afternoon,';
+    } else if (hour >= 17 && hour < 22) {
+      timelineGreeting = isArabic ? 'مساء الخير،' : 'Good evening,';
+    } else {
+      timelineGreeting = isArabic ? 'مساء الخير،' : 'Good evening,';
+    }
+    final String effectiveGreeting = greeting ?? timelineGreeting;
+
     final String effectiveName = isArabic ? context.auto(effectiveRawName) : effectiveRawName;
     const String defaultAvatarAsset = 'assets/images/driver_avatar.png';
-    final bool isNetworkAvatar = avatarUrl != null &&
-        (avatarUrl!.startsWith('http://') || avatarUrl!.startsWith('https://'));
+
+    // Ensure saved photo is loaded into notifier if not already done
+    if (ProfileStatsService.instance.providerPhotoNotifier.value == null) {
+      ProfileStatsService.instance.getSavedPhotoPath(isProvider: true);
+    }
 
     return Opacity(
       opacity: 1.0, // opacity: 1
@@ -140,47 +162,60 @@ class ProviderHomeHeader extends ConsumerWidget {
                           height: avatarSize,
                           child: GestureDetector(
                             onTap: onProfileTap,
-                            child: ClipOval(
-                              child: Container(
-                                width: avatarSize,
-                                height: avatarSize,
-                                color: const Color(0xFFF0EAFE),
-                                child: isNetworkAvatar
-                                    ? Image.network(
-                                        avatarUrl!,
-                                        width: avatarSize,
-                                        height: avatarSize,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, _, _) => const Center(
-                                          child: Icon(
-                                            Icons.person_rounded,
-                                            size: 22.0,
-                                            color: Color(0xFF8B53FE),
-                                          ),
-                                        ),
-                                      )
-                                    : (avatarUrl != null && avatarUrl!.isNotEmpty && avatarUrl != defaultAvatarAsset)
-                                        ? Image.asset(
-                                            avatarUrl!,
-                                            width: avatarSize,
-                                            height: avatarSize,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (_, _, _) => const Center(
-                                              child: Icon(
-                                                Icons.person_rounded,
-                                                size: 22.0,
-                                                color: Color(0xFF8B53FE),
-                                              ),
-                                            ),
-                                          )
-                                        : const Center(
-                                            child: Icon(
-                                              Icons.person_rounded,
-                                              size: 22.0,
-                                              color: Color(0xFF8B53FE),
-                                            ),
-                                          ),
-                              ),
+                            child: ValueListenableBuilder<String?>(
+                              valueListenable: ProfileStatsService.instance.providerPhotoNotifier,
+                              builder: (context, savedPhotoPath, _) {
+                                final effectivePhoto = (avatarUrl != null && avatarUrl!.isNotEmpty)
+                                    ? avatarUrl!
+                                    : (savedPhotoPath ?? '');
+                                final bool isNetworkAvatar = effectivePhoto.startsWith('http://') ||
+                                    effectivePhoto.startsWith('https://');
+                                final bool isLocalFile = !isNetworkAvatar &&
+                                    effectivePhoto.isNotEmpty &&
+                                    File(effectivePhoto).existsSync();
+                                final bool isAsset = !isNetworkAvatar &&
+                                    !isLocalFile &&
+                                    effectivePhoto.isNotEmpty &&
+                                    effectivePhoto != defaultAvatarAsset;
+
+                                Widget avatarContent;
+                                if (isNetworkAvatar) {
+                                  avatarContent = Image.network(
+                                    effectivePhoto,
+                                    width: avatarSize,
+                                    height: avatarSize,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => _defaultAvatarIcon(),
+                                  );
+                                } else if (isLocalFile) {
+                                  avatarContent = Image.file(
+                                    File(effectivePhoto),
+                                    width: avatarSize,
+                                    height: avatarSize,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => _defaultAvatarIcon(),
+                                  );
+                                } else if (isAsset) {
+                                  avatarContent = Image.asset(
+                                    effectivePhoto,
+                                    width: avatarSize,
+                                    height: avatarSize,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => _defaultAvatarIcon(),
+                                  );
+                                } else {
+                                  avatarContent = _defaultAvatarIcon();
+                                }
+
+                                return ClipOval(
+                                  child: Container(
+                                    width: avatarSize,
+                                    height: avatarSize,
+                                    color: const Color(0xFFF0EAFE),
+                                    child: avatarContent,
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ),
@@ -279,6 +314,16 @@ class ProviderHomeHeader extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _defaultAvatarIcon() {
+    return const Center(
+      child: Icon(
+        Icons.person_rounded,
+        size: 22.0,
+        color: Color(0xFF8B53FE),
       ),
     );
   }

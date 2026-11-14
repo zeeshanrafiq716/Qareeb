@@ -5,8 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/api/api_client.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../services/task_service.dart';
+import '../../customer/auth/data/customer_auth_store.dart';
 import '../../provider/auth/presentation/widgets/provider_animated_button.dart';
 
 /// Customer Help & Support Screen
@@ -194,10 +198,111 @@ class _CustomerFeedbackSupportScreenState
     }
   }
 
+  Future<void> _launchCall(BuildContext context, String phone, bool isArabic) async {
+    HapticFeedback.mediumImpact();
+    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final Uri callUri = Uri(scheme: 'tel', path: cleanPhone);
+    try {
+      if (await canLaunchUrl(callUri)) {
+        await launchUrl(callUri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(callUri);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isArabic ? 'تعذر بدء الاتصال: $phone' : 'Could not start call to: $phone',
+              style: AppTypography.fontForLocale(isArabic: isArabic, color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _launchWhatsApp(BuildContext context, String phone, bool isArabic) async {
+    HapticFeedback.mediumImpact();
+    final digitsOnly = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    final defaultMessage = isArabic
+        ? Uri.encodeComponent('مرحباً، أحتاج مساعدة بخصوص تطبيق قريب')
+        : Uri.encodeComponent('Hello, I need assistance with Qareeb app');
+
+    final Uri nativeWhatsAppUri = Uri.parse('whatsapp://send?phone=$digitsOnly&text=$defaultMessage');
+    final Uri webWhatsAppUri = Uri.parse('https://wa.me/$digitsOnly?text=$defaultMessage');
+
+    try {
+      bool launched = false;
+      if (await canLaunchUrl(nativeWhatsAppUri)) {
+        launched = await launchUrl(nativeWhatsAppUri, mode: LaunchMode.externalApplication);
+      }
+      if (!launched && await canLaunchUrl(webWhatsAppUri)) {
+        launched = await launchUrl(webWhatsAppUri, mode: LaunchMode.externalApplication);
+      }
+      if (!launched) {
+        launched = await launchUrl(webWhatsAppUri, mode: LaunchMode.externalApplication);
+      }
+
+      if (!launched && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isArabic ? 'تعذر فتح واتساب ($phone)' : 'Could not open WhatsApp ($phone)',
+              style: AppTypography.fontForLocale(isArabic: isArabic, color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isArabic ? 'تعذر فتح واتساب ($phone)' : 'Could not open WhatsApp ($phone)',
+              style: AppTypography.fontForLocale(isArabic: isArabic, color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _launchEmail(BuildContext context, String email, bool isArabic, {String? subject, String? body}) async {
+    HapticFeedback.mediumImpact();
+    final String encodedSubject = Uri.encodeComponent(subject ?? (isArabic ? 'استفسار ودعم عملاء قريب' : 'Qareeb Customer Support Inquiry'));
+    final String encodedBody = body != null ? Uri.encodeComponent(body) : '';
+    final Uri emailUri = Uri.parse('mailto:$email?subject=$encodedSubject&body=$encodedBody');
+
+    try {
+      if (await canLaunchUrl(emailUri)) {
+        await launchUrl(emailUri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(emailUri);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isArabic ? 'البريد الإلكتروني للدعم: $email' : 'Support email: $email',
+              style: AppTypography.fontForLocale(isArabic: isArabic, color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFF8B53FE),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _submitFeedback(bool isArabic) async {
     if (_isSubmitting) return;
 
-    if (_feedbackCtrl.text.trim().isEmpty) {
+    final description = _feedbackCtrl.text.trim();
+    if (description.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
@@ -215,7 +320,58 @@ class _CustomerFeedbackSupportScreenState
     setState(() => _isSubmitting = true);
     HapticFeedback.mediumImpact();
 
-    await Future.delayed(const Duration(milliseconds: 650));
+    String customerPhone = CustomerAuthStore.instance.phone;
+    String customerName = CustomerAuthStore.instance.fullName;
+
+    if (customerPhone.isEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      customerPhone = prefs.getString('customer_phone') ?? '';
+      customerName = prefs.getString('customer_name') ?? '';
+    }
+
+    // 1. Submit ticket directly to backend database (admin panel)
+    String ticketNumber = 'TKT-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+    try {
+      final apiClient = ApiClient();
+      final response = await apiClient.post(
+        '/support/tickets',
+        data: {
+          'category': _selectedCategory,
+          'description': description,
+          'phone': customerPhone,
+          'name': customerName,
+          'source': 'customer_mobile',
+        },
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data != null &&
+            response.data['data'] != null &&
+            response.data['data']['ticket_number'] != null) {
+          ticketNumber = response.data['data']['ticket_number'].toString();
+        }
+      }
+    } catch (e) {
+      debugPrint('Support ticket backend submit error: $e');
+    }
+
+    // 2. Prepare & open email report to zeshoapp@gmail.com
+    final String emailSubject = Uri.encodeComponent('[Qareeb Support $ticketNumber] $_selectedCategory');
+    final String emailBody = Uri.encodeComponent(
+      'Ticket Number: $ticketNumber\n'
+      'Category: $_selectedCategory\n'
+      'Customer Name: ${customerName.isNotEmpty ? customerName : "Customer"}\n'
+      'Customer Phone: ${customerPhone.isNotEmpty ? customerPhone : "Not Provided"}\n'
+      'Date: ${DateTime.now().toLocal().toString()}\n\n'
+      'Issue Description:\n$description',
+    );
+    final Uri mailtoUri = Uri.parse('mailto:zeshoapp@gmail.com?subject=$emailSubject&body=$emailBody');
+    try {
+      if (await canLaunchUrl(mailtoUri)) {
+        await launchUrl(mailtoUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Error launching email client: $e');
+    }
 
     if (!mounted) return;
     setState(() => _isSubmitting = false);
@@ -224,21 +380,22 @@ class _CustomerFeedbackSupportScreenState
       SnackBar(
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-        backgroundColor: const Color(0xFF1C2926),
+        backgroundColor: const Color(0xFF10B981),
+        duration: const Duration(seconds: 4),
         content: Row(
           children: [
-            const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 20.0),
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20.0),
             const SizedBox(width: 10.0),
             Expanded(
               child: Text(
                 isArabic
-                    ? 'تم استلام تذكرتك بنجاح! سيتواصل معك فريق خدمة العملاء قريباً.'
-                    : 'Your support ticket has been received! Our support team will contact you shortly.',
+                    ? 'تم إرسال التقرير ($ticketNumber) بنجاح إلى الإدارة والبريد الإلكتروني!'
+                    : 'Report ($ticketNumber) submitted successfully to admin and email!',
                 style: AppTypography.fontForLocale(
                   isArabic: isArabic,
                   color: Colors.white,
                   fontSize: 13.0,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -247,6 +404,7 @@ class _CustomerFeedbackSupportScreenState
       ),
     );
 
+    _feedbackCtrl.clear();
     Navigator.of(context).maybePop();
   }
 
@@ -559,20 +717,7 @@ class _CustomerFeedbackSupportScreenState
               color: Color(0xFF8B53FE),
             ),
             label: isArabic ? 'اتصال' : 'Call',
-            onTap: () {
-              HapticFeedback.lightImpact();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    isArabic
-                        ? 'جارٍ الاتصال برقم الدعم +966 54 545 6467...'
-                        : 'Connecting to Zesho Support (+966 54 545 6467)...',
-                    style: AppTypography.fontForLocale(isArabic: isArabic, color: Colors.white),
-                  ),
-                  backgroundColor: const Color(0xFF1C2926),
-                ),
-              );
-            },
+            onTap: () => _launchCall(context, '+966556213861', isArabic),
             isArabic: isArabic,
           ),
         ),
@@ -586,20 +731,7 @@ class _CustomerFeedbackSupportScreenState
               color: Color(0xFF25D366),
             ),
             label: isArabic ? 'واتساب' : 'WhatsApp',
-            onTap: () {
-              HapticFeedback.lightImpact();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    isArabic
-                        ? 'جارٍ فتح محادثة واتساب الدعم...'
-                        : 'Opening WhatsApp Customer Care...',
-                    style: AppTypography.fontForLocale(isArabic: isArabic, color: Colors.white),
-                  ),
-                  backgroundColor: const Color(0xFF10B981),
-                ),
-              );
-            },
+            onTap: () => _launchWhatsApp(context, '+966556213861', isArabic),
             isArabic: isArabic,
           ),
         ),
@@ -614,20 +746,7 @@ class _CustomerFeedbackSupportScreenState
               color: Color(0xFF8B53FE),
             ),
             label: isArabic ? 'إيميل' : 'Email',
-            onTap: () {
-              HapticFeedback.lightImpact();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    isArabic
-                        ? 'البريد الإلكتروني للدعم: support@zesho.tech'
-                        : 'Support email: support@zesho.tech',
-                    style: AppTypography.fontForLocale(isArabic: isArabic, color: Colors.white),
-                  ),
-                  backgroundColor: const Color(0xFF8B53FE),
-                ),
-              );
-            },
+            onTap: () => _launchEmail(context, 'zeshoapp@gmail.com', isArabic),
             isArabic: isArabic,
           ),
         ),

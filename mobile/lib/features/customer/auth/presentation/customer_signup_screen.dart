@@ -24,11 +24,16 @@ class CustomerSignupScreen extends ConsumerStatefulWidget {
   ConsumerState<CustomerSignupScreen> createState() => _CustomerSignupScreenState();
 }
 
-class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen> {
+class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final FocusNode _nameFocusNode = FocusNode();
   final FocusNode _phoneFocusNode = FocusNode();
+
+  late final AnimationController _iconAnimCtrl;
+  late final Animation<double> _iconScaleAnim;
+  late final Animation<double> _iconFloatAnim;
 
   CountryModel _selectedCountry = CountryModel.defaultCountry;
   bool _isLoading = false;
@@ -37,6 +42,20 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen> {
   @override
   void initState() {
     super.initState();
+    // Continuous subtle floating & scale animation for brand icon
+    _iconAnimCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat(reverse: true);
+
+    _iconScaleAnim = Tween<double>(begin: 0.96, end: 1.04).animate(
+      CurvedAnimation(parent: _iconAnimCtrl, curve: Curves.easeInOutSine),
+    );
+
+    _iconFloatAnim = Tween<double>(begin: 0.0, end: -4.0).animate(
+      CurvedAnimation(parent: _iconAnimCtrl, curve: Curves.easeInOutSine),
+    );
+
     // Pre-populate if previously entered or loaded
     final store = CustomerAuthStore.instance;
     if (store.fullName.isNotEmpty) {
@@ -53,6 +72,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen> {
 
   @override
   void dispose() {
+    _iconAnimCtrl.dispose();
     _nameController.dispose();
     _phoneController.dispose();
     _nameFocusNode.dispose();
@@ -262,65 +282,90 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SizedBox(height: headerTop + 54.0),
+                          SizedBox(height: headerTop + 50.0),
 
-                          // Brand Badge
+                          // Brand Badge with gentle floating and scale pulse animation
                           Center(
-                            child: Container(
-                              width: 64.0,
-                              height: 64.0,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF0EAFE),
-                                borderRadius: BorderRadius.circular(20.0),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color(0x1A8B53FE),
-                                    offset: Offset(0, 4),
-                                    blurRadius: 16.0,
+                            child: AnimatedBuilder(
+                              animation: _iconAnimCtrl,
+                              builder: (context, child) {
+                                return Transform.translate(
+                                  offset: Offset(0, _iconFloatAnim.value),
+                                  child: Transform.scale(
+                                    scale: _iconScaleAnim.value,
+                                    child: child,
                                   ),
-                                ],
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.person_pin_rounded,
-                                  size: 34.0,
-                                  color: Color(0xFF8B53FE),
+                                );
+                              },
+                              child: Container(
+                                width: 64.0,
+                                height: 64.0,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF0EAFE),
+                                  borderRadius: BorderRadius.circular(20.0),
+                                  border: Border.all(
+                                    color: const Color(0xFF8B53FE).withValues(alpha: 0.18),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF8B53FE).withValues(alpha: 0.18),
+                                      offset: const Offset(0, 6),
+                                      blurRadius: 16.0,
+                                    ),
+                                    BoxShadow(
+                                      color: Colors.white.withValues(alpha: 0.8),
+                                      offset: const Offset(0, -2),
+                                      blurRadius: 6.0,
+                                    ),
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.person_pin_rounded,
+                                    size: 36.0,
+                                    color: Color(0xFF8B53FE),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
 
-                          const SizedBox(height: 20.0),
+                          const SizedBox(height: 18.0),
 
                           // Heading
                           Text(
                             isArabic ? 'إنشاء حساب جديد' : 'Create Your Account',
                             textAlign: TextAlign.center,
                             style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                              fontSize: 24.0,
+                              fontSize: 22.0,
                               fontWeight: FontWeight.w700,
                               color: const Color(0xFF1C2926),
                               letterSpacing: -0.3,
+                              height: 1.25,
                             ),
                           ),
 
                           const SizedBox(height: 8.0),
 
                           // Subtitle
-                          Text(
-                            isArabic
-                                ? 'أدخل اسمك ورقم هاتفك للمتابعة والوصول السريع للخدمات'
-                                : 'Enter your name and phone number to get started with services',
-                            textAlign: TextAlign.center,
-                            style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w400,
-                              color: const Color(0xFF616166),
-                              height: 1.35,
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            child: Text(
+                              isArabic
+                                  ? 'أدخل اسمك ورقم هاتفك للمتابعة والوصول السريع للخدمات'
+                                  : 'Enter your name and phone number to get started with services',
+                              textAlign: TextAlign.center,
+                              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w400,
+                                color: const Color(0xFF6B7280),
+                                height: 1.4,
+                              ),
                             ),
                           ),
 
-                          const SizedBox(height: 32.0),
+                          const SizedBox(height: 24.0),
 
                           // Error banner if any
                           if (_errorMessage != null) ...[
@@ -367,10 +412,10 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen> {
                             style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
                               fontSize: 13.0,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF1C2926),
+                              color: const Color(0xFF1F2937),
                             ),
                           ),
-                          const SizedBox(height: 6.0),
+                          const SizedBox(height: 8.0),
 
                           Container(
                             height: 52.0,
@@ -435,10 +480,10 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen> {
                             style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
                               fontSize: 13.0,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF1C2926),
+                              color: const Color(0xFF1F2937),
                             ),
                           ),
-                          const SizedBox(height: 6.0),
+                          const SizedBox(height: 8.0),
 
                           // Phone input row: Number code on the LEFT side, number field on the RIGHT side
                           Directionality(
@@ -542,7 +587,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen> {
                             ),
                           ),
 
-                          const SizedBox(height: 28.0),
+                          const SizedBox(height: 24.0),
 
                           // 3. Continue / Sign Up Button (Animated Branded Button - Never Disappears On Click)
                           ProviderAnimatedButton(

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { ArrowRight, ChevronRight, ShieldAlert, AlertTriangle, Clock } from 'lucide-react'
-import { fetchProviders } from '../../api/admin'
+import { fetchProviders, fetchReportsApi } from '../../api/admin'
 
 export function DashboardThirdRow({
   onViewAllVerifications,
@@ -91,7 +91,26 @@ export function DashboardThirdRow({
     }
   }, [])
 
-  const reports = []
+  const [reports, setReports] = useState([])
+
+  useEffect(() => {
+    let mounted = true
+    async function loadRecentReports() {
+      try {
+        const res = await fetchReportsApi({ limit: 3 })
+        if (!mounted) return
+        setReports(res || [])
+      } catch {
+        if (mounted) setReports([])
+      }
+    }
+    loadRecentReports()
+    const timer = setInterval(loadRecentReports, 4000)
+    return () => {
+      mounted = false
+      clearInterval(timer)
+    }
+  }, [])
 
   return (
     <div
@@ -222,16 +241,22 @@ export function DashboardThirdRow({
                   </div>
                   <div className="flex flex-col min-w-0">
                     <span className="text-[13px] font-semibold text-[#1C2926] leading-tight truncate">
-                      {report.title}
+                      {report.category || report.ticket_number}
                     </span>
                     <span className="text-[11px] text-[#616166] leading-tight truncate mt-0.5">
-                      {report.provider} · {report.category}
+                      {report.customer_phone || report.customer_name || 'Customer'} · {report.description ? (report.description.length > 32 ? report.description.slice(0, 32) + '...' : report.description) : (report.ticket_number || 'Report')}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 pl-2">
-                  <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-[#FEE2E2] text-[#DC2626]">
-                    {report.status}
+                  <span
+                    className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full ${
+                      report.status === 'resolved'
+                        ? 'bg-[#ECFDF5] text-[#059669]'
+                        : 'bg-[#FEE2E2] text-[#DC2626]'
+                    }`}
+                  >
+                    {report.status || 'open'}
                   </span>
                   <ChevronRight className="w-4 h-4 text-[#9EAFA9]" />
                 </div>

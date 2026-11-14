@@ -322,8 +322,9 @@ class _LocationPermissionScreenState
             final double containerHeight = isDesktopWeb ? 844.0 : constraints.maxHeight;
             final double topSafeArea = MediaQuery.of(context).padding.top;
             final double headerTop = topSafeArea > 0 ? (topSafeArea + 14.0) : 56.0;
-            final bool shouldScroll = !isDesktopWeb && containerHeight < 680.0;
-            final double contentHeight = shouldScroll ? 720.0 : containerHeight;
+            final double bottomSafeArea = MediaQuery.of(context).padding.bottom;
+            final double minRequiredHeight = 348.0 + 440.0 + math.max(bottomSafeArea, 20.0) + 36.0;
+            final double contentHeight = math.max(containerHeight, minRequiredHeight);
 
             final screenContent = Container(
               width: containerWidth,
@@ -342,9 +343,7 @@ class _LocationPermissionScreenState
                   },
                 ),
                 child: SingleChildScrollView(
-                  physics: shouldScroll
-                      ? const ClampingScrollPhysics()
-                      : const NeverScrollableScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   child: SizedBox(
                     width: containerWidth,
                     height: contentHeight,
@@ -992,6 +991,7 @@ class _LocationPermissionScreenState
                                     ),
                                   ),
                                 ),
+                                SizedBox(height: math.max(bottomSafeArea + 24.0, 36.0)),
                               ],
                             ),
                           ),

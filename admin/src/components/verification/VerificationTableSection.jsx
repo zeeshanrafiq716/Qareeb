@@ -628,7 +628,8 @@ export function VerificationTableSection({
             filteredApplications.map((app, idx) => {
               const CategoryIcon = app.categoryIcon || Disc
               const isSelected = selectedRows.includes(app.id)
-              const isBottomRow = idx >= filteredApplications.length - 2 && filteredApplications.length > 1
+              // Only open upwards if genuinely in the lower half of a longer table (never for top rows 0, 1, 2)
+              const isBottomRow = filteredApplications.length >= 4 && idx >= 3 && idx >= filteredApplications.length - 2
 
               return (
                 <div
@@ -638,7 +639,7 @@ export function VerificationTableSection({
                   }}
                   className={`w-full px-4 sm:px-5 flex items-center shrink-0 border-b border-[#F0EFF2] transition-colors hover:bg-[#FAF9FD] ${
                     isSelected ? 'bg-[#F9F7FE]' : 'bg-white'
-                  }`}
+                  } ${activeRowMenu === app.id ? 'relative z-30' : 'relative z-0'}`}
                 >
                   <div className="w-[32px] flex items-center justify-start shrink-0">
                     <input

@@ -13,8 +13,9 @@ import { LiveMapView } from './LiveMapView'
 import { CallLogsView } from './CallLogsView'
 import { CategoryManagementView } from './CategoryManagementView'
 import { SettingsView } from './SettingsView'
+import { ReportsComplaintsView } from './ReportsComplaintsView'
 import { useAuth } from '../context/AuthContext'
-import { fetchProviders, fetchOnlineProviders } from '../api/admin'
+import { fetchProviders, fetchOnlineProviders, fetchReportsStatsApi } from '../api/admin'
 
 const VALID_TABS = [
   'dashboard',
@@ -205,11 +206,19 @@ export default function DashboardView() {
             })
           setDashboardMapPins(pins)
 
+          let openReportsCount = '0'
+          try {
+            const reportsStats = await fetchReportsStatsApi()
+            if (reportsStats?.open != null) {
+              openReportsCount = reportsStats.open.toString()
+            }
+          } catch (_) {}
+
           setStats({
             totalProviders: total,
             pendingVerifications: pendingCount.toLocaleString(),
             onlineProviders: online,
-            openReports: '0',
+            openReports: openReportsCount,
           })
         }
       } catch {
@@ -352,6 +361,9 @@ export default function DashboardView() {
           ) : activeTab === 'categories' ? (
             /* ===== CATEGORY MANAGEMENT SCREEN ===== */
             <CategoryManagementView />
+          ) : activeTab === 'reports' ? (
+            /* ===== REPORTS & COMPLAINTS SCREEN ===== */
+            <ReportsComplaintsView />
           ) : activeTab === 'settings' ? (
             /* ===== SETTINGS SCREEN ===== */
             <SettingsView />

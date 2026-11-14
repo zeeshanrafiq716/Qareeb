@@ -349,7 +349,10 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
                         top: headerTop,
                         left: 0,
                         right: 0,
-                        child: const ProviderHomeHeader(showLanguageToggle: true),
+                        child: ProviderHomeHeader(
+                          showLanguageToggle: true,
+                          onProfileTap: () => _onTabSelected(2),
+                        ),
                       ),
 
                       // 2. Fixed, non-scrollable Home layout with full touch support

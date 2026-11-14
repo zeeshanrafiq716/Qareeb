@@ -72,7 +72,15 @@
 	<string>Qareeb requires access to your location to provide real-time tracking.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Qareeb requires access to your location to provide real-time tracking.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Qareeb requires Face ID to securely authenticate and protect your account.</string>
 	<key>io.flutter.embedded_views_preview</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+		<string>whatsapp</string>
+		<string>https</string>
+	</array>
 </dict>
 </plist>

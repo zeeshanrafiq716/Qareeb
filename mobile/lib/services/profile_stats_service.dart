@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'task_service.dart';
@@ -54,6 +55,10 @@ class ProfileStatsService {
   static const String _keyProviderRating = 'qareeb_provider_rating';
   static const String _keyProviderReviews = 'qareeb_provider_reviews';
 
+  /// Reactive notifiers for immediate avatar synchronization across screens
+  final ValueNotifier<String?> providerPhotoNotifier = ValueNotifier<String?>(null);
+  final ValueNotifier<String?> customerPhotoNotifier = ValueNotifier<String?>(null);
+
   final ImagePicker _picker = ImagePicker();
 
   /// Pick profile photo from Camera or Gallery and persist it
@@ -75,6 +80,12 @@ class ProfileStatsService {
       final key = isProvider ? _keyProviderPhoto : _keyCustomerPhoto;
       await prefs.setString(key, pickedFile.path);
 
+      if (isProvider) {
+        providerPhotoNotifier.value = pickedFile.path;
+      } else {
+        customerPhotoNotifier.value = pickedFile.path;
+      }
+
       return pickedFile.path;
     } catch (_) {
       return null;
@@ -87,6 +98,11 @@ class ProfileStatsService {
       final prefs = await SharedPreferences.getInstance();
       final key = isProvider ? _keyProviderPhoto : _keyCustomerPhoto;
       await prefs.remove(key);
+      if (isProvider) {
+        providerPhotoNotifier.value = null;
+      } else {
+        customerPhotoNotifier.value = null;
+      }
     } catch (_) {}
   }
 
@@ -99,9 +115,25 @@ class ProfileStatsService {
       if (path != null && path.isNotEmpty) {
         final file = File(path);
         if (await file.exists()) {
+          if (isProvider) {
+            providerPhotoNotifier.value = path;
+          } else {
+            customerPhotoNotifier.value = path;
+          }
           return path;
         } else {
           await prefs.remove(key);
+          if (isProvider) {
+            providerPhotoNotifier.value = null;
+          } else {
+            customerPhotoNotifier.value = null;
+          }
+        }
+      } else {
+        if (isProvider) {
+          providerPhotoNotifier.value = null;
+        } else {
+          customerPhotoNotifier.value = null;
         }
       }
     } catch (_) {}

@@ -8,9 +8,7 @@ import 'features/provider/auth/presentation/otp_verification_screen.dart';
 import 'features/provider/auth/presentation/phone_verification_screen.dart';
 import 'features/provider/auth/presentation/phone_verified_screen.dart';
 import 'features/provider/auth/presentation/provider_location_permission_screen.dart';
-import 'features/provider/auth/presentation/provider_profile_details_screen.dart';
 import 'features/provider/auth/presentation/upload_documents_screen.dart';
-import 'features/provider/auth/presentation/vehicle_service_details_screen.dart';
 import 'features/provider/home/presentation/provider_home_screen.dart';
 import 'features/provider/requests/presentation/provider_requests_screen.dart';
 import 'features/provider/requests/presentation/provider_service_completed_screen.dart';
@@ -119,6 +117,13 @@ class QareebProviderApp extends ConsumerWidget {
           indicatorColor: Color(0xFF8B53FE),
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white,
+        ),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(24.0)),
+          ),
         ),
       ),
       initialRoute: '/',

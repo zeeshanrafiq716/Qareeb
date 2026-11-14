@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { query } from "../../db/pool.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { created, ok } from "../../utils/http.js";
 import { validate, validatedQuery } from "../../middleware/validate.js";
@@ -381,5 +382,59 @@ adminRoutes.delete(
   requireAdmin,
   asyncHandler(async (req, res) => {
     ok(res, await adminService.removeCategoryAsset(req.params.id));
+  }),
+);
+
+adminRoutes.get(
+  "/reports",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { status } = req.query;
+    let sql = `SELECT id, ticket_number, category, description, customer_phone, customer_name, photos, status, source, admin_notes, created_at, updated_at FROM support_tickets`;
+    const params = [];
+    if (status && status !== "all") {
+      params.push(status);
+      sql += ` WHERE status = $1`;
+    }
+    sql += ` ORDER BY created_at DESC LIMIT 100`;
+    const { rows } = await query(sql, params);
+    ok(res, rows);
+  }),
+);
+
+adminRoutes.get(
+  "/reports/stats",
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    const { rows } = await query(
+      `SELECT 
+         count(*) FILTER (WHERE status = 'open') AS open_count,
+         count(*) FILTER (WHERE status = 'resolved') AS resolved_count,
+         count(*) AS total_count
+       FROM support_tickets`
+    );
+    ok(res, {
+      open: parseInt(rows[0]?.open_count || "0", 10),
+      resolved: parseInt(rows[0]?.resolved_count || "0", 10),
+      total: parseInt(rows[0]?.total_count || "0", 10),
+    });
+  }),
+);
+
+adminRoutes.patch(
+  "/reports/:id/status",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { status, adminNotes } = req.body;
+    const { rows } = await query(
+      `UPDATE support_tickets 
+       SET status = COALESCE($1, status),
+           admin_notes = COALESCE($2, admin_notes),
+           updated_at = now()
+       WHERE id = $3
+       RETURNING *`,
+      [status, adminNotes, req.params.id]
+    );
+    ok(res, rows[0]);
   }),
 );

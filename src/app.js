@@ -65,6 +65,8 @@ export function createApp() {
   );
 
   app.use("/api/v1", apiGlobalRateLimit(), apiRouter);
+  app.use("/api", apiGlobalRateLimit(), apiRouter);
+  app.use(apiGlobalRateLimit(), apiRouter);
   app.use(notFoundHandler);
   app.use(errorHandler);
   return app;
