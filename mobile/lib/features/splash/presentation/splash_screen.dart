@@ -82,6 +82,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           if (!mounted) return;
           final tr = ref.read(translationsProvider);
           final authenticated = await BiometricHelper.authenticate(
+            context: context,
             localizedReason: tr.isArabic
                 ? 'يرجى تأكيد الهوية بالبصمة لفتح تطبيق زشو'
                 : 'Authenticate with Face ID or fingerprint to unlock Zesho',
@@ -252,6 +253,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                               HapticFeedback.lightImpact();
                               final tr = ref.read(translationsProvider);
                               final authenticated = await BiometricHelper.authenticate(
+                                context: context,
                                 localizedReason: tr.isArabic
                                     ? 'يرجى تأكيد الهوية بالبصمة لفتح تطبيق زشو'
                                     : 'Authenticate with biometrics to unlock Zesho',

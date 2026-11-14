@@ -147,4 +147,32 @@ void main() {
       expect(result, isFalse);
     });
   });
+
+  group('Location & Telemetry Privacy Settings Tests', () {
+    test('High-Precision GPS and privacy telemetry persistence', () async {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Initial defaults
+      expect(prefs.getBool('customer_precise_location'), isNull);
+      expect(prefs.getBool('customer_share_trip_status'), isNull);
+
+      // Customer toggles High-Precision GPS
+      await prefs.setBool('customer_precise_location', true);
+      await prefs.setBool('customer_share_trip_status', true);
+
+      expect(prefs.getBool('customer_precise_location'), isTrue);
+      expect(prefs.getBool('customer_share_trip_status'), isTrue);
+
+      // Provider telemetry preferences
+      await prefs.setBool('provider_duty_only_gps', true);
+      await prefs.setBool('provider_mask_customer_distance', true);
+      await prefs.setBool('provider_masked_phone_calls', true);
+      await prefs.setBool('provider_route_telemetry', true);
+
+      expect(prefs.getBool('provider_duty_only_gps'), isTrue);
+      expect(prefs.getBool('provider_mask_customer_distance'), isTrue);
+      expect(prefs.getBool('provider_masked_phone_calls'), isTrue);
+      expect(prefs.getBool('provider_route_telemetry'), isTrue);
+    });
+  });
 }

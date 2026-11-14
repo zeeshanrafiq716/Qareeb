@@ -45,14 +45,16 @@ void main() async {
   await CustomerAuthStore.instance.loadFromPrefs();
   final initialMode = await ProviderRegistrationStore.instance.getActiveAppMode();
 
-  // Gracefully handle font loading network errors so offline/CORS issues never crash the app
+  // Gracefully handle font loading & hero transition errors so offline/CORS/HotRestart issues never crash the app
   PlatformDispatcher.instance.onError = (error, stack) {
     final errorStr = error.toString();
     if (errorStr.contains('Failed to load font') ||
         errorStr.contains('ClientException') ||
         errorStr.contains('fonts.gstatic.com') ||
-        errorStr.contains('Noto fonts')) {
-      debugPrint('Font network loading failed, falling back to system font: $error');
+        errorStr.contains('Noto fonts') ||
+        errorStr.contains('heroes that share the same tag') ||
+        errorStr.contains('Hero')) {
+      debugPrint('Suppressed Hero/Font transition warning: $error');
       return true; // handled, do not crash app
     }
     return false;
@@ -63,8 +65,10 @@ void main() async {
     if (errorStr.contains('Failed to load font') ||
         errorStr.contains('ClientException') ||
         errorStr.contains('fonts.gstatic.com') ||
-        errorStr.contains('Noto fonts')) {
-      debugPrint('Suppressed Flutter font loading error: ${details.exception}');
+        errorStr.contains('Noto fonts') ||
+        errorStr.contains('heroes that share the same tag') ||
+        errorStr.contains('Hero')) {
+      debugPrint('Suppressed Hero/Font transition error: ${details.exception}');
       return;
     }
     FlutterError.presentError(details);

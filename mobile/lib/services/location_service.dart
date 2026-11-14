@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'google_maps_service.dart';
 import 'dart:math' as math;
 import 'location/web_location.dart';
@@ -167,10 +168,16 @@ class LocationService {
 
     if (lat == null || lng == null) {
       try {
+        bool isPrecise = true;
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          isPrecise = prefs.getBool('customer_precise_location') ?? true;
+        } catch (_) {}
+
         final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 5),
+          locationSettings: LocationSettings(
+            accuracy: isPrecise ? LocationAccuracy.high : LocationAccuracy.medium,
+            timeLimit: const Duration(seconds: 5),
           ),
         );
         lat = position.latitude;

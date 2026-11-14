@@ -228,10 +228,24 @@ class DeviceSessionService {
         osVersion = 'Web Client';
         try {
           final web = await _deviceInfo.webBrowserInfo;
-          final bName = web.browserName.name;
-          final browser = (bName.isNotEmpty && bName != 'unknown')
-              ? (bName[0].toUpperCase() + bName.substring(1))
-              : 'Chrome';
+          String browser = 'Chrome';
+          try {
+            final raw = (web.browserName.name).toLowerCase();
+            if (raw.contains('edge')) {
+              browser = 'Edge';
+            } else if (raw.contains('firefox')) {
+              browser = 'Firefox';
+            } else if (raw.contains('safari')) {
+              browser = 'Safari';
+            } else if (raw.contains('opera')) {
+              browser = 'Opera';
+            } else if (raw.contains('chrome')) {
+              browser = 'Chrome';
+            }
+          } catch (_) {
+            browser = 'Chrome';
+          }
+
           final rawPlat = (web.platform ?? '').toLowerCase();
           String os = 'Desktop';
           if (rawPlat.contains('win')) {
@@ -264,10 +278,11 @@ class DeviceSessionService {
         if (Platform.isAndroid) {
           final android = await _deviceInfo.androidInfo;
           platform = 'Android';
-          final brand = android.brand.isNotEmpty ? android.brand : '';
-          final model = android.model.isNotEmpty ? android.model : 'Android Device';
-          deviceName = brand.isNotEmpty && !model.toLowerCase().contains(brand.toLowerCase())
-              ? '${brand.toUpperCase()} $model'
+          final brand = android.brand.trim();
+          final model = android.model.trim().isNotEmpty ? android.model.trim() : 'Android Device';
+          final brandClean = brand.isNotEmpty ? brand.toUpperCase() : '';
+          deviceName = brandClean.isNotEmpty && !model.toUpperCase().contains(brandClean)
+              ? '$brandClean $model'
               : model;
           osVersion = 'Android ${android.version.release}';
         } else if (Platform.isIOS) {

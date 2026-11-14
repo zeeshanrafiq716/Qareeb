@@ -822,10 +822,10 @@ class CountryModel {
   ];
 
   static CountryModel findByCode(String? code) {
-    if (code == null || code.isEmpty) return defaultCountry;
-    final normalized = code.toUpperCase();
+    if (code == null || code.trim().isEmpty) return defaultCountry;
+    final normalized = code.trim().toUpperCase();
     return allCountries.firstWhere(
-      (c) => c.code.toUpperCase() == normalized,
+      (c) => (c.code).trim().toUpperCase() == normalized,
       orElse: () => defaultCountry,
     );
   }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../services/backend_service.dart';
+import '../../../services/location_service.dart';
 import '../../customer/auth/data/customer_auth_store.dart';
 import '../../provider/auth/data/provider_registration_state.dart';
 import '../../provider/auth/presentation/widgets/provider_animated_button.dart';
@@ -55,21 +57,17 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
   String _customer2faSecret = '';
   bool _preciseLocation = true;
   bool _shareTripStatus = false;
-  bool _analyticsSharing = false;
-  final List<String> _blockedProviders = [];
+  LocationPermission _locationPermission = LocationPermission.whileInUse;
 
   // Provider settings
   bool _biometricDispatch = true;
   bool _providerTwoFactorAuth = false;
   String _providerTwoFactorMethod = 'authenticator'; // 'authenticator', 'sms', or 'whatsapp'
   String _provider2faSecret = '';
-  bool _twoStepPayoutSecurity = true;
   bool _dutyOnlyGps = true;
   bool _maskCustomerDistance = true;
   bool _maskedPhoneCalls = true;
   bool _routeTelemetry = true;
-  bool _vacationMode = false;
-  final List<String> _blockedEntities = [];
 
   @override
   void initState() {
@@ -82,6 +80,14 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
       final sessions = await DeviceSessionService.getActiveSessions();
       final current = sessions.firstWhere((s) => s.isCurrent, orElse: () => sessions.first);
       final prefs = await SharedPreferences.getInstance();
+
+      LocationPermission currentPerm = LocationPermission.whileInUse;
+      try {
+        if (!kIsWeb) {
+          currentPerm = await LocationService().checkPermission();
+        }
+      } catch (_) {}
+
       if (mounted) {
         setState(() {
           _activeSessions = sessions;
@@ -92,13 +98,16 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           _biometricLogin = prefs.getBool('customer_biometric_login') ?? true;
           _preciseLocation = prefs.getBool('customer_precise_location') ?? true;
           _shareTripStatus = prefs.getBool('customer_share_trip_status') ?? false;
-          _analyticsSharing = prefs.getBool('customer_analytics_sharing') ?? false;
+          _locationPermission = currentPerm;
 
           _providerTwoFactorAuth = prefs.getBool('provider_2fa_enabled') ?? false;
           _providerTwoFactorMethod = prefs.getString('provider_2fa_method') ?? 'authenticator';
           _provider2faSecret = prefs.getString('provider_2fa_secret') ?? '';
-          _twoStepPayoutSecurity = prefs.getBool('provider_two_step_payout') ?? true;
           _biometricDispatch = prefs.getBool('provider_biometric_dispatch') ?? true;
+          _dutyOnlyGps = prefs.getBool('provider_duty_only_gps') ?? true;
+          _maskCustomerDistance = prefs.getBool('provider_mask_customer_distance') ?? true;
+          _maskedPhoneCalls = prefs.getBool('provider_masked_phone_calls') ?? true;
+          _routeTelemetry = prefs.getBool('provider_route_telemetry') ?? true;
         });
       }
     } catch (_) {}
@@ -467,6 +476,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
               final messenger = ScaffoldMessenger.of(context);
               if (val) {
                 final didAuth = await BiometricHelper.authenticate(
+                  context: context,
                   localizedReason: isArabic
                       ? 'يرجى تأكيد بصمة الوجه أو الإصبع لتفعيل تسجيل الدخول بالبصمة'
                       : 'Please authenticate with Face ID or Fingerprint to enable biometric login',
@@ -474,15 +484,18 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 if (!mounted) return;
                 if (!didAuth) {
                   setState(() => _biometricLogin = false);
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(isArabic
-                          ? 'تم إلغاء أو تعذر التحقق من الهوية البيومترية'
-                          : 'Biometric verification was cancelled or failed'),
-                      backgroundColor: Colors.redAccent,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    messenger.clearSnackBars();
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(isArabic
+                            ? 'تم إلغاء أو تعذر التحقق من الهوية البيومترية'
+                            : 'Biometric verification was cancelled or failed'),
+                        backgroundColor: Colors.redAccent,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  });
                   return;
                 }
               }
@@ -492,15 +505,18 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 await prefs.setBool('customer_biometric_login', val);
               } catch (_) {}
               if (!mounted) return;
-              messenger.showSnackBar(
-                SnackBar(
-                  content: Text(val
-                      ? (isArabic ? 'تم تفعيل الدخول بالبصمة بنجاح' : 'Biometric login enabled')
-                      : (isArabic ? 'تم تعطيل الدخول بالبصمة' : 'Biometric login disabled')),
-                  backgroundColor: val ? const Color(0xFF10B981) : null,
-                  duration: const Duration(seconds: 2),
-                ),
-              );
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                messenger.clearSnackBars();
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(val
+                        ? (isArabic ? 'تم تفعيل الدخول بالبصمة بنجاح' : 'Biometric login enabled')
+                        : (isArabic ? 'تم تعطيل الدخول بالبصمة' : 'Biometric login disabled')),
+                    backgroundColor: val ? const Color(0xFF10B981) : null,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              });
             },
             isArabic: isArabic,
           ),
@@ -659,10 +675,14 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 ? 'مشاركة إحداثيات دقيقة لضمان وصول مزود الخدمة إلى موقعك بسرعة'
                 : 'Share exact coordinates to ensure accurate vehicle recovery arrival',
             value: _preciseLocation,
-            onChanged: (val) {
-              HapticFeedback.selectionClick();
-              setState(() => _preciseLocation = val);
-            },
+            badge: _preciseLocation
+                ? _buildStatusPill(
+                    isArabic ? 'دقيق' : 'Active',
+                    const Color(0xFF059669),
+                    const Color(0xFFECFDF5),
+                  )
+                : null,
+            onChanged: (val) => _toggleHighPrecisionGps(val, isArabic),
             isArabic: isArabic,
           ),
           _buildDivider(),
@@ -673,10 +693,14 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 ? 'إرسال رابط تتبع مباشر لجهات الاتصال الموثوقة أثناء الطلب النشط'
                 : 'Send live tracking link to emergency contacts during active requests',
             value: _shareTripStatus,
-            onChanged: (val) {
-              HapticFeedback.selectionClick();
-              setState(() => _shareTripStatus = val);
-            },
+            badge: _shareTripStatus
+                ? _buildStatusPill(
+                    isArabic ? 'مفعل' : 'Active',
+                    const Color(0xFF059669),
+                    const Color(0xFFECFDF5),
+                  )
+                : null,
+            onChanged: (val) => _toggleShareTripStatus(val, isArabic),
             isArabic: isArabic,
           ),
         ]),
@@ -684,7 +708,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
         const SizedBox(height: 20.0),
 
         _buildSectionLabel(
-          isArabic ? 'أذونات التطبيق والبيانات' : 'App Permissions & Data',
+          isArabic ? 'أذونات التطبيق' : 'App Permissions',
           isArabic,
         ),
         const SizedBox(height: 10.0),
@@ -692,13 +716,13 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           _buildActionTile(
             icon: Icons.location_on_rounded,
             title: isArabic ? 'إذن الموقع الجغرافي' : 'Location Permission',
-            subtitle: isArabic ? 'مفعل أثناء استخدام التطبيق' : 'While Using App',
+            subtitle: _formatPermissionSubtitle(_locationPermission, isArabic),
             trailing: _buildStatusPill(
-              isArabic ? 'دقيق' : 'Precise',
-              const Color(0xFF10B981),
-              const Color(0xFFECFDF5),
+              _formatPermissionBadge(_locationPermission, isArabic),
+              _getPermissionBadgeColor(_locationPermission),
+              _getPermissionBadgeBgColor(_locationPermission),
             ),
-            onTap: () {},
+            onTap: () => _manageLocationPermission(isArabic),
             isArabic: isArabic,
           ),
           _buildDivider(),
@@ -711,21 +735,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
               const Color(0xFF10B981),
               const Color(0xFFECFDF5),
             ),
-            onTap: () {},
-            isArabic: isArabic,
-          ),
-          _buildDivider(),
-          _buildSwitchTile(
-            icon: Icons.analytics_outlined,
-            title: isArabic ? 'مشاركة تحليلات التحسين' : 'Diagnostics & Analytics',
-            subtitle: isArabic
-                ? 'مساعدتنا في اكتشاف الأعطال وتحسين كفاءة الخدمة'
-                : 'Help us diagnose crashes and optimize response latency',
-            value: _analyticsSharing,
-            onChanged: (val) {
-              HapticFeedback.selectionClick();
-              setState(() => _analyticsSharing = val);
-            },
+            onTap: () => _manageCameraPermission(isArabic),
             isArabic: isArabic,
           ),
         ]),
@@ -733,26 +743,16 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
         const SizedBox(height: 20.0),
 
         _buildSectionLabel(
-          isArabic ? 'الامتثال وسياسة البيانات' : 'Compliance & Data Rights',
+          isArabic ? 'سياسة الخصوصية والبيانات' : 'Privacy & Policies',
           isArabic,
         ),
         const SizedBox(height: 10.0),
         _buildCardGroup([
           _buildActionTile(
-            icon: Icons.download_for_offline_rounded,
-            title: isArabic ? 'تحميل بياناتي الشخصية' : 'Download My Data',
-            subtitle: isArabic
-                ? 'طلب نسخة من سجل طلباتك ومعلوماتك المسجلة (PDPL)'
-                : 'Request an export archive of your personal records',
-            onTap: () => _showDownloadDataDialog(context, isArabic),
-            isArabic: isArabic,
-          ),
-          _buildDivider(),
-          _buildActionTile(
             icon: Icons.policy_rounded,
             title: isArabic ? 'سياسة الخصوصية' : 'Privacy Policy',
             subtitle: isArabic
-                ? 'الاطلاع على سياسة حماية البيانات المعتمدة'
+                ? 'الاطلاع على سياسة حماية البيانات المعتمدة (PDPL)'
                 : 'Read our Saudi PDPL data protection commitment',
             onTap: () => _showPrivacyPolicyDialog(context, isArabic),
             isArabic: isArabic,
@@ -967,6 +967,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
               final messenger = ScaffoldMessenger.of(context);
               if (val) {
                 final didAuth = await BiometricHelper.authenticate(
+                  context: context,
                   localizedReason: isArabic
                       ? 'يرجى تأكيد البصمة لتفعيل حماية قبول المهام'
                       : 'Please authenticate to enable biometric dispatch verification',
@@ -974,15 +975,18 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 if (!mounted) return;
                 if (!didAuth) {
                   setState(() => _biometricDispatch = false);
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(isArabic
-                          ? 'تم إلغاء أو تعذر التحقق من الهوية'
-                          : 'Biometric verification was cancelled or failed'),
-                      backgroundColor: Colors.redAccent,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    messenger.clearSnackBars();
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(isArabic
+                            ? 'تم إلغاء أو تعذر التحقق من الهوية'
+                            : 'Biometric verification was cancelled or failed'),
+                        backgroundColor: Colors.redAccent,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  });
                   return;
                 }
               }
@@ -992,55 +996,23 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 await prefs.setBool('provider_biometric_dispatch', val);
               } catch (_) {}
               if (!mounted) return;
-              messenger.showSnackBar(
-                SnackBar(
-                  content: Text(val
-                      ? (isArabic ? 'تم تفعيل تأكيد الطلبات بالبصمة' : 'Biometric dispatch enabled')
-                      : (isArabic ? 'تم تعطيل تأكيد الطلبات بالبصمة' : 'Biometric dispatch disabled')),
-                  backgroundColor: val ? const Color(0xFF10B981) : null,
-                  duration: const Duration(seconds: 2),
-                ),
-              );
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                messenger.clearSnackBars();
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(val
+                        ? (isArabic ? 'تم تفعيل تأكيد الطلبات بالبصمة' : 'Biometric dispatch enabled')
+                        : (isArabic ? 'تم تعطيل تأكيد الطلبات بالبصمة' : 'Biometric dispatch disabled')),
+                    backgroundColor: val ? const Color(0xFF10B981) : null,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              });
             },
             isArabic: isArabic,
           ),
           _buildDivider(),
           _buildProviderTwoFactorTile(context, isArabic),
-          _buildDivider(),
-          _buildSwitchTile(
-            icon: Icons.account_balance_rounded,
-            title: isArabic ? 'أمان التحويلات والآيبان' : 'Two-Step Payout Security',
-            subtitle: isArabic
-                ? 'رمز تحقق عند تعديل الحساب البنكي'
-                : 'Require OTP before changing IBAN',
-            value: _twoStepPayoutSecurity,
-            badge: _buildStatusPill(
-              _twoStepPayoutSecurity
-                  ? (isArabic ? 'نشط' : 'Active')
-                  : (isArabic ? 'معطل' : 'Off'),
-              _twoStepPayoutSecurity ? const Color(0xFF059669) : const Color(0xFF6B7280),
-              _twoStepPayoutSecurity ? const Color(0xFFECFDF5) : const Color(0xFFF3F4F6),
-            ),
-            onChanged: (val) async {
-              HapticFeedback.selectionClick();
-              setState(() => _twoStepPayoutSecurity = val);
-              try {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setBool('provider_two_step_payout', val);
-              } catch (_) {}
-            },
-            isArabic: isArabic,
-          ),
-          _buildDivider(),
-          _buildActionTile(
-            icon: Icons.pin_rounded,
-            title: isArabic ? 'تغيير رمز الأمان (PIN)' : 'Change Security PIN',
-            subtitle: isArabic
-                ? 'رمز العمليات الحساسة'
-                : 'Update 4-digit security PIN',
-            onTap: () => _showChangePinDialog(context, isArabic),
-            isArabic: isArabic,
-          ),
           _buildDivider(),
           _buildActionTile(
             icon: Icons.lock_outline_rounded,
@@ -1204,10 +1176,14 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 ? 'يتم إرسال إحداثيات موقعك فقط عندما تكون متاحاً (متصل) أو في مهمة نشطة'
                 : 'Coordinates are only transmitted while status is Online or actively dispatched',
             value: _dutyOnlyGps,
-            onChanged: (val) {
-              HapticFeedback.selectionClick();
-              setState(() => _dutyOnlyGps = val);
-            },
+            badge: _dutyOnlyGps
+                ? _buildStatusPill(
+                    isArabic ? 'نشط' : 'Active',
+                    const Color(0xFF059669),
+                    const Color(0xFFECFDF5),
+                  )
+                : null,
+            onChanged: (val) => _toggleProviderDutyGps(val, isArabic),
             isArabic: isArabic,
           ),
           _buildDivider(),
@@ -1218,10 +1194,14 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 ? 'إخفاء نقطة توقف شاحنتك الدقيقة عن العملاء حتى يتم قبول الطلب رسمياً'
                 : 'Keep your exact parking spot hidden until the dispatch is formally accepted',
             value: _maskCustomerDistance,
-            onChanged: (val) {
-              HapticFeedback.selectionClick();
-              setState(() => _maskCustomerDistance = val);
-            },
+            badge: _maskCustomerDistance
+                ? _buildStatusPill(
+                    isArabic ? 'نشط' : 'Active',
+                    const Color(0xFF059669),
+                    const Color(0xFFECFDF5),
+                  )
+                : null,
+            onChanged: (val) => _toggleProviderTelemetry('mask_customer_distance', val, isArabic),
             isArabic: isArabic,
           ),
           _buildDivider(),
@@ -1232,10 +1212,14 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 ? 'استخدام خادم اتصال وسيط آمن لحماية رقمك الشخصي عند الاتصال بالعميل'
                 : 'Route customer calls through secure proxy relay to hide driver phone number',
             value: _maskedPhoneCalls,
-            onChanged: (val) {
-              HapticFeedback.selectionClick();
-              setState(() => _maskedPhoneCalls = val);
-            },
+            badge: _maskedPhoneCalls
+                ? _buildStatusPill(
+                    isArabic ? 'نشط' : 'Active',
+                    const Color(0xFF059669),
+                    const Color(0xFFECFDF5),
+                  )
+                : null,
+            onChanged: (val) => _toggleProviderTelemetry('masked_phone_calls', val, isArabic),
             isArabic: isArabic,
           ),
           _buildDivider(),
@@ -1246,10 +1230,14 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 ? 'بث مسار المركبة لغرفة عمليات زشو لضمان سرعة الدعم والمساعدة الفنية'
                 : 'Stream route telemetry to Zesho Dispatch Hub for quick roadside assist',
             value: _routeTelemetry,
-            onChanged: (val) {
-              HapticFeedback.selectionClick();
-              setState(() => _routeTelemetry = val);
-            },
+            badge: _routeTelemetry
+                ? _buildStatusPill(
+                    isArabic ? 'نشط' : 'Active',
+                    const Color(0xFF059669),
+                    const Color(0xFFECFDF5),
+                  )
+                : null,
+            onChanged: (val) => _toggleProviderTelemetry('route_telemetry', val, isArabic),
             isArabic: isArabic,
           ),
         ]),
@@ -1282,51 +1270,88 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Verified TGA Card
-        Container(
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0FDF4),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
             borderRadius: BorderRadius.circular(16.0),
-            border: Border.all(color: const Color(0xFF86EFAC)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981),
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
-                child: const Icon(Icons.verified_rounded, size: 20.0, color: Colors.white),
+            onTap: () => _showTgaComplianceDetails(context, isArabic),
+            child: Container(
+              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(16.0),
+                border: Border.all(color: const Color(0xFF86EFAC)),
               ),
-              const SizedBox(width: 12.0),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isArabic ? 'الهوية الوطنية / الإقامة موثقة' : 'National ID / Iqama Verified',
-                      style: GoogleFonts.inter(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF166534),
-                      ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981),
+                      borderRadius: BorderRadius.circular(10.0),
                     ),
-                    const SizedBox(height: 2.0),
-                    Text(
-                      isArabic
-                          ? 'رقم الهوية: ••••••7821 (مشفر ومحمي وفق نظام حماية البيانات الشخصية)'
-                          : 'ID Record: ••••••7821 (Masked & encrypted per Saudi PDPL)',
-                      style: GoogleFonts.inter(
-                        fontSize: 11.0,
-                        color: const Color(0xFF15803D),
-                      ),
+                    child: const Icon(Icons.verified_rounded, size: 20.0, color: Colors.white),
+                  ),
+                  const SizedBox(width: 12.0),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                isArabic ? 'الهوية الوطنية / الإقامة موثقة' : 'National ID / Iqama Verified',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF166534),
+                                ),
+                              ),
+                            ),
+                            _buildStatusPill(
+                              isArabic ? 'معتمد' : 'Verified',
+                              const Color(0xFF059669),
+                              const Color(0xFFECFDF5),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4.0),
+                        Text(
+                          isArabic
+                              ? 'رقم الهوية: ••••••7821 (مشفر ومحمي وفق نظام حماية البيانات الشخصية)'
+                              : 'ID Record: ••••••7821 (Masked & encrypted per Saudi PDPL)',
+                          style: GoogleFonts.inter(
+                            fontSize: 11.0,
+                            color: const Color(0xFF15803D),
+                          ),
+                        ),
+                        const SizedBox(height: 6.0),
+                        Row(
+                          children: [
+                            Text(
+                              isArabic ? 'عرض وثيقة الاعتماد والتصريح' : 'View compliance credentials',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.0,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF047857),
+                              ),
+                            ),
+                            const SizedBox(width: 4.0),
+                            Icon(
+                              isArabic ? Icons.arrow_back_ios_new_rounded : Icons.arrow_forward_ios_rounded,
+                              size: 11.0,
+                              color: const Color(0xFF047857),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
 
@@ -1354,6 +1379,21 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           ),
           _buildDivider(),
           _buildActionTile(
+            icon: Icons.car_crash_rounded,
+            title: isArabic ? 'نجم لخدمات الحوادث المرورية' : 'Najm Traffic Accidents (920000560)',
+            subtitle: isArabic
+                ? 'مباشرة حوادث السير وتوثيق أضرار المركبات في الميدان'
+                : 'Dispatch surveyor for traffic accident assessment & report',
+            trailing: _buildStatusPill(
+              '920000560',
+              const Color(0xFF2563EB),
+              const Color(0xFFEFF6FF),
+            ),
+            onTap: () => _triggerEmergencyCall(context, '920000560', isArabic),
+            isArabic: isArabic,
+          ),
+          _buildDivider(),
+          _buildActionTile(
             icon: Icons.support_agent_rounded,
             title: isArabic ? 'عمليات أسطول زشو 24/7' : 'Zesho Fleet Dispatch Ops',
             subtitle: isArabic
@@ -1365,54 +1405,6 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
               const Color(0xFFF0EAFE),
             ),
             onTap: () => _triggerEmergencyCall(context, '+966545456467', isArabic),
-            isArabic: isArabic,
-          ),
-        ]),
-
-        const SizedBox(height: 20.0),
-
-        _buildSectionLabel(
-          isArabic ? 'العملاء المحظورون ومناطق الخدمة' : 'Blocked Users & Restricted Areas',
-          isArabic,
-        ),
-        const SizedBox(height: 10.0),
-        _buildCardGroup([
-          _buildActionTile(
-            icon: Icons.person_off_rounded,
-            title: isArabic ? 'العملاء المحظورون' : 'Blocked Customers',
-            subtitle: _blockedEntities.isEmpty
-                ? (isArabic ? 'لا يوجد عملاء محظورون' : 'No blocked customers')
-                : (isArabic
-                    ? '${_blockedEntities.length} عميل في قائمة الحظر'
-                    : '${_blockedEntities.length} blocked user(s)'),
-            trailing: _buildBadge('${_blockedEntities.length}'),
-            onTap: () => _showBlockedEntitiesSheet(
-              context: context,
-              isArabic: isArabic,
-              isProviderRole: true,
-            ),
-            isArabic: isArabic,
-          ),
-          _buildDivider(),
-          _buildSwitchTile(
-            icon: Icons.beach_access_rounded,
-            title: isArabic ? 'وضع الإجازة (إيقاف مؤقت)' : 'Vacation / Off-Duty Mode',
-            subtitle: isArabic
-                ? 'إيقاف تلقي طلبات السحب تلقائياً دون التأثير على معدل القبول'
-                : 'Pause new order dispatches without penalizing acceptance rate',
-            value: _vacationMode,
-            onChanged: (val) {
-              HapticFeedback.selectionClick();
-              setState(() => _vacationMode = val);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(val
-                      ? (isArabic ? 'تم تفعيل وضع الإجازة' : 'Vacation mode enabled')
-                      : (isArabic ? 'تم استئناف استقبال الطلبات' : 'Online dispatch resumed')),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            },
             isArabic: isArabic,
           ),
         ]),
@@ -1698,24 +1690,6 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildBadge(String count) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0EAFE),
-        borderRadius: BorderRadius.circular(10.0),
-      ),
-      child: Text(
-        count,
-        style: GoogleFonts.inter(
-          fontSize: 11.0,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFF8B53FE),
-        ),
       ),
     );
   }
@@ -2116,35 +2090,39 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 }
 
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: const Color(0xFF059669),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                      content: Row(
-                        children: [
-                          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20.0),
-                          const SizedBox(width: 10.0),
-                          Expanded(
-                            child: Text(
-                              isArabic
-                                  ? (tempMethod == 'authenticator'
-                                      ? 'تم ربط وتفعيل Google Authenticator بنجاح'
-                                      : 'تم تفعيل المصادقة الثنائية (2FA) بنجاح لحسابك')
-                                  : (tempMethod == 'authenticator'
-                                      ? 'Google Authenticator (2FA) activated successfully'
-                                      : 'Two-Factor Authentication (2FA) activated successfully'),
-                              style: (isArabic ? GoogleFonts.cairo() : GoogleFonts.inter()).copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13.0,
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: const Color(0xFF059669),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                        content: Row(
+                          children: [
+                            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20.0),
+                            const SizedBox(width: 10.0),
+                            Expanded(
+                              child: Text(
+                                isArabic
+                                    ? (tempMethod == 'authenticator'
+                                        ? 'تم ربط وتفعيل Google Authenticator بنجاح'
+                                        : 'تم تفعيل المصادقة الثنائية (2FA) بنجاح لحسابك')
+                                    : (tempMethod == 'authenticator'
+                                        ? 'Google Authenticator (2FA) activated successfully'
+                                        : 'Two-Factor Authentication (2FA) activated successfully'),
+                                style: (isArabic ? GoogleFonts.cairo() : GoogleFonts.inter()).copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13.0,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  });
                 }
               } else {
                 setModalState(() {
@@ -2729,12 +2707,16 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                     _twoFactorAuth = false;
                     _customer2faSecret = '';
                   });
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(isArabic ? 'تم تعطيل المصادقة الثنائية' : 'Two-Factor Authentication disabled'),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    messenger.clearSnackBars();
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(isArabic ? 'تم تعطيل المصادقة الثنائية' : 'Two-Factor Authentication disabled'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  });
                 }
               },
               child: Text(
@@ -2974,35 +2956,39 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 }
 
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: const Color(0xFF059669),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                      content: Row(
-                        children: [
-                          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20.0),
-                          const SizedBox(width: 10.0),
-                          Expanded(
-                            child: Text(
-                              isArabic
-                                  ? (tempMethod == 'authenticator'
-                                      ? 'تم ربط وتفعيل Google Authenticator بنجاح'
-                                      : 'تم تفعيل حماية الشريك (2FA) بنجاح')
-                                  : (tempMethod == 'authenticator'
-                                      ? 'Google Authenticator (2FA) activated successfully'
-                                      : 'Partner 2FA protection activated successfully'),
-                              style: (isArabic ? GoogleFonts.cairo() : GoogleFonts.inter()).copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13.0,
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: const Color(0xFF059669),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                        content: Row(
+                          children: [
+                            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20.0),
+                            const SizedBox(width: 10.0),
+                            Expanded(
+                              child: Text(
+                                isArabic
+                                    ? (tempMethod == 'authenticator'
+                                        ? 'تم ربط وتفعيل Google Authenticator بنجاح'
+                                        : 'تم تفعيل حماية الشريك (2FA) بنجاح')
+                                    : (tempMethod == 'authenticator'
+                                        ? 'Google Authenticator (2FA) activated successfully'
+                                        : 'Partner 2FA protection activated successfully'),
+                                style: (isArabic ? GoogleFonts.cairo() : GoogleFonts.inter()).copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13.0,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  });
                 }
               } else {
                 setModalState(() {
@@ -3587,12 +3573,16 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                     _providerTwoFactorAuth = false;
                     _provider2faSecret = '';
                   });
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(isArabic ? 'تم تعطيل المصادقة الثنائية للشريك' : 'Partner Two-Factor Authentication disabled'),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    messenger.clearSnackBars();
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(isArabic ? 'تم تعطيل المصادقة الثنائية للشريك' : 'Partner Two-Factor Authentication disabled'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  });
                 }
               },
               child: Text(
@@ -3608,229 +3598,274 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
 
   void _triggerEmergencyCall(BuildContext context, String number, bool isArabic) {
     HapticFeedback.mediumImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+    String serviceName;
+    if (number.contains('993')) {
+      serviceName = isArabic ? 'أمن الطرق (993)' : 'Highway Patrol (993)';
+    } else if (number.contains('920000560')) {
+      serviceName = isArabic ? 'نجم لخدمات الحوادث (920000560)' : 'Najm Traffic Accidents (920000560)';
+    } else if (number.contains('911')) {
+      serviceName = isArabic ? 'الطوارئ الموحد (911)' : 'Unified Emergency (911)';
+    } else {
+      serviceName = isArabic ? 'عمليات أسطول زشو 24/7' : 'Zesho Fleet Dispatch Ops';
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+        title: Row(
+          children: [
+            const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFEF4444)),
+            const SizedBox(width: 8.0),
+            Expanded(
+              child: Text(
+                isArabic ? 'اتصال الطوارئ' : 'Emergency Call',
+                style: GoogleFonts.inter(fontSize: 16.0, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
         content: Text(
           isArabic
-              ? 'جاري بدء الاتصال برقم الطوارئ: $number'
-              : 'Connecting emergency dispatch to $number...',
+              ? 'هل ترغب في بدء اتصال فوري مع $serviceName ؟'
+              : 'Would you like to initiate a direct call to $serviceName ($number)?',
+          style: GoogleFonts.inter(fontSize: 13.0, height: 1.4, color: const Color(0xFF4B5563)),
         ),
-        backgroundColor: const Color(0xFFEF4444),
-        duration: const Duration(seconds: 3),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              isArabic ? 'إلغاء' : 'Cancel',
+              style: GoogleFonts.inter(color: const Color(0xFF6B7280)),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+            ),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              HapticFeedback.heavyImpact();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    isArabic
+                        ? 'جاري بدء الاتصال بـ $serviceName: $number'
+                        : 'Connecting emergency dispatch to $serviceName ($number)...',
+                  ),
+                  backgroundColor: const Color(0xFFEF4444),
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            },
+            child: Text(
+              isArabic ? 'اتصال فوري' : 'Call Now',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  void _showBlockedEntitiesSheet({
-    required BuildContext context,
-    required bool isArabic,
-    required bool isProviderRole,
-  }) {
-    final list = isProviderRole ? _blockedEntities : _blockedProviders;
-    final textController = TextEditingController();
-
+  void _showTgaComplianceDetails(BuildContext context, bool isArabic) {
+    HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              margin: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20.0, 16.0, 20.0, 32.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40.0,
+                  height: 4.0,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5E7EB),
+                    borderRadius: BorderRadius.circular(2.0),
+                  ),
+                ),
               ),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
-              ),
-              padding: const EdgeInsets.fromLTRB(20.0, 16.0, 20.0, 32.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              const SizedBox(height: 18.0),
+              Row(
                 children: [
-                  Center(
-                    child: Container(
-                      width: 40.0,
-                      height: 4.0,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE5E7EB),
-                        borderRadius: BorderRadius.circular(2.0),
-                      ),
+                  Container(
+                    padding: const EdgeInsets.all(10.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(12.0),
+                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                    ),
+                    child: const Icon(
+                      Icons.verified_user_rounded,
+                      color: Color(0xFF059669),
+                      size: 24.0,
                     ),
                   ),
-                  const SizedBox(height: 16.0),
-                  Text(
-                    isProviderRole
-                        ? (isArabic ? 'قائمة العملاء المحظورين' : 'Blocked Customers List')
-                        : (isArabic ? 'قائمة المزودين المحظورين' : 'Blocked Providers List'),
-                    style: GoogleFonts.inter(
-                      fontSize: 18.0,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1C2926),
-                    ),
-                  ),
-                  const SizedBox(height: 4.0),
-                  Text(
-                    isProviderRole
-                        ? (isArabic
-                            ? 'لن يتم إرسال طلبات من هؤلاء العملاء إلى شاحنتك مستقبلاً.'
-                            : 'You will not receive service dispatches from these customers.')
-                        : (isArabic
-                            ? 'لن يتم تعيين أي طلبات مستقبلية لك مع هؤلاء المزودين.'
-                            : 'These service providers will never be matched with your requests.'),
-                    style: GoogleFonts.inter(
-                      fontSize: 12.0,
-                      color: const Color(0xFF616166),
-                    ),
-                  ),
-                  const SizedBox(height: 16.0),
-
-                  // Add new block form
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: textController,
-                          decoration: InputDecoration(
-                            hintText: isProviderRole
-                                ? (isArabic ? 'أدخل اسم العميل أو المعرف' : 'Enter user name or phone')
-                                : (isArabic ? 'أدخل اسم المزود أو المعرف' : 'Enter provider name or ID'),
-                            hintStyle: GoogleFonts.inter(fontSize: 12.0, color: const Color(0xFF9CA3AF)),
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10.0),
-                              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                            ),
+                  const SizedBox(width: 12.0),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isArabic ? 'اعتماد الهيئة العامة للنقل (TGA)' : 'TGA Regulatory Compliance',
+                          style: GoogleFonts.inter(
+                            fontSize: 15.0,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF1C2926),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8.0),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF8B53FE),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                        Text(
+                          isArabic
+                              ? 'سجل التراخيص الميدانية وسندات العمل الحر'
+                              : 'Licensed fleet operator credentials & permits',
+                          style: GoogleFonts.inter(
+                            fontSize: 11.5,
+                            color: const Color(0xFF6B7280),
+                          ),
                         ),
-                        onPressed: () {
-                          final text = textController.text.trim();
-                          if (text.isNotEmpty) {
-                            HapticFeedback.lightImpact();
-                            setModalState(() {
-                              list.add(text);
-                            });
-                            setState(() {});
-                            textController.clear();
-                          }
-                        },
-                        child: Text(
-                          isArabic ? 'حظر' : 'Block',
-                          style: GoogleFonts.inter(fontSize: 12.0, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16.0),
-
-                  // Empty State or List
-                  if (list.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 28.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 50.0,
-                            height: 50.0,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3F4F6),
-                              borderRadius: BorderRadius.circular(25.0),
-                            ),
-                            child: const Center(
-                              child: Icon(Icons.shield_outlined, size: 26.0, color: Color(0xFF9CA3AF)),
-                            ),
-                          ),
-                          const SizedBox(height: 10.0),
-                          Text(
-                            isArabic ? 'القائمة فارغة تماماً' : 'No blocked entities yet',
-                            style: GoogleFonts.inter(
-                              fontSize: 14.0,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF4B5563),
-                            ),
-                          ),
-                          const SizedBox(height: 4.0),
-                          Text(
-                            isArabic
-                                ? 'لم تقم بحظر أي شخص حتى الآن. يمكنك الحظر في أي وقت.'
-                                : 'You have not blocked anyone. Matches will proceed normally.',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(fontSize: 11.5, color: const Color(0xFF9CA3AF)),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 280.0),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: list.length,
-                        itemBuilder: (context, i) {
-                          final name = list[i];
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8.0),
-                            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF9FAFB),
-                              borderRadius: BorderRadius.circular(12.0),
-                              border: Border.all(color: const Color(0xFFF1F2EF)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.person_off_rounded, size: 20.0, color: Color(0xFF616166)),
-                                const SizedBox(width: 12.0),
-                                Expanded(
-                                  child: Text(
-                                    name,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13.0,
-                                      fontWeight: FontWeight.w500,
-                                      color: const Color(0xFF1C2926),
-                                    ),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    HapticFeedback.lightImpact();
-                                    setModalState(() {
-                                      list.removeAt(i);
-                                    });
-                                    setState(() {});
-                                  },
-                                  child: Text(
-                                    isArabic ? 'إلغاء الحظر' : 'Unblock',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12.0,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF8B53FE),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
+                      ],
                     ),
+                  ),
                 ],
               ),
-            );
-          },
+              const SizedBox(height: 20.0),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(14.0),
+                  border: Border.all(color: const Color(0xFFF3F4F6)),
+                ),
+                padding: const EdgeInsets.all(14.0),
+                child: Column(
+                  children: [
+                    _buildComplianceDetailRow(
+                      label: isArabic ? 'الهوية الوطنية / الإقامة' : 'National ID / Iqama',
+                      value: '••••••7821',
+                      badgeText: isArabic ? 'موثق عبر نفاذ' : 'Nafath Verified',
+                      badgeColor: const Color(0xFF059669),
+                    ),
+                    const Divider(height: 20.0, color: Color(0xFFE5E7EB)),
+                    _buildComplianceDetailRow(
+                      label: isArabic ? 'وثيقة العمل الحر' : 'Freelance License',
+                      value: 'FL-8839201-TR',
+                      badgeText: isArabic ? 'سارية' : 'Valid',
+                      badgeColor: const Color(0xFF059669),
+                    ),
+                    const Divider(height: 20.0, color: Color(0xFFE5E7EB)),
+                    _buildComplianceDetailRow(
+                      label: isArabic ? 'تصريح توجيه السطحات' : 'Towing Dispatch Permit',
+                      value: 'TGA-TOW-2026-SA',
+                      badgeText: isArabic ? 'معتمد' : 'Authorized',
+                      badgeColor: const Color(0xFF2563EB),
+                    ),
+                    const Divider(height: 20.0, color: Color(0xFFE5E7EB)),
+                    _buildComplianceDetailRow(
+                      label: isArabic ? 'حماية البيانات الشخصية' : 'Data Protection',
+                      value: 'Saudi PDPL 2026',
+                      badgeText: isArabic ? 'مشفر' : 'Encrypted',
+                      badgeColor: const Color(0xFF7C3AED),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20.0),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14.0),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.sync_rounded, size: 18.0),
+                label: Text(
+                  isArabic ? 'إعادة التحقق من صلاحية الوثيقة' : 'Re-verify with TGA & Nafath',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13.0),
+                ),
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  HapticFeedback.mediumImpact();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isArabic
+                            ? 'تم التحقق من سريان ترخيص الهيئة العامة للنقل ونفاذ بنجاح'
+                            : 'TGA operational permit & Nafath credentials verified successfully',
+                      ),
+                      backgroundColor: const Color(0xFF10B981),
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         );
       },
+    );
+  }
+
+  Widget _buildComplianceDetailRow({
+    required String label,
+    required String value,
+    required String badgeText,
+    required Color badgeColor,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 11.5,
+                  color: const Color(0xFF6B7280),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2.0),
+              Text(
+                value,
+                style: GoogleFonts.inter(
+                  fontSize: 13.0,
+                  color: const Color(0xFF1F2937),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+          decoration: BoxDecoration(
+            color: badgeColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(6.0),
+          ),
+          child: Text(
+            badgeText,
+            style: GoogleFonts.inter(
+              fontSize: 11.0,
+              fontWeight: FontWeight.w600,
+              color: badgeColor,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -3883,77 +3918,18 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
             ),
             onPressed: () {
               Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(isArabic ? 'تم تحديث كلمة المرور بنجاح' : 'Password updated successfully'),
-                  backgroundColor: const Color(0xFF10B981),
-                ),
-              );
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).clearSnackBars();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(isArabic ? 'تم تحديث كلمة المرور بنجاح' : 'Password updated successfully'),
+                    backgroundColor: const Color(0xFF10B981),
+                  ),
+                );
+              });
             },
             child: Text(isArabic ? 'تحديث' : 'Update'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showChangePinDialog(BuildContext context, bool isArabic) {
-    final pinController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
-        title: Text(
-          isArabic ? 'تغيير رمز الأمان (PIN)' : 'Change Security PIN',
-          style: GoogleFonts.inter(fontSize: 17.0, fontWeight: FontWeight.w600),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              isArabic
-                  ? 'أدخل رمز أمان مكون من 4 أرقام لاعتماد السحوبات المالية والمهام الحساسة.'
-                  : 'Enter a 4-digit PIN for sensitive financial operations and contract confirmations.',
-              style: GoogleFonts.inter(fontSize: 12.0, color: const Color(0xFF616166)),
-            ),
-            const SizedBox(height: 14.0),
-            TextField(
-              controller: pinController,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              obscureText: true,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(fontSize: 20.0, letterSpacing: 8.0, fontWeight: FontWeight.w700),
-              decoration: InputDecoration(
-                counterText: '',
-                isDense: true,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(isArabic ? 'إلغاء' : 'Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF8B53FE),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
-            ),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(isArabic ? 'تم تعيين رمز الأمان بنجاح' : 'Security PIN updated successfully'),
-                  backgroundColor: const Color(0xFF10B981),
-                ),
-              );
-            },
-            child: Text(isArabic ? 'حفظ الرمز' : 'Save PIN'),
           ),
         ],
       ),
@@ -4299,6 +4275,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                                         if (!mounted) return;
                                         setState(() => _activeSessions = updated);
                                         setModalState(() {});
+                                        messenger.clearSnackBars();
                                         messenger.showSnackBar(
                                           SnackBar(
                                             content: Text(
@@ -4362,17 +4339,21 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                           setState(() => _activeSessions = updated);
                           setModalState(() {});
                           navigator.pop();
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                isArabic
-                                    ? 'تم إنهاء $count جلسة نشطة على الأجهزة الأخرى بنجاح'
-                                    : 'Terminated $count active session${count == 1 ? '' : 's'} on other devices',
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) return;
+                            messenger.clearSnackBars();
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  isArabic
+                                      ? 'تم إنهاء $count جلسة نشطة على الأجهزة الأخرى بنجاح'
+                                      : 'Terminated $count active session${count == 1 ? '' : 's'} on other devices',
+                                ),
+                                backgroundColor: const Color(0xFF10B981),
+                                duration: const Duration(seconds: 3),
                               ),
-                              backgroundColor: const Color(0xFF10B981),
-                              duration: const Duration(seconds: 3),
-                            ),
-                          );
+                            );
+                          });
                         },
                       ),
                     )
@@ -4407,56 +4388,642 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     );
   }
 
-  void _showDownloadDataDialog(BuildContext context, bool isArabic) {
-    showDialog(
+  Future<void> _toggleHighPrecisionGps(bool val, bool isArabic) async {
+    HapticFeedback.selectionClick();
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (val) {
+      if (!kIsWeb) {
+        final locService = LocationService();
+        final isEnabled = await locService.isLocationServiceEnabled();
+        if (!isEnabled) {
+          if (!mounted) return;
+          final shouldOpen = await _showEnableGpsDialog(context, isArabic);
+          if (shouldOpen == true) {
+            await locService.openLocationSettings();
+          }
+          return;
+        }
+
+        var perm = await locService.checkPermission();
+        if (perm == LocationPermission.denied) {
+          perm = await locService.requestPermission();
+        }
+
+        if (perm == LocationPermission.deniedForever) {
+          if (!mounted) return;
+          final shouldOpenSettings = await _showPermissionDeniedForeverDialog(context, isArabic);
+          if (shouldOpenSettings == true) {
+            await locService.openAppSettings();
+          }
+          return;
+        }
+
+        if (perm == LocationPermission.denied) {
+          if (!mounted) return;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            messenger.clearSnackBars();
+            messenger.showSnackBar(
+              SnackBar(
+                content: Text(isArabic
+                    ? 'تعذر تفعيل الـ GPS عالي الدقة بدون منح إذن الموقع'
+                    : 'Cannot enable High-Precision GPS without location permission'),
+                backgroundColor: Colors.redAccent,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          });
+          return;
+        }
+
+        if (mounted) {
+          setState(() {
+            _locationPermission = perm;
+          });
+        }
+      }
+
+      try {
+        final locService = LocationService();
+        await locService.acquireDeviceLocation(timeout: const Duration(seconds: 5));
+      } catch (_) {}
+
+      if (!mounted) return;
+      setState(() => _preciseLocation = true);
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('customer_precise_location', true);
+      } catch (_) {}
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(isArabic
+                ? 'تم تفعيل دقة الموقع العالية (تحديد فوري حتى ±3 أمتار)'
+                : 'High-Precision GPS active (Accurate down to ±3m)'),
+            backgroundColor: const Color(0xFF10B981),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      });
+    } else {
+      setState(() => _preciseLocation = false);
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('customer_precise_location', false);
+      } catch (_) {}
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(isArabic
+                ? 'تم التبديل إلى وضع الموقع التقريبي الموفر للطاقة'
+                : 'Switched to standard battery-saver location mode'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      });
+    }
+  }
+
+  Future<bool?> _showEnableGpsDialog(BuildContext context, bool isArabic) {
+    return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
         title: Row(
           children: [
-            const Icon(Icons.download_done_rounded, color: Color(0xFF8B53FE)),
-            const SizedBox(width: 8.0),
-            Text(
-              isArabic ? 'تصدير البيانات الشخصية' : 'Personal Data Export',
-              style: GoogleFonts.inter(fontSize: 16.0, fontWeight: FontWeight.w600),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              child: const Center(
+                child: Icon(Icons.location_off_rounded, color: Color(0xFFD97706), size: 20),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                isArabic ? 'تفعيل خدمة الموقع (GPS)' : 'Enable Device GPS',
+                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1C2926),
+                ),
+              ),
             ),
           ],
         ),
         content: Text(
           isArabic
-              ? 'وفقاً لنظام حماية البيانات الشخصية السعودي (PDPL)، يمكنك الحصول على نسخة من ملفك وسجل رحلاتك. سيتم إرسال رابط التحميل المشفر إلى بريدك الإلكتروني المسجل خلال 24 ساعة.'
-              : 'Pursuant to Saudi PDPL regulations, you may request an encrypted archive of your account profile and service orders. The download link will be dispatched to your registered email within 24 hours.',
-          style: GoogleFonts.inter(fontSize: 12.5, height: 1.4, color: const Color(0xFF566663)),
+              ? 'خدمة تحديد الموقع مغلقة على جهازك. يرجى تفعيل الـ GPS في إعدادات النظام لضمان توجيه شاحنة السحب بدقة عالية.'
+              : 'Device location services are turned off. Please turn on GPS in system settings to ensure accurate recovery arrival.',
+          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+            fontSize: 13.0,
+            color: const Color(0xFF6B7280),
+            height: 1.4,
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(isArabic ? 'إلغاء' : 'Cancel'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              isArabic ? 'إلغاء' : 'Cancel',
+              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                fontSize: 13.0,
+                color: const Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF252527),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+              elevation: 0,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              isArabic ? 'فتح الإعدادات' : 'Open GPS Settings',
+              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                fontSize: 13.0,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _showPermissionDeniedForeverDialog(BuildContext context, bool isArabic) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+        title: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEE2E2),
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              child: const Center(
+                child: Icon(Icons.block_rounded, color: Color(0xFFDC2626), size: 20),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                isArabic ? 'إذن الموقع محظور' : 'Location Permission Blocked',
+                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1C2926),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          isArabic
+              ? 'تم تعطيل إذن الموقع للتطبيق سابقاً. يرجى تفعيله من إعدادات أذونات التطبيق للاستفادة من ميزة الإحداثيات الدقيقة.'
+              : 'Location permission was denied permanently. Please enable location access in App Settings to use High-Precision GPS.',
+          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+            fontSize: 13.0,
+            color: const Color(0xFF6B7280),
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              isArabic ? 'إلغاء' : 'Cancel',
+              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                fontSize: 13.0,
+                color: const Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF8B53FE),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+              elevation: 0,
             ),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    isArabic
-                        ? 'تم استلام طلب التصدير، سنتواصل معك عبر البريد المسجل'
-                        : 'Data export request submitted. Check your inbox shortly.',
-                  ),
-                  backgroundColor: const Color(0xFF10B981),
-                ),
-              );
-            },
-            child: Text(isArabic ? 'تأكيد الطلب' : 'Request File'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              isArabic ? 'إعدادات التطبيق' : 'App Settings',
+              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                fontSize: 13.0,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _manageLocationPermission(bool isArabic) async {
+    HapticFeedback.selectionClick();
+    final locService = LocationService();
+
+    if (kIsWeb) {
+      try {
+        await locService.acquireDeviceLocation();
+        if (!mounted) return;
+        setState(() {
+          _locationPermission = LocationPermission.whileInUse;
+          _preciseLocation = true;
+        });
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('customer_precise_location', true);
+      } catch (_) {}
+      return;
+    }
+
+    final currentPerm = await locService.checkPermission();
+    if (currentPerm == LocationPermission.denied) {
+      final newPerm = await locService.requestPermission();
+      if (!mounted) return;
+      setState(() => _locationPermission = newPerm);
+      if (newPerm == LocationPermission.whileInUse || newPerm == LocationPermission.always) {
+        setState(() => _preciseLocation = true);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('customer_precise_location', true);
+      }
+    } else {
+      if (!mounted) return;
+      final openSettings = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+          title: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0EAFE),
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+                child: const Center(
+                  child: Icon(Icons.location_on_rounded, color: Color(0xFF8B53FE), size: 20),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isArabic ? 'إذن الموقع الجغرافي' : 'Location Permission',
+                  style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1C2926),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            isArabic
+                ? 'إذن الموقع مفعل حالياً أثناء استخدام التطبيق بدقة عالية. يمكنك تعديل خيارات التتبع الدقيق أو مراجعة أذونات النظام في إعدادات الهاتف.'
+                : 'Location permission is currently active for accurate dispatch. You can modify system-level permission options in OS App Settings.',
+            style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+              fontSize: 13.0,
+              color: const Color(0xFF6B7280),
+              height: 1.4,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(
+                isArabic ? 'إغلاق' : 'Close',
+                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                  fontSize: 13.0,
+                  color: const Color(0xFF6B7280),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF252527),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                elevation: 0,
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(
+                isArabic ? 'فتح الإعدادات' : 'Open Settings',
+                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                  fontSize: 13.0,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (openSettings == true) {
+        await locService.openAppSettings();
+      }
+    }
+  }
+
+  Future<void> _manageCameraPermission(bool isArabic) async {
+    HapticFeedback.selectionClick();
+    if (!mounted) return;
+    final openSettings = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+        title: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0EAFE),
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              child: const Center(
+                child: Icon(Icons.camera_alt_rounded, color: Color(0xFF8B53FE), size: 20),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                isArabic ? 'إذن الكاميرا والصور' : 'Camera & Photos Permission',
+                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1C2926),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          isArabic
+              ? 'يُستخدم إذن الكاميرا والمعرض لالتقاط صور أعطال السيارة وتوثيق الأضرار لمزود الخدمة. يمكنك إدارة هذا الإذن مباشرة من إعدادات النظام.'
+              : 'Camera and photo library access is used to attach breakdown photos and vehicle damage evidence. You can manage this in App Settings.',
+          style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+            fontSize: 13.0,
+            color: const Color(0xFF6B7280),
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              isArabic ? 'إغلاق' : 'Close',
+              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                fontSize: 13.0,
+                color: const Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF252527),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+              elevation: 0,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              isArabic ? 'إعدادات التطبيق' : 'App Settings',
+              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                fontSize: 13.0,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (openSettings == true && !kIsWeb) {
+      await LocationService().openAppSettings();
+    }
+  }
+
+  String _formatPermissionSubtitle(LocationPermission perm, bool isArabic) {
+    switch (perm) {
+      case LocationPermission.always:
+        return isArabic ? 'مفعل دائماً في الخلفية' : 'Always in background';
+      case LocationPermission.whileInUse:
+        return isArabic ? 'مفعل أثناء استخدام التطبيق' : 'While Using App';
+      case LocationPermission.denied:
+        return isArabic ? 'غير مصرح (اضغط للمنح)' : 'Not granted (Tap to allow)';
+      case LocationPermission.deniedForever:
+        return isArabic ? 'محظور في الإعدادات' : 'Blocked in settings';
+      case LocationPermission.unableToDetermine:
+        return isArabic ? 'أثناء استخدام التطبيق' : 'While Using App';
+    }
+  }
+
+  String _formatPermissionBadge(LocationPermission perm, bool isArabic) {
+    switch (perm) {
+      case LocationPermission.always:
+      case LocationPermission.whileInUse:
+      case LocationPermission.unableToDetermine:
+        return isArabic ? 'دقيق' : 'Precise';
+      case LocationPermission.denied:
+        return isArabic ? 'معلق' : 'Pending';
+      case LocationPermission.deniedForever:
+        return isArabic ? 'محظور' : 'Blocked';
+    }
+  }
+
+  Color _getPermissionBadgeColor(LocationPermission perm) {
+    switch (perm) {
+      case LocationPermission.always:
+      case LocationPermission.whileInUse:
+      case LocationPermission.unableToDetermine:
+        return const Color(0xFF10B981);
+      case LocationPermission.denied:
+        return const Color(0xFFF59E0B);
+      case LocationPermission.deniedForever:
+        return const Color(0xFFEF4444);
+    }
+  }
+
+  Color _getPermissionBadgeBgColor(LocationPermission perm) {
+    switch (perm) {
+      case LocationPermission.always:
+      case LocationPermission.whileInUse:
+      case LocationPermission.unableToDetermine:
+        return const Color(0xFFECFDF5);
+      case LocationPermission.denied:
+        return const Color(0xFFFEF3C7);
+      case LocationPermission.deniedForever:
+        return const Color(0xFFFEE2E2);
+    }
+  }
+
+  Future<void> _toggleShareTripStatus(bool val, bool isArabic) async {
+    HapticFeedback.selectionClick();
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _shareTripStatus = val);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('customer_share_trip_status', val);
+    } catch (_) {}
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(val
+              ? (isArabic
+                  ? 'تم تفعيل مشاركة مسار الرحلة تلقائياً مع جهات الاتصال الموثوقة'
+                  : 'Live trip route sharing enabled for trusted emergency contacts')
+              : (isArabic
+                  ? 'تم إيقاف مشاركة مسار الرحلة التلقائي'
+                  : 'Live trip route auto-sharing disabled')),
+          backgroundColor: val ? const Color(0xFF10B981) : null,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    });
+  }
+
+  Future<void> _toggleProviderDutyGps(bool val, bool isArabic) async {
+    HapticFeedback.selectionClick();
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (val) {
+      if (!kIsWeb) {
+        final locService = LocationService();
+        final isEnabled = await locService.isLocationServiceEnabled();
+        if (!isEnabled) {
+          if (!mounted) return;
+          final shouldOpen = await _showEnableGpsDialog(context, isArabic);
+          if (shouldOpen == true) {
+            await locService.openLocationSettings();
+          }
+          return;
+        }
+
+        var perm = await locService.checkPermission();
+        if (perm == LocationPermission.denied) {
+          perm = await locService.requestPermission();
+        }
+
+        if (perm == LocationPermission.deniedForever) {
+          if (!mounted) return;
+          final shouldOpenSettings = await _showPermissionDeniedForeverDialog(context, isArabic);
+          if (shouldOpenSettings == true) {
+            await locService.openAppSettings();
+          }
+          return;
+        }
+
+        if (perm == LocationPermission.denied) {
+          if (!mounted) return;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            messenger.clearSnackBars();
+            messenger.showSnackBar(
+              SnackBar(
+                content: Text(isArabic
+                    ? 'تعذر تفعيل تتبع الموقع الميداني بدون منح إذن الـ GPS'
+                    : 'Cannot enable duty GPS tracking without location permission'),
+                backgroundColor: Colors.redAccent,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          });
+          return;
+        }
+      }
+
+      try {
+        final locService = LocationService();
+        await locService.acquireDeviceLocation(timeout: const Duration(seconds: 5));
+      } catch (_) {}
+
+      if (!mounted) return;
+      setState(() => _dutyOnlyGps = true);
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('provider_duty_only_gps', true);
+      } catch (_) {}
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(isArabic
+                ? 'تم تفعيل تتبع الموقع الميداني أثناء الاتصال بالخدمة'
+                : 'Duty GPS telemetry active (Broadcasting coordinates while online)'),
+            backgroundColor: const Color(0xFF10B981),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      });
+    } else {
+      setState(() => _dutyOnlyGps = false);
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('provider_duty_only_gps', false);
+      } catch (_) {}
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(isArabic
+                ? 'تم إيقاف بث إحداثيات الموقع الميداني مؤقتاً'
+                : 'Duty GPS telemetry paused (Location will not be broadcast)'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      });
+    }
+  }
+
+  Future<void> _toggleProviderTelemetry(String key, bool val, bool isArabic) async {
+    HapticFeedback.selectionClick();
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      if (key == 'duty_only_gps') _dutyOnlyGps = val;
+      if (key == 'mask_customer_distance') _maskCustomerDistance = val;
+      if (key == 'masked_phone_calls') _maskedPhoneCalls = val;
+      if (key == 'route_telemetry') _routeTelemetry = val;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('provider_$key', val);
+    } catch (_) {}
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(val
+              ? (isArabic ? 'تم تفعيل الإعداد وتحديث تفضيلات الأسطول' : 'Setting updated & fleet policy applied')
+              : (isArabic ? 'تم تعطيل الإعداد' : 'Setting disabled')),
+          backgroundColor: val ? const Color(0xFF10B981) : null,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    });
   }
 
   void _showPrivacyPolicyDialog(BuildContext context, bool isArabic) {
