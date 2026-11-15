@@ -464,6 +464,22 @@ class ProviderRegistrationStore {
     }
   }
 
+  /// Clear session on logout but remember phone so provider can re-login with password
+  Future<void> logout() async {
+    final lastPhone = data.phone;
+    data = const ProviderRegistrationData().copyWith(phone: lastPhone);
+    ApiClient.setGlobalToken(null);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_storageKey);
+      await prefs.setString('provider_last_phone', lastPhone);
+      await prefs.setString(activeAppModeKey, 'provider');
+    } catch (e) {
+      debugPrint('Error logging out provider: $e');
+    }
+    onDataChanged?.call();
+  }
+
   /// Clear session and onboarding data on logout or reset
   Future<void> clear() async {
     data = const ProviderRegistrationData();

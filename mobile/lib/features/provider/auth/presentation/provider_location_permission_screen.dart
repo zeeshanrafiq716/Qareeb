@@ -3,6 +3,7 @@ import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
@@ -64,6 +65,22 @@ class _ProviderLocationPermissionScreenState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _checkIfAlreadyAllowed();
+  }
+
+  Future<void> _checkIfAlreadyAllowed() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hasAllowed = prefs.getBool('provider_has_allowed_location') ?? false;
+      final store = ProviderRegistrationStore.instance.data;
+      if ((hasAllowed || store.isOnboardingCompleted) && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _navigateToNextScreen();
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -189,6 +206,12 @@ class _ProviderLocationPermissionScreenState
       } catch (e) {
         debugPrint('Backend completeOnboarding error: $e');
       }
+
+      // Persist flag so provider never faces this screen again
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('provider_has_allowed_location', true);
+      } catch (_) {}
 
       if (!mounted) return;
 
@@ -408,10 +431,12 @@ class _ProviderLocationPermissionScreenState
             final double containerWidth = isDesktopWeb ? designWidth : constraints.maxWidth;
             final double containerHeight = isDesktopWeb ? designHeight : constraints.maxHeight;
             final double topSafeArea = MediaQuery.of(context).padding.top;
-            final double headerTop = topSafeArea > 0 ? (topSafeArea + 14.0) : 56.0;
+            final double headerTop = topSafeArea > 0 ? (topSafeArea + 10.0) : 48.0;
             final double bottomSafeArea = MediaQuery.of(context).padding.bottom;
-            final double minRequiredHeight = 348.0 + 440.0 + math.max(bottomSafeArea, 20.0) + 36.0;
-            final double contentHeight = math.max(containerHeight, minRequiredHeight);
+            final double contentHeight = containerHeight;
+            final double graphicTopShift = containerHeight < 800
+                ? ((800.0 - containerHeight) * 0.35).clamp(0.0, 36.0)
+                : 0.0;
 
             final screenContent = Container(
               width: containerWidth,
@@ -424,7 +449,7 @@ class _ProviderLocationPermissionScreenState
                     child: Image.asset(
                       'assets/images/BG image.png',
                       width: containerWidth,
-                      height: containerHeight,
+                      height: contentHeight,
                       fit: BoxFit.cover,
                       alignment: Alignment.topCenter,
                       errorBuilder: (context, error, stackTrace) => Container(
@@ -474,7 +499,7 @@ class _ProviderLocationPermissionScreenState
                         },
                       ),
                       child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                        physics: const NeverScrollableScrollPhysics(),
                         child: SizedBox(
                           width: containerWidth,
                           height: contentHeight,
@@ -553,7 +578,7 @@ class _ProviderLocationPermissionScreenState
                         // 4. Main Ellipse Branding:
                         // background: #F0EAFE; box-shadow: 0px 0px 4px 0px #E9E0FE inset;
                         Positioned(
-                          top: 168.0,
+                          top: 168.0 - graphicTopShift,
                           left: (containerWidth - 124.0) / 2,
                           width: 124.0,
                           height: 124.0,
@@ -581,7 +606,7 @@ class _ProviderLocationPermissionScreenState
                         // 5. Inner Ellipse Branding:
                         // background: #EAE0FE; box-shadow: 0px 0px 4px 0px #DACBFE inset;
                         Positioned(
-                          top: 181.48,
+                          top: 181.48 - graphicTopShift,
                           left: (containerWidth - 97.04) / 2,
                           width: 97.04,
                           height: 97.04,
@@ -609,7 +634,7 @@ class _ProviderLocationPermissionScreenState
                         // 6. Center Location Icon Branding:
                         // background: linear-gradient(139.03deg, #8B53FE -28.34%, #A67AFE 40.05%, #BA98FE 92.02%)
                         Positioned(
-                          top: 204.0,
+                          top: 204.0 - graphicTopShift,
                           left: (containerWidth - 50.0) / 2,
                           width: 50.0,
                           height: 64.0,
@@ -622,7 +647,7 @@ class _ProviderLocationPermissionScreenState
                         // 7. "Nearby Providers" Badges Branding:
                         // width: 148; height: 54; top: 146px; left: 14px;
                         Positioned(
-                          top: 146.0,
+                          top: 146.0 - graphicTopShift,
                           left: 14.0,
                           width: 148.0,
                           height: 54.0,
@@ -665,7 +690,7 @@ class _ProviderLocationPermissionScreenState
                                     const SizedBox(width: 8.0),
                                     Expanded(
                                       child: Text(
-                                        context.l10n.nearbyProviders,
+                                        context.l10n.nearbyProvidersBadge,
                                         style: ProviderTextStyles.securityNotice.copyWith(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w500,
@@ -686,7 +711,7 @@ class _ProviderLocationPermissionScreenState
                         // 8. "Fast Delivery" Badges Branding (2nd badge):
                         // width: 124; height: 54; top: 126px; right: 14px;
                         Positioned(
-                          top: 126.0,
+                          top: 126.0 - graphicTopShift,
                           right: 14.0,
                           width: 124.0,
                           height: 54.0,
@@ -729,7 +754,7 @@ class _ProviderLocationPermissionScreenState
                                     const SizedBox(width: 8.0),
                                     Expanded(
                                       child: Text(
-                                        context.l10n.fastDelivery,
+                                        context.l10n.fastDeliveryBadge,
                                         style: ProviderTextStyles.securityNotice.copyWith(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w500,
@@ -750,7 +775,7 @@ class _ProviderLocationPermissionScreenState
                         // 9. "Real-time Tracking" Badges Branding (3rd badge):
                         // width: 154; height: 54; top: 268px; right: 14px;
                         Positioned(
-                          top: 268.0,
+                          top: 268.0 - graphicTopShift,
                           right: 14.0,
                           width: 154.0,
                           height: 54.0,
@@ -793,7 +818,7 @@ class _ProviderLocationPermissionScreenState
                                     const SizedBox(width: 8.0),
                                     Expanded(
                                       child: Text(
-                                        context.l10n.realtimeTracking,
+                                        context.l10n.realTimeTrackingBadge,
                                         style: ProviderTextStyles.securityNotice.copyWith(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w500,
@@ -813,11 +838,9 @@ class _ProviderLocationPermissionScreenState
 
                         // 9. Location Permission Main Content Widget Branding:
                         Positioned(
-                          top: containerHeight >= 830.0
-                              ? 348.0
-                              : (containerHeight - 430.0).clamp(300.0, 348.0),
                           left: 16.0,
                           right: 16.0,
+                          bottom: math.max(bottomSafeArea, 12.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
@@ -834,7 +857,7 @@ class _ProviderLocationPermissionScreenState
                                       textAlign: TextAlign.center,
                                       style: ProviderTextStyles.verificationSuccessfulTitle,
                                     ),
-                                    const SizedBox(height: 12.0),
+                                    const SizedBox(height: 8.0),
                                     Text(
                                       widget.description ??
                                           context.l10n.locationNeededForService(context.isArabic ? context.auto(widget.serviceName) : widget.serviceName),
@@ -845,12 +868,12 @@ class _ProviderLocationPermissionScreenState
                                 ),
                               ),
 
-                              const SizedBox(height: 20.0),
+                              const SizedBox(height: 14.0),
 
                               // Feature details white card
                               Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFFFFFFF),
                                   borderRadius: BorderRadius.circular(16.0),
@@ -876,7 +899,7 @@ class _ProviderLocationPermissionScreenState
                                       subtitle: context.l10n.seeNearbyProvidersSubtitle,
                                     ),
 
-                                    const SizedBox(height: 20.0),
+                                    const SizedBox(height: 14.0),
 
                                     // Item 2: Fast service
                                     _buildFeatureRow(
@@ -889,7 +912,7 @@ class _ProviderLocationPermissionScreenState
                                       subtitle: context.l10n.fastServiceSubtitle,
                                     ),
 
-                                    const SizedBox(height: 20.0),
+                                    const SizedBox(height: 14.0),
 
                                     // Item 3: Your privacy matters
                                     _buildFeatureRow(
@@ -905,7 +928,7 @@ class _ProviderLocationPermissionScreenState
                                 ),
                               ),
 
-                              const SizedBox(height: 20.0),
+                              const SizedBox(height: 14.0),
 
                               // CTA Component: Allow Location Button + Settings Footnote
                               SizedBox(
@@ -1019,10 +1042,9 @@ class _ProviderLocationPermissionScreenState
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(height: 24.0),
+                                    const SizedBox(height: 12.0),
                                     // Flexible bottom indicator bar that scrolls naturally with content
                                     const ProviderCardBottomIndicator(),
-                                    SizedBox(height: math.max(bottomSafeArea, 16.0)),
                                   ],
                                 ),
                               ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
@@ -57,6 +58,7 @@ class ProviderPhoneInputWidget extends StatefulWidget {
   final ValueChanged<CountryModel>? onCountryChanged;
   final VoidCallback? onContinue;
   final VoidCallback? onCountryCodeTap;
+  final bool initialIsLogin;
 
   const ProviderPhoneInputWidget({
     super.key,
@@ -66,6 +68,7 @@ class ProviderPhoneInputWidget extends StatefulWidget {
     this.onCountryChanged,
     this.onContinue,
     this.onCountryCodeTap,
+    this.initialIsLogin = false,
   });
 
   static const double designWidth = 350.0;
@@ -81,8 +84,11 @@ class ProviderPhoneInputWidget extends StatefulWidget {
 
 class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
   late final TextEditingController _internalController;
+  final TextEditingController _passwordController = TextEditingController();
   CountryModel _localSelectedCountry = CountryModel.defaultCountry;
   bool _isLoading = false;
+  late bool _isLoginMode;
+  bool _obscurePassword = true;
   late final BackendService _backendService;
 
   CountryModel get _selectedCountry => widget.selectedCountry ?? _localSelectedCountry;
@@ -90,16 +96,151 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
   @override
   void initState() {
     super.initState();
+    _isLoginMode = widget.initialIsLogin;
     _internalController = widget.controller ?? TextEditingController();
+    _internalController.clear();
+    _passwordController.clear();
     _backendService = BackendService(ApiClient());
+  }
+
+  void _switchMode(bool login) {
+    if (_isLoginMode == login) return;
+    setState(() {
+      _isLoginMode = login;
+      _internalController.clear();
+      _passwordController.clear();
+    });
+    FocusScope.of(context).unfocus();
   }
 
   @override
   void dispose() {
+    _passwordController.dispose();
     if (widget.controller == null) {
       _internalController.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _handlePasswordLogin() async {
+    if (_isLoading) return;
+    final isArabic = context.isArabic;
+    final rawPhone = _internalController.text.trim();
+    final password = _passwordController.text.trim();
+
+    String digits = rawPhone.replaceAll(RegExp(r'\D'), '');
+    if (digits.startsWith('0')) {
+      digits = digits.replaceFirst(RegExp(r'^0+'), '');
+    }
+
+    if (digits.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          backgroundColor: const Color(0xFF1C2926),
+          content: Text(
+            isArabic ? 'يرجى إدخال رقم الهاتف للمتابعة' : 'Please enter your phone number to continue',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    if (password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          backgroundColor: const Color(0xFF1C2926),
+          content: Text(
+            isArabic ? 'يرجى إدخال كلمة المرور' : 'Please enter your password',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final fullPhone = '${_selectedCountry.dialCode}$digits';
+    final displayPhone = '${_selectedCountry.dialCode} $digits';
+
+    try {
+      final result = await _backendService.loginWithPassword(
+        phone: fullPhone,
+        password: password,
+        userType: 'provider',
+      );
+
+      if (!mounted) return;
+
+      if (result.success) {
+        HapticFeedback.mediumImpact();
+        if (result.token != null) {
+          ApiClient.setGlobalToken(result.token);
+        }
+
+        final providerStatus = result.provider?['status']?.toString();
+        final isAlreadyApproved = providerStatus == 'APPROVED';
+        final isPendingVerification = providerStatus == 'PENDING_VERIFICATION';
+
+        if (result.provider != null) {
+          ProviderRegistrationStore.instance.updateFromBackendProfile(result.provider!);
+        }
+
+        ProviderRegistrationStore.instance.update(
+          (data) => data.copyWith(
+            phone: displayPhone,
+            authToken: result.token ?? data.authToken,
+            status: providerStatus ?? data.status,
+            isOnboardingCompleted: isAlreadyApproved || isPendingVerification || data.isOnboardingCompleted,
+          ),
+        );
+
+        if (isAlreadyApproved) {
+          Navigator.of(context).pushNamedAndRemoveUntil('/provider/home', (route) => false);
+        } else if (isPendingVerification) {
+          Navigator.of(context).pushNamedAndRemoveUntil('/provider/admin-approval', (route) => false);
+        } else {
+          Navigator.of(context).pushNamedAndRemoveUntil('/provider/home', (route) => false);
+        }
+      } else {
+        HapticFeedback.heavyImpact();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            content: Text(
+              result.errorMessage ??
+                  (isArabic ? 'رقم الهاتف أو كلمة المرور غير صحيحة' : 'Invalid phone number or password'),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+            content: Text(
+              isArabic ? 'حدث خطأ، يرجى المحاولة مرة أخرى' : 'An error occurred, please try again',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   Future<void> _openCountryPicker() async {
@@ -217,33 +358,62 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
         debugPrint('ProviderRegistrationStore update error: $storeError');
       }
 
-      final result = await _backendService.requestOtp(phone: fullPhone);
+      final result = await _backendService.requestOtp(
+        phone: fullPhone,
+        channel: 'sms',
+        userType: 'provider',
+      );
 
       if (!mounted) return;
 
-      // Show realistic SMS toast notification with received dummy OTP
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF1C2926),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-          content: Row(
-            children: [
-              const Icon(Icons.mark_email_read_outlined, color: ProviderColors.brandPurple, size: 20.0),
-              const SizedBox(width: 10.0),
-              Expanded(
-                child: Text(
-                  isArabic
-                      ? 'رمز التحقق (تجريبي): ${result.otp}'
-                      : 'Verification Code (Dummy): ${result.otp}',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+      // Show realistic SMS notification if sent via Twilio, or dev OTP toast in test mode
+      if (result.smsDelivered) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF1C2926),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            content: Row(
+              children: [
+                const Icon(Icons.sms_outlined, color: ProviderColors.brandPurple, size: 20.0),
+                const SizedBox(width: 10.0),
+                Expanded(
+                  child: Text(
+                    isArabic
+                        ? 'تم إرسال رمز التحقق إلى $displayPhone عبر رسالة SMS'
+                        : 'Verification code sent to $displayPhone via SMS',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
+            duration: const Duration(seconds: 4),
           ),
-          duration: const Duration(seconds: 5),
-        ),
-      );
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF1C2926),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            content: Row(
+              children: [
+                const Icon(Icons.mark_email_read_outlined, color: ProviderColors.brandPurple, size: 20.0),
+                const SizedBox(width: 10.0),
+                Expanded(
+                  child: Text(
+                    isArabic
+                        ? 'رمز التحقق (تجريبي): ${result.otp}'
+                        : 'Verification Code (Dev): ${result.otp}',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
 
       // Navigate to OTP Screen
       Navigator.of(context).push(
@@ -285,6 +455,8 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isArabic = context.isArabic;
+
     return Opacity(
       opacity: 1.0, // opacity: 1
       child: Transform.rotate(
@@ -295,6 +467,82 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // 0. Mode Switcher Pill: [ Log In | Register ]
+              Container(
+                height: 44.0,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF2F5F4),
+                  borderRadius: BorderRadius.circular(22.0),
+                ),
+                padding: const EdgeInsets.all(4.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => _switchMode(true),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _isLoginMode ? Colors.white : Colors.transparent,
+                            borderRadius: BorderRadius.circular(18.0),
+                            boxShadow: _isLoginMode
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.06),
+                                      blurRadius: 4.0,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Center(
+                            child: Text(
+                              isArabic ? 'تسجيل الدخول' : 'Log In',
+                              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                                fontSize: 13.0,
+                                fontWeight: _isLoginMode ? FontWeight.w700 : FontWeight.w500,
+                                color: _isLoginMode ? const Color(0xFF1C2926) : const Color(0xFF71717A),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => _switchMode(false),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: !_isLoginMode ? Colors.white : Colors.transparent,
+                            borderRadius: BorderRadius.circular(18.0),
+                            boxShadow: !_isLoginMode
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.06),
+                                      blurRadius: 4.0,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Center(
+                            child: Text(
+                              isArabic ? 'تسجيل جديد' : 'Register',
+                              style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                                fontSize: 13.0,
+                                fontWeight: !_isLoginMode ? FontWeight.w700 : FontWeight.w500,
+                                color: !_isLoginMode ? const Color(0xFF1C2926) : const Color(0xFF71717A),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 14.0),
+
               // 1st row layout: width: double.infinity; height: 52.22; gap: 10px;
               // Enforce LTR so in both Arabic and English, code field stays on the LEFT side and phone input field on the RIGHT side.
               Directionality(
@@ -319,14 +567,97 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
                 ),
               ),
 
+              // If in Login mode: Password input field
+              if (_isLoginMode) ...[
+                const SizedBox(height: 12.0),
+                _buildPasswordInputCard(),
+              ],
+
               // gap: 16px;
               const SizedBox(height: ProviderPhoneInputWidget.rowGap),
 
               // button layout: width: double.infinity; height: 52; border-radius: 12px; background: #8B53FE;
               _buildContinueButton(),
+
+              if (_isLoginMode) ...[
+                const SizedBox(height: 12.0),
+                Center(
+                  child: InkWell(
+                    onTap: () => _switchMode(false),
+                    borderRadius: BorderRadius.circular(6.0),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                      child: Text(
+                        isArabic ? 'نسيت كلمة المرور؟ الدخول عبر رمز SMS' : 'Forgot password? Login with SMS OTP',
+                        style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                          fontSize: 12.0,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF8B53FE),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordInputCard() {
+    final isArabic = context.isArabic;
+    return Container(
+      height: 52.0,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F5F4),
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14.0),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.lock_outline_rounded,
+            size: 20.0,
+            color: Color(0xFF71717A),
+          ),
+          const SizedBox(width: 10.0),
+          Expanded(
+            child: TextField(
+              controller: _passwordController,
+              obscureText: _obscurePassword,
+              style: GoogleFonts.inter(
+                fontSize: 14.0,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF1C2926),
+              ),
+              decoration: InputDecoration(
+                hintText: isArabic ? 'أدخل كلمة المرور' : 'Enter your password',
+                hintStyle: GoogleFonts.inter(
+                  fontSize: 13.0,
+                  color: const Color(0xFF9CA3AF),
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(
+              _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              size: 20.0,
+              color: const Color(0xFF71717A),
+            ),
+            onPressed: () {
+              setState(() {
+                _obscurePassword = !_obscurePassword;
+              });
+            },
+            splashRadius: 18.0,
+          ),
+        ],
       ),
     );
   }
@@ -480,14 +811,19 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
   /// content: Continue (Inter 500 14px line-height 22px #FFFFFF)
   /// arrow icon branding: width: 14; height: 12; border: 1.5px solid #FFFFFF
   Widget _buildContinueButton() {
+    final isArabic = context.isArabic;
     return ProviderAnimatedButton(
       height: ProviderPhoneInputWidget.buttonHeight,
       backgroundColor: ProviderColors.primaryButton, // #8B53FE
       foregroundColor: Colors.white,
       isLoading: _isLoading,
-      text: context.l10n.continueButtonText,
+      text: _isLoginMode
+          ? (isArabic ? 'تسجيل الدخول' : 'Log In')
+          : context.l10n.continueButtonText,
       icon: const _ContinueArrowWidget(),
-      onTap: widget.onContinue ?? _handleContinue,
+      onTap: _isLoginMode
+          ? _handlePasswordLogin
+          : (widget.onContinue ?? _handleContinue),
     );
   }
 }

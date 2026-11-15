@@ -14,6 +14,7 @@ export async function resetDb() {
       provider_device_tokens,
       otp_codes,
       customer_funnel_events,
+      customers,
       call_logs,
       provider_status_history,
       verifications,

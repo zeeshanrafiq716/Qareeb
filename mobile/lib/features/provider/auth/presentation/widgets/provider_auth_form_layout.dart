@@ -27,12 +27,14 @@ class ProviderAuthFormLayout extends StatefulWidget {
   final Widget? phoneInputSlot;
   final Widget? actionButtonSlot;
   final VoidCallback? onWhatsAppTap;
+  final bool initialIsLogin;
 
   const ProviderAuthFormLayout({
     super.key,
     this.phoneInputSlot,
     this.actionButtonSlot,
     this.onWhatsAppTap,
+    this.initialIsLogin = false,
   });
 
   static const double designWidth = 350.0;
@@ -154,35 +156,64 @@ class _ProviderAuthFormLayoutState extends State<ProviderAuthFormLayout> {
       ),
     );
 
-    final result = await _backendService.requestOtp(phone: fullPhone);
+    final result = await _backendService.requestOtp(
+      phone: fullPhone,
+      channel: 'whatsapp',
+      userType: 'provider',
+    );
 
     if (!mounted) return;
     setState(() => _isWhatsAppLoading = false);
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-    // Show WhatsApp verification dummy OTP toast
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF1C2926),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-        content: Row(
-          children: [
-            const Icon(Icons.mark_email_read_outlined, color: ProviderColors.whatsappGreen, size: 20.0),
-            const SizedBox(width: 10.0),
-            Expanded(
-              child: Text(
-                isArabic
-                    ? 'رمز التحقق عبر واتساب (تجريبي): ${result.otp}'
-                    : 'WhatsApp Verification Code (Dummy): ${result.otp}',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+    // Show realistic WhatsApp notification if sent via Twilio, or dev OTP toast in test mode
+    if (result.smsDelivered) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1C2926),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          content: Row(
+            children: [
+              const Icon(Icons.chat_bubble_outline, color: ProviderColors.whatsappGreen, size: 20.0),
+              const SizedBox(width: 10.0),
+              Expanded(
+                child: Text(
+                  isArabic
+                      ? 'تم إرسال رمز التحقق إلى $displayPhone عبر تطبيق واتساب'
+                      : 'Verification code sent to $displayPhone via WhatsApp',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
+          duration: const Duration(seconds: 4),
         ),
-        duration: const Duration(seconds: 5),
-      ),
-    );
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1C2926),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          content: Row(
+            children: [
+              const Icon(Icons.mark_email_read_outlined, color: ProviderColors.whatsappGreen, size: 20.0),
+              const SizedBox(width: 10.0),
+              Expanded(
+                child: Text(
+                  isArabic
+                      ? 'رمز التحقق عبر واتساب (تجريبي): ${result.otp}'
+                      : 'WhatsApp Verification Code (Dev): ${result.otp}',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
 
     // Redirect to OTP verification screen for WhatsApp!
     Navigator.of(context).push(
@@ -236,6 +267,7 @@ class _ProviderAuthFormLayoutState extends State<ProviderAuthFormLayout> {
                   ProviderPhoneInputWidget(
                     controller: _phoneController,
                     selectedCountry: _selectedCountry,
+                    initialIsLogin: widget.initialIsLogin,
                     onCountryChanged: (picked) {
                       setState(() {
                         _selectedCountry = picked;

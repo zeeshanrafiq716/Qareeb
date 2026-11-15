@@ -339,7 +339,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                       clipBehavior:
                                                           Clip.antiAlias,
                                                       child: Image.network(
-                                                        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+                                                        '',
                                                         width: 36.0,
                                                         height: 36.0,
                                                         fit: BoxFit.cover,

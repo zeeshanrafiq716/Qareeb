@@ -6,6 +6,9 @@ class OtpRequestResult {
   final String message;
   final bool isDummy;
   final int expiresInMinutes;
+  final bool smsDelivered;
+  final String channel;
+  final String? messageSid;
 
   const OtpRequestResult({
     required this.success,
@@ -14,22 +17,31 @@ class OtpRequestResult {
     required this.message,
     this.isDummy = false,
     this.expiresInMinutes = 10,
+    this.smsDelivered = false,
+    this.channel = 'sms',
+    this.messageSid,
   });
 
   factory OtpRequestResult.fromJson(Map<String, dynamic> json, {required String fallbackPhone, String? fallbackOtp}) {
     final data = json['data'] is Map<String, dynamic> ? json['data'] as Map<String, dynamic> : json;
-    final otpVal = data['otp']?.toString() ?? fallbackOtp ?? '123456';
+    final otpVal = data['otp']?.toString() ?? fallbackOtp ?? '';
     final phoneVal = data['phone']?.toString() ?? fallbackPhone;
     final messageVal = data['message']?.toString() ?? 'OTP sent to phone number';
     final expiresVal = int.tryParse(data['expiresInMinutes']?.toString() ?? '') ?? 10;
+    final smsDeliveredVal = data['smsDelivered'] == true;
+    final channelVal = data['channel']?.toString() ?? 'sms';
+    final sidVal = data['messageSid']?.toString();
 
     return OtpRequestResult(
       success: true,
       phone: phoneVal,
       otp: otpVal,
       message: messageVal,
-      isDummy: data['otp'] == null,
+      isDummy: data['otp'] == null && !smsDeliveredVal,
       expiresInMinutes: expiresVal,
+      smsDelivered: smsDeliveredVal,
+      channel: channelVal,
+      messageSid: sidVal,
     );
   }
 
@@ -41,6 +53,8 @@ class OtpRequestResult {
       message: message ?? 'Dummy OTP generated for testing',
       isDummy: true,
       expiresInMinutes: 10,
+      smsDelivered: false,
+      channel: 'sms',
     );
   }
 }

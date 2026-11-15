@@ -23,6 +23,12 @@ import 'package:mobile/features/provider/auth/presentation/widgets/provider_admi
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_got_it_button.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_whats_next_card.dart';
 import 'package:mobile/features/requests/presentation/requests_screen.dart';
+import 'package:mobile/core/localization/app_locale.dart';
+
+class _TestEnLocaleNotifier extends AppLocaleNotifier {
+  @override
+  Locale build() => const Locale('en');
+}
 
 void main() {
   testWidgets('Qareeb branding title and slogan render correctly', (WidgetTester tester) async {
@@ -152,8 +158,11 @@ void main() {
 
   testWidgets('LocationPermissionScreen renders background image, gradient, back button, and service title', (WidgetTester tester) async {
     await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(
+      ProviderScope(
+        overrides: [
+          appLocaleProvider.overrideWith(_TestEnLocaleNotifier.new),
+        ],
+        child: const MaterialApp(
           home: LocationPermissionScreen(serviceName: 'Pickup & Delivery'),
         ),
       ),
@@ -167,11 +176,11 @@ void main() {
     expect(find.text('Fast\nDelivery'), findsOneWidget);
     expect(find.text('Real-time\nTracking'), findsOneWidget);
     expect(find.text('Find Providers near you'), findsOneWidget);
-    expect(find.text('Wee need your location to show nearby\nproviders for Pickup & Delivery.'), findsOneWidget);
+    expect(find.textContaining('need your location to show nearby'), findsOneWidget);
     expect(find.text('See nearby providers'), findsOneWidget);
     expect(find.text('Fast service'), findsOneWidget);
     expect(find.text('Your privacy matters'), findsOneWidget);
-    expect(find.text('Your location is only used for this service and can be changed anhytime'), findsOneWidget);
+    expect(find.textContaining('Your location is only used for this service'), findsOneWidget);
     expect(find.text('Allow Location'), findsOneWidget);
     expect(find.textContaining('You can change this later in'), findsOneWidget);
   });
@@ -218,8 +227,14 @@ void main() {
 
   testWidgets('ProviderLocationPermissionScreen renders background image, gradient, back button, beacon, feature card and Allow Location CTA', (WidgetTester tester) async {
     await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(
+      ProviderScope(
+        overrides: [
+          appLocaleProvider.overrideWith(_TestEnLocaleNotifier.new),
+        ],
+        child: const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: Locale('en'),
           home: ProviderLocationPermissionScreen(serviceName: 'Pickup & Delivery'),
         ),
       ),
@@ -233,11 +248,11 @@ void main() {
     expect(find.text('Fast\nDelivery'), findsOneWidget);
     expect(find.text('Real-time\nTracking'), findsOneWidget);
     expect(find.text('Find Providers near you'), findsOneWidget);
-    expect(find.text('Wee need your location to show nearby\nproviders for Pickup & Delivery.'), findsOneWidget);
+    expect(find.textContaining('need your location to show nearby'), findsOneWidget);
     expect(find.text('See nearby providers'), findsOneWidget);
     expect(find.text('Fast service'), findsOneWidget);
     expect(find.text('Your privacy matters'), findsOneWidget);
-    expect(find.text('Your location is only used for this service and can be changed anhytime'), findsOneWidget);
+    expect(find.textContaining('Your location is only used for this service'), findsOneWidget);
     expect(find.text('Allow Location'), findsOneWidget);
     expect(find.textContaining('You can change this later in'), findsOneWidget);
     expect(find.byType(ProviderCardBottomIndicator), findsOneWidget);

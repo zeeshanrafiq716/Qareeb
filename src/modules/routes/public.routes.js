@@ -3,7 +3,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ok } from "../../utils/http.js";
 import { validate } from "../../middleware/validate.js";
-import { otpRequestSchema, otpVerifySchema } from "../schemas.js";
+import { otpRequestSchema, otpVerifySchema, loginSchema, setPasswordSchema } from "../schemas.js";
 import * as authService from "../auth.service.js";
 import { otpRequestRateLimit, otpVerifyRateLimit } from "../../middleware/rateLimit.js";
 import * as providerService from "../providers.service.js";
@@ -104,6 +104,8 @@ publicRoutes.post(
     ok(
       res,
       await authService.requestOtp(req.body.phone, {
+        channel: req.body.channel,
+        userType: req.body.userType,
         ipAddress: req.ip,
         userAgent: req.headers["user-agent"],
       }),
@@ -116,7 +118,45 @@ publicRoutes.post(
   otpVerifyRateLimit(),
   validate(otpVerifySchema),
   asyncHandler(async (req, res) => {
-    ok(res, await authService.verifyOtp(req.body.phone, req.body.otp));
+    ok(
+      res,
+      await authService.verifyOtp(req.body.phone, req.body.otp, {
+        password: req.body.password,
+        name: req.body.name,
+        userType: req.body.userType,
+      }),
+    );
+  }),
+);
+
+publicRoutes.post(
+  "/auth/login",
+  validate(loginSchema),
+  asyncHandler(async (req, res) => {
+    ok(
+      res,
+      await authService.loginWithPassword({
+        phone: req.body.phone,
+        password: req.body.password,
+        userType: req.body.userType,
+      }),
+    );
+  }),
+);
+
+publicRoutes.post(
+  "/auth/password/set",
+  validate(setPasswordSchema),
+  asyncHandler(async (req, res) => {
+    ok(
+      res,
+      await authService.setPassword({
+        phone: req.body.phone,
+        password: req.body.password,
+        userType: req.body.userType,
+        name: req.body.name,
+      }),
+    );
   }),
 );
 

@@ -3,6 +3,8 @@ import { z } from "zod";
 export const otpRequestSchema = z.object({
   body: z.object({
     phone: z.string().min(10).max(20),
+    channel: z.enum(["sms", "whatsapp"]).optional().default("sms"),
+    userType: z.enum(["customer", "provider"]).optional().default("provider"),
   }),
 });
 
@@ -10,6 +12,26 @@ export const otpVerifySchema = z.object({
   body: z.object({
     phone: z.string().min(10).max(20),
     otp: z.string().regex(/^\d{6}$/, "OTP must be 6 digits"),
+    password: z.string().min(6).optional(),
+    name: z.string().optional(),
+    userType: z.enum(["customer", "provider"]).optional().default("provider"),
+  }),
+});
+
+export const loginSchema = z.object({
+  body: z.object({
+    phone: z.string().min(10).max(20),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    userType: z.enum(["customer", "provider"]).optional().default("provider"),
+  }),
+});
+
+export const setPasswordSchema = z.object({
+  body: z.object({
+    phone: z.string().min(10).max(20),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    userType: z.enum(["customer", "provider"]).optional().default("provider"),
+    name: z.string().optional(),
   }),
 });
 

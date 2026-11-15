@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class AppConfig {
   AppConfig._();
 
@@ -9,12 +11,30 @@ class AppConfig {
   static const String productionBaseUrl = 'https://zesho.tech';
 
   /// Resolves the default backend base URL:
+  /// - Web / Chrome debug: http://localhost:3000
+  /// - Android Emulator: http://10.0.2.2:3000
+  /// - Physical device / Production: https://zesho.tech
   static String get defaultBaseUrl {
+    if (kIsWeb) {
+      return 'http://localhost:3000';
+    }
+    if (kDebugMode && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:3000';
+    }
     return productionBaseUrl;
   }
 
-  /// Can be overridden at runtime or via environment variables
-  static String baseUrl = defaultBaseUrl;
+  static String? _customBaseUrl;
+
+  /// Dynamically resolves the active base URL:
+  /// - Web / Chrome debug: http://localhost:3000
+  /// - Android Emulator: http://10.0.2.2:3000
+  /// - Physical device / Production: https://zesho.tech
+  static String get baseUrl => _customBaseUrl ?? defaultBaseUrl;
+
+  static set baseUrl(String value) {
+    _customBaseUrl = value;
+  }
 
   /// Default timeout in milliseconds
   static const int connectTimeoutMs = 10000;

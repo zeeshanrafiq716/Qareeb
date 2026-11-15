@@ -132,6 +132,49 @@ class CustomerAuthStore {
     onDataChanged?.call();
   }
 
+  Future<void> signIn({
+    required String fullName,
+    required String phone,
+    String countryCode = '+966',
+    String? token,
+  }) async {
+    data = data.copyWith(
+      fullName: fullName.trim(),
+      phone: phone.trim(),
+      countryCode: countryCode,
+      isSignedUp: true,
+    );
+    await saveToPrefs();
+    if (token != null && token.isNotEmpty) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('customer_token', token);
+        await prefs.setString('auth_token', token);
+      } catch (_) {}
+    }
+    onDataChanged?.call();
+  }
+
+  Future<void> logout() async {
+    final rememberedPhone = data.phone;
+    final rememberedCountryCode = data.countryCode;
+    data = CustomerAuthData(
+      fullName: data.fullName,
+      phone: rememberedPhone,
+      countryCode: rememberedCountryCode,
+      isSignedUp: false,
+    );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_storageKey);
+      await prefs.setBool(_isSignedUpKey, false);
+      await prefs.remove('customer_token');
+      await prefs.remove('auth_token');
+      await prefs.setString('last_phone', rememberedPhone);
+    } catch (_) {}
+    onDataChanged?.call();
+  }
+
   Future<void> updateProfile({
     String? fullName,
     String? phone,

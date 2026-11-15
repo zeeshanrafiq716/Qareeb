@@ -529,12 +529,9 @@ class _EmergencyServicesScreenState extends ConsumerState<EmergencyServicesScree
                               subtitle: tr.ambulanceSubtitle,
                               imagePath: 'assets/images/ambulance.png',
                               onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const LocationPermissionScreen(
-                                      serviceName: 'Ambulance',
-                                    ),
-                                  ),
+                                LocationPermissionScreen.navigateToService(
+                                  context,
+                                  serviceName: 'Ambulance',
                                 );
                               },
                             ),
@@ -546,12 +543,9 @@ class _EmergencyServicesScreenState extends ConsumerState<EmergencyServicesScree
                               subtitle: tr.policeSubtitle,
                               imagePath: 'assets/images/police.png',
                               onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const LocationPermissionScreen(
-                                      serviceName: 'Police',
-                                    ),
-                                  ),
+                                LocationPermissionScreen.navigateToService(
+                                  context,
+                                  serviceName: 'Police',
                                 );
                               },
                             ),
@@ -563,12 +557,9 @@ class _EmergencyServicesScreenState extends ConsumerState<EmergencyServicesScree
                               subtitle: tr.fireBrigadeSubtitle,
                               imagePath: 'assets/images/fire_brigade.png',
                               onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const LocationPermissionScreen(
-                                      serviceName: 'Fire Brigade',
-                                    ),
-                                  ),
+                                LocationPermissionScreen.navigateToService(
+                                  context,
+                                  serviceName: 'Fire Brigade',
                                 );
                               },
                             ),
@@ -580,12 +571,9 @@ class _EmergencyServicesScreenState extends ConsumerState<EmergencyServicesScree
                               subtitle: tr.towTruckSubtitle,
                               imagePath: 'assets/images/towing.png',
                               onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const LocationPermissionScreen(
-                                      serviceName: 'Tow Truck',
-                                    ),
-                                  ),
+                                LocationPermissionScreen.navigateToService(
+                                  context,
+                                  serviceName: 'Tow Truck',
                                 );
                               },
                             ),
@@ -597,12 +585,9 @@ class _EmergencyServicesScreenState extends ConsumerState<EmergencyServicesScree
                               subtitle: tr.hospitalSubtitle,
                               imagePath: 'assets/images/hospital.png',
                               onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const LocationPermissionScreen(
-                                      serviceName: 'Hospital',
-                                    ),
-                                  ),
+                                LocationPermissionScreen.navigateToService(
+                                  context,
+                                  serviceName: 'Hospital',
                                 );
                               },
                             ),

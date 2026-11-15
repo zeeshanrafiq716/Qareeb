@@ -125,7 +125,8 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
     } else if (data.isOnboardingCompleted || data.status == 'PENDING_VERIFICATION') {
       destination = const AdminApprovalScreen();
     } else {
-      destination = const PhoneVerificationScreen();
+      final hasKnownAccount = data.phone.isNotEmpty;
+      destination = PhoneVerificationScreen(initialIsLogin: hasKnownAccount);
     }
 
     Navigator.of(context).pushReplacement(

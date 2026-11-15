@@ -13,10 +13,12 @@ import 'package:mobile/features/provider/auth/presentation/widgets/provider_card
 ///   gap: 40px;
 class ProviderCardContentLayout extends StatelessWidget {
   final Widget? formContent;
+  final bool initialIsLogin;
 
   const ProviderCardContentLayout({
     super.key,
     this.formContent,
+    this.initialIsLogin = false,
   });
 
   static const double designWidth = 350.0;
@@ -43,7 +45,7 @@ class ProviderCardContentLayout extends StatelessWidget {
               const SizedBox(height: designGap),
 
               // 2. Next Widget Layout: formContent
-              formContent ?? const ProviderAuthFormLayout(),
+              formContent ?? ProviderAuthFormLayout(initialIsLogin: initialIsLogin),
             ],
           ),
         ),

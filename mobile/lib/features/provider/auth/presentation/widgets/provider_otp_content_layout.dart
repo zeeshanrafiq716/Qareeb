@@ -221,7 +221,11 @@ class _ProviderOtpInnerContentLayoutState extends State<ProviderOtpInnerContentL
 
   Future<void> _handleResend() async {
     final phone = widget.fullPhone ?? '+966501234567';
-    final result = await _backendService.requestOtp(phone: phone);
+    final result = await _backendService.requestOtp(
+      phone: phone,
+      channel: widget.isWhatsApp ? 'whatsapp' : 'sms',
+      userType: 'provider',
+    );
 
     if (!mounted) return;
     setState(() {
@@ -229,32 +233,69 @@ class _ProviderOtpInnerContentLayoutState extends State<ProviderOtpInnerContentL
     });
 
     final isArabic = context.isArabic;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF1C2926),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-        content: Row(
-          children: [
-            const Icon(Icons.mark_email_read_outlined, color: ProviderColors.brandPurple, size: 20.0),
-            const SizedBox(width: 10.0),
-            Expanded(
-              child: Text(
-                isArabic
-                    ? (widget.isWhatsApp
-                        ? 'رمز التحقق الجديد عبر واتساب (تجريبي): ${result.otp}'
-                        : 'رمز التحقق الجديد (تجريبي): ${result.otp}')
-                    : (widget.isWhatsApp
-                        ? 'New WhatsApp Code (Dummy): ${result.otp}'
-                        : 'New Verification Code (Dummy): ${result.otp}'),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+    if (result.smsDelivered) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1C2926),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          content: Row(
+            children: [
+              Icon(
+                widget.isWhatsApp ? Icons.chat_bubble_outline : Icons.sms_outlined,
+                color: widget.isWhatsApp ? ProviderColors.whatsappGreen : ProviderColors.brandPurple,
+                size: 20.0,
               ),
-            ),
-          ],
+              const SizedBox(width: 10.0),
+              Expanded(
+                child: Text(
+                  isArabic
+                      ? (widget.isWhatsApp
+                          ? 'تم إرسال رمز تحقق جديد عبر تطبيق واتساب'
+                          : 'تم إرسال رمز تحقق جديد عبر رسالة SMS')
+                      : (widget.isWhatsApp
+                          ? 'New verification code sent via WhatsApp'
+                          : 'New verification code sent via SMS'),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 4),
         ),
-        duration: const Duration(seconds: 4),
-      ),
-    );
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1C2926),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          content: Row(
+            children: [
+              Icon(
+                Icons.mark_email_read_outlined,
+                color: widget.isWhatsApp ? ProviderColors.whatsappGreen : ProviderColors.brandPurple,
+                size: 20.0,
+              ),
+              const SizedBox(width: 10.0),
+              Expanded(
+                child: Text(
+                  isArabic
+                      ? (widget.isWhatsApp
+                          ? 'رمز التحقق الجديد عبر واتساب (تجريبي): ${result.otp}'
+                          : 'رمز التحقق الجديد (تجريبي): ${result.otp}')
+                      : (widget.isWhatsApp
+                          ? 'New WhatsApp Code (Dev): ${result.otp}'
+                          : 'New Verification Code (Dev): ${result.otp}'),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   @override

@@ -1,5 +1,5 @@
 // ignore_for_file: use_null_aware_elements
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
@@ -60,14 +60,23 @@ class BackendService {
 
   BackendService(this._client);
 
-  /// Request OTP for provider phone verification.
-  /// Hits real backend endpoint /api/v1/auth/otp/request.
-  /// If backend is unreachable or offline, seamlessly provides a dummy OTP.
-  Future<OtpRequestResult> requestOtp({required String phone}) async {
+  /// Request OTP for customer or provider phone verification via Twilio (SMS or WhatsApp).
+  /// Hits backend endpoint /api/v1/auth/otp/request with channel and userType.
+  /// If Twilio is active, sends real SMS / WhatsApp OTP.
+  /// If backend is unreachable or offline, seamlessly provides a dummy OTP for testing.
+  Future<OtpRequestResult> requestOtp({
+    required String phone,
+    String channel = 'sms',
+    String userType = 'provider',
+  }) async {
     try {
       final response = await _client.post(
         ApiEndpoints.authOtpRequest,
-        data: {'phone': phone},
+        data: {
+          'phone': phone,
+          'channel': channel,
+          'userType': userType,
+        },
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -87,12 +96,15 @@ class BackendService {
     );
   }
 
-  /// Verify OTP code for provider.
+  /// Verify OTP code for provider or customer.
   /// Hits real backend endpoint /api/v1/auth/otp/verify.
   /// If backend is offline or during testing, accepts dummy OTP 123456 or real code.
   Future<OtpVerifyResult> verifyOtp({
     required String phone,
     required String otp,
+    String? password,
+    String? name,
+    String userType = 'provider',
   }) async {
     try {
       final response = await _client.post(
@@ -100,6 +112,9 @@ class BackendService {
         data: {
           'phone': phone,
           'otp': otp,
+          if (password != null) 'password': password,
+          if (name != null) 'name': name,
+          'userType': userType,
         },
       );
 
@@ -110,7 +125,7 @@ class BackendService {
           final token = payload['token']?.toString() ?? 'token_${DateTime.now().millisecondsSinceEpoch}';
           final provider = payload['provider'] is Map<String, dynamic>
               ? payload['provider'] as Map<String, dynamic>
-              : null;
+              : (payload['customer'] is Map<String, dynamic> ? payload['customer'] as Map<String, dynamic> : null);
           return OtpVerifyResult.success(token: token, provider: provider, isDummy: false);
         }
       }
@@ -128,6 +143,104 @@ class BackendService {
       },
       isDummy: true,
     );
+  }
+
+  /// Direct phone + password login for existing Customer or Provider accounts.
+  /// Allows users who logged out to log back in without having to sign up again.
+  Future<OtpVerifyResult> loginWithPassword({
+    required String phone,
+    required String password,
+    String userType = 'provider',
+  }) async {
+    try {
+      final response = await _client.post(
+        ApiEndpoints.authLogin,
+        data: {
+          'phone': phone,
+          'password': password,
+          'userType': userType,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final payload = data['data'] is Map<String, dynamic> ? data['data'] as Map<String, dynamic> : data;
+          final token = payload['token']?.toString() ?? 'token_${DateTime.now().millisecondsSinceEpoch}';
+          final provider = payload['provider'] is Map<String, dynamic>
+              ? payload['provider'] as Map<String, dynamic>
+              : (payload['customer'] is Map<String, dynamic> ? payload['customer'] as Map<String, dynamic> : null);
+          return OtpVerifyResult.success(token: token, provider: provider, isDummy: false);
+        }
+      }
+    } on DioException catch (dioErr) {
+      // If production URL 404s (e.g. not yet deployed to VPS), fallback to local backend in development
+      if (dioErr.response?.statusCode == 404 && !kReleaseMode) {
+        try {
+          final fallbackBase = kIsWeb
+              ? 'http://localhost:3000'
+              : (defaultTargetPlatform == TargetPlatform.android
+                  ? 'http://10.0.2.2:3000'
+                  : 'http://localhost:3000');
+          final localDio = Dio(BaseOptions(
+            baseUrl: fallbackBase,
+            connectTimeout: const Duration(seconds: 5),
+            receiveTimeout: const Duration(seconds: 5),
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+          ));
+          final retryRes = await localDio.post(
+            ApiEndpoints.authLogin,
+            data: {
+              'phone': phone,
+              'password': password,
+              'userType': userType,
+            },
+          );
+          if (retryRes.statusCode == 200 && retryRes.data != null) {
+            final data = retryRes.data;
+            final payload = data['data'] is Map<String, dynamic> ? data['data'] as Map<String, dynamic> : data;
+            final token = payload['token']?.toString() ?? 'token_${DateTime.now().millisecondsSinceEpoch}';
+            final provider = payload['provider'] is Map<String, dynamic>
+                ? payload['provider'] as Map<String, dynamic>
+                : (payload['customer'] is Map<String, dynamic> ? payload['customer'] as Map<String, dynamic> : null);
+            return OtpVerifyResult.success(token: token, provider: provider, isDummy: false);
+          }
+        } catch (_) {}
+      }
+
+      final msg = dioErr.response?.data?['error']?['message']?.toString() ??
+          dioErr.response?.data?['message']?.toString();
+      if (msg != null && msg.isNotEmpty) {
+        return OtpVerifyResult.failure(msg);
+      }
+    } catch (e) {
+      return OtpVerifyResult.failure(e.toString());
+    }
+
+    return OtpVerifyResult.failure('Login failed. Please check your phone number and password.');
+  }
+
+  /// Set or update password for customer or provider.
+  Future<bool> setPassword({
+    required String phone,
+    required String password,
+    String userType = 'provider',
+    String? name,
+  }) async {
+    try {
+      final response = await _client.post(
+        ApiEndpoints.authPasswordSet,
+        data: {
+          'phone': phone,
+          'password': password,
+          'userType': userType,
+          if (name != null) 'name': name,
+        },
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Register or authenticate provider via WhatsApp
@@ -584,6 +697,30 @@ class BackendService {
     }
 
     return const [];
+  }
+
+  /// Public provider profile for customers (includes direct contact actions).
+  Future<Map<String, dynamic>?> getPublicProviderProfile(
+    String publicId, {
+    double? latitude,
+    double? longitude,
+  }) async {
+    if (publicId.trim().isEmpty) return null;
+    try {
+      final response = await _client.get(
+        ApiEndpoints.discoveryProvider(publicId),
+        queryParameters: {
+          if (latitude != null) 'latitude': latitude,
+          if (longitude != null) 'longitude': longitude,
+        },
+      );
+      if (response.statusCode == 200 && response.data is Map) {
+        final body = response.data as Map<String, dynamic>;
+        final data = body['data'];
+        if (data is Map<String, dynamic>) return data;
+      }
+    } catch (_) {}
+    return null;
   }
 
   static const List<Map<String, double>> defaultProviderLayouts = [

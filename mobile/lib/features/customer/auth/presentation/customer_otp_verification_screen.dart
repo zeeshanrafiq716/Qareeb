@@ -33,6 +33,7 @@ class CustomerOtpVerificationScreen extends ConsumerStatefulWidget {
   final String fullPhone;
   final String countryCode;
   final String? dummyOtp;
+  final String? password;
 
   const CustomerOtpVerificationScreen({
     super.key,
@@ -41,6 +42,7 @@ class CustomerOtpVerificationScreen extends ConsumerStatefulWidget {
     this.fullPhone = '',
     this.countryCode = '+966',
     this.dummyOtp,
+    this.password,
   });
 
   static const double designWidth = 390.0;
@@ -72,7 +74,13 @@ class _CustomerOtpVerificationScreenState
     final otp = _currentOtp.isNotEmpty ? _currentOtp : (widget.dummyOtp ?? '123456');
 
     try {
-      final result = await _backendService.verifyOtp(phone: phone, otp: otp);
+      final result = await _backendService.verifyOtp(
+        phone: phone,
+        otp: otp,
+        password: widget.password,
+        name: widget.fullName,
+        userType: 'customer',
+      );
 
       if (!mounted) return;
       setState(() => _isVerifying = false);
@@ -150,7 +158,11 @@ class _CustomerOtpVerificationScreenState
 
   Future<void> _handleResend() async {
     final phone = widget.fullPhone.isNotEmpty ? widget.fullPhone : '+966501234567';
-    final result = await _backendService.requestOtp(phone: phone);
+    final result = await _backendService.requestOtp(
+      phone: phone,
+      channel: 'sms',
+      userType: 'customer',
+    );
 
     if (!mounted) return;
     setState(() {
@@ -158,28 +170,53 @@ class _CustomerOtpVerificationScreenState
     });
 
     final isArabic = context.isArabic;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF1C2926),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-        content: Row(
-          children: [
-            const Icon(Icons.mark_email_read_outlined, color: ProviderColors.brandPurple, size: 20.0),
-            const SizedBox(width: 10.0),
-            Expanded(
-              child: Text(
-                isArabic
-                    ? 'رمز التحقق الجديد (تجريبي): ${result.otp}'
-                    : 'New Verification Code (Dummy): ${result.otp}',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+    if (result.smsDelivered) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1C2926),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          content: Row(
+            children: [
+              const Icon(Icons.sms_outlined, color: ProviderColors.brandPurple, size: 20.0),
+              const SizedBox(width: 10.0),
+              Expanded(
+                child: Text(
+                  isArabic
+                      ? 'تم إرسال رمز تحقق جديد عبر رسالة SMS'
+                      : 'New verification code sent via SMS',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
+          duration: const Duration(seconds: 4),
         ),
-        duration: const Duration(seconds: 4),
-      ),
-    );
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1C2926),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          content: Row(
+            children: [
+              const Icon(Icons.mark_email_read_outlined, color: ProviderColors.brandPurple, size: 20.0),
+              const SizedBox(width: 10.0),
+              Expanded(
+                child: Text(
+                  isArabic
+                      ? 'رمز التحقق الجديد (تجريبي): ${result.otp}'
+                      : 'New Verification Code (Dev): ${result.otp}',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   @override

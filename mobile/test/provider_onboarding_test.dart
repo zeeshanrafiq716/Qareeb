@@ -151,9 +151,9 @@ void main() {
 
     // Verify real onboarding data is rendered
     expect(find.text('Pickup Truck'), findsOneWidget);
-    expect(find.text('Available for Vehicle Towing'), findsOneWidget);
+    expect(find.text('Available for Tow Truck'), findsOneWidget);
     expect(find.text('KSA 7788'), findsOneWidget);
-    expect(find.text('Vehicle Towing'), findsOneWidget);
+    expect(find.text('Tow Truck'), findsOneWidget);
   });
 
   testWidgets('AdminApprovalScreen displays red rejection card when documents are suspended', (tester) async {

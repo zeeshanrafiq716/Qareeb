@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
+import '../../../core/utils/contact_launcher.dart';
 import '../../../providers/backend_provider.dart';
 import 'send_location_screen.dart';
 import 'send_request_screen.dart';
@@ -15,12 +16,28 @@ class ProviderDetailScreen extends ConsumerStatefulWidget {
   final String serviceCategory;
   final String providerName;
   final String? providerPublicId;
+  final String? phoneNumber;
+  final String? photoUrl;
+  final String? vehicleName;
+  final String? distance;
+  final String? estimatedTime;
+  final double? rating;
+  final int? reviews;
+  final bool? verified;
 
   const ProviderDetailScreen({
     super.key,
-    this.serviceCategory = 'Fire Brigade',
-    this.providerName = 'Usman Ali',
+    this.serviceCategory = 'Service',
+    this.providerName = 'Provider',
     this.providerPublicId,
+    this.phoneNumber,
+    this.photoUrl,
+    this.vehicleName,
+    this.distance,
+    this.estimatedTime,
+    this.rating,
+    this.reviews,
+    this.verified,
   });
 
   @override
@@ -30,17 +47,75 @@ class ProviderDetailScreen extends ConsumerStatefulWidget {
 class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
   AppTranslations get tr => ref.read(translationsProvider);
 
+  String? _phone;
+  String? _photoUrl;
+  bool _verified = false;
+  bool _busy = false;
+
   @override
   void initState() {
     super.initState();
+    _phone = _cleanOptional(widget.phoneNumber);
+    _photoUrl = _cleanPhoto(widget.photoUrl);
+    _verified = widget.verified ?? false;
+
     if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(backendServiceProvider).trackCustomerEvent(
           event: 'profile_view',
           providerPublicId: widget.providerPublicId!,
         );
+        _hydrateProfile();
       });
     }
+  }
+
+  String? _cleanOptional(String? value) {
+    final text = value?.trim() ?? '';
+    return text.isEmpty ? null : text;
+  }
+
+  String? _cleanPhoto(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return null;
+    if (text.contains('unsplash.com') || text.contains('placeholder')) return null;
+    return text;
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return 'Q';
+    String first(String s) => s.substring(0, 1).toUpperCase();
+    if (parts.length == 1) return first(parts.first);
+    return first(parts[0]) + first(parts[1]);
+  }
+
+  Future<void> _hydrateProfile() async {
+    final publicId = widget.providerPublicId?.trim() ?? '';
+    if (publicId.isEmpty) return;
+    try {
+      final loc = ref.read(userLocationProvider).value;
+      final profile = await ref.read(backendServiceProvider).getPublicProviderProfile(
+        publicId,
+        latitude: loc?.latitude,
+        longitude: loc?.longitude,
+      );
+      if (!mounted || profile == null) return;
+      final contact = profile['contact'];
+      String? phone = _phone;
+      if (contact is Map && contact['phone'] != null) {
+        phone = contact['phone'].toString();
+      }
+      phone ??= profile['phone']?.toString();
+      setState(() {
+        _phone = _cleanOptional(phone);
+        _photoUrl = _cleanPhoto(profile['photoUrl']?.toString()) ?? _photoUrl;
+        final badges = profile['badges'];
+        _verified = profile['verified'] == true ||
+            (badges is Map && badges['verified'] == true) ||
+            _verified;
+      });
+    } catch (_) {}
   }
 
   @override
@@ -272,34 +347,44 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                         child: Row(
                                           crossAxisAlignment: CrossAxisAlignment.center,
                                           children: [
-                                            // img layout:
-                                            // width: 36; height: 36; angle: 0 deg; opacity: 1;
+                                            // Avatar layout (clean, real only - no fake stock portraits)
                                             Container(
-                                              width: 36.0,
-                                              height: 36.0,
+                                              width: 38.0,
+                                              height: 38.0,
                                               decoration: const BoxDecoration(
                                                 shape: BoxShape.circle,
-                                                color: Color(0xFFFFAAA6),
+                                                color: Color(0xFF8B53FE),
                                               ),
                                               clipBehavior: Clip.antiAlias,
-                                              child: Image.network(
-                                                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-                                                width: 36.0,
-                                                height: 36.0,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) => Container(
-                                                  color: const Color(0xFFFFAAA6),
-                                                  child: const Center(
-                                                    child: Icon(
-                                                      Icons.person,
-                                                      size: 22.0,
-                                                      color: Colors.white,
+                                              child: _photoUrl != null
+                                                  ? Image.network(
+                                                      _photoUrl!,
+                                                      width: 38.0,
+                                                      height: 38.0,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder: (_, __, ___) => Center(
+                                                        child: Text(
+                                                          _initials(tr.formatProviderName(widget.providerName)),
+                                                          style: const TextStyle(
+                                                            color: Colors.white,
+                                                            fontWeight: FontWeight.w700,
+                                                            fontSize: 14.0,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    )
+                                                  : Center(
+                                                      child: Text(
+                                                        _initials(tr.formatProviderName(widget.providerName)),
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight: FontWeight.w700,
+                                                          fontSize: 14.0,
+                                                        ),
+                                                      ),
                                                     ),
-                                                  ),
-                                                ),
-                                              ),
                                             ),
-                                            const SizedBox(width: 16.0), // gap: 16px;
+                                            const SizedBox(width: 12.0),
 
                                             // content layout:
                                             // width: 176; height: 40; gap: 12px; angle: 0 deg; opacity: 1;
@@ -364,43 +449,31 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                     ),
                                                   ),
 
-                                                  // review and counter branding:
-                                                  // width: 80; height: 10; gap: 8px; angle: 0 deg; opacity: 1;
-                                                  SizedBox(
-                                                    width: 80.0,
-                                                    height: 10.0,
-                                                    child: Row(
-                                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                                      children: [
-                                                        // star branding: width: 10; height: 10; border-radius: 0.4px; background: #1D8070;
-                                                        const Icon(
-                                                          Icons.star_rounded,
-                                                          size: 10.0,
-                                                          color: Color(0xFF8B53FE),
-                                                        ),
-                                                        const SizedBox(width: 8.0), // gap: 8px;
-
-                                                        // content: 4.9 (120 trips)
-                                                        // width: 66; height: 7; font-family: Inter; font-weight: 400; font-size: 10px; line-height: 22px; color: #566663
-                                                        Expanded(
-                                                          child: FittedBox(
-                                                            fit: BoxFit.scaleDown,
-                                                            alignment: AlignmentDirectional.centerStart,
-                                                            child: Text(
-                                                              tr.isArabic ? '4.9 (120 رحلة)' : '4.9 (120 trips)',
-                                                              style: tr.font(
-                                                                fontSize: 10.0,
-                                                                fontWeight: FontWeight.w400,
-                                                                color: const Color(0xFF566663),
-                                                                height: 1.0,
-                                                              ),
-                                                              maxLines: 1,
-                                                            ),
+                                                  if ((widget.reviews ?? 0) > 0 && (widget.rating ?? 0) > 0)
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(top: 4.0),
+                                                      child: Row(
+                                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                                        children: [
+                                                          const Icon(
+                                                            Icons.star_rounded,
+                                                            size: 11.0,
+                                                            color: Color(0xFF8B53FE),
                                                           ),
-                                                        ),
-                                                      ],
+                                                          const SizedBox(width: 4.0),
+                                                          Text(
+                                                            '${(widget.rating ?? 0).toStringAsFixed(1)} (${widget.reviews})',
+                                                            style: tr.font(
+                                                              fontSize: 10.0,
+                                                              fontWeight: FontWeight.w500,
+                                                              color: const Color(0xFF566663),
+                                                              height: 1.0,
+                                                            ),
+                                                            maxLines: 1,
+                                                          ),
+                                                        ],
+                                                      ),
                                                     ),
-                                                  ),
                                                 ],
                                               ),
                                             ),
@@ -408,109 +481,138 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                         ),
                                       ),
 
-                                      // right side icons layout:
-                                      // width: 84; height: 36; gap: 12px; angle: 0 deg; opacity: 1;
-                                      SizedBox(
-                                        width: 84.0,
-                                        height: 36.0,
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.end,
-                                          crossAxisAlignment: CrossAxisAlignment.center,
-                                          children: [
-                                            // wtsap icon branding:
-                                            // width: 36; height: 36; angle: 0 deg; opacity: 1; border-radius: 60px; background: #25D366;
-                                            MouseRegion(
-                                              cursor: SystemMouseCursors.click,
-                                              child: GestureDetector(
-                                                key: const Key('provider_detail_whatsapp_button'),
-                                                onTap: () {
-                                                  HapticFeedback.lightImpact();
-                                                  if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
-                                                    ref.read(backendServiceProvider).trackCustomerEvent(
-                                                      event: 'whatsapp_click',
-                                                      providerPublicId: widget.providerPublicId!,
-                                                    );
-                                                  }
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                        tr.openingWhatsApp,
-                                                        style: tr.font(color: Colors.white),
-                                                      ),
-                                                      duration: const Duration(seconds: 1),
-                                                    ),
-                                                  );
-                                                },
-                                                behavior: HitTestBehavior.opaque,
-                                                child: Container(
-                                                  width: 36.0,
-                                                  height: 36.0,
-                                                  decoration: const BoxDecoration(
-                                                    color: Color(0xFF25D366),
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: const Center(
-                                                    child: CustomPaint(
-                                                      size: Size(20.0, 20.0),
-                                                      painter: _WhatsAppIconPainter(),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12.0), // gap: 12px;
+                                      // right side icons layout: WhatsApp & Call (100% Real & Functional)
+                                       Row(
+                                         mainAxisSize: MainAxisSize.min,
+                                         crossAxisAlignment: CrossAxisAlignment.center,
+                                         children: [
+                                           // Real WhatsApp Button
+                                           MouseRegion(
+                                             cursor: SystemMouseCursors.click,
+                                             child: GestureDetector(
+                                               key: const Key('provider_detail_whatsapp_button'),
+                                               onTap: () async {
+                                                 HapticFeedback.lightImpact();
+                                                 final phone = _phone;
+                                                 if (phone == null || phone.isEmpty) {
+                                                   ScaffoldMessenger.of(context).showSnackBar(
+                                                     SnackBar(
+                                                       content: Text(
+                                                         tr.isArabic ? 'رقم واتساب غير متوفر' : 'WhatsApp number not available',
+                                                         style: tr.font(color: Colors.white),
+                                                       ),
+                                                       backgroundColor: const Color(0xFFEF4444),
+                                                       behavior: SnackBarBehavior.floating,
+                                                     ),
+                                                   );
+                                                   return;
+                                                 }
+                                                 if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
+                                                   ref.read(backendServiceProvider).trackCustomerEvent(
+                                                     event: 'whatsapp_click',
+                                                     providerPublicId: widget.providerPublicId!,
+                                                   );
+                                                 }
+                                                 final ok = await ContactLauncher.whatsApp(phone);
+                                                 if (!ok && mounted) {
+                                                   ScaffoldMessenger.of(context).showSnackBar(
+                                                     SnackBar(
+                                                       content: Text(
+                                                         tr.isArabic ? 'تعذر فتح واتساب' : 'Could not open WhatsApp',
+                                                         style: tr.font(color: Colors.white),
+                                                       ),
+                                                       backgroundColor: const Color(0xFFEF4444),
+                                                       behavior: SnackBarBehavior.floating,
+                                                     ),
+                                                   );
+                                                 }
+                                               },
+                                               behavior: HitTestBehavior.opaque,
+                                               child: Container(
+                                                 width: 38.0,
+                                                 height: 38.0,
+                                                 decoration: const BoxDecoration(
+                                                   color: Color(0xFF25D366),
+                                                   shape: BoxShape.circle,
+                                                 ),
+                                                 child: const Center(
+                                                   child: CustomPaint(
+                                                     size: Size(20.0, 20.0),
+                                                     painter: _WhatsAppIconPainter(),
+                                                   ),
+                                                 ),
+                                               ),
+                                             ),
+                                           ),
+                                           const SizedBox(width: 10.0),
 
-                                            // call icon branding:
-                                            // width: 36; height: 36; angle: 0 deg; opacity: 1; border-radius: 60px; background: #1C2926;
-                                            MouseRegion(
-                                              cursor: SystemMouseCursors.click,
-                                              child: GestureDetector(
-                                                key: const Key('provider_detail_call_button'),
-                                                onTap: () {
-                                                  HapticFeedback.lightImpact();
-                                                  if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
-                                                    ref.read(backendServiceProvider).trackCustomerEvent(
-                                                      event: 'call_click',
-                                                      providerPublicId: widget.providerPublicId!,
-                                                    );
-                                                  }
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                        tr.callingProvider(tr.formatProviderName(widget.providerName)),
-                                                        style: tr.font(color: Colors.white),
-                                                      ),
-                                                      duration: const Duration(seconds: 1),
-                                                    ),
-                                                  );
-                                                },
-                                                behavior: HitTestBehavior.opaque,
-                                                child: Container(
-                                                  width: 36.0,
-                                                  height: 36.0,
-                                                  decoration: const BoxDecoration(
-                                                    color: Color(0xFF1C2926),
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: const Center(
-                                                    child: Icon(
-                                                      Icons.phone,
-                                                      size: 18.0,
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 16.0), // gap: 16px;
+                                           // Real Call Button
+                                           MouseRegion(
+                                             cursor: SystemMouseCursors.click,
+                                             child: GestureDetector(
+                                               key: const Key('provider_detail_call_button'),
+                                               onTap: () async {
+                                                 HapticFeedback.lightImpact();
+                                                 final phone = _phone;
+                                                 if (phone == null || phone.isEmpty) {
+                                                   ScaffoldMessenger.of(context).showSnackBar(
+                                                     SnackBar(
+                                                       content: Text(
+                                                         tr.isArabic ? 'رقم الهاتف غير متوفر' : 'Phone number not available',
+                                                         style: tr.font(color: Colors.white),
+                                                       ),
+                                                       backgroundColor: const Color(0xFFEF4444),
+                                                       behavior: SnackBarBehavior.floating,
+                                                     ),
+                                                   );
+                                                   return;
+                                                 }
+                                                 if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
+                                                   ref.read(backendServiceProvider).trackCustomerEvent(
+                                                     event: 'call_click',
+                                                     providerPublicId: widget.providerPublicId!,
+                                                   );
+                                                 }
+                                                 final ok = await ContactLauncher.call(phone);
+                                                 if (!ok && mounted) {
+                                                   ScaffoldMessenger.of(context).showSnackBar(
+                                                     SnackBar(
+                                                       content: Text(
+                                                         tr.isArabic ? 'تعذر بدء الاتصال' : 'Could not start phone call',
+                                                         style: tr.font(color: Colors.white),
+                                                       ),
+                                                       backgroundColor: const Color(0xFFEF4444),
+                                                       behavior: SnackBarBehavior.floating,
+                                                     ),
+                                                   );
+                                                 }
+                                               },
+                                               behavior: HitTestBehavior.opaque,
+                                               child: Container(
+                                                 width: 38.0,
+                                                 height: 38.0,
+                                                 decoration: const BoxDecoration(
+                                                   color: Color(0xFF1C2926),
+                                                   shape: BoxShape.circle,
+                                                 ),
+                                                 child: const Center(
+                                                   child: Icon(
+                                                     Icons.call_rounded,
+                                                     size: 19.0,
+                                                     color: Colors.white,
+                                                   ),
+                                                 ),
+                                               ),
+                                             ),
+                                           ),
+                                         ],
+                                       ),
+                                     ],
+                                   ),
+                                 ),
+                                 const SizedBox(height: 16.0); // gap: 16px;
 
-                                // 2nd row: next widget branding:
+                                 // 2nd row: next widget branding:
                                 // width: 350; height: 10; justify-content: space-between; angle: 0 deg; opacity: 1;
                                 SizedBox(
                                   width: double.infinity,
@@ -539,10 +641,11 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                             mainAxisSize: MainAxisSize.min,
                                             crossAxisAlignment: CrossAxisAlignment.center,
                                             children: [
-                                              // content: Toyota Hilux
-                                              // width: 71; height: 9; font-family: Inter; font-weight: 500; font-size: 12px; line-height: 22px; color: #1C2926;
+                                              // Vehicle/Category
                                               Text(
-                                                tr.formatVehicleName('Toyota Hilux'),
+                                                widget.vehicleName?.isNotEmpty == true
+                                                    ? widget.vehicleName!
+                                                    : tr.categoryName(widget.serviceCategory),
                                                 style: tr.font(
                                                   fontSize: 12.0,
                                                   fontWeight: FontWeight.w500,
@@ -625,13 +728,12 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     mainAxisAlignment: MainAxisAlignment.center,
                                                     children: [
-                                                      // content: 1.8 km
-                                                      // width: 43; height: 10; font-family: Inter; font-weight: 500; font-size: 14px; line-height: 22px; color: #1C2926;
+                                                      // dynamic real distance
                                                       FittedBox(
                                                         fit: BoxFit.scaleDown,
                                                         alignment: AlignmentDirectional.centerStart,
                                                         child: Text(
-                                                          tr.onePointEightKm,
+                                                          widget.distance?.isNotEmpty == true ? widget.distance! : '—',
                                                           style: tr.font(
                                                             fontSize: 14.0,
                                                             fontWeight: FontWeight.w500,
@@ -710,13 +812,12 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     mainAxisAlignment: MainAxisAlignment.center,
                                                     children: [
-                                                      // content: 6 min
-                                                      // width: 37; height: 10; font-family: Inter; font-weight: 500; font-size: 14px; line-height: 22px; color: #1C2926;
+                                                      // dynamic real ETA
                                                       FittedBox(
                                                         fit: BoxFit.scaleDown,
                                                         alignment: AlignmentDirectional.centerStart,
                                                         child: Text(
-                                                          tr.sixMin,
+                                                          widget.estimatedTime?.isNotEmpty == true ? widget.estimatedTime! : '—',
                                                           style: tr.font(
                                                             fontSize: 14.0,
                                                             fontWeight: FontWeight.w500,
@@ -755,27 +856,20 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                       ),
                                       const SizedBox(height: 12.0), // gap: 12px;
 
-                                      // 2nd row branding:
-                                      // width: 350; height: 60; justify-content: space-between; angle: 0 deg; opacity: 1;
-                                      // border-radius: 12px; padding: 16px; background: #F2F5F4;
+                                      // Real trust & verification status chip (Zero fake stats)
                                       Container(
                                         width: double.infinity,
-                                        constraints: const BoxConstraints(minHeight: 58.0),
-                                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                                        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFF2F5F4),
                                           borderRadius: BorderRadius.circular(12.0),
+                                          border: Border.all(color: const Color(0xFFEDF0E9), width: 1.0),
                                         ),
                                         child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          crossAxisAlignment: CrossAxisAlignment.center,
                                           children: [
-                                            // left side content:
                                             Expanded(
                                               child: Row(
-                                                crossAxisAlignment: CrossAxisAlignment.center,
                                                 children: [
-                                                  // icon on left side branding:
                                                   Container(
                                                     width: 28.0,
                                                     height: 28.0,
@@ -783,63 +877,42 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                       color: Color(0xFFF0EAFE),
                                                       shape: BoxShape.circle,
                                                     ),
-                                                    child: const Center(
-                                                      child: CustomPaint(
-                                                        size: Size(14.0, 16.0),
-                                                        painter: _VerifiedShieldPainter(
-                                                          shieldColor: Color(0xFF8B53FE),
-                                                          checkColor: Colors.white,
-                                                        ),
+                                                    child: Center(
+                                                      child: Icon(
+                                                        _verified ? Icons.verified_rounded : Icons.shield_outlined,
+                                                        size: 16.0,
+                                                        color: const Color(0xFF8B53FE),
                                                       ),
                                                     ),
                                                   ),
                                                   const SizedBox(width: 8.0),
-
                                                   Expanded(
                                                     child: Column(
                                                       crossAxisAlignment: CrossAxisAlignment.start,
-                                                      mainAxisAlignment: MainAxisAlignment.center,
                                                       mainAxisSize: MainAxisSize.min,
                                                       children: [
-                                                        FittedBox(
-                                                          fit: BoxFit.scaleDown,
-                                                          alignment: AlignmentDirectional.centerStart,
-                                                          child: Text(
-                                                            tr.verified,
-                                                            maxLines: 1,
-                                                            textHeightBehavior: const TextHeightBehavior(
-                                                              applyHeightToFirstAscent: false,
-                                                              applyHeightToLastDescent: false,
-                                                            ),
-                                                            style: tr.font(
-                                                              fontSize: 12.0,
-                                                              fontWeight: FontWeight.w500,
-                                                              color: const Color(0xFF1C2926),
-                                                              height: 1.1,
-                                                              letterSpacing: 0.0,
-                                                            ),
+                                                        Text(
+                                                          _verified
+                                                              ? (tr.isArabic ? 'مزود موثّق' : 'Verified Provider')
+                                                              : (tr.isArabic ? 'مزود خدمة' : 'Service Provider'),
+                                                          style: tr.font(
+                                                            fontSize: 12.0,
+                                                            fontWeight: FontWeight.w600,
+                                                            color: const Color(0xFF1C2926),
+                                                            height: 1.1,
                                                           ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
                                                         ),
-                                                        const SizedBox(height: 1.0),
-
-                                                        FittedBox(
-                                                          fit: BoxFit.scaleDown,
-                                                          alignment: AlignmentDirectional.centerStart,
-                                                          child: Text(
-                                                            tr.providersLabel,
-                                                            maxLines: 1,
-                                                            textHeightBehavior: const TextHeightBehavior(
-                                                              applyHeightToFirstAscent: false,
-                                                              applyHeightToLastDescent: false,
-                                                            ),
-                                                            style: tr.font(
-                                                              fontSize: 10.0,
-                                                              fontWeight: FontWeight.w400,
-                                                              color: const Color(0xFF566663),
-                                                              height: 1.1,
-                                                              letterSpacing: 0.0,
-                                                            ),
+                                                        Text(
+                                                          tr.isArabic ? 'قريب' : 'Qareeb',
+                                                          style: tr.font(
+                                                            fontSize: 10.0,
+                                                            fontWeight: FontWeight.w400,
+                                                            color: const Color(0xFF566663),
+                                                            height: 1.1,
                                                           ),
+                                                          maxLines: 1,
                                                         ),
                                                       ],
                                                     ),
@@ -847,22 +920,14 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                 ],
                                               ),
                                             ),
-
-                                            // | branding:
                                             Container(
-                                              margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                                              width: 0.8,
+                                              margin: const EdgeInsets.symmetric(horizontal: 10.0),
+                                              width: 1.0,
                                               height: 24.0,
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFEDF0E9),
-                                                borderRadius: BorderRadius.circular(40.0),
-                                              ),
+                                              color: const Color(0xFFEDF0E9),
                                             ),
-
-                                            // center content:
                                             Expanded(
                                               child: Row(
-                                                crossAxisAlignment: CrossAxisAlignment.center,
                                                 children: [
                                                   Container(
                                                     width: 28.0,
@@ -873,145 +938,38 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                     ),
                                                     child: const Center(
                                                       child: Icon(
-                                                        Icons.group_rounded,
+                                                        Icons.wifi_rounded,
                                                         size: 16.0,
                                                         color: Color(0xFF8B53FE),
                                                       ),
                                                     ),
                                                   ),
                                                   const SizedBox(width: 8.0),
-
                                                   Expanded(
                                                     child: Column(
                                                       crossAxisAlignment: CrossAxisAlignment.start,
-                                                      mainAxisAlignment: MainAxisAlignment.center,
                                                       mainAxisSize: MainAxisSize.min,
                                                       children: [
-                                                        FittedBox(
-                                                          fit: BoxFit.scaleDown,
-                                                          alignment: AlignmentDirectional.centerStart,
-                                                          child: Text(
-                                                            '500+',
-                                                            maxLines: 1,
-                                                            textHeightBehavior: const TextHeightBehavior(
-                                                              applyHeightToFirstAscent: false,
-                                                              applyHeightToLastDescent: false,
-                                                            ),
-                                                            style: tr.font(
-                                                              fontSize: 12.0,
-                                                              fontWeight: FontWeight.w500,
-                                                              color: const Color(0xFF1C2926),
-                                                              height: 1.1,
-                                                              letterSpacing: 0.0,
-                                                            ),
+                                                        Text(
+                                                          tr.isArabic ? 'متصل الآن' : 'Available Now',
+                                                          style: tr.font(
+                                                            fontSize: 12.0,
+                                                            fontWeight: FontWeight.w600,
+                                                            color: const Color(0xFF1C2926),
+                                                            height: 1.1,
                                                           ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
                                                         ),
-                                                        const SizedBox(height: 1.0),
-
-                                                        FittedBox(
-                                                          fit: BoxFit.scaleDown,
-                                                          alignment: AlignmentDirectional.centerStart,
-                                                          child: Text(
-                                                            tr.deliveriesLabel,
-                                                            maxLines: 1,
-                                                            textHeightBehavior: const TextHeightBehavior(
-                                                              applyHeightToFirstAscent: false,
-                                                              applyHeightToLastDescent: false,
-                                                            ),
-                                                            style: tr.font(
-                                                              fontSize: 10.0,
-                                                              fontWeight: FontWeight.w400,
-                                                              color: const Color(0xFF566663),
-                                                              height: 1.1,
-                                                              letterSpacing: 0.0,
-                                                            ),
+                                                        Text(
+                                                          tr.isArabic ? 'مباشر' : 'Live GPS',
+                                                          style: tr.font(
+                                                            fontSize: 10.0,
+                                                            fontWeight: FontWeight.w400,
+                                                            color: const Color(0xFF566663),
+                                                            height: 1.1,
                                                           ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-
-                                            // | branding will remain same:
-                                            Container(
-                                              margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                                              width: 0.8,
-                                              height: 24.0,
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFEDF0E9),
-                                                borderRadius: BorderRadius.circular(40.0),
-                                              ),
-                                            ),
-
-                                            // right content layout:
-                                            Expanded(
-                                              child: Row(
-                                                crossAxisAlignment: CrossAxisAlignment.center,
-                                                children: [
-                                                  Container(
-                                                    width: 28.0,
-                                                    height: 28.0,
-                                                    decoration: const BoxDecoration(
-                                                      color: Color(0xFFF0EAFE),
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                    child: const Center(
-                                                      child: Icon(
-                                                        Icons.thumb_up_rounded,
-                                                        size: 15.0,
-                                                        color: Color(0xFF8B53FE),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 8.0),
-
-                                                  Expanded(
-                                                    child: Column(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        FittedBox(
-                                                          fit: BoxFit.scaleDown,
-                                                          alignment: AlignmentDirectional.centerStart,
-                                                          child: Text(
-                                                            '98%',
-                                                            maxLines: 1,
-                                                            textHeightBehavior: const TextHeightBehavior(
-                                                              applyHeightToFirstAscent: false,
-                                                              applyHeightToLastDescent: false,
-                                                            ),
-                                                            style: tr.font(
-                                                              fontSize: 12.0,
-                                                              fontWeight: FontWeight.w500,
-                                                              color: const Color(0xFF1C2926),
-                                                              height: 1.1,
-                                                              letterSpacing: 0.0,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        const SizedBox(height: 1.0),
-
-                                                        FittedBox(
-                                                          fit: BoxFit.scaleDown,
-                                                          alignment: AlignmentDirectional.centerStart,
-                                                          child: Text(
-                                                            tr.onTime,
-                                                            maxLines: 1,
-                                                            textHeightBehavior: const TextHeightBehavior(
-                                                              applyHeightToFirstAscent: false,
-                                                              applyHeightToLastDescent: false,
-                                                            ),
-                                                            style: tr.font(
-                                                              fontSize: 10.0,
-                                                              fontWeight: FontWeight.w400,
-                                                              color: const Color(0xFF566663),
-                                                              height: 1.1,
-                                                              letterSpacing: 0.0,
-                                                            ),
-                                                          ),
+                                                          maxLines: 1,
                                                         ),
                                                       ],
                                                     ),
@@ -1025,7 +983,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 16.0), // gap: 16px;
+                                const SizedBox(height: 16.0); // gap: 16px;
 
                                 // 4th section: next widget layout (buttons):
                                 // width: 350; height: 116; gap: 12px; angle: 0 deg; opacity: 1;
@@ -1041,9 +999,63 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                         cursor: SystemMouseCursors.click,
                                         child: GestureDetector(
                                           key: const Key('provider_detail_send_location_button'),
-                                          onTap: () {
+                                          onTap: () async {
                                             HapticFeedback.lightImpact();
-                                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => SendLocationScreen(serviceCategory: widget.serviceCategory, providerName: widget.providerName)));
+                                            final phone = _phone;
+                                            if (phone == null || phone.isEmpty) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    tr.isArabic ? 'رقم الهاتف غير متوفر لمشاركة الموقع' : 'Provider phone number not available',
+                                                    style: tr.font(color: Colors.white),
+                                                  ),
+                                                  backgroundColor: const Color(0xFFEF4444),
+                                                  behavior: SnackBarBehavior.floating,
+                                                ),
+                                              );
+                                              return;
+                                            }
+                                            final userLoc = ref.read(userLocationProvider).value;
+                                            if (userLoc == null) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    tr.isArabic ? 'الموقع غير متاح حالياً' : 'Your location is not available yet',
+                                                    style: tr.font(color: Colors.white),
+                                                  ),
+                                                  backgroundColor: const Color(0xFFEF4444),
+                                                  behavior: SnackBarBehavior.floating,
+                                                ),
+                                              );
+                                              return;
+                                            }
+                                            if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
+                                              ref.read(backendServiceProvider).trackCustomerEvent(
+                                                event: 'share_location_click',
+                                                providerPublicId: widget.providerPublicId!,
+                                                latitude: userLoc.latitude,
+                                                longitude: userLoc.longitude,
+                                              );
+                                            }
+                                            final ok = await ContactLauncher.shareLocation(
+                                              phone: phone,
+                                              latitude: userLoc.latitude,
+                                              longitude: userLoc.longitude,
+                                              providerName: widget.providerName,
+                                              isArabic: tr.isArabic,
+                                            );
+                                            if (!ok && mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    tr.isArabic ? 'تعذر فتح واتساب لمشاركة الموقع' : 'Could not open WhatsApp to share location',
+                                                    style: tr.font(color: Colors.white),
+                                                  ),
+                                                  backgroundColor: const Color(0xFFEF4444),
+                                                  behavior: SnackBarBehavior.floating,
+                                                ),
+                                              );
+                                            }
                                           },
                                           behavior: HitTestBehavior.opaque,
                                           child: Container(
@@ -1091,14 +1103,30 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                         cursor: SystemMouseCursors.click,
                                         child: GestureDetector(
                                           key: const Key('provider_detail_send_request_button'),
-                                          onTap: () {
+                                          onTap: () async {
                                             HapticFeedback.mediumImpact();
+                                            final phone = _phone;
+                                            if (phone != null && phone.isNotEmpty) {
+                                              if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
+                                                ref.read(backendServiceProvider).trackCustomerEvent(
+                                                  event: 'whatsapp_click',
+                                                  providerPublicId: widget.providerPublicId!,
+                                                );
+                                              }
+                                              final ok = await ContactLauncher.sendServiceRequest(
+                                                phone: phone,
+                                                category: widget.serviceCategory,
+                                                providerName: widget.providerName,
+                                                isArabic: tr.isArabic,
+                                              );
+                                              if (ok) return;
+                                            }
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
                                                 builder: (_) => SendRequestScreen(
                                                   serviceCategory: widget.serviceCategory,
                                                   providerName: widget.providerName,
-                                                  distance: tr.onePointEightKm,
+                                                  distance: widget.distance ?? '—',
                                                 ),
                                               ),
                                             );

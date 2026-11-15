@@ -29,7 +29,12 @@ import 'package:mobile/features/provider/splash/presentation/widgets/provider_sp
 ///   background: #FFFFFF;
 ///   box-shadow: 0px -2px 12px 0px #00000014;
 class PhoneVerificationScreen extends StatelessWidget {
-  const PhoneVerificationScreen({super.key});
+  final bool initialIsLogin;
+
+  const PhoneVerificationScreen({
+    super.key,
+    this.initialIsLogin = false,
+  });
 
   static const double designWidth = 390.0;
   static const double designHeight = 844.0;
@@ -152,6 +157,7 @@ class PhoneVerificationScreen extends StatelessWidget {
                         child: ProviderAuthCard(
                           width: containerWidth,
                           height: cardHeight,
+                          initialIsLogin: initialIsLogin,
                         ),
                       ),
 

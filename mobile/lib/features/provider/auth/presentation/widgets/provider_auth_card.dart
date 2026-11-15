@@ -26,12 +26,14 @@ class ProviderAuthCard extends StatelessWidget {
   final Widget? child;
   final double? width;
   final double? height;
+  final bool initialIsLogin;
 
   const ProviderAuthCard({
     super.key,
     this.child,
     this.width,
     this.height,
+    this.initialIsLogin = false,
   });
 
   static const double designWidth = 390.0;
@@ -85,7 +87,7 @@ class ProviderAuthCard extends StatelessWidget {
                       right: horizontalPadding,
                       bottom: bottomSafeArea > 0 ? (bottomSafeArea + 24.0) : 28.0,
                     ),
-                    child: child ?? const ProviderCardContentLayout(),
+                    child: child ?? ProviderCardContentLayout(initialIsLogin: initialIsLogin),
                   ),
                 ),
 

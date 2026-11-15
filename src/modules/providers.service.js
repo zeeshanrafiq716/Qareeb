@@ -59,8 +59,20 @@ async function upsertLocation(client, providerId, input) {
     if (lat >= 24.0 && lat <= 25.5 && lng >= 46.0 && lng <= 47.5) city = "Riyadh";
     else if (lat >= 21.0 && lat <= 22.0 && lng >= 38.8 && lng <= 39.8) city = "Jeddah";
     else if (lat >= 26.0 && lat <= 26.8 && lng >= 49.5 && lng <= 50.5) city = "Dammam";
-    else city = "Riyadh";
+    else if (lat >= 21.2 && lat <= 21.7 && lng >= 39.6 && lng <= 40.1) city = "Makkah";
+    else if (lat >= 24.2 && lat <= 24.8 && lng >= 39.3 && lng <= 39.9) city = "Madinah";
+    else if (lat >= 31.0 && lat <= 32.0 && lng >= 74.0 && lng <= 74.6) city = "Lahore";
+    else if (lat >= 24.7 && lat <= 25.1 && lng >= 66.8 && lng <= 67.4) city = "Karachi";
+    else if (lat >= 33.5 && lat <= 33.8 && lng >= 72.9 && lng <= 73.3) city = "Islamabad";
+    else if (lat >= 31.3 && lat <= 31.6 && lng >= 73.0 && lng <= 73.2) city = "Faisalabad";
+    else if (input.address && !input.address.toLowerCase().includes("current location") && !input.address.toLowerCase().includes("gps")) {
+      city = input.address.split(",")[0].trim();
+    } else {
+      city = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    }
   }
+
+  const resolvedAddress = input.address || city || null;
 
   await client.query(
     `INSERT INTO locations (provider_id, latitude, longitude, address, city, location_updated_at)
@@ -75,7 +87,7 @@ async function upsertLocation(client, providerId, input) {
       providerId,
       lat,
       lng,
-      input.address || (city ? `${city}, Saudi Arabia` : null),
+      resolvedAddress,
       city,
     ],
   );

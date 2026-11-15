@@ -16,10 +16,14 @@ class ApiEndpoints {
   static const String discoveryNearby = '$v1Prefix/discovery/nearby';
   static const String discoverySearch = '$v1Prefix/discovery/search';
   static const String discoveryEvents = '$v1Prefix/discovery/events';
+  static String discoveryProvider(String publicId) =>
+      '$v1Prefix/discovery/providers/$publicId';
 
   // Auth endpoints
   static const String authOtpRequest = '$v1Prefix/auth/otp/request';
   static const String authOtpVerify = '$v1Prefix/auth/otp/verify';
+  static const String authLogin = '$v1Prefix/auth/login';
+  static const String authPasswordSet = '$v1Prefix/auth/password/set';
 
   // Provider Verification & KYC endpoints
   static const String providerVerification = '$v1Prefix/providers/me/verification';

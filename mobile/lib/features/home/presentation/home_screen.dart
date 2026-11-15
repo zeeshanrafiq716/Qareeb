@@ -207,12 +207,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   final String displayName = category.name == 'Pickup'
                                       ? 'Pickup & Delivery'
                                       : category.name;
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => LocationPermissionScreen(
-                                        serviceName: displayName,
-                                      ),
-                                    ),
+                                  LocationPermissionScreen.navigateToService(
+                                    context,
+                                    serviceName: displayName,
                                   );
                                 },
                               ),

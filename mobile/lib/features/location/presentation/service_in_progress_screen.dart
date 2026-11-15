@@ -281,7 +281,7 @@ class _ServiceInProgressScreenState
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stackTrace) =>
                                         Image.network(
-                                      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
+                                      '',
                                       width: 52.0,
                                       height: 52.0,
                                       fit: BoxFit.cover,

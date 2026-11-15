@@ -2,6 +2,8 @@ import 'dart:math' as math;
 import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/localization/app_locale.dart';
 import 'pickup_delivery_screen.dart';
 
@@ -17,6 +19,66 @@ import '../../../services/location_service.dart';
 /// - Header: Circular shadow back button + Service Title
 class LocationPermissionScreen extends ConsumerStatefulWidget {
   final String serviceName;
+
+  static const String hasAllowedLocationKey = 'customer_has_allowed_location';
+
+  /// Returns true if the customer has previously allowed location permission,
+  /// and location permissions have not been revoked at the OS level.
+  static Future<bool> hasAllowedLocation() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hasAllowed = prefs.getBool(hasAllowedLocationKey) ?? false;
+      if (!hasAllowed) return false;
+
+      // Ensure OS level permission has not been actively revoked
+      try {
+        final permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) {
+          return false;
+        }
+      } catch (_) {}
+
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Mark location as allowed in persistent storage so user never faces this screen again
+  static Future<void> markLocationAllowed() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(hasAllowedLocationKey, true);
+    } catch (_) {}
+  }
+
+  /// Helper to navigate to the service: if already allowed, lands directly on
+  /// PickupDeliveryScreen without ever facing the permission screen again.
+  static Future<void> navigateToService(
+    BuildContext context, {
+    required String serviceName,
+  }) async {
+    final alreadyAllowed = await hasAllowedLocation();
+    if (!context.mounted) return;
+    if (alreadyAllowed) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PickupDeliveryScreen(
+            serviceName: serviceName,
+          ),
+        ),
+      );
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => LocationPermissionScreen(
+            serviceName: serviceName,
+          ),
+        ),
+      );
+    }
+  }
 
   const LocationPermissionScreen({
     super.key,
@@ -39,6 +101,25 @@ class _LocationPermissionScreenState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _checkIfAlreadyAllowed();
+  }
+
+  /// If user previously allowed location, bypass this screen immediately
+  Future<void> _checkIfAlreadyAllowed() async {
+    final allowed = await LocationPermissionScreen.hasAllowedLocation();
+    if (allowed && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => PickupDeliveryScreen(
+                serviceName: widget.serviceName,
+              ),
+            ),
+          );
+        }
+      });
+    }
   }
 
   @override
@@ -93,6 +174,9 @@ class _LocationPermissionScreenState
       // 2. Location is ON -> Acquire coordinates directly
       await locationService.acquireDeviceLocation();
 
+      // Persist flag so user is never prompted on this screen again
+      await LocationPermissionScreen.markLocationAllowed();
+
       // Refresh global providers so map starts immediately with real GPS
       ref.invalidate(userLocationProvider);
       ref.invalidate(nearbyProvidersProvider);
@@ -133,6 +217,7 @@ class _LocationPermissionScreenState
         }
       } else {
         // Location is already ON! Land directly on map with NO popup!
+        await LocationPermissionScreen.markLocationAllowed();
         ref.invalidate(userLocationProvider);
         if (mounted) {
           setState(() {
@@ -321,10 +406,12 @@ class _LocationPermissionScreenState
             final double containerWidth = isDesktopWeb ? 390.0 : constraints.maxWidth;
             final double containerHeight = isDesktopWeb ? 844.0 : constraints.maxHeight;
             final double topSafeArea = MediaQuery.of(context).padding.top;
-            final double headerTop = topSafeArea > 0 ? (topSafeArea + 14.0) : 56.0;
+            final double headerTop = topSafeArea > 0 ? (topSafeArea + 10.0) : 48.0;
             final double bottomSafeArea = MediaQuery.of(context).padding.bottom;
-            final double minRequiredHeight = 348.0 + 440.0 + math.max(bottomSafeArea, 20.0) + 36.0;
-            final double contentHeight = math.max(containerHeight, minRequiredHeight);
+            final double contentHeight = containerHeight;
+            final double graphicTopShift = containerHeight < 800
+                ? ((800.0 - containerHeight) * 0.35).clamp(0.0, 36.0)
+                : 0.0;
 
             final screenContent = Container(
               width: containerWidth,
@@ -343,7 +430,7 @@ class _LocationPermissionScreenState
                   },
                 ),
                 child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics: const NeverScrollableScrollPhysics(),
                   child: SizedBox(
                     width: containerWidth,
                     height: contentHeight,
@@ -465,7 +552,7 @@ class _LocationPermissionScreenState
                   // 4. Main Ellipse Branding:
                   // background: #F0EAFE; box-shadow: 0px 0px 4px 0px #E9E0FE inset;
                   Positioned(
-                    top: 168.0,
+                    top: 168.0 - graphicTopShift,
                     left: (containerWidth - 124.0) / 2,
                     width: 124.0,
                     height: 124.0,
@@ -493,7 +580,7 @@ class _LocationPermissionScreenState
                   // 5. Inner Ellipse Branding:
                   // background: #EAE0FE; box-shadow: 0px 0px 4px 0px #DACBFE inset;
                   Positioned(
-                    top: 181.48,
+                    top: 181.48 - graphicTopShift,
                     left: (containerWidth - 97.04) / 2,
                     width: 97.04,
                     height: 97.04,
@@ -521,7 +608,7 @@ class _LocationPermissionScreenState
                   // 6. Center Location Icon Branding:
                   // background: linear-gradient(139.03deg, #8B53FE -28.34%, #A67AFE 40.05%, #BA98FE 92.02%)
                   Positioned(
-                    top: 204.0,
+                    top: 204.0 - graphicTopShift,
                     left: (containerWidth - 50.0) / 2,
                     width: 50.0,
                     height: 64.0,
@@ -534,7 +621,7 @@ class _LocationPermissionScreenState
                   // 7. "Nearby Providers" Badges Branding:
                   // width: 148; height: 54; top: 146px; left: 14px;
                   Positioned(
-                    top: 146.0,
+                    top: 146.0 - graphicTopShift,
                     left: 14.0,
                     width: 148.0,
                     height: 54.0,
@@ -599,7 +686,7 @@ class _LocationPermissionScreenState
                   // 8. "Fast Delivery" Badges Branding (2nd badge):
                   // width: 124; height: 54; top: 126px; right: 14px;
                   Positioned(
-                    top: 126.0,
+                    top: 126.0 - graphicTopShift,
                     right: 14.0,
                     width: 124.0,
                     height: 54.0,
@@ -664,7 +751,7 @@ class _LocationPermissionScreenState
                   // 9. "Real-time Tracking" Badges Branding (3rd badge):
                   // width: 154; height: 54; top: 268px; right: 14px;
                   Positioned(
-                    top: 268.0,
+                    top: 268.0 - graphicTopShift,
                     right: 14.0,
                     width: 154.0,
                     height: 54.0,
@@ -726,15 +813,12 @@ class _LocationPermissionScreenState
                     ),
                   ),
 
-                  // 9. Location Permission Main Content Widget Branding:
-                  // 9. Location Permission Main Content Widget Branding:
-                  // 16px padding from left/right screen edges
+                  // 10. Location Permission Main Content Widget Branding:
+                  // Cleanly anchored to bottom without scrolling overflow
                   Positioned(
-                    top: containerHeight >= 830.0
-                        ? 348.0
-                        : (containerHeight - 430.0).clamp(300.0, 348.0),
                     left: 16.0,
                     right: 16.0,
+                    bottom: math.max(bottomSafeArea, 12.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
@@ -760,8 +844,8 @@ class _LocationPermissionScreenState
                                   ),
                                 ),
 
-                                // gap: 12px;
-                                const SizedBox(height: 12.0),
+                                // gap: 8px;
+                                const SizedBox(height: 8.0),
 
                                 // content: Wee need your location to show nearby providers for Pickup & Delivery.
                                 Text(
@@ -779,14 +863,14 @@ class _LocationPermissionScreenState
                             ),
                           ),
 
-                          // gap: 20px;
-                          const SizedBox(height: 20.0),
+                          // gap: 14px;
+                          const SizedBox(height: 14.0),
 
                           // 10. Next Widget Branding (Feature details card):
                           // White card with 16px padding from left/right of screen
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFFFFFF),
                               borderRadius: BorderRadius.circular(16.0),
@@ -812,8 +896,8 @@ class _LocationPermissionScreenState
                                   subtitle: tr.findAvailableTeamsAround,
                                 ),
 
-                                // gap: 20px;
-                                const SizedBox(height: 20.0),
+                                // gap: 14px;
+                                const SizedBox(height: 14.0),
 
                                 // Item 2: Fast service
                                 _buildFeatureRow(
@@ -826,8 +910,8 @@ class _LocationPermissionScreenState
                                   subtitle: tr.getQuickerAccurateResults,
                                 ),
 
-                                // gap: 20px;
-                                const SizedBox(height: 20.0),
+                                // gap: 14px;
+                                const SizedBox(height: 14.0),
 
                                 // Item 3: Your privacy matters
                                 _buildFeatureRow(
@@ -843,8 +927,8 @@ class _LocationPermissionScreenState
                             ),
                           ),
 
-                          // gap: 20px;
-                          const SizedBox(height: 20.0),
+                          // gap: 14px;
+                          const SizedBox(height: 14.0),
 
                           // 11. CTA Component Branding:
                           SizedBox(
@@ -948,8 +1032,8 @@ class _LocationPermissionScreenState
                                   ),
                                 ),
 
-                                // gap: 16px;
-                                const SizedBox(height: 16.0),
+                                // gap: 10px;
+                                const SizedBox(height: 10.0),
 
                                 // after button branding: content: You can change this later in Settings
                                 GestureDetector(
@@ -991,7 +1075,6 @@ class _LocationPermissionScreenState
                                     ),
                                   ),
                                 ),
-                                SizedBox(height: math.max(bottomSafeArea + 24.0, 36.0)),
                               ],
                             ),
                           ),

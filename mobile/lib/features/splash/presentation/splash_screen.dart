@@ -100,16 +100,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToHome);
       }
     } else {
-      _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToCustomerSignup);
+      final hasKnownAccount = CustomerAuthStore.instance.phone.isNotEmpty;
+      _navTimer = Timer(
+        const Duration(milliseconds: 1800),
+        () => _navigateToCustomerSignup(isLogin: hasKnownAccount),
+      );
     }
   }
 
-  void _navigateToCustomerSignup() {
+  void _navigateToCustomerSignup({bool isLogin = false}) {
     if (!mounted) return;
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => const CustomerSignupScreen(),
+        pageBuilder: (_, _, _) => CustomerSignupScreen(initialIsLogin: isLogin),
         transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 400),

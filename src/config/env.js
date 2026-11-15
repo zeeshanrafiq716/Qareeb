@@ -92,6 +92,13 @@ export const env = {
     }
   })(),
   MONITORING_WEBHOOK_URL: process.env.MONITORING_WEBHOOK_URL || "",
+  TWILIO_ENABLED: bool("TWILIO_ENABLED", false),
+  TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID || "",
+  TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN || "",
+  TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER || "",
+  TWILIO_MESSAGING_SERVICE_SID: process.env.TWILIO_MESSAGING_SERVICE_SID || "",
+  TWILIO_WHATSAPP_NUMBER: process.env.TWILIO_WHATSAPP_NUMBER || "",
+  TWILIO_VERIFY_SERVICE_SID: process.env.TWILIO_VERIFY_SERVICE_SID || "",
   isTest: (process.env.NODE_ENV || "development") === "test",
   isProd: process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging",
 };

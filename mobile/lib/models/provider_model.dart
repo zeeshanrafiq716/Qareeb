@@ -3,6 +3,7 @@ class ProviderMarkerModel {
   final int id;
   final String publicId;
   final String name;
+  final String? phone;
   final String? photoUrl;
   final double distanceKm;
   final double ratingAvg;
@@ -24,14 +25,15 @@ class ProviderMarkerModel {
     required this.id,
     required this.publicId,
     required this.name,
+    this.phone,
     this.photoUrl,
     required this.distanceKm,
-    this.ratingAvg = 4.9,
-    this.ratingCount = 120,
+    this.ratingAvg = 0,
+    this.ratingCount = 0,
     this.isOnline = true,
-    this.verificationStatus = 'verified',
-    this.categoryName = 'Pickup & Delivery',
-    this.categorySlug = 'pickup',
+    this.verificationStatus = 'unverified',
+    this.categoryName = '',
+    this.categorySlug = '',
     required this.latitude,
     required this.longitude,
     required this.screenTop,
@@ -49,7 +51,7 @@ class ProviderMarkerModel {
     double fallbackLeft = 82.0,
     double fallbackAngle = 60.0,
   }) {
-    final distanceM = (json['distanceMeters'] as num?)?.toDouble() ?? 500.0;
+    final distanceM = (json['distanceMeters'] as num?)?.toDouble() ?? 0.0;
     final distKm = (json['distanceKm'] as num?)?.toDouble() ?? (distanceM / 1000.0);
     final ratingMap = json['rating'] as Map<String, dynamic>?;
     final categoryMap = json['category'] as Map<String, dynamic>?;
@@ -57,25 +59,34 @@ class ProviderMarkerModel {
     return ProviderMarkerModel(
       id: json['id'] is int ? json['id'] as int : int.tryParse(json['id']?.toString() ?? '1') ?? 1,
       publicId: json['publicId']?.toString() ?? '',
-      name: json['name']?.toString() ?? 'Provider',
-      photoUrl: json['photoUrl']?.toString(),
+      name: json['name']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? json['contact']?['phone']?.toString(),
+      photoUrl: _nullableUrl(json['photoUrl'] ?? json['photo_url']),
       distanceKm: double.parse(distKm.toStringAsFixed(1)),
-      ratingAvg: (ratingMap?['average'] as num?)?.toDouble() ?? 4.9,
-      ratingCount: (ratingMap?['count'] as num?)?.toInt() ?? 120,
+      ratingAvg: (ratingMap?['average'] as num?)?.toDouble() ?? 0,
+      ratingCount: (ratingMap?['count'] as num?)?.toInt() ?? 0,
       isOnline: json['isOnline'] == true || json['availability']?['isOnline'] == true,
-      verificationStatus: json['verificationStatus']?.toString() ?? (json['verified'] == true ? 'verified' : 'unverified'),
-      categoryName: categoryMap?['name']?.toString() ?? 'Pickup & Delivery',
-      categorySlug: categoryMap?['slug']?.toString() ?? 'pickup',
+      verificationStatus: json['verificationStatus']?.toString() ??
+          (json['verified'] == true ? 'verified' : 'unverified'),
+      categoryName: categoryMap?['name']?.toString() ?? '',
+      categorySlug: categoryMap?['slug']?.toString() ?? '',
       latitude: (json['latitude'] as num?)?.toDouble() ??
           (json['approximateLocation']?['latitude'] as num?)?.toDouble() ??
-          24.7681,
+          0.0,
       longitude: (json['longitude'] as num?)?.toDouble() ??
           (json['approximateLocation']?['longitude'] as num?)?.toDouble() ??
-          46.7153,
+          0.0,
       screenTop: (json['screenTop'] as num?)?.toDouble() ?? fallbackTop,
       screenLeft: (json['screenLeft'] as num?)?.toDouble() ?? fallbackLeft,
       carAngle: (json['carAngle'] as num?)?.toDouble() ?? fallbackAngle,
     );
+  }
+
+  static String? _nullableUrl(dynamic value) {
+    final text = value?.toString().trim() ?? '';
+    if (text.isEmpty) return null;
+    if (text.contains('unsplash.com') || text.contains('placeholder')) return null;
+    return text;
   }
 
   Map<String, dynamic> toJson() {
@@ -83,6 +94,7 @@ class ProviderMarkerModel {
       'id': id,
       'publicId': publicId,
       'name': name,
+      'phone': phone,
       'photoUrl': photoUrl,
       'distanceKm': distanceKm,
       'ratingAvg': ratingAvg,

@@ -13,7 +13,7 @@ import { FUNNEL_EVENT, recordFunnelEvent, recordListImpressions } from "./funnel
 import { buildCustomerEmptyState } from "../utils/discoveryEmptyState.js";
 
 const PROVIDER_DISCOVERY_SELECT = `
-  p.id, p.public_id, p.name, p.photo_url, p.is_online, p.last_seen_at,
+  p.id, p.public_id, p.name, p.phone, p.photo_url, p.is_online, p.last_seen_at,
   p.rating_avg, p.rating_count,
   c.id AS category_id, c.name AS category_name, c.slug AS category_slug,
   l.latitude, l.longitude, l.location_updated_at, l.city,
@@ -80,6 +80,7 @@ export function buildCustomerDiscoveryCard(row, distanceM, redisOnline) {
   return {
     id: row.id,
     providerId: row.public_id,
+    publicId: row.public_id,
     name: row.name,
     photoUrl: row.photo_url,
     category: row.category_id
@@ -104,89 +105,6 @@ export function buildCustomerDiscoveryCard(row, distanceM, redisOnline) {
   };
 }
 
-async function ensureNearbyProvidersAroundCoordinates({ latitude, longitude, categoryId }) {
-  if (env.isTest) return;
-  const lat = Number(latitude);
-  const lng = Number(longitude);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-
-  let categoryFilter = "";
-  const params = [PROVIDER_STATUS.APPROVED];
-  if (categoryId) {
-    params.push(categoryId);
-    categoryFilter = `AND (p.category_id = $2 OR p.category_id IS NULL)`;
-  }
-
-  let { rows: approvedProviders } = await query(
-    `SELECT p.id, p.name FROM providers p
-     JOIN statuses s ON s.id = p.status_id
-     WHERE s.code = $1 ${categoryFilter}
-     ORDER BY p.rating_avg DESC
-     LIMIT 12`,
-    params,
-  );
-
-  // If none matched with specific category, grab any approved providers
-  if (approvedProviders.length === 0) {
-    const fallback = await query(
-      `SELECT p.id, p.name FROM providers p
-       JOIN statuses s ON s.id = p.status_id
-       WHERE s.code = $1
-       ORDER BY p.rating_avg DESC
-       LIMIT 12`,
-      [PROVIDER_STATUS.APPROVED],
-    );
-    approvedProviders = fallback.rows;
-  }
-
-  if (approvedProviders.length === 0) return;
-
-  const offsets = [
-    [0.0024, 0.0016],
-    [-0.0031, 0.0022],
-    [0.0039, -0.0035],
-    [-0.0048, -0.0041],
-    [0.0058, 0.0051],
-    [-0.0069, 0.0062],
-    [0.0078, -0.0068],
-    [-0.0089, -0.0079],
-    [0.0098, 0.0087],
-    [-0.0110, 0.0099],
-    [0.0121, -0.0108],
-    [-0.0135, -0.0120],
-  ];
-
-  for (let i = 0; i < approvedProviders.length; i++) {
-    const prov = approvedProviders[i];
-    const [dLat, dLng] = offsets[i % offsets.length];
-    const provLat = Number((lat + dLat).toFixed(7));
-    const provLng = Number((lng + dLng).toFixed(7));
-
-    await query(
-      `INSERT INTO locations (provider_id, latitude, longitude, location_updated_at)
-       VALUES ($1, $2, $3, now())
-       ON CONFLICT (provider_id) DO UPDATE
-       SET latitude = EXCLUDED.latitude,
-           longitude = EXCLUDED.longitude,
-           location_updated_at = now()`,
-      [prov.id, provLat, provLng],
-    );
-
-    await query(
-      `UPDATE providers SET is_online = true, last_seen_at = now() WHERE id = $1`,
-      [prov.id],
-    );
-
-    try {
-      await presenceStore.touch(prov.id);
-      await presenceStore.setLocation(prov.id, {
-        latitude: provLat,
-        longitude: provLng,
-        updatedAt: new Date().toISOString(),
-      });
-    } catch (_) {}
-  }
-}
 
 async function queryNearbyRows({ latitude, longitude, radiusKm, categoryId, limit }) {
   const lat = Number(latitude);
@@ -282,20 +200,6 @@ export async function searchDiscovery(input) {
     categoryId: category?.id,
   });
 
-  // If no providers are nearby, position active providers around the customer's real GPS coordinates
-  if (rows.length === 0 && Number.isFinite(Number(input.latitude)) && Number.isFinite(Number(input.longitude))) {
-    await ensureNearbyProvidersAroundCoordinates({
-      latitude: input.latitude,
-      longitude: input.longitude,
-      categoryId: category?.id,
-    });
-    const recheck = await queryNearbyRows({
-      ...input,
-      categoryId: category?.id,
-    });
-    rows = recheck.rows;
-    engine = recheck.engine;
-  }
 
   const list = [];
   for (const row of rows) {
@@ -363,7 +267,7 @@ export async function findNearbyProvidersForCustomers(input) {
 
 export async function getPublicProviderProfile(publicId, customerLat, customerLng, options = {}) {
   const { rows } = await query(
-    `SELECT ${PROVIDER_DISCOVERY_SELECT}, p.phone, s.code AS provider_status
+    `SELECT ${PROVIDER_DISCOVERY_SELECT}, s.code AS provider_status
      FROM providers p
      JOIN statuses s ON s.id = p.status_id
      JOIN categories c ON c.id = p.category_id AND c.is_enabled = true

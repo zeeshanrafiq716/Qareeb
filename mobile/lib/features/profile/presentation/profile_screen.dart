@@ -10,8 +10,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../services/profile_stats_service.dart';
 import '../../customer/auth/data/customer_auth_store.dart';
+import '../../customer/auth/presentation/customer_signup_screen.dart';
 import '../../home/presentation/widgets/bottom_nav_bar_widget.dart';
 import '../../provider/auth/data/provider_registration_state.dart';
+import '../../provider/auth/presentation/phone_verification_screen.dart';
 import '../../provider/auth/presentation/provider_profile_details_screen.dart';
 import '../../provider/auth/presentation/vehicle_service_details_screen.dart';
 import '../../provider/splash/presentation/provider_splash_screen.dart';
@@ -651,7 +653,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               const SizedBox(height: 10.0),
                               _buildLogoutButton(context, tr, isArabic),
 
-                              const SizedBox(height: 120.0), // Generous clearance for bottom nav bar
+                              SizedBox(
+                                height: math.max(
+                                  MediaQuery.of(context).padding.bottom + 120.0,
+                                  170.0,
+                                ),
+                              ), // Generous clearance for floating bottom nav bar (never touches logout)
                             ],
                           ),
                         ),
@@ -1365,32 +1372,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onPressed: () async {
               Navigator.of(dialogCtx).pop();
               if (widget.isProvider) {
-                await ProviderRegistrationStore.instance.clear();
-                await ProviderRegistrationStore.instance.setActiveAppMode('customer');
-              } else {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.remove('customer_token');
-                await prefs.remove('auth_token');
-                await prefs.remove('user_id');
-                await prefs.remove('customer_name');
-                await prefs.remove('customer_phone');
-                await ProviderRegistrationStore.instance.setActiveAppMode('customer');
-              }
-              if (!context.mounted) return;
-              Navigator.of(context).pushAndRemoveUntil(
-                PageRouteBuilder(
-                  pageBuilder: (_, _, _) => const SplashScreen(),
-                  transitionsBuilder: (_, animation, _, child) => FadeTransition(
-                    opacity: CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeInOutCubic,
+                await ProviderRegistrationStore.instance.logout();
+                if (!context.mounted) return;
+                Navigator.of(context).pushAndRemoveUntil(
+                  PageRouteBuilder(
+                    pageBuilder: (_, _, _) => const PhoneVerificationScreen(initialIsLogin: true),
+                    transitionsBuilder: (_, animation, _, child) => FadeTransition(
+                      opacity: CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeInOutCubic,
+                      ),
+                      child: child,
                     ),
-                    child: child,
+                    transitionDuration: const Duration(milliseconds: 350),
                   ),
-                  transitionDuration: const Duration(milliseconds: 350),
-                ),
-                (route) => false,
-              );
+                  (route) => false,
+                );
+              } else {
+                await CustomerAuthStore.instance.logout();
+                if (!context.mounted) return;
+                Navigator.of(context).pushAndRemoveUntil(
+                  PageRouteBuilder(
+                    pageBuilder: (_, _, _) => const CustomerSignupScreen(initialIsLogin: true),
+                    transitionsBuilder: (_, animation, _, child) => FadeTransition(
+                      opacity: CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeInOutCubic,
+                      ),
+                      child: child,
+                    ),
+                    transitionDuration: const Duration(milliseconds: 350),
+                  ),
+                  (route) => false,
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFDC2626),
