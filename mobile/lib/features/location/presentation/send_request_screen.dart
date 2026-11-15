@@ -1,4 +1,3 @@
-import '../../../core/utils/contact_launcher.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';

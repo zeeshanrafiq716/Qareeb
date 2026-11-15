@@ -450,7 +450,7 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
                               ? Image.network(
                                   _photoUrl!,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Center(
+                                  errorBuilder: (context, error, stackTrace) => Center(
                                     child: Text(
                                       _initials(displayName),
                                       style: const TextStyle(

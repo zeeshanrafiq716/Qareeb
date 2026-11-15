@@ -1,12 +1,10 @@
 import 'dart:math' as math;
-import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../core/utils/contact_launcher.dart';
 import '../../../providers/backend_provider.dart';
-import 'send_location_screen.dart';
 import 'send_request_screen.dart';
 import 'widgets/real_map_background_widget.dart';
 
@@ -610,7 +608,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                      ],
                                    ),
                                  ),
-                                 const SizedBox(height: 16.0); // gap: 16px;
+                                 const SizedBox(height: 16.0), // gap: 16px;
 
                                  // 2nd row: next widget branding:
                                 // width: 350; height: 10; justify-content: space-between; angle: 0 deg; opacity: 1;
@@ -983,7 +981,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 16.0); // gap: 16px;
+                                const SizedBox(height: 16.0), // gap: 16px;
 
                                 // 4th section: next widget layout (buttons):
                                 // width: 350; height: 116; gap: 12px; angle: 0 deg; opacity: 1;
