@@ -187,4 +187,83 @@ describe("Phone + Password Authentication (Customer & Provider)", () => {
     expect(loginRes.body.data.token).toBeTruthy();
     expect(loginRes.body.data.userType).toBe("provider");
   });
+
+  it("blocks registering as a customer when phone is already a registered provider", async () => {
+    const phone = "+966555987654";
+
+    // 1. Register as provider
+    await api()
+      .post("/api/v1/auth/otp/request")
+      .send({ phone, channel: "sms", userType: "provider", purpose: "signup" });
+
+    await api()
+      .post("/api/v1/auth/otp/verify")
+      .send({
+        phone,
+        otp: "123456",
+        password: "providerpass123",
+        userType: "provider",
+        purpose: "signup",
+      });
+
+    // 2. Attempting customer signup with same phone must be rejected with 409
+    const custOtpRes = await api()
+      .post("/api/v1/auth/otp/request")
+      .send({ phone, channel: "sms", userType: "customer", purpose: "signup" });
+
+    expect(custOtpRes.status).toBe(409);
+    expect(custOtpRes.body.error.code).toBe("ACCOUNT_ALREADY_EXISTS");
+
+    // 3. Attempting customer login with provider phone must reject with ROLE_MISMATCH
+    const custLoginRes = await api()
+      .post("/api/v1/auth/login")
+      .send({
+        phone,
+        password: "providerpass123",
+        userType: "customer",
+      });
+
+    expect(custLoginRes.status).toBe(400);
+    expect(custLoginRes.body.error.code).toBe("ROLE_MISMATCH");
+  });
+
+  it("blocks registering as a provider when phone is already a registered customer", async () => {
+    const phone = "+966555112233";
+
+    // 1. Register as customer
+    await api()
+      .post("/api/v1/auth/otp/request")
+      .send({ phone, channel: "sms", userType: "customer", purpose: "signup" });
+
+    await api()
+      .post("/api/v1/auth/otp/verify")
+      .send({
+        phone,
+        otp: "123456",
+        name: "Test Customer",
+        password: "customerpass123",
+        userType: "customer",
+        purpose: "signup",
+      });
+
+    // 2. Attempting provider signup with same phone must be rejected with 409
+    const provOtpRes = await api()
+      .post("/api/v1/auth/otp/request")
+      .send({ phone, channel: "sms", userType: "provider", purpose: "signup" });
+
+    expect(provOtpRes.status).toBe(409);
+    expect(provOtpRes.body.error.code).toBe("ACCOUNT_ALREADY_EXISTS");
+
+    // 3. Attempting provider login with customer phone must reject with ROLE_MISMATCH
+    const provLoginRes = await api()
+      .post("/api/v1/auth/login")
+      .send({
+        phone,
+        password: "customerpass123",
+        userType: "provider",
+      });
+
+    expect(provLoginRes.status).toBe(400);
+    expect(provLoginRes.body.error.code).toBe("ROLE_MISMATCH");
+  });
 });

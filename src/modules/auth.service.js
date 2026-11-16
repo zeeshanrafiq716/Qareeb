@@ -111,16 +111,39 @@ export async function requestOtp(phoneInput, context = {}) {
             "ACCOUNT_ALREADY_EXISTS",
           );
         }
+
+        const existingProv = await fetchProviderByPhone(client, phone);
+        if (existingProv && (existingProv.phone_verified_at || existingProv.password_hash)) {
+          throw new AppError(
+            409,
+            "This phone number is already registered as a service provider. A phone number cannot be registered as both customer and provider.",
+            "ACCOUNT_ALREADY_EXISTS",
+          );
+        }
       }
       // Customer record will be created in verifyOtp upon successful OTP verification
     } else {
       const existing = await fetchProviderByPhone(client, phone);
-      if (context.purpose === "signup" && existing && (existing.phone_verified_at || existing.password_hash)) {
-        throw new AppError(
-          409,
-          "An account with this phone number already exists. Please log in instead.",
-          "ACCOUNT_ALREADY_EXISTS",
+      if (context.purpose === "signup") {
+        if (existing && (existing.phone_verified_at || existing.password_hash)) {
+          throw new AppError(
+            409,
+            "An account with this phone number already exists. Please log in instead.",
+            "ACCOUNT_ALREADY_EXISTS",
+          );
+        }
+
+        const { rows: existingCust } = await client.query(
+          `SELECT id, phone FROM customers WHERE phone = $1`,
+          [phone],
         );
+        if (existingCust.length > 0) {
+          throw new AppError(
+            409,
+            "This phone number is already registered as a customer. A phone number cannot be registered as both customer and provider.",
+            "ACCOUNT_ALREADY_EXISTS",
+          );
+        }
       }
       if (!existing) {
         const pendingOtp = await getStatus(ENTITY.PROVIDER, PROVIDER_STATUS.PENDING_OTP);
@@ -249,6 +272,15 @@ export async function verifyOtp(phoneInput, otp, options = {}) {
             "ACCOUNT_ALREADY_EXISTS",
           );
         }
+
+        const existingProv = await fetchProviderByPhone(client, phone);
+        if (existingProv && (existingProv.phone_verified_at || existingProv.password_hash)) {
+          throw new AppError(
+            409,
+            "This phone number is already registered as a service provider. A phone number cannot be registered as both customer and provider.",
+            "ACCOUNT_ALREADY_EXISTS",
+          );
+        }
       }
 
       let hash = null;
@@ -288,12 +320,26 @@ export async function verifyOtp(phoneInput, otp, options = {}) {
       throw new AppError(404, "Provider not found", "PROVIDER_NOT_FOUND");
     }
 
-    if (options.purpose === "signup" && provider.phone_verified_at && provider.password_hash) {
-      throw new AppError(
-        409,
-        "An account with this phone number already exists. Please log in instead.",
-        "ACCOUNT_ALREADY_EXISTS",
+    if (options.purpose === "signup") {
+      if (provider.phone_verified_at && provider.password_hash) {
+        throw new AppError(
+          409,
+          "An account with this phone number already exists. Please log in instead.",
+          "ACCOUNT_ALREADY_EXISTS",
+        );
+      }
+
+      const { rows: existingCust } = await client.query(
+        `SELECT id, phone FROM customers WHERE phone = $1`,
+        [phone],
       );
+      if (existingCust.length > 0) {
+        throw new AppError(
+          409,
+          "This phone number is already registered as a customer. A phone number cannot be registered as both customer and provider.",
+          "ACCOUNT_ALREADY_EXISTS",
+        );
+      }
     }
 
     if (provider.status_code === PROVIDER_STATUS.PENDING_OTP) {
@@ -348,30 +394,17 @@ export async function loginWithPassword({ phone: phoneInput, password, userType 
     );
     let customer = rows[0];
 
-    // Check if phone belongs to provider account
+    // If customer record not found, check if it belongs to provider
     if (!customer) {
       const prov = await fetchProviderByPhone(client, phone);
-      if (prov) {
-        if (!prov.password_hash) {
-          throw new AppError(400, "Password has not been set yet. Please log in via SMS OTP first.", "PASSWORD_NOT_SET");
-        }
-        const match = await bcrypt.compare(password, prov.password_hash);
-        if (!match) {
-          throw new AppError(401, "Invalid phone number or password", "INVALID_CREDENTIALS");
-        }
-        const ins = await client.query(
-          `INSERT INTO customers (phone, name, password_hash, created_at, updated_at)
-           VALUES ($1, $2, $3, now(), now())
-           ON CONFLICT (phone) DO UPDATE SET password_hash = EXCLUDED.password_hash
-           RETURNING id, phone, name, password_hash`,
-          [prov.phone, prov.name || "Customer", prov.password_hash],
+      if (prov && (prov.phone_verified_at || prov.password_hash)) {
+        throw new AppError(
+          400,
+          "This phone number is registered as a service provider. Please log in through the Provider portal.",
+          "ROLE_MISMATCH",
         );
-        customer = ins.rows[0];
       }
-    }
-
-    if (!customer) {
-      throw new AppError(404, "No account found with this phone number. Please switch to Sign Up.", "ACCOUNT_NOT_FOUND");
+      throw new AppError(404, "No customer account found with this phone number. Please switch to Sign Up.", "ACCOUNT_NOT_FOUND");
     }
     if (!customer.password_hash) {
       const newHash = await bcrypt.hash(password, 10);
@@ -406,30 +439,19 @@ export async function loginWithPassword({ phone: phoneInput, password, userType 
 
   // Provider Login
   let provider = await fetchProviderByPhone(client, phone);
-  if (!provider) {
+  if (!provider || (!provider.phone_verified_at && !provider.password_hash)) {
     // Check if phone belongs to customer account
     const custRes = await client.query(
       `SELECT id, phone, name, password_hash FROM customers WHERE phone = $1`,
       [phone],
     );
-    if (custRes.rows[0] && custRes.rows[0].password_hash) {
-      const cust = custRes.rows[0];
-      const match = await bcrypt.compare(password, cust.password_hash);
-      if (match) {
-        const approved = await getStatus(ENTITY.PROVIDER, PROVIDER_STATUS.APPROVED);
-        const publicId = await nextPublicId(client);
-        const ins = await client.query(
-          `INSERT INTO providers (public_id, phone, name, password_hash, status_id, phone_verified_at)
-           VALUES ($1, $2, $3, $4, $5, now())
-           RETURNING *`,
-          [publicId, cust.phone, cust.name, cust.password_hash, approved.id],
-        );
-        provider = ins.rows[0];
-      }
+    if (custRes.rows[0]) {
+      throw new AppError(
+        400,
+        "This phone number is registered as a customer. A customer account cannot be used for provider login.",
+        "ROLE_MISMATCH",
+      );
     }
-  }
-
-  if (!provider) {
     throw new AppError(404, "No provider account found with this phone number. Please register.", "ACCOUNT_NOT_FOUND");
   }
   if (!provider.password_hash) {
