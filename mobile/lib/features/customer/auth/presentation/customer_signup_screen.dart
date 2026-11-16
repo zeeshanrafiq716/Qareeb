@@ -277,16 +277,42 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
       final fullPhoneNumber = '${_selectedCountry.dialCode}$digitsOnly';
       final displayPhoneNumber = '${_selectedCountry.dialCode} $digitsOnly';
 
+      // Check local store first to prevent duplicate signups with existing credentials
+      if (CustomerAuthStore.instance.phone == fullPhoneNumber &&
+          CustomerAuthStore.instance.hasCompletedSignup) {
+        setState(() {
+          _isLoading = false;
+          _isLoginMode = true;
+          _errorMessage = isArabic
+              ? 'يوجد حساب مسجل بهذا الرقم بالفعل. يرجى تسجيل الدخول'
+              : 'An account with this phone number already exists. Please log in.';
+        });
+        HapticFeedback.heavyImpact();
+        return;
+      }
+
       // Request OTP via backend service with Twilio SMS integration
       final backendService = BackendService(ApiClient());
       final result = await backendService.requestOtp(
         phone: fullPhoneNumber,
         channel: 'sms',
         userType: 'customer',
+        purpose: 'signup',
       );
 
       if (!mounted) return;
       setState(() => _isLoading = false);
+
+      if (result.alreadyExists) {
+        HapticFeedback.heavyImpact();
+        setState(() {
+          _isLoginMode = true;
+          _errorMessage = isArabic
+              ? 'يوجد حساب مسجل بهذا الرقم بالفعل. يرجى تسجيل الدخول'
+              : 'An account with this phone number already exists. Please log in.';
+        });
+        return;
+      }
 
       HapticFeedback.selectionClick();
 
@@ -442,7 +468,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SizedBox(height: headerTop + 50.0),
+                          SizedBox(height: headerTop + 16.0),
 
                           // Brand Badge with gentle floating and scale pulse animation
                           Center(
@@ -458,11 +484,11 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                 );
                               },
                               child: Container(
-                                width: 64.0,
-                                height: 64.0,
+                                width: 52.0,
+                                height: 52.0,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF0EAFE),
-                                  borderRadius: BorderRadius.circular(20.0),
+                                  borderRadius: BorderRadius.circular(16.0),
                                   border: Border.all(
                                     color: const Color(0xFF8B53FE).withValues(alpha: 0.18),
                                     width: 1.5,
@@ -470,20 +496,20 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                   boxShadow: [
                                     BoxShadow(
                                       color: const Color(0xFF8B53FE).withValues(alpha: 0.18),
-                                      offset: const Offset(0, 6),
-                                      blurRadius: 16.0,
+                                      offset: const Offset(0, 4),
+                                      blurRadius: 12.0,
                                     ),
                                     BoxShadow(
                                       color: Colors.white.withValues(alpha: 0.8),
                                       offset: const Offset(0, -2),
-                                      blurRadius: 6.0,
+                                      blurRadius: 4.0,
                                     ),
                                   ],
                                 ),
                                 child: const Center(
                                   child: Icon(
                                     Icons.person_pin_rounded,
-                                    size: 36.0,
+                                    size: 30.0,
                                     color: Color(0xFF8B53FE),
                                   ),
                                 ),
@@ -491,11 +517,11 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ),
                           ),
 
-                          const SizedBox(height: 18.0),
+                          const SizedBox(height: 12.0),
 
                           // Mode Switcher Pill: [ Log In | Sign Up ]
                           Container(
-                            height: 44.0,
+                            height: 40.0,
                             decoration: BoxDecoration(
                               color: const Color(0xFFF2F5F4),
                               borderRadius: BorderRadius.circular(22.0),
@@ -567,7 +593,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ),
                           ),
 
-                          const SizedBox(height: 18.0),
+                          const SizedBox(height: 14.0),
 
                           // Heading
                           Text(
@@ -584,7 +610,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ),
                           ),
 
-                          const SizedBox(height: 8.0),
+                          const SizedBox(height: 6.0),
 
                           // Subtitle
                           Padding(
@@ -607,7 +633,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ),
                           ),
 
-                          const SizedBox(height: 24.0),
+                          const SizedBox(height: 18.0),
 
                           // Error banner if any
                           if (_errorMessage != null) ...[
@@ -948,15 +974,15 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ),
                           ),
 
-                          const SizedBox(height: 16.0),
+                          const SizedBox(height: 14.0),
 
-                          // Bottom Switch Link between Login & Sign Up
+                          // 1st subline: Switch between Login & Sign Up
                           Center(
                             child: InkWell(
                               onTap: () => _switchMode(!_isLoginMode),
                               borderRadius: BorderRadius.circular(8.0),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+                                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
                                 child: Text.rich(
                                   TextSpan(
                                     text: _isLoginMode
@@ -984,9 +1010,9 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ),
                           ),
 
-                          const SizedBox(height: 16.0),
+                          const SizedBox(height: 14.0),
 
-                          // Security Notice
+                          // 2nd subline: Security Notice
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -1009,9 +1035,9 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ],
                           ),
 
-                          const SizedBox(height: 24.0),
+                          const SizedBox(height: 14.0),
 
-                          // Switcher to Partner Mode
+                          // 3rd subline: Switcher to Partner Mode
                           Center(
                             child: InkWell(
                               onTap: () async {
@@ -1026,7 +1052,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                               },
                               borderRadius: BorderRadius.circular(8.0),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
                                 child: Text.rich(
                                   TextSpan(
                                     text: isArabic ? 'هل أنت مزود خدمة؟ ' : 'Are you a service provider? ',
@@ -1050,7 +1076,9 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ),
                           ),
 
-                          const SizedBox(height: 24.0),
+                          SizedBox(
+                            height: math.max(28.0, MediaQuery.of(context).padding.bottom + 18.0),
+                          ),
                         ],
                       ),
                     ),

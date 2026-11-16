@@ -75,7 +75,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     if (isSignedUp) {
       final prefs = await SharedPreferences.getInstance();
-      final biometricEnabled = prefs.getBool('customer_biometric_login') ?? true;
+      final biometricEnabled = prefs.getBool('customer_biometric_login') ?? false;
 
       if (biometricEnabled) {
         _navTimer = Timer(const Duration(milliseconds: 1400), () async {

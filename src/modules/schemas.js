@@ -5,6 +5,7 @@ export const otpRequestSchema = z.object({
     phone: z.string().min(10).max(20),
     channel: z.enum(["sms", "whatsapp"]).optional().default("sms"),
     userType: z.enum(["customer", "provider"]).optional().default("provider"),
+    purpose: z.enum(["signup", "login", "reset"]).optional(),
   }),
 });
 
@@ -15,6 +16,7 @@ export const otpVerifySchema = z.object({
     password: z.string().min(6).optional(),
     name: z.string().optional(),
     userType: z.enum(["customer", "provider"]).optional().default("provider"),
+    purpose: z.enum(["signup", "login", "reset"]).optional(),
   }),
 });
 
@@ -92,7 +94,7 @@ export const adminLoginSchema = z.object({
     password: z.string().min(6),
   }),
 });
-                                         
+
 export const providerListSchema = z.object({
   query: z.object({
     status: z.string().optional(),

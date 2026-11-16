@@ -80,6 +80,7 @@ class _CustomerOtpVerificationScreenState
         password: widget.password,
         name: widget.fullName,
         userType: 'customer',
+        purpose: 'signup',
       );
 
       if (!mounted) return;
@@ -93,10 +94,11 @@ class _CustomerOtpVerificationScreenState
                 ? CustomerAuthStore.instance.fullName
                 : 'Customer');
 
-        await CustomerAuthStore.instance.signUp(
+        await CustomerAuthStore.instance.signIn(
           fullName: savedName,
           phone: phone,
           countryCode: widget.countryCode.isNotEmpty ? widget.countryCode : '+966',
+          token: result.token,
         );
 
         if (!mounted) return;

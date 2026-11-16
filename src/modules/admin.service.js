@@ -119,8 +119,8 @@ export async function listProviders({ status, search, page, limit }) {
     values.push(status);
     where.push(`s.code = $${values.length}`);
   } else {
-    // Only providers who have completed all onboarding steps appear in the admin panel
-    where.push(`s.code NOT IN ('pending_otp', 'pending_profile')`);
+    // Only exclude pending_otp so all registered providers show up
+    where.push(`s.code NOT IN ('pending_otp')`);
   }
   if (search) {
     const fragment = buildProviderSearchFilter(search, values);

@@ -66,9 +66,9 @@ export function ProviderDirectoryView({
           : Array.isArray(res)
           ? res
           : []
-        // Business Rule: Providers only show in admin panel once they complete onboarding steps
+        // Business Rule: Providers show in admin panel once they register and verify phone (excluding abandoned pending_otp)
         const onboardedItems = rawItems.filter(
-          (item) => item.status !== 'pending_otp' && item.status !== 'pending_profile'
+          (item) => item.status !== 'pending_otp'
         )
         const mapped = onboardedItems.map((item, idx) => {
           const catName = item.category?.name || 'Roadside Assistance'
@@ -85,6 +85,8 @@ export function ProviderDirectoryView({
           let stStr = 'Active'
           if (item.status === 'suspended') stStr = 'Suspended'
           else if (item.status === 'pending_verification') stStr = 'Pending Approval'
+          else if (item.status === 'pending_profile') stStr = 'In Onboarding'
+          else if (item.status === 'blocked') stStr = 'Blocked'
           else if (item.status === 'rejected') stStr = 'Inactive'
 
           const isOnline = Boolean(item.isOnline ?? item.presence?.isOnline)
@@ -160,8 +162,8 @@ export function ProviderDirectoryView({
     online: providersList.filter((p) => p.isOnline).length,
     offline: providersList.filter((p) => !p.isOnline).length,
     active: providersList.filter((p) => p.status === 'Active').length,
-    pending: providersList.filter((p) => p.status === 'Pending Approval').length,
-    inactive: providersList.filter((p) => p.status === 'Inactive').length,
+    pending: providersList.filter((p) => p.status === 'Pending Approval' || p.status === 'In Onboarding').length,
+    inactive: providersList.filter((p) => p.status === 'Inactive' || p.status === 'Blocked').length,
     suspended: providersList.filter((p) => p.status === 'Suspended').length,
   }
 
@@ -192,7 +194,7 @@ export function ProviderDirectoryView({
     }
     loadRealCategories()
   }, [providersList])
-  const statuses = ['All Status', 'Online', 'Offline', 'Active', 'Pending Approval', 'Inactive', 'Suspended']
+  const statuses = ['All Status', 'Online', 'Offline', 'Active', 'Pending Approval', 'In Onboarding', 'Inactive', 'Suspended']
   const dateRanges = ['Registered Date', 'Today', 'Last 7 Days', 'Last 30 Days', 'This Month', 'All Time']
 
   const metricCards = [
@@ -235,10 +237,12 @@ export function ProviderDirectoryView({
       case 'Active':
         return 'text-[#16A34A]'
       case 'Pending Approval':
+      case 'In Onboarding':
         return 'text-[#D97706]'
       case 'Inactive':
         return 'text-[#616166]'
       case 'Suspended':
+      case 'Blocked':
         return 'text-[#DC2626]'
       default:
         return 'text-[#616166]'
@@ -267,8 +271,8 @@ export function ProviderDirectoryView({
       activeFilterCard === 'all' ||
       (activeFilterCard === 'online' && p.isOnline) ||
       (activeFilterCard === 'active' && p.status === 'Active') ||
-      (activeFilterCard === 'pending' && p.status === 'Pending Approval') ||
-      (activeFilterCard === 'inactive' && p.status === 'Inactive') ||
+      (activeFilterCard === 'pending' && (p.status === 'Pending Approval' || p.status === 'In Onboarding')) ||
+      (activeFilterCard === 'inactive' && (p.status === 'Inactive' || p.status === 'Blocked')) ||
       (activeFilterCard === 'suspended' && p.status === 'Suspended')
 
     return matchesSearch && matchesCategory && matchesDropdownStatus && matchesCardFilter

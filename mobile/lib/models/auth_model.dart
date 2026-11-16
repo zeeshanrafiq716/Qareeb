@@ -9,6 +9,7 @@ class OtpRequestResult {
   final bool smsDelivered;
   final String channel;
   final String? messageSid;
+  final bool alreadyExists;
 
   const OtpRequestResult({
     required this.success,
@@ -20,6 +21,7 @@ class OtpRequestResult {
     this.smsDelivered = false,
     this.channel = 'sms',
     this.messageSid,
+    this.alreadyExists = false,
   });
 
   factory OtpRequestResult.fromJson(Map<String, dynamic> json, {required String fallbackPhone, String? fallbackOtp}) {

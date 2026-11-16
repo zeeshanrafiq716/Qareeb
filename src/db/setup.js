@@ -20,17 +20,21 @@ function parseUrl(connectionString) {
 }
 
 async function createDatabaseIfNeeded(connectionString) {
-  const { dbName, adminUrl } = parseUrl(connectionString);
-  const admin = new pg.Client({ connectionString: adminUrl });
-  await admin.connect();
   try {
-    const exists = await admin.query("SELECT 1 FROM pg_database WHERE datname = $1", [dbName]);
-    if (!exists.rowCount) {
-      await admin.query(`CREATE DATABASE "${dbName.replaceAll('"', "")}"`);
-      logger.info({ dbName }, "Created database");
+    const { dbName, adminUrl } = parseUrl(connectionString);
+    const admin = new pg.Client({ connectionString: adminUrl });
+    await admin.connect();
+    try {
+      const exists = await admin.query("SELECT 1 FROM pg_database WHERE datname = $1", [dbName]);
+      if (!exists.rowCount) {
+        await admin.query(`CREATE DATABASE "${dbName.replaceAll('"', "")}"`);
+        logger.info({ dbName }, "Created database");
+      }
+    } finally {
+      await admin.end();
     }
-  } finally {
-    await admin.end();
+  } catch (err) {
+    logger.warn({ err: err.message }, "createDatabaseIfNeeded skipped (using target database directly)");
   }
 }
 

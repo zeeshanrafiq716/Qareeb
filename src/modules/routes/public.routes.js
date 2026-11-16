@@ -106,6 +106,7 @@ publicRoutes.post(
       await authService.requestOtp(req.body.phone, {
         channel: req.body.channel,
         userType: req.body.userType,
+        purpose: req.body.purpose,
         ipAddress: req.ip,
         userAgent: req.headers["user-agent"],
       }),
@@ -124,6 +125,7 @@ publicRoutes.post(
         password: req.body.password,
         name: req.body.name,
         userType: req.body.userType,
+        purpose: req.body.purpose,
       }),
     );
   }),

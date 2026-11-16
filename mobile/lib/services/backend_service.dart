@@ -68,6 +68,7 @@ class BackendService {
     required String phone,
     String channel = 'sms',
     String userType = 'provider',
+    String? purpose,
   }) async {
     try {
       final response = await _client.post(
@@ -76,6 +77,7 @@ class BackendService {
           'phone': phone,
           'channel': channel,
           'userType': userType,
+          if (purpose != null) 'purpose': purpose,
         },
       );
 
@@ -83,6 +85,21 @@ class BackendService {
         final data = response.data;
         if (data is Map<String, dynamic>) {
           return OtpRequestResult.fromJson(data, fallbackPhone: phone, fallbackOtp: '123456');
+        }
+      }
+    } on DioException catch (dioErr) {
+      if (dioErr.response?.data is Map<String, dynamic>) {
+        final d = dioErr.response!.data as Map<String, dynamic>;
+        final code = d['error']?['code']?.toString() ?? d['code']?.toString();
+        final msg = d['error']?['message']?.toString() ?? d['message']?.toString();
+        if (code == 'ACCOUNT_ALREADY_EXISTS' || dioErr.response?.statusCode == 409) {
+          return OtpRequestResult(
+            success: false,
+            phone: phone,
+            otp: '',
+            message: msg ?? 'An account with this phone number already exists.',
+            alreadyExists: true,
+          );
         }
       }
     } catch (_) {
@@ -105,6 +122,7 @@ class BackendService {
     String? password,
     String? name,
     String userType = 'provider',
+    String? purpose,
   }) async {
     try {
       final response = await _client.post(
@@ -115,6 +133,7 @@ class BackendService {
           if (password != null) 'password': password,
           if (name != null) 'name': name,
           'userType': userType,
+          if (purpose != null) 'purpose': purpose,
         },
       );
 
@@ -127,6 +146,14 @@ class BackendService {
               ? payload['provider'] as Map<String, dynamic>
               : (payload['customer'] is Map<String, dynamic> ? payload['customer'] as Map<String, dynamic> : null);
           return OtpVerifyResult.success(token: token, provider: provider, isDummy: false);
+        }
+      }
+    } on DioException catch (dioErr) {
+      if (dioErr.response?.data is Map<String, dynamic>) {
+        final d = dioErr.response!.data as Map<String, dynamic>;
+        final msg = d['error']?['message']?.toString() ?? d['message']?.toString();
+        if (msg != null && msg.isNotEmpty) {
+          return OtpVerifyResult.failure(msg);
         }
       }
     } catch (_) {
@@ -208,8 +235,13 @@ class BackendService {
         } catch (_) {}
       }
 
-      final msg = dioErr.response?.data?['error']?['message']?.toString() ??
-          dioErr.response?.data?['message']?.toString();
+      String? msg;
+      if (dioErr.response?.data is Map<String, dynamic>) {
+        final d = dioErr.response!.data as Map<String, dynamic>;
+        msg = d['error']?['message']?.toString() ?? d['message']?.toString();
+      } else if (dioErr.response?.statusCode == 502 || dioErr.response?.statusCode == 503) {
+        msg = 'Server gateway error. Please try again shortly.';
+      }
       if (msg != null && msg.isNotEmpty) {
         return OtpVerifyResult.failure(msg);
       }

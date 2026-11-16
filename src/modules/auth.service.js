@@ -99,6 +99,19 @@ export async function requestOtp(phoneInput, context = {}) {
     const userType = context.userType || "provider";
 
     if (userType === "customer") {
+      if (context.purpose === "signup") {
+        const { rows: existingCust } = await client.query(
+          `SELECT id, phone, password_hash FROM customers WHERE phone = $1`,
+          [phone],
+        );
+        if (existingCust[0] && existingCust[0].password_hash) {
+          throw new AppError(
+            409,
+            "An account with this phone number already exists. Please log in instead.",
+            "ACCOUNT_ALREADY_EXISTS",
+          );
+        }
+      }
       await client.query(
         `INSERT INTO customers (phone, name, created_at, updated_at)
          VALUES ($1, 'Customer', now(), now())
@@ -221,6 +234,53 @@ export async function verifyOtp(phoneInput, otp, options = {}) {
       );
     }
 
+    if (options.userType === "customer") {
+      if (options.purpose === "signup") {
+        const { rows: existingCust } = await client.query(
+          `SELECT id, password_hash FROM customers WHERE phone = $1`,
+          [phone],
+        );
+        if (existingCust[0] && existingCust[0].password_hash) {
+          throw new AppError(
+            409,
+            "An account with this phone number already exists. Please log in instead.",
+            "ACCOUNT_ALREADY_EXISTS",
+          );
+        }
+      }
+
+      let hash = null;
+      if (options.password) {
+        hash = await bcrypt.hash(options.password, 10);
+      }
+      const custRes = await client.query(
+        `INSERT INTO customers (phone, name, password_hash, created_at, updated_at)
+         VALUES ($1, $2, $3, now(), now())
+         ON CONFLICT (phone) DO UPDATE
+         SET password_hash = COALESCE(EXCLUDED.password_hash, customers.password_hash),
+             name = CASE WHEN EXCLUDED.name IS NOT NULL AND EXCLUDED.name != '' THEN EXCLUDED.name ELSE customers.name END,
+             updated_at = now()
+         RETURNING id, phone, name`,
+        [phone, options.name || "Customer", hash],
+      );
+      const customer = custRes.rows[0];
+      const token = signProviderToken({
+        id: customer.id,
+        phone: customer.phone,
+        name: customer.name,
+        role: "customer",
+      });
+      return {
+        token,
+        userType: "customer",
+        customer: {
+          id: customer.id,
+          phone: customer.phone,
+          name: customer.name,
+        },
+      };
+    }
+
     provider = await fetchProviderByPhone(client, phone);
     if (!provider) {
       throw new AppError(404, "Provider not found", "PROVIDER_NOT_FOUND");
@@ -251,22 +311,6 @@ export async function verifyOtp(phoneInput, otp, options = {}) {
     if (options.password) {
       const hash = await bcrypt.hash(options.password, 10);
       await client.query(`UPDATE providers SET password_hash = $1 WHERE id = $2`, [hash, provider.id]);
-    }
-
-    if (options.userType === "customer") {
-      let hash = null;
-      if (options.password) {
-        hash = await bcrypt.hash(options.password, 10);
-      }
-      await client.query(
-        `INSERT INTO customers (phone, name, password_hash)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (phone) DO UPDATE
-         SET password_hash = COALESCE(EXCLUDED.password_hash, customers.password_hash),
-             name = CASE WHEN EXCLUDED.name IS NOT NULL AND EXCLUDED.name != '' THEN EXCLUDED.name ELSE customers.name END,
-             updated_at = now()`,
-        [phone, options.name || "Customer", hash],
-      );
     }
 
     return {

@@ -44,7 +44,10 @@ export const env = {
   PORT: integer("PORT", 3000),
   DATABASE_URL: required("DATABASE_URL", "postgres://postgres:postgres@127.0.0.1:5433/qareeb"),
   DATABASE_URL_TEST: process.env.DATABASE_URL_TEST || "postgres://postgres:postgres@127.0.0.1:5433/qareeb_test",
-  EMBEDDED_POSTGRES: bool("EMBEDDED_POSTGRES", true),
+  EMBEDDED_POSTGRES: bool(
+    "EMBEDDED_POSTGRES",
+    process.env.NODE_ENV !== "production" && process.platform === "win32",
+  ),
   EMBEDDED_POSTGRES_PORT: integer("EMBEDDED_POSTGRES_PORT", 5433),
   JWT_SECRET: required("JWT_SECRET", "dev-secret-change-me"),
   JWT_PROVIDER_EXPIRES_IN: process.env.JWT_PROVIDER_EXPIRES_IN || "7d",

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/api/api_client.dart';
 
 /// Customer Auth Data Model
 class CustomerAuthData {
@@ -98,6 +99,10 @@ class CustomerAuthStore {
           phone: legacyPhone,
           isSignedUp: legacySignedUp,
         );
+      }
+      final token = prefs.getString('auth_token') ?? prefs.getString('customer_token');
+      if (token != null && token.isNotEmpty) {
+        ApiClient.setGlobalToken(token);
       }
       isLoaded = true;
     } catch (e) {
