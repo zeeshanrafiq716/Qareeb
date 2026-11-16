@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../core/utils/contact_launcher.dart';
 import '../../../providers/backend_provider.dart';
+import 'send_location_screen.dart';
 import 'send_request_screen.dart';
 import 'widgets/real_map_background_widget.dart';
 
@@ -1035,25 +1036,15 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                 longitude: userLoc.longitude,
                                               );
                                             }
-                                            final ok = await ContactLauncher.shareLocation(
-                                              phone: phone,
-                                              latitude: userLoc.latitude,
-                                              longitude: userLoc.longitude,
-                                              providerName: widget.providerName,
-                                              isArabic: tr.isArabic,
-                                            );
-                                            if (!ok && mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                    tr.isArabic ? 'تعذر فتح واتساب لمشاركة الموقع' : 'Could not open WhatsApp to share location',
-                                                    style: tr.font(color: Colors.white),
-                                                  ),
-                                                  backgroundColor: const Color(0xFFEF4444),
-                                                  behavior: SnackBarBehavior.floating,
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) => SendLocationScreen(
+                                                  serviceCategory: widget.serviceCategory,
+                                                  providerName: widget.providerName,
+                                                  distance: widget.distance ?? '1.8 km',
                                                 ),
-                                              );
-                                            }
+                                              ),
+                                            );
                                           },
                                           behavior: HitTestBehavior.opaque,
                                           child: Container(
@@ -1101,30 +1092,20 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                         cursor: SystemMouseCursors.click,
                                         child: GestureDetector(
                                           key: const Key('provider_detail_send_request_button'),
-                                          onTap: () async {
+                                          onTap: () {
                                             HapticFeedback.mediumImpact();
-                                            final phone = _phone;
-                                            if (phone != null && phone.isNotEmpty) {
-                                              if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
-                                                ref.read(backendServiceProvider).trackCustomerEvent(
-                                                  event: 'whatsapp_click',
-                                                  providerPublicId: widget.providerPublicId!,
-                                                );
-                                              }
-                                              final ok = await ContactLauncher.sendServiceRequest(
-                                                phone: phone,
-                                                category: widget.serviceCategory,
-                                                providerName: widget.providerName,
-                                                isArabic: tr.isArabic,
+                                            if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
+                                              ref.read(backendServiceProvider).trackCustomerEvent(
+                                                event: 'whatsapp_click',
+                                                providerPublicId: widget.providerPublicId!,
                                               );
-                                              if (ok) return;
                                             }
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
                                                 builder: (_) => SendRequestScreen(
                                                   serviceCategory: widget.serviceCategory,
                                                   providerName: widget.providerName,
-                                                  distance: widget.distance ?? '—',
+                                                  distance: widget.distance ?? '1.8 km',
                                                 ),
                                               ),
                                             );

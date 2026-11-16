@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_locale.dart';
 import '../../../../core/utils/contact_launcher.dart';
 import '../../../../providers/backend_provider.dart';
+import '../send_location_screen.dart';
+import '../send_request_screen.dart';
 
 /// Map bottom sheet when a customer taps a provider car.
 /// Real name/photo/contact only — no placeholder portraits, reviews, or order counters.
@@ -211,59 +213,49 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
   }
 
   Future<void> _onSendLocation() async {
+    HapticFeedback.lightImpact();
     if (widget.onSendMyLocation != null) {
       widget.onSendMyLocation!();
       return;
     }
-    final tr = ref.read(translationsProvider);
-    final phone = _phone;
-    if (phone == null) {
-      _toast(tr.isArabic ? 'لا يمكن مشاركة الموقع بدون رقم المزود' : 'Cannot share location without the provider number', error: true);
-      return;
-    }
-    final loc = ref.read(userLocationProvider).value;
-    if (loc == null) {
-      _toast(tr.isArabic ? 'موقعك غير متاح بعد' : 'Your location is not available yet', error: true);
-      return;
-    }
-    setState(() => _busy = true);
     _track('share_location_click');
-    final ok = await ContactLauncher.shareLocation(
-      phone: phone,
-      latitude: loc.latitude,
-      longitude: loc.longitude,
-      providerName: widget.providerName,
-      isArabic: tr.isArabic,
+    Navigator.of(context).maybePop();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SendLocationScreen(
+          serviceCategory: widget.serviceCategory.isNotEmpty
+              ? widget.serviceCategory
+              : 'Pickup & Delivery',
+          providerName: widget.providerName.isNotEmpty
+              ? widget.providerName
+              : 'Ahmad Transport',
+          distance: widget.distance.isNotEmpty ? widget.distance : '1.8 km',
+        ),
+      ),
     );
-    if (mounted) setState(() => _busy = false);
-    if (!ok) {
-      _toast(tr.isArabic ? 'تعذر فتح واتساب لمشاركة الموقع' : 'Could not open WhatsApp to share location', error: true);
-    }
   }
 
   Future<void> _onSendRequest() async {
+    HapticFeedback.mediumImpact();
     if (widget.onSendRequest != null) {
       widget.onSendRequest!();
       return;
     }
-    final tr = ref.read(translationsProvider);
-    final phone = _phone;
-    if (phone == null) {
-      _toast(tr.isArabic ? 'لا يمكن إرسال الطلب بدون رقم المزود' : 'Cannot send request without the provider number', error: true);
-      return;
-    }
-    setState(() => _busy = true);
     _track('whatsapp_click');
-    final ok = await ContactLauncher.sendServiceRequest(
-      phone: phone,
-      category: widget.serviceCategory,
-      providerName: widget.providerName,
-      isArabic: tr.isArabic,
+    Navigator.of(context).maybePop();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SendRequestScreen(
+          serviceCategory: widget.serviceCategory.isNotEmpty
+              ? widget.serviceCategory
+              : 'Pickup & Delivery',
+          providerName: widget.providerName.isNotEmpty
+              ? widget.providerName
+              : 'Ahmad Transport',
+          distance: widget.distance.isNotEmpty ? widget.distance : '1.8 km',
+        ),
+      ),
     );
-    if (mounted) setState(() => _busy = false);
-    if (!ok) {
-      _toast(tr.isArabic ? 'تعذر فتح واتساب لإرسال الطلب' : 'Could not open WhatsApp to send request', error: true);
-    }
   }
 
   String _initials(String name) {

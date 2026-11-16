@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/localization/app_locale.dart';
+import 'live_tracking_screen.dart';
 import 'widgets/real_map_background_widget.dart';
 
 /// Screen displayed when user clicks 'Send My Location' on the Provider Detail screen.
@@ -1004,6 +1005,18 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
         duration: const Duration(seconds: 2),
       ),
     );
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => LiveTrackingScreen(
+            serviceCategory: widget.serviceCategory,
+            providerName: widget.providerName,
+            distance: widget.distance,
+          ),
+        ),
+      );
+    });
   }
 }
 
