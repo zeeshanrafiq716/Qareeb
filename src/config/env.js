@@ -42,8 +42,17 @@ function integer(name, fallback) {
 export const env = {
   NODE_ENV: process.env.NODE_ENV || "development",
   PORT: integer("PORT", 3000),
-  DATABASE_URL: required("DATABASE_URL", "postgres://postgres:postgres@127.0.0.1:5433/qareeb"),
-  DATABASE_URL_TEST: process.env.DATABASE_URL_TEST || "postgres://postgres:postgres@127.0.0.1:5433/qareeb_test",
+  DATABASE_URL: required(
+    "DATABASE_URL",
+    process.platform === "win32"
+      ? "postgres://postgres:postgres@127.0.0.1:5433/qareeb"
+      : (process.env.DATABASE_URL || "postgres://postgres:database%40123@127.0.0.1:5432/qareeb"),
+  ),
+  DATABASE_URL_TEST: process.env.DATABASE_URL_TEST || (
+    process.platform === "win32"
+      ? "postgres://postgres:postgres@127.0.0.1:5433/qareeb_test"
+      : "postgres://postgres:database%40123@127.0.0.1:5432/qareeb_test"
+  ),
   EMBEDDED_POSTGRES: bool(
     "EMBEDDED_POSTGRES",
     process.env.NODE_ENV !== "production" && process.platform === "win32",

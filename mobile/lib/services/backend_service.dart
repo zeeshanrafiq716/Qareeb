@@ -101,21 +101,45 @@ class BackendService {
             alreadyExists: true,
           );
         }
+        return OtpRequestResult(
+          success: false,
+          phone: phone,
+          otp: '',
+          message: msg ?? 'Failed to send verification code.',
+        );
+      } else if (dioErr.response?.statusCode == 502 || dioErr.response?.statusCode == 503) {
+        return OtpRequestResult(
+          success: false,
+          phone: phone,
+          otp: '',
+          message: 'Server gateway error. Please try again shortly.',
+        );
       }
-    } catch (_) {
-      // Backend offline or unreachable — seamlessly provide dummy OTP for testing
+      return OtpRequestResult(
+        success: false,
+        phone: phone,
+        otp: '',
+        message: 'Network error. Please check your internet connection.',
+      );
+    } catch (e) {
+      return OtpRequestResult(
+        success: false,
+        phone: phone,
+        otp: '',
+        message: 'Error: $e',
+      );
     }
 
-    return OtpRequestResult.dummy(
+    return OtpRequestResult(
+      success: false,
       phone: phone,
-      otp: '123456',
-      message: 'Dummy OTP generated for testing',
+      otp: '',
+      message: 'Failed to request OTP code.',
     );
   }
 
   /// Verify OTP code for provider or customer.
   /// Hits real backend endpoint /api/v1/auth/otp/verify.
-  /// If backend is offline or during testing, accepts dummy OTP 123456 or real code.
   Future<OtpVerifyResult> verifyOtp({
     required String phone,
     required String otp,
@@ -155,21 +179,15 @@ class BackendService {
         if (msg != null && msg.isNotEmpty) {
           return OtpVerifyResult.failure(msg);
         }
+      } else if (dioErr.response?.statusCode == 502 || dioErr.response?.statusCode == 503) {
+        return OtpVerifyResult.failure('Server gateway error. Please try again shortly.');
       }
-    } catch (_) {
-      // Backend offline or unreachable — fallback to dummy verification
+      return OtpVerifyResult.failure('Network error. Please check your internet connection.');
+    } catch (e) {
+      return OtpVerifyResult.failure(e.toString());
     }
 
-    // Dummy verification fallback for testing
-    return OtpVerifyResult.success(
-      token: 'dummy_token_${DateTime.now().millisecondsSinceEpoch}',
-      provider: {
-        'phone': phone,
-        'status': 'PENDING_PROFILE',
-        'isDummy': true,
-      },
-      isDummy: true,
-    );
+    return OtpVerifyResult.failure('Invalid OTP code. Please check your OTP code.');
   }
 
   /// Direct phone + password login for existing Customer or Provider accounts.
@@ -241,6 +259,10 @@ class BackendService {
         msg = d['error']?['message']?.toString() ?? d['message']?.toString();
       } else if (dioErr.response?.statusCode == 502 || dioErr.response?.statusCode == 503) {
         msg = 'Server gateway error. Please try again shortly.';
+      } else if (dioErr.type == DioExceptionType.connectionTimeout ||
+          dioErr.type == DioExceptionType.receiveTimeout ||
+          dioErr.type == DioExceptionType.connectionError) {
+        msg = 'Unable to connect to server. Please check your internet connection.';
       }
       if (msg != null && msg.isNotEmpty) {
         return OtpVerifyResult.failure(msg);

@@ -101,10 +101,10 @@ export async function requestOtp(phoneInput, context = {}) {
     if (userType === "customer") {
       if (context.purpose === "signup") {
         const { rows: existingCust } = await client.query(
-          `SELECT id, phone, password_hash FROM customers WHERE phone = $1`,
+          `SELECT id, phone FROM customers WHERE phone = $1`,
           [phone],
         );
-        if (existingCust[0] && existingCust[0].password_hash) {
+        if (existingCust.length > 0) {
           throw new AppError(
             409,
             "An account with this phone number already exists. Please log in instead.",
@@ -112,12 +112,7 @@ export async function requestOtp(phoneInput, context = {}) {
           );
         }
       }
-      await client.query(
-        `INSERT INTO customers (phone, name, created_at, updated_at)
-         VALUES ($1, 'Customer', now(), now())
-         ON CONFLICT (phone) DO NOTHING`,
-        [phone],
-      );
+      // Customer record will be created in verifyOtp upon successful OTP verification
     } else {
       const existing = await fetchProviderByPhone(client, phone);
       if (!existing) {
@@ -237,10 +232,10 @@ export async function verifyOtp(phoneInput, otp, options = {}) {
     if (options.userType === "customer") {
       if (options.purpose === "signup") {
         const { rows: existingCust } = await client.query(
-          `SELECT id, password_hash FROM customers WHERE phone = $1`,
+          `SELECT id, phone FROM customers WHERE phone = $1`,
           [phone],
         );
-        if (existingCust[0] && existingCust[0].password_hash) {
+        if (existingCust.length > 0) {
           throw new AppError(
             409,
             "An account with this phone number already exists. Please log in instead.",

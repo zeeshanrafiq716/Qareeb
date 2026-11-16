@@ -177,6 +177,7 @@ class CustomerAuthStore {
       await prefs.remove('auth_token');
       await prefs.setString('last_phone', rememberedPhone);
     } catch (_) {}
+    ApiClient.setGlobalToken(null);
     onDataChanged?.call();
   }
 

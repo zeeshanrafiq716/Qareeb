@@ -258,7 +258,17 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
       return;
     }
 
-    if (password.isNotEmpty && password.length < 6) {
+    if (password.isEmpty) {
+      setState(() {
+        _errorMessage = isArabic
+            ? 'يرجى تحديد كلمة المرور (6 خانات على الأقل)'
+            : 'Please set a password (at least 6 characters)';
+      });
+      _passwordFocusNode.requestFocus();
+      return;
+    }
+
+    if (password.length < 6) {
       setState(() {
         _errorMessage = isArabic
             ? 'كلمة المرور يجب أن لا تقل عن 6 خانات'
@@ -303,14 +313,24 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      if (result.alreadyExists) {
+      if (!result.success) {
         HapticFeedback.heavyImpact();
-        setState(() {
-          _isLoginMode = true;
-          _errorMessage = isArabic
-              ? 'يوجد حساب مسجل بهذا الرقم بالفعل. يرجى تسجيل الدخول'
-              : 'An account with this phone number already exists. Please log in.';
-        });
+        if (result.alreadyExists) {
+          setState(() {
+            _isLoginMode = true;
+            _errorMessage = isArabic
+                ? 'يوجد حساب مسجل بهذا الرقم بالفعل. يرجى تسجيل الدخول'
+                : 'An account with this phone number already exists. Please log in.';
+          });
+        } else {
+          setState(() {
+            _errorMessage = result.message.isNotEmpty
+                ? result.message
+                : (isArabic
+                    ? 'تعذر إرسال رمز التحقق. يرجى المحاولة لاحقاً'
+                    : 'Failed to send verification code. Please try again.');
+          });
+        }
         return;
       }
 
@@ -432,7 +452,8 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                 : screenHeight;
 
             final double safeTop = mediaQuery.padding.top;
-            final double headerTop = math.max(safeTop + 12.0, 48.0);
+            final double headerTop = math.max(safeTop + 8.0, 36.0);
+            final bool isKeyboardOpen = mediaQuery.viewInsets.bottom > 0;
 
             final Widget content = Container(
               width: containerWidth,
@@ -460,15 +481,17 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                     ),
                   ),
 
-                  // 2. Main Form Scrollable Area (Rendered underneath floating header controls)
+                  // 2. Main Form Area (Fixed & Non-scrollable when keyboard is closed)
                   Positioned.fill(
                     child: SingleChildScrollView(
-                      physics: const ClampingScrollPhysics(),
+                      physics: isKeyboardOpen
+                          ? const ClampingScrollPhysics()
+                          : const NeverScrollableScrollPhysics(),
                       padding: const EdgeInsets.symmetric(horizontal: 24.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SizedBox(height: headerTop + 16.0),
+                          SizedBox(height: headerTop + 8.0),
 
                           // Brand Badge with gentle floating and scale pulse animation
                           Center(
@@ -484,11 +507,11 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                 );
                               },
                               child: Container(
-                                width: 52.0,
-                                height: 52.0,
+                                width: 44.0,
+                                height: 44.0,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF0EAFE),
-                                  borderRadius: BorderRadius.circular(16.0),
+                                  borderRadius: BorderRadius.circular(14.0),
                                   border: Border.all(
                                     color: const Color(0xFF8B53FE).withValues(alpha: 0.18),
                                     width: 1.5,
@@ -509,7 +532,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                 child: const Center(
                                   child: Icon(
                                     Icons.person_pin_rounded,
-                                    size: 30.0,
+                                    size: 26.0,
                                     color: Color(0xFF8B53FE),
                                   ),
                                 ),
@@ -517,16 +540,16 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ),
                           ),
 
-                          const SizedBox(height: 12.0),
+                          const SizedBox(height: 8.0),
 
                           // Mode Switcher Pill: [ Log In | Sign Up ]
                           Container(
-                            height: 40.0,
+                            height: 38.0,
                             decoration: BoxDecoration(
                               color: const Color(0xFFF2F5F4),
                               borderRadius: BorderRadius.circular(22.0),
                             ),
-                            padding: const EdgeInsets.all(4.0),
+                            padding: const EdgeInsets.all(3.0),
                             child: Row(
                               children: [
                                 Expanded(
@@ -593,7 +616,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ),
                           ),
 
-                          const SizedBox(height: 14.0),
+                          const SizedBox(height: 10.0),
 
                           // Heading
                           Text(
@@ -602,15 +625,15 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                 : (isArabic ? 'إنشاء حساب جديد' : 'Create Your Account'),
                             textAlign: TextAlign.center,
                             style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                              fontSize: 22.0,
+                              fontSize: 20.0,
                               fontWeight: FontWeight.w700,
                               color: const Color(0xFF1C2926),
                               letterSpacing: -0.3,
-                              height: 1.25,
+                              height: 1.2,
                             ),
                           ),
 
-                          const SizedBox(height: 6.0),
+                          const SizedBox(height: 4.0),
 
                           // Subtitle
                           Padding(
@@ -625,15 +648,15 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                       : 'Enter your name and phone number to get started with services'),
                               textAlign: TextAlign.center,
                               style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                fontSize: 13.5,
+                                fontSize: 12.5,
                                 fontWeight: FontWeight.w400,
                                 color: const Color(0xFF6B7280),
-                                height: 1.4,
+                                height: 1.3,
                               ),
                             ),
                           ),
 
-                          const SizedBox(height: 18.0),
+                          const SizedBox(height: 12.0),
 
                           // Error banner if any
                           if (_errorMessage != null) ...[
@@ -671,7 +694,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 16.0),
+                            const SizedBox(height: 12.0),
                           ],
 
                           // 1. Full Name Field (Only in Sign Up mode)
@@ -679,15 +702,15 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             Text(
                               isArabic ? 'الاسم الكامل' : 'Full Name',
                               style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                fontSize: 13.0,
+                                fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFF1F2937),
                               ),
                             ),
-                            const SizedBox(height: 8.0),
+                            const SizedBox(height: 5.0),
 
                             Container(
-                              height: 52.0,
+                              height: 48.0,
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF2F5F4),
                                 borderRadius: BorderRadius.circular(12.0),
@@ -703,7 +726,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                 children: [
                                   const Icon(
                                     Icons.person_outline_rounded,
-                                    size: 20.0,
+                                    size: 19.0,
                                     color: Color(0xFF71717A),
                                   ),
                                   const SizedBox(width: 10.0),
@@ -713,7 +736,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                       focusNode: _nameFocusNode,
                                       textCapitalization: TextCapitalization.words,
                                       style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                        fontSize: 14.5,
+                                        fontSize: 14.0,
                                         fontWeight: FontWeight.w500,
                                         color: const Color(0xFF1C2926),
                                       ),
@@ -722,7 +745,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                             ? 'مثال: عبد الله المنصور'
                                             : 'e.g. Abdullah Al-Mansoor',
                                         hintStyle: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                          fontSize: 13.5,
+                                          fontSize: 13.0,
                                           fontWeight: FontWeight.w400,
                                           color: const Color(0xFF9CA3AF),
                                         ),
@@ -740,19 +763,19 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 20.0),
+                            const SizedBox(height: 10.0),
                           ],
 
                           // 2. Phone Number Field
                           Text(
                             isArabic ? 'رقم الهاتف' : 'Phone Number',
                             style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                              fontSize: 13.0,
+                              fontSize: 12.5,
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF1F2937),
                             ),
                           ),
-                          const SizedBox(height: 8.0),
+                          const SizedBox(height: 5.0),
 
                           // Phone input row: Number code on the LEFT side, number field on the RIGHT side
                           Directionality(
@@ -764,7 +787,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                   onTap: _handleCountryPicker,
                                   borderRadius: BorderRadius.circular(12.0),
                                   child: Container(
-                                    height: 52.0,
+                                    height: 48.0,
                                     padding: const EdgeInsets.symmetric(horizontal: 12.0),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFF2F5F4),
@@ -802,7 +825,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                 // Phone number input (Right side)
                                 Expanded(
                                   child: Container(
-                                    height: 52.0,
+                                    height: 48.0,
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFF2F5F4),
                                       borderRadius: BorderRadius.circular(12.0),
@@ -826,7 +849,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                           LengthLimitingTextInputFormatter(12),
                                         ],
                                         style: GoogleFonts.inter(
-                                          fontSize: 14.5,
+                                          fontSize: 14.0,
                                           fontWeight: FontWeight.w600,
                                           color: const Color(0xFF1C2926),
                                           letterSpacing: 0.5,
@@ -834,7 +857,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                         decoration: InputDecoration(
                                           hintText: _selectedCountry.exampleNumber,
                                           hintStyle: GoogleFonts.inter(
-                                            fontSize: 13.5,
+                                            fontSize: 13.0,
                                             fontWeight: FontWeight.w400,
                                             color: const Color(0xFF9CA3AF),
                                             letterSpacing: 0.0,
@@ -856,7 +879,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ),
                           ),
 
-                          const SizedBox(height: 20.0),
+                          const SizedBox(height: 10.0),
 
                           // 3. Password Field
                           Text(
@@ -864,15 +887,15 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                 ? (_isLoginMode ? 'كلمة المرور' : 'تعيين كلمة المرور')
                                 : (_isLoginMode ? 'Password' : 'Set Password'),
                             style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                              fontSize: 13.0,
+                              fontSize: 12.5,
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF1F2937),
                             ),
                           ),
-                          const SizedBox(height: 8.0),
+                          const SizedBox(height: 5.0),
 
                           Container(
-                            height: 52.0,
+                            height: 48.0,
                             decoration: BoxDecoration(
                               color: const Color(0xFFF2F5F4),
                               borderRadius: BorderRadius.circular(12.0),
@@ -888,7 +911,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                               children: [
                                 const Icon(
                                   Icons.lock_outline_rounded,
-                                  size: 20.0,
+                                  size: 19.0,
                                   color: Color(0xFF71717A),
                                 ),
                                 const SizedBox(width: 10.0),
@@ -898,7 +921,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                     focusNode: _passwordFocusNode,
                                     obscureText: _obscurePassword,
                                     style: GoogleFonts.inter(
-                                      fontSize: 14.5,
+                                      fontSize: 14.0,
                                       fontWeight: FontWeight.w500,
                                       color: const Color(0xFF1C2926),
                                     ),
@@ -911,7 +934,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                               ? 'Enter your password'
                                               : 'Enter password (min. 6 chars)'),
                                       hintStyle: GoogleFonts.inter(
-                                        fontSize: 13.5,
+                                        fontSize: 13.0,
                                         fontWeight: FontWeight.w400,
                                         color: const Color(0xFF9CA3AF),
                                       ),
@@ -931,7 +954,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                     _obscurePassword
                                         ? Icons.visibility_off_outlined
                                         : Icons.visibility_outlined,
-                                    size: 20.0,
+                                    size: 19.0,
                                     color: const Color(0xFF71717A),
                                   ),
                                   onPressed: () {
@@ -945,11 +968,11 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ),
                           ),
 
-                          const SizedBox(height: 24.0),
+                          const SizedBox(height: 14.0),
 
                           // 4. Continue / Log In Button (Never Disappears On Click)
                           ProviderAnimatedButton(
-                            height: 52.0,
+                            height: 48.0,
                             isLoading: _isLoading,
                             backgroundColor: const Color(0xFF252527),
                             foregroundColor: Colors.white,
@@ -961,7 +984,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                 ? (isArabic ? 'تسجيل الدخول' : 'Log In')
                                 : (isArabic ? 'إنشاء حساب ومتابعة' : 'Sign Up & Continue'),
                             textStyle: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                              fontSize: 15.0,
+                              fontSize: 14.5,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
@@ -974,7 +997,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ),
                           ),
 
-                          const SizedBox(height: 14.0),
+                          const SizedBox(height: 10.0),
 
                           // 1st subline: Switch between Login & Sign Up
                           Center(
@@ -982,14 +1005,14 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                               onTap: () => _switchMode(!_isLoginMode),
                               borderRadius: BorderRadius.circular(8.0),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 3.0),
                                 child: Text.rich(
                                   TextSpan(
                                     text: _isLoginMode
                                         ? (isArabic ? 'ليس لديك حساب؟ ' : "Don't have an account? ")
                                         : (isArabic ? 'لديك حساب بالفعل؟ ' : 'Already have an account? '),
                                     style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                      fontSize: 13.0,
+                                      fontSize: 12.5,
                                       color: const Color(0xFF71717A),
                                     ),
                                     children: [
@@ -998,7 +1021,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                                             ? (isArabic ? 'إنشاء حساب' : 'Sign Up')
                                             : (isArabic ? 'تسجيل الدخول' : 'Log In'),
                                         style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                          fontSize: 13.0,
+                                          fontSize: 12.5,
                                           fontWeight: FontWeight.w700,
                                           color: const Color(0xFF8B53FE),
                                         ),
@@ -1010,7 +1033,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ),
                           ),
 
-                          const SizedBox(height: 14.0),
+                          const SizedBox(height: 10.0),
 
                           // 2nd subline: Security Notice
                           Row(
@@ -1018,16 +1041,16 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             children: [
                               const Icon(
                                 Icons.lock_outline_rounded,
-                                size: 14.0,
+                                size: 13.0,
                                 color: Color(0xFF9CA3AF),
                               ),
-                              const SizedBox(width: 6.0),
+                              const SizedBox(width: 5.0),
                               Text(
                                 isArabic
                                     ? 'بياناتك الشخصية آمنة ومشفرة تماماً'
                                     : 'Your information is safe and private with us',
                                 style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                  fontSize: 11.5,
+                                  fontSize: 11.0,
                                   fontWeight: FontWeight.w400,
                                   color: const Color(0xFF71717A),
                                 ),
@@ -1035,7 +1058,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                             ],
                           ),
 
-                          const SizedBox(height: 14.0),
+                          const SizedBox(height: 10.0),
 
                           // 3rd subline: Switcher to Partner Mode
                           Center(
@@ -1052,19 +1075,19 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                               },
                               borderRadius: BorderRadius.circular(8.0),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 3.0),
                                 child: Text.rich(
                                   TextSpan(
                                     text: isArabic ? 'هل أنت مزود خدمة؟ ' : 'Are you a service provider? ',
                                     style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                      fontSize: 13.0,
+                                      fontSize: 12.5,
                                       color: const Color(0xFF71717A),
                                     ),
                                     children: [
                                       TextSpan(
                                         text: isArabic ? 'انضم كمزود' : 'Join as Partner',
                                         style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                          fontSize: 13.0,
+                                          fontSize: 12.5,
                                           fontWeight: FontWeight.w600,
                                           color: const Color(0xFF8B53FE),
                                         ),
@@ -1077,7 +1100,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                           ),
 
                           SizedBox(
-                            height: math.max(28.0, MediaQuery.of(context).padding.bottom + 18.0),
+                            height: math.max(12.0, mediaQuery.padding.bottom + 6.0),
                           ),
                         ],
                       ),

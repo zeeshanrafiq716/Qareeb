@@ -105,4 +105,45 @@ describe("Phone + Password Authentication (Customer & Provider)", () => {
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("ACCOUNT_NOT_FOUND");
   });
+
+  it("prevents duplicate customer signup with same phone number", async () => {
+    const phone = "+966501112233";
+
+    // 1. Initial customer signup via OTP
+    await api()
+      .post("/api/v1/auth/otp/request")
+      .send({ phone, channel: "sms", userType: "customer", purpose: "signup" });
+
+    const verifyRes = await api()
+      .post("/api/v1/auth/otp/verify")
+      .send({
+        phone,
+        otp: "123456",
+        name: "First Customer",
+        password: "securepassword123",
+        userType: "customer",
+        purpose: "signup",
+      });
+    expect(verifyRes.status).toBe(200);
+    expect(verifyRes.body.data.token).toBeTruthy();
+
+    // 2. Second signup attempt with same phone in requestOtp must fail with 409
+    const dupRequestRes = await api()
+      .post("/api/v1/auth/otp/request")
+      .send({ phone, channel: "sms", userType: "customer", purpose: "signup" });
+
+    expect(dupRequestRes.status).toBe(409);
+    expect(dupRequestRes.body.error.code).toBe("ACCOUNT_ALREADY_EXISTS");
+
+    // 3. User can log in with password
+    const loginRes = await api()
+      .post("/api/v1/auth/login")
+      .send({
+        phone,
+        password: "securepassword123",
+        userType: "customer",
+      });
+    expect(loginRes.status).toBe(200);
+    expect(loginRes.body.data.customer.phone).toBe(phone);
+  });
 });

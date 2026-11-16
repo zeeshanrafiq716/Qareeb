@@ -86,8 +86,8 @@ class _CustomerOtpVerificationScreenState
       if (!mounted) return;
       setState(() => _isVerifying = false);
 
-      // In production or test sandbox mode, valid code completes customer signup
-      if (result.success || otp == (widget.dummyOtp ?? '123456') || otp == '123456') {
+      // Only proceed when backend verification succeeds
+      if (result.success) {
         final savedName = widget.fullName.isNotEmpty
             ? widget.fullName
             : (CustomerAuthStore.instance.fullName.isNotEmpty
@@ -132,28 +132,21 @@ class _CustomerOtpVerificationScreenState
           ),
         );
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() => _isVerifying = false);
-        // Fallback for offline sandbox testing
-        if (otp == '123456' || otp == widget.dummyOtp) {
-          final savedName = widget.fullName.isNotEmpty
-              ? widget.fullName
-              : (CustomerAuthStore.instance.fullName.isNotEmpty
-                  ? CustomerAuthStore.instance.fullName
-                  : 'Customer');
-
-          await CustomerAuthStore.instance.signUp(
-            fullName: savedName,
-            phone: phone,
-            countryCode: widget.countryCode.isNotEmpty ? widget.countryCode : '+966',
-          );
-          if (!mounted) return;
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-            (route) => false,
-          );
-        }
+        final isArabic = context.isArabic;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            backgroundColor: Colors.redAccent,
+            content: Text(
+              isArabic ? 'تعذر إتمام التحقق. يرجى المحاولة لاحقاً' : 'Verification failed. Please try again.',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+          ),
+        );
       }
     }
   }
@@ -167,11 +160,29 @@ class _CustomerOtpVerificationScreenState
     );
 
     if (!mounted) return;
+    final isArabic = context.isArabic;
+
+    if (!result.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          backgroundColor: Colors.redAccent,
+          content: Text(
+            result.message.isNotEmpty
+                ? result.message
+                : (isArabic ? 'فشل إعادة إرسال الرمز' : 'Failed to resend code'),
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _currentOtp = result.otp;
     });
 
-    final isArabic = context.isArabic;
     if (result.smsDelivered) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -377,7 +388,9 @@ class _CustomerOtpVerificationScreenState
                             children: [
                               Positioned.fill(
                                 child: SingleChildScrollView(
-                                  physics: const ClampingScrollPhysics(),
+                                  physics: isKeyboardOpen
+                                      ? const ClampingScrollPhysics()
+                                      : const NeverScrollableScrollPhysics(),
                                   padding: EdgeInsets.only(
                                     top: isKeyboardOpen ? 12.0 : 16.0,
                                     left: 20.0,
