@@ -55,3 +55,4 @@ echo "=================================================="
 curl -s -i http://127.0.0.1:3000/api/v1/health || echo "[!] Failed to connect to port 3000"
 echo ""
 echo "Done! If 200 OK is shown above, https://zesho.tech is now online."
+
