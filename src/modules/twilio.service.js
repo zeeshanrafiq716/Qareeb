@@ -1,9 +1,21 @@
-import twilio from "twilio";
 import { env } from "../config/env.js";
 import { logger } from "../logger.js";
 import { normalizePhone } from "../utils/phone.js";
 
 let cachedClient = null;
+let twilioFactory = null;
+
+async function getTwilioFactory() {
+  if (twilioFactory) return twilioFactory;
+  try {
+    const mod = await import("twilio");
+    twilioFactory = mod.default || mod;
+    return twilioFactory;
+  } catch (err) {
+    logger.warn({ err: err.message }, "[Twilio] Optional twilio package not found");
+    return null;
+  }
+}
 
 /**
  * Returns true if Twilio integration is enabled and has required credentials.
@@ -20,11 +32,13 @@ export function isTwilioConfigured() {
 /**
  * Get or initialize the Twilio REST API client.
  */
-export function getTwilioClient() {
+export async function getTwilioClient() {
   if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN) {
     return null;
   }
   if (!cachedClient) {
+    const twilio = await getTwilioFactory();
+    if (!twilio) return null;
     cachedClient = twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
   }
   return cachedClient;
@@ -78,7 +92,7 @@ export async function sendTwilioOtp({ phone, otp, channel = "sms", userType = "u
     };
   }
 
-  const client = getTwilioClient();
+  const client = await getTwilioClient();
   if (!client) {
     logger.warn("[Twilio] Failed to initialize Twilio client with provided credentials.");
     return { success: false, channel, error: "twilio_client_unavailable" };
@@ -178,7 +192,7 @@ export async function testTwilioConnection({ testPhone, channel = "sms" } = {}) 
     };
   }
 
-  const client = getTwilioClient();
+  const client = await getTwilioClient();
   try {
     const account = await client.api.v2010.accounts(env.TWILIO_ACCOUNT_SID).fetch();
 
