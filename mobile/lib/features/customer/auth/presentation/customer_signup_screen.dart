@@ -452,8 +452,8 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                 : screenHeight;
 
             final double safeTop = mediaQuery.padding.top;
-            final double headerTop = math.max(safeTop + 8.0, 36.0);
-            final bool isKeyboardOpen = mediaQuery.viewInsets.bottom > 0;
+            final double toggleTop = math.max(safeTop + 14.0, 48.0);
+            final double contentTopPadding = toggleTop + 54.0;
 
             final Widget content = Container(
               width: containerWidth,
@@ -466,7 +466,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                     top: 0.0,
                     left: 0.0,
                     right: 0.0,
-                    height: 240.0,
+                    height: 260.0,
                     child: Container(
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
@@ -481,17 +481,17 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                     ),
                   ),
 
-                  // 2. Main Form Area (Fixed & Non-scrollable when keyboard is closed)
+                  // 2. Main Form Area with comfortable top padding & smooth scroll
                   Positioned.fill(
                     child: SingleChildScrollView(
-                      physics: isKeyboardOpen
-                          ? const ClampingScrollPhysics()
-                          : const NeverScrollableScrollPhysics(),
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
                       padding: const EdgeInsets.symmetric(horizontal: 24.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SizedBox(height: headerTop + 8.0),
+                          SizedBox(height: contentTopPadding),
 
                           // Brand Badge with gentle floating and scale pulse animation
                           Center(
@@ -1100,7 +1100,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                           ),
 
                           SizedBox(
-                            height: math.max(12.0, mediaQuery.padding.bottom + 6.0),
+                            height: math.max(24.0, mediaQuery.padding.bottom + 16.0),
                           ),
                         ],
                       ),
@@ -1109,7 +1109,7 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
 
                   // 3. Floating Language switch toggle in top header (Foreground layer - fully clickable)
                   Positioned(
-                    top: headerTop,
+                    top: toggleTop,
                     right: 20.0,
                     child: const ProviderAnimatedLanguageToggle(),
                   ),
