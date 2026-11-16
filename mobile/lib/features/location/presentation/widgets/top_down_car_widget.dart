@@ -11,11 +11,12 @@ import '../../../../core/localization/app_locale.dart';
 /// - Sleek, ultra-compact luxury pill badge (capsule) with glowing emerald status dot,
 ///   clean driver name, and purple navigation arrow with distance
 /// - Collision-resistant layout preventing overlapping clutter on the map
-class TopDownCarWidget extends StatelessWidget {
+class TopDownCarWidget extends StatefulWidget {
   final double width;
   final double height;
   final double angle; // in degrees
   final double opacity;
+  final String? carId;
   final String? driverName;
   final double? distanceKm;
   final bool showBadge;
@@ -27,12 +28,28 @@ class TopDownCarWidget extends StatelessWidget {
   final bool alignBadgeLeft;
   final bool alignBadgeBelow;
 
+  // Global static cache ensuring that once a car marker is clicked anywhere,
+  // it stays permanently white and never reverts to purple.
+  static final Set<String> _globallyClickedCars = <String>{};
+
+  static void markAsClicked(String? id) {
+    if (id != null && id.trim().isNotEmpty) {
+      _globallyClickedCars.add(id.trim());
+    }
+  }
+
+  static bool isClicked(String? id) {
+    if (id == null || id.trim().isEmpty) return false;
+    return _globallyClickedCars.contains(id.trim());
+  }
+
   const TopDownCarWidget({
     super.key,
     this.width = 18.0,
     this.height = 34.0,
     required this.angle,
     this.opacity = 1.0,
+    this.carId,
     this.driverName,
     this.distanceKm,
     this.showBadge = true,
@@ -46,23 +63,44 @@ class TopDownCarWidget extends StatelessWidget {
   });
 
   @override
+  State<TopDownCarWidget> createState() => _TopDownCarWidgetState();
+}
+
+class _TopDownCarWidgetState extends State<TopDownCarWidget> {
+  bool _wasClickedLocally = false;
+
+  void _handleTap() {
+    _wasClickedLocally = true;
+    if (widget.carId != null) TopDownCarWidget.markAsClicked(widget.carId);
+    if (widget.driverName != null) TopDownCarWidget.markAsClicked(widget.driverName);
+    if (mounted) setState(() {});
+    widget.onTap?.call();
+  }
+
+  bool get _effectiveWhite {
+    if (widget.isWhite || widget.isSelected || _wasClickedLocally) return true;
+    if (widget.carId != null && TopDownCarWidget.isClicked(widget.carId)) return true;
+    if (widget.driverName != null && TopDownCarWidget.isClicked(widget.driverName)) return true;
+    return false;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final bool isSel = isSelected == true;
-    final bool isWh = isWhite == true;
-    final bool effectiveWhite = isSel || isWh;
+    final bool isSel = widget.isSelected == true;
+    final bool effectiveWhite = _effectiveWhite;
 
     // 1. Vector Car Render
     // Heading 0 deg = facing UP. Rotation aligns nose along heading vector.
     final Widget carGraphic = SizedBox(
-      width: width,
-      height: height,
+      width: widget.width,
+      height: widget.height,
       child: Transform.rotate(
-        angle: angle * math.pi / 180.0,
+        angle: widget.angle * math.pi / 180.0,
         alignment: Alignment.center,
         child: CustomPaint(
-          size: Size(width, height),
+          size: Size(widget.width, widget.height),
           painter: _TopDownVectorCarPainter(
-            roofColor: effectiveWhite ? Colors.white : bodyColor,
+            roofColor: effectiveWhite ? Colors.white : widget.bodyColor,
             isSelected: isSel,
             isWhite: effectiveWhite,
           ),
@@ -80,15 +118,15 @@ class TopDownCarWidget extends StatelessWidget {
     );
 
     // If badge is disabled (e.g. in small provider toggle or compact icon), return the car graphic directly
-    if (showBadge != true || driverName == null) {
+    if (widget.showBadge != true || widget.driverName == null) {
       return SizedBox(
-        width: width,
-        height: height,
+        width: widget.width,
+        height: widget.height,
         child: GestureDetector(
-          onTap: onTap,
+          onTap: _handleTap,
           behavior: HitTestBehavior.opaque,
           child: Opacity(
-            opacity: opacity,
+            opacity: widget.opacity,
             child: animatedCar,
           ),
         ),
@@ -105,10 +143,10 @@ class TopDownCarWidget extends StatelessWidget {
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
-          onTap: onTap,
+          onTap: _handleTap,
           behavior: HitTestBehavior.opaque,
           child: Opacity(
-            opacity: opacity,
+            opacity: widget.opacity,
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.topCenter,
@@ -117,17 +155,17 @@ class TopDownCarWidget extends StatelessWidget {
                 Positioned(
                   top: 0.0,
                   child: _PremiumSpeechBubbleBadge(
-                    driverName: driverName!,
-                    distanceKm: distanceKm,
+                    driverName: widget.driverName!,
+                    distanceKm: widget.distanceKm,
                     isSelected: isSel,
                     isWhite: effectiveWhite,
-                    isInsideRadius: isInsideRadius,
+                    isInsideRadius: widget.isInsideRadius,
                   ),
                 ),
 
                 // 2. Car Icon centered directly beneath the speech bubble caret
                 Positioned(
-                  top: (distanceKm != null) ? 36.0 : 22.0,
+                  top: (widget.distanceKm != null) ? 36.0 : 22.0,
                   child: animatedCar,
                 ),
               ],
@@ -158,7 +196,7 @@ class _TopDownVectorCarPainter extends CustomPainter {
     final double w = size.width;
     final double h = size.height;
 
-    // 1. Multi-tier Ground Shadow (Ambient diffuse shadow + Contact shadow + Purple glow if selected)
+    // 1. Multi-tier Ground Shadow (Ambient diffuse shadow + Contact shadow)
     // Ambient diffuse shadow
     final RRect ambientShadow = RRect.fromRectAndRadius(
       Rect.fromCenter(
@@ -171,7 +209,7 @@ class _TopDownVectorCarPainter extends CustomPainter {
     canvas.drawRRect(
       ambientShadow,
       Paint()
-        ..color = isSelected ? const Color(0x558B53FE) : const Color(0x30000000)
+        ..color = const Color(0x35000000)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
     );
 
@@ -189,7 +227,7 @@ class _TopDownVectorCarPainter extends CustomPainter {
       Paint()..color = const Color(0x35000000),
     );
 
-    // If selected, an outer luxury neon aura
+    // If selected, a crisp subtle platinum elevation aura
     if (isSelected) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
@@ -201,8 +239,8 @@ class _TopDownVectorCarPainter extends CustomPainter {
           Radius.circular(w * 0.5),
         ),
         Paint()
-          ..color = const Color(0x388B53FE)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.0),
+          ..color = const Color(0x2264748B)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0),
       );
     }
 
@@ -292,13 +330,13 @@ class _TopDownVectorCarPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     canvas.drawPath(body, bodyFill);
 
-    // Subtle perimeter contour stroke (brand purple accent outline if selected)
+    // Perimeter contour stroke (sleek silver/slate contour - never purple)
     canvas.drawPath(
       body,
       Paint()
-        ..color = isSelected ? const Color(0xFF8B53FE) : const Color(0xFFCBD5E1)
+        ..color = (isSelected || isWhite) ? const Color(0xFF94A3B8) : const Color(0xFFCBD5E1)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = isSelected ? 1.2 : 0.75,
+        ..strokeWidth = isSelected ? 1.1 : 0.75,
     );
 
     // Sculpted Hood Creases (Dual aerodynamic character lines)
@@ -495,16 +533,16 @@ class _PremiumSpeechBubbleBadge extends ConsumerWidget {
             borderRadius: BorderRadius.circular(10.0),
             border: Border.all(
               color: isHighlighted
-                  ? const Color(0xFF8B53FE)
+                  ? const Color(0xFF10B981)
                   : const Color(0xFFE2E8F0),
-              width: isHighlighted ? 1.4 : 1.0,
+              width: isHighlighted ? 1.3 : 1.0,
             ),
             boxShadow: [
               BoxShadow(
                 color: isHighlighted
-                    ? const Color(0x358B53FE)
+                    ? const Color(0x2210B981)
                     : const Color(0x18000000),
-                blurRadius: isHighlighted ? 8.0 : 4.0,
+                blurRadius: isHighlighted ? 6.0 : 4.0,
                 offset: const Offset(0, 2),
               ),
             ],

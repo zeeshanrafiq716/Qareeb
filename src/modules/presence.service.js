@@ -84,13 +84,13 @@ export async function touchLastSeen(providerId) {
 
 export async function onSocketDisconnect(providerId, socketId) {
   const remaining = await presenceStore.removeSession(providerId, socketId);
-  if (remaining === 0) {
-    await setOffline(providerId);
-  }
+  // Provider presence is strictly controlled by the provider's online/offline toggle.
+  // Socket disconnect (e.g. app closed, phone locked, or customer logout) must NOT
+  // turn the provider offline in the database so the vehicle remains visible on the map.
   return remaining;
 }
 
-/** Mark DB-online providers offline when heartbeat is too old (and no live socket). */
+/** Clean stale presence sessions while preserving provider manual online status in DB. */
 export async function sweepStaleProviders() {
   const { rows } = await query(
     `SELECT id FROM providers
@@ -106,7 +106,9 @@ export async function sweepStaleProviders() {
       await touchLastSeen(row.id);
       continue;
     }
-    await setOffline(row.id);
+    // Only clean stale socket/ephemeral store sessions.
+    // Provider stays online in DB until they explicitly toggle offline.
+    await presenceStore.removeSession(row.id).catch(() => {});
     updated += 1;
   }
   return updated;

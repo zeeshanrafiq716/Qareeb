@@ -365,6 +365,7 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
                         width: 90.0,
                         height: 74.0,
                         child: TopDownCarWidget(
+                          carId: widget.driverName ?? 'Usman',
                           width: 17.0,
                           height: 29.0,
                           angle: carAngle,

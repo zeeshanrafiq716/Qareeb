@@ -264,7 +264,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
   late final AnimationController _recenterController;
 
   String? _selectedCarId;
-  final Set<String> _clickedCarIds = <String>{};
+  static final Set<String> _clickedCarIds = <String>{};
   Set<String> get _safeClickedCarIds => _clickedCarIds;
   bool _isDraggingMap = false;
   bool _isFullViewMode = false;
@@ -360,7 +360,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
       final Color roofCol = colors[index % colors.length];
       final String provId = p.publicId.isNotEmpty
           ? p.publicId
-          : (p.id != 0 ? '${p.id}' : 'driver_${p.name}_$index');
+          : (p.id != 0 ? '${p.id}' : (p.name.isNotEmpty ? 'driver_${p.name}' : 'driver_$index'));
 
       final newPos = MapLatLng(p.latitude, p.longitude);
 
@@ -1049,7 +1049,12 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                           final double carY = MercatorProjection.latToY(currentGps.latitude, _zoom) - topPx;
 
                                           final bool isSelected = _selectedCarId == driver.id;
-                                          final bool isWhite = _safeClickedCarIds.contains(driver.id);
+                                          final bool isWhite = _safeClickedCarIds.contains(driver.id) ||
+                                              (driver.publicId != null && _safeClickedCarIds.contains(driver.publicId!)) ||
+                                              _safeClickedCarIds.contains(driver.name) ||
+                                              TopDownCarWidget.isClicked(driver.id) ||
+                                              (driver.publicId != null && TopDownCarWidget.isClicked(driver.publicId!)) ||
+                                              TopDownCarWidget.isClicked(driver.name);
                                           final double realDistKm = driver.liveDistanceKm(currentGps, userPos);
                                           final bool isInsideRadius = (realDistKm * 1000.0) <= targetCircleRadiusMeters;
 
@@ -1061,6 +1066,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                             height: 68.0,
                                             child: TopDownCarWidget(
                                               key: ValueKey('driver_car_${driver.id}'),
+                                              carId: driver.id,
                                               width: 18.0,
                                               height: 35.0,
                                               angle: driver.heading, // dynamic road bearing or heading
@@ -1074,9 +1080,18 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                               isInsideRadius: isInsideRadius,
                                               onTap: () {
                                                 HapticFeedback.selectionClick();
+                                                TopDownCarWidget.markAsClicked(driver.id);
+                                                if (driver.publicId != null) {
+                                                  TopDownCarWidget.markAsClicked(driver.publicId!);
+                                                }
+                                                TopDownCarWidget.markAsClicked(driver.name);
+                                                _clickedCarIds.add(driver.id);
+                                                if (driver.publicId != null) {
+                                                  _clickedCarIds.add(driver.publicId!);
+                                                }
+                                                _clickedCarIds.add(driver.name);
                                                 setState(() {
                                                   _selectedCarId = driver.id;
-                                                  _clickedCarIds.add(driver.id);
                                                 });
                                                 ProviderDetailCardWidget.showAsBottomSheet(
                                                   context: context,
