@@ -39,15 +39,27 @@ export async function recordFunnelEvent({
 
   if (CALL_LOG_EVENTS.has(eventType)) {
     const initiated = await getStatus(ENTITY.CALL, "initiated");
-    await query(
-      `INSERT INTO call_logs (provider_id, status_id, notes)
-       VALUES ($1, $2, $3)`,
-      [
-        providerId,
-        initiated.id,
-        `customer_${eventType}${sessionId ? ` session=${sessionId}` : ""}`,
-      ],
-    );
+    // Ensure 1 customer calling 1 provider only logs once in call_logs per day
+    const existingCall = sessionId
+      ? await query(
+          `SELECT id FROM call_logs
+           WHERE provider_id = $1 AND notes LIKE $2
+             AND created_at >= date_trunc('day', now()) LIMIT 1`,
+          [providerId, `%session=${sessionId}%`],
+        )
+      : { rowCount: 0 };
+
+    if (!existingCall.rowCount) {
+      await query(
+        `INSERT INTO call_logs (provider_id, status_id, notes)
+         VALUES ($1, $2, $3)`,
+        [
+          providerId,
+          initiated.id,
+          `customer_${eventType}${sessionId ? ` session=${sessionId}` : ""}`,
+        ],
+      );
+    }
   }
 
   return rows[0];
@@ -232,17 +244,20 @@ export async function getProviderQuickStats(rawProviderId) {
 
   if (providerId) {
     try {
+      // Deduplicate: 1 customer to 1 provider counts as 1 unique view and 1 unique contact today
       const { rows: todayRows } = await query(
-        `SELECT event_type, COUNT(*)::int AS count
+        `SELECT
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE event_type IN ('profile_view', 'profile_click'))::int AS views_today,
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE event_type IN ('call_click', 'whatsapp_click', 'share_location_click'))::int AS contacts_today
          FROM customer_funnel_events
          WHERE provider_id = $1
-           AND created_at >= date_trunc('day', now())
-         GROUP BY event_type`,
+           AND created_at >= date_trunc('day', now())`,
         [providerId],
       );
-      const byType = Object.fromEntries(todayRows.map((r) => [r.event_type, r.count]));
-      viewsToday = (byType.profile_view ?? 0) + (byType.profile_click ?? 0);
-      contactsToday = (byType.call_click ?? 0) + (byType.whatsapp_click ?? 0);
+      if (todayRows[0]) {
+        viewsToday = todayRows[0].views_today ?? 0;
+        contactsToday = todayRows[0].contacts_today ?? 0;
+      }
     } catch (_) {}
   }
 
@@ -276,14 +291,14 @@ export async function getProviderDashboardAnalytics(rawProviderId) {
 
   if (providerId) {
     try {
-      // 1. Profile views intervals (counts profile_view and profile_click)
+      // 1. Profile views intervals: unique customers who viewed provider profile
       const { rows: viewsSummary } = await query(
         `SELECT
-           COUNT(*) FILTER (WHERE created_at >= date_trunc('day', now()))::int AS today,
-           COUNT(*) FILTER (WHERE created_at >= date_trunc('day', now() - INTERVAL '1 day') AND created_at < date_trunc('day', now()))::int AS yesterday,
-           COUNT(*) FILTER (WHERE created_at >= now() - INTERVAL '10 days')::int AS last10,
-           COUNT(*) FILTER (WHERE created_at >= now() - INTERVAL '15 days')::int AS last15,
-           COUNT(*) FILTER (WHERE created_at >= now() - INTERVAL '20 days')::int AS last20
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE created_at >= date_trunc('day', now()))::int AS today,
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE created_at >= date_trunc('day', now() - INTERVAL '1 day') AND created_at < date_trunc('day', now()))::int AS yesterday,
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE created_at >= now() - INTERVAL '10 days')::int AS last10,
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE created_at >= now() - INTERVAL '15 days')::int AS last15,
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE created_at >= now() - INTERVAL '20 days')::int AS last20
          FROM customer_funnel_events
          WHERE provider_id = $1 AND event_type IN ('profile_view', 'profile_click')`,
         [providerId],
@@ -297,18 +312,19 @@ export async function getProviderDashboardAnalytics(rawProviderId) {
         last20Views = viewsSummary[0].last20 || 0;
       }
 
-      // 2. Contacts summary
+      // 2. Contacts summary: unique customers who contacted (call, whatsapp, or send location)
+      // Even if 1 customer clicks call, whatsapp, or location multiple times, they count as 1
       const { rows: contactsSummary } = await query(
         `SELECT
-           COUNT(*) FILTER (WHERE created_at >= date_trunc('day', now()))::int AS today,
-           COUNT(*) FILTER (WHERE created_at >= date_trunc('day', now() - INTERVAL '1 day') AND created_at < date_trunc('day', now()))::int AS yesterday,
-           COUNT(*) FILTER (WHERE created_at >= now() - INTERVAL '10 days')::int AS last10,
-           COUNT(*) FILTER (WHERE created_at >= now() - INTERVAL '15 days')::int AS last15,
-           COUNT(*) FILTER (WHERE created_at >= now() - INTERVAL '20 days')::int AS last20,
-           COUNT(*) FILTER (WHERE created_at >= date_trunc('day', now()) AND event_type = 'call_click')::int AS calls_today,
-           COUNT(*) FILTER (WHERE created_at >= date_trunc('day', now()) AND event_type = 'whatsapp_click')::int AS wa_today
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE created_at >= date_trunc('day', now()))::int AS today,
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE created_at >= date_trunc('day', now() - INTERVAL '1 day') AND created_at < date_trunc('day', now()))::int AS yesterday,
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE created_at >= now() - INTERVAL '10 days')::int AS last10,
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE created_at >= now() - INTERVAL '15 days')::int AS last15,
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE created_at >= now() - INTERVAL '20 days')::int AS last20,
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE created_at >= date_trunc('day', now()) AND event_type = 'call_click')::int AS calls_today,
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE created_at >= date_trunc('day', now()) AND event_type IN ('whatsapp_click', 'share_location_click'))::int AS wa_today
          FROM customer_funnel_events
-         WHERE provider_id = $1 AND event_type IN ('call_click', 'whatsapp_click')`,
+         WHERE provider_id = $1 AND event_type IN ('call_click', 'whatsapp_click', 'share_location_click')`,
         [providerId],
       );
 
@@ -326,8 +342,8 @@ export async function getProviderDashboardAnalytics(rawProviderId) {
       const { rows: weeklyRows } = await query(
         `SELECT
            EXTRACT(ISODOW FROM created_at)::int AS day_of_week,
-           COUNT(*) FILTER (WHERE event_type IN ('profile_view', 'profile_click'))::int AS views,
-           COUNT(*) FILTER (WHERE event_type IN ('call_click', 'whatsapp_click'))::int AS contacts
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE event_type IN ('profile_view', 'profile_click'))::int AS views,
+           COUNT(DISTINCT COALESCE(customer_session_id, id::text)) FILTER (WHERE event_type IN ('call_click', 'whatsapp_click', 'share_location_click'))::int AS contacts
          FROM customer_funnel_events
          WHERE provider_id = $1
            AND created_at >= date_trunc('week', now())

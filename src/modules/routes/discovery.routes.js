@@ -74,6 +74,16 @@ discoveryRoutes.post(
   "/events",
   validate(customerFunnelEventSchema),
   asyncHandler(async (req, res) => {
-    created(res, await trackCustomerDiscoveryEvent(req.body));
+    const session =
+      customerSessionId(req, req.body.sessionId) ||
+      (req.user ? `user_${req.user.id}` : null) ||
+      `ip_${req.ip || "anon"}`;
+    created(
+      res,
+      await trackCustomerDiscoveryEvent({
+        ...req.body,
+        sessionId: session,
+      }),
+    );
   }),
 );

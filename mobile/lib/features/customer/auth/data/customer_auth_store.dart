@@ -104,6 +104,9 @@ class CustomerAuthStore {
       if (token != null && token.isNotEmpty) {
         ApiClient.setGlobalToken(token);
       }
+      if (data.phone.isNotEmpty) {
+        ApiClient.setGlobalCustomerSession('customer_${data.phone.replaceAll(RegExp(r'\D'), '')}');
+      }
       isLoaded = true;
     } catch (e) {
       debugPrint('Error loading customer auth data: $e');
@@ -134,6 +137,9 @@ class CustomerAuthStore {
       isSignedUp: true,
     );
     await saveToPrefs();
+    if (phone.trim().isNotEmpty) {
+      ApiClient.setGlobalCustomerSession('customer_${phone.trim().replaceAll(RegExp(r'\D'), '')}');
+    }
     onDataChanged?.call();
   }
 
@@ -150,6 +156,9 @@ class CustomerAuthStore {
       isSignedUp: true,
     );
     await saveToPrefs();
+    if (phone.trim().isNotEmpty) {
+      ApiClient.setGlobalCustomerSession('customer_${phone.trim().replaceAll(RegExp(r'\D'), '')}');
+    }
     if (token != null && token.isNotEmpty) {
       try {
         final prefs = await SharedPreferences.getInstance();
@@ -178,6 +187,7 @@ class CustomerAuthStore {
       await prefs.setString('last_phone', rememberedPhone);
     } catch (_) {}
     ApiClient.setGlobalToken(null);
+    ApiClient.setGlobalCustomerSession(null);
     onDataChanged?.call();
   }
 

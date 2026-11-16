@@ -4,12 +4,24 @@ import '../config/app_config.dart';
 
 class ApiClient {
   static String? _globalAuthToken;
+  static String? _globalCustomerSessionId;
 
   static void setGlobalToken(String? token) {
     _globalAuthToken = token;
   }
 
   static String? get globalAuthToken => _globalAuthToken;
+
+  static void setGlobalCustomerSession(String? sessionId) {
+    _globalCustomerSessionId = sessionId;
+  }
+
+  static String get globalCustomerSessionId {
+    if (_globalCustomerSessionId == null || _globalCustomerSessionId!.isEmpty) {
+      _globalCustomerSessionId = 'cust_${DateTime.now().millisecondsSinceEpoch}';
+    }
+    return _globalCustomerSessionId!;
+  }
 
   late final Dio _dio;
 
@@ -19,6 +31,7 @@ class ApiClient {
     final initialHeaders = <String, dynamic>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'X-Customer-Session': globalCustomerSessionId,
     };
     if (token != null && token.isNotEmpty) {
       initialHeaders['Authorization'] = 'Bearer $token';
@@ -41,6 +54,9 @@ class ApiClient {
               effectiveToken.isNotEmpty &&
               !options.headers.containsKey('Authorization')) {
             options.headers['Authorization'] = 'Bearer $effectiveToken';
+          }
+          if (!options.headers.containsKey('X-Customer-Session')) {
+            options.headers['X-Customer-Session'] = globalCustomerSessionId;
           }
           developer.log('--> ${options.method} ${options.uri}', name: 'ApiClient');
           return handler.next(options);

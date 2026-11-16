@@ -638,7 +638,7 @@ class BackendService {
     return ProviderDashboardModel.defaults;
   }
 
-  /// Record customer discovery & engagement funnel event (profile_view, call_click, whatsapp_click)
+  /// Record customer discovery & engagement funnel event (profile_view, call_click, whatsapp_click, share_location_click)
   Future<bool> trackCustomerEvent({
     required String event,
     required String providerPublicId,
@@ -646,13 +646,14 @@ class BackendService {
     double? latitude,
     double? longitude,
   }) async {
+    final effectiveSessionId = sessionId ?? ApiClient.globalCustomerSessionId;
     try {
       final response = await _client.post(
         ApiEndpoints.discoveryEvents,
         data: {
           'event': event,
           'providerPublicId': providerPublicId,
-          if (sessionId != null) 'sessionId': sessionId,
+          'sessionId': effectiveSessionId,
           if (latitude != null) 'latitude': latitude,
           if (longitude != null) 'longitude': longitude,
         },
