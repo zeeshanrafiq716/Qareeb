@@ -11,15 +11,11 @@ class AppConfig {
   static const String productionBaseUrl = 'https://zesho.tech';
 
   /// Resolves the default backend base URL:
-  /// - Web / Chrome debug: http://localhost:3000
-  /// - Android Emulator: http://10.0.2.2:3000
-  /// - Physical device / Production: https://zesho.tech
+  /// - Web local debug: http://localhost:3000
+  /// - Mobile / Production: https://zesho.tech
   static String get defaultBaseUrl {
-    if (kIsWeb) {
+    if (kIsWeb && kDebugMode) {
       return 'http://localhost:3000';
-    }
-    if (kDebugMode && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:3000';
     }
     return productionBaseUrl;
   }
