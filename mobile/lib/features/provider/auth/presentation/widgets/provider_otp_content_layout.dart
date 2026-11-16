@@ -38,6 +38,7 @@ class ProviderOtpContentLayout extends StatelessWidget {
   final String? phoneNumber;
   final String? fullPhone;
   final String? dummyOtp;
+  final String? password;
   final bool isWhatsApp;
   final VoidCallback? onVerified;
 
@@ -49,6 +50,7 @@ class ProviderOtpContentLayout extends StatelessWidget {
     this.phoneNumber,
     this.fullPhone,
     this.dummyOtp,
+    this.password,
     this.isWhatsApp = false,
     this.onVerified,
   });
@@ -89,6 +91,7 @@ class ProviderOtpContentLayout extends StatelessWidget {
                     phoneNumber: phoneNumber,
                     fullPhone: fullPhone,
                     dummyOtp: dummyOtp,
+                    password: password,
                     isWhatsApp: isWhatsApp,
                     onVerified: onVerified,
                     children: children,
@@ -115,6 +118,7 @@ class ProviderOtpInnerContentLayout extends StatefulWidget {
   final String? phoneNumber;
   final String? fullPhone;
   final String? dummyOtp;
+  final String? password;
   final bool isWhatsApp;
   final VoidCallback? onVerified;
 
@@ -124,6 +128,7 @@ class ProviderOtpInnerContentLayout extends StatefulWidget {
     this.phoneNumber,
     this.fullPhone,
     this.dummyOtp,
+    this.password,
     this.isWhatsApp = false,
     this.onVerified,
   });
@@ -155,7 +160,13 @@ class _ProviderOtpInnerContentLayoutState extends State<ProviderOtpInnerContentL
     final phone = widget.fullPhone ?? '+966501234567';
     final otp = _currentOtp.isNotEmpty ? _currentOtp : (widget.dummyOtp ?? '123456');
 
-    final result = await _backendService.verifyOtp(phone: phone, otp: otp);
+    final result = await _backendService.verifyOtp(
+      phone: phone,
+      otp: otp,
+      password: widget.password,
+      userType: 'provider',
+      purpose: 'signup',
+    );
 
     if (!mounted) return;
     setState(() => _isVerifying = false);

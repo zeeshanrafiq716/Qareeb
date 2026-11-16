@@ -54,6 +54,7 @@ import 'package:mobile/services/backend_service.dart';
 class ProviderPhoneInputWidget extends StatefulWidget {
   final TextEditingController? nameController;
   final TextEditingController? controller;
+  final TextEditingController? passwordController;
   final CountryModel? selectedCountry;
   final ValueChanged<CountryModel>? onCountryChanged;
   final VoidCallback? onContinue;
@@ -64,6 +65,7 @@ class ProviderPhoneInputWidget extends StatefulWidget {
     super.key,
     this.nameController,
     this.controller,
+    this.passwordController,
     this.selectedCountry,
     this.onCountryChanged,
     this.onContinue,
@@ -84,7 +86,7 @@ class ProviderPhoneInputWidget extends StatefulWidget {
 
 class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
   late final TextEditingController _internalController;
-  final TextEditingController _passwordController = TextEditingController();
+  late final TextEditingController _passwordController;
   CountryModel _localSelectedCountry = CountryModel.defaultCountry;
   bool _isLoading = false;
   late bool _isLoginMode;
@@ -98,6 +100,7 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
     super.initState();
     _isLoginMode = widget.initialIsLogin;
     _internalController = widget.controller ?? TextEditingController();
+    _passwordController = widget.passwordController ?? TextEditingController();
     _internalController.clear();
     _passwordController.clear();
     _backendService = BackendService(ApiClient());
@@ -115,7 +118,9 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
 
   @override
   void dispose() {
-    _passwordController.dispose();
+    if (widget.passwordController == null) {
+      _passwordController.dispose();
+    }
     if (widget.controller == null) {
       _internalController.dispose();
     }
@@ -339,6 +344,44 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
       return;
     }
 
+    // 3. Password Validation for Provider Registration
+    final password = _passwordController.text.trim();
+    if (password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          backgroundColor: const Color(0xFF1C2926),
+          content: Text(
+            isArabic
+                ? 'يرجى تعيين كلمة المرور (6 خانات على الأقل)'
+                : 'Please set a password (at least 6 characters)',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          backgroundColor: const Color(0xFF1C2926),
+          content: Text(
+            isArabic
+                ? 'كلمة المرور يجب أن لا تقل عن 6 خانات'
+                : 'Password must be at least 6 characters',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     final fullPhone = '${_selectedCountry.dialCode}$digits';
     final displayPhone = '${_selectedCountry.dialCode} $digits';
 
@@ -362,9 +405,43 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
         phone: fullPhone,
         channel: 'sms',
         userType: 'provider',
+        purpose: 'signup',
       );
 
       if (!mounted) return;
+
+      if (!result.success) {
+        if (result.alreadyExists) {
+          _switchMode(true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: const Color(0xFF1C2926),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+              content: Text(
+                isArabic
+                    ? 'يوجد حساب مسجل بهذا الرقم بالفعل. يرجى تسجيل الدخول'
+                    : 'An account with this phone number already exists. Please log in.',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.redAccent,
+              content: Text(
+                result.message.isNotEmpty
+                    ? result.message
+                    : (isArabic ? 'تعذر إرسال رمز التحقق. يرجى المحاولة لاحقاً' : 'Failed to send verification code. Please try again.'),
+              ),
+            ),
+          );
+        }
+        return;
+      }
 
       // Show realistic SMS notification if sent via Twilio, or dev OTP toast in test mode
       if (result.smsDelivered) {
@@ -422,6 +499,7 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
             phoneNumber: displayPhone,
             fullPhone: fullPhone,
             dummyOtp: result.otp,
+            password: password,
           ),
           transitionsBuilder: (_, animation, _, child) => FadeTransition(
             opacity: CurvedAnimation(
@@ -567,11 +645,9 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
                 ),
               ),
 
-              // If in Login mode: Password input field
-              if (_isLoginMode) ...[
-                const SizedBox(height: 12.0),
-                _buildPasswordInputCard(),
-              ],
+              // Password input field: Always available for both Registration and Login
+              const SizedBox(height: 12.0),
+              _buildPasswordInputCard(),
 
               // gap: 16px;
               const SizedBox(height: ProviderPhoneInputWidget.rowGap),
@@ -633,7 +709,9 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
                 color: const Color(0xFF1C2926),
               ),
               decoration: InputDecoration(
-                hintText: isArabic ? 'أدخل كلمة المرور' : 'Enter your password',
+                hintText: _isLoginMode
+                    ? (isArabic ? 'أدخل كلمة المرور' : 'Enter your password')
+                    : (isArabic ? 'تعيين كلمة المرور (6 خانات على الأقل)' : 'Set Password (at least 6 characters)'),
                 hintStyle: GoogleFonts.inter(
                   fontSize: 13.0,
                   color: const Color(0xFF9CA3AF),

@@ -146,4 +146,45 @@ describe("Phone + Password Authentication (Customer & Provider)", () => {
     expect(loginRes.status).toBe(200);
     expect(loginRes.body.data.customer.phone).toBe(phone);
   });
+
+  it("allows setting a password during provider OTP verification and logging in", async () => {
+    const phone = "+966555123456";
+
+    // 1. Initial provider signup via OTP
+    await api()
+      .post("/api/v1/auth/otp/request")
+      .send({ phone, channel: "sms", userType: "provider", purpose: "signup" });
+
+    const verifyRes = await api()
+      .post("/api/v1/auth/otp/verify")
+      .send({
+        phone,
+        otp: "123456",
+        password: "providerpass123",
+        userType: "provider",
+        purpose: "signup",
+      });
+    expect(verifyRes.status).toBe(200);
+    expect(verifyRes.body.data.token).toBeTruthy();
+
+    // 2. Duplicate signup attempt with same phone in requestOtp must fail with 409
+    const dupRequestRes = await api()
+      .post("/api/v1/auth/otp/request")
+      .send({ phone, channel: "sms", userType: "provider", purpose: "signup" });
+
+    expect(dupRequestRes.status).toBe(409);
+    expect(dupRequestRes.body.error.code).toBe("ACCOUNT_ALREADY_EXISTS");
+
+    // 3. Provider can log in with password
+    const loginRes = await api()
+      .post("/api/v1/auth/login")
+      .send({
+        phone,
+        password: "providerpass123",
+        userType: "provider",
+      });
+    expect(loginRes.status).toBe(200);
+    expect(loginRes.body.data.token).toBeTruthy();
+    expect(loginRes.body.data.userType).toBe("provider");
+  });
 });

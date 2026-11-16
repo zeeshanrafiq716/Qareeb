@@ -115,6 +115,13 @@ export async function requestOtp(phoneInput, context = {}) {
       // Customer record will be created in verifyOtp upon successful OTP verification
     } else {
       const existing = await fetchProviderByPhone(client, phone);
+      if (context.purpose === "signup" && existing && (existing.phone_verified_at || existing.password_hash)) {
+        throw new AppError(
+          409,
+          "An account with this phone number already exists. Please log in instead.",
+          "ACCOUNT_ALREADY_EXISTS",
+        );
+      }
       if (!existing) {
         const pendingOtp = await getStatus(ENTITY.PROVIDER, PROVIDER_STATUS.PENDING_OTP);
         const publicId = await nextPublicId(client);
@@ -279,6 +286,14 @@ export async function verifyOtp(phoneInput, otp, options = {}) {
     provider = await fetchProviderByPhone(client, phone);
     if (!provider) {
       throw new AppError(404, "Provider not found", "PROVIDER_NOT_FOUND");
+    }
+
+    if (options.purpose === "signup" && provider.phone_verified_at && provider.password_hash) {
+      throw new AppError(
+        409,
+        "An account with this phone number already exists. Please log in instead.",
+        "ACCOUNT_ALREADY_EXISTS",
+      );
     }
 
     if (provider.status_code === PROVIDER_STATUS.PENDING_OTP) {

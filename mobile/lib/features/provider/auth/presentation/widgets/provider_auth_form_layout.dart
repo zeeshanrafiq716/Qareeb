@@ -47,6 +47,7 @@ class ProviderAuthFormLayout extends StatefulWidget {
 
 class _ProviderAuthFormLayoutState extends State<ProviderAuthFormLayout> {
   late final TextEditingController _phoneController;
+  late final TextEditingController _passwordController;
   CountryModel _selectedCountry = CountryModel.defaultCountry;
   late final BackendService _backendService;
   bool _isWhatsAppLoading = false;
@@ -55,12 +56,14 @@ class _ProviderAuthFormLayoutState extends State<ProviderAuthFormLayout> {
   void initState() {
     super.initState();
     _phoneController = TextEditingController();
+    _passwordController = TextEditingController();
     _backendService = BackendService(ApiClient());
   }
 
   @override
   void dispose() {
     _phoneController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -104,6 +107,25 @@ class _ProviderAuthFormLayoutState extends State<ProviderAuthFormLayout> {
             isArabic
                 ? 'يرجى إكمال رقم الهاتف (${digits.length}/${_selectedCountry.maxLength} أرقام لدولة ${_selectedCountry.nameAr}) للتحقق عبر واتساب'
                 : 'Please complete ${_selectedCountry.maxLength} digits for ${_selectedCountry.nameEn} (${digits.length}/${_selectedCountry.maxLength}) for WhatsApp verification',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    final rawPassword = _passwordController.text.trim();
+    if (rawPassword.isNotEmpty && rawPassword.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          backgroundColor: const Color(0xFF1C2926),
+          content: Text(
+            isArabic
+                ? 'كلمة المرور يجب أن لا تقل عن 6 خانات'
+                : 'Password must be at least 6 characters',
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
           ),
           duration: const Duration(seconds: 3),
@@ -222,6 +244,7 @@ class _ProviderAuthFormLayoutState extends State<ProviderAuthFormLayout> {
           phoneNumber: displayPhone,
           fullPhone: fullPhone,
           dummyOtp: result.otp,
+          password: rawPassword.isNotEmpty ? rawPassword : null,
           isWhatsApp: true,
         ),
         transitionsBuilder: (_, animation, _, child) => FadeTransition(
@@ -266,6 +289,7 @@ class _ProviderAuthFormLayoutState extends State<ProviderAuthFormLayout> {
               widget.phoneInputSlot ??
                   ProviderPhoneInputWidget(
                     controller: _phoneController,
+                    passwordController: _passwordController,
                     selectedCountry: _selectedCountry,
                     initialIsLogin: widget.initialIsLogin,
                     onCountryChanged: (picked) {

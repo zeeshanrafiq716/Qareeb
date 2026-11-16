@@ -21,6 +21,7 @@ class ProviderOtpCard extends StatelessWidget {
   final String? phoneNumber;
   final String? fullPhone;
   final String? dummyOtp;
+  final String? password;
   final bool isWhatsApp;
   final VoidCallback? onVerified;
 
@@ -32,6 +33,7 @@ class ProviderOtpCard extends StatelessWidget {
     this.phoneNumber,
     this.fullPhone,
     this.dummyOtp,
+    this.password,
     this.isWhatsApp = false,
     this.onVerified,
   });
@@ -96,6 +98,7 @@ class ProviderOtpCard extends StatelessWidget {
                           phoneNumber: phoneNumber,
                           fullPhone: fullPhone,
                           dummyOtp: dummyOtp,
+                          password: password,
                           isWhatsApp: isWhatsApp,
                           onVerified: onVerified,
                         ),
