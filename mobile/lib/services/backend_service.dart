@@ -638,6 +638,25 @@ class BackendService {
     return ProviderDashboardModel.defaults;
   }
 
+  /// Provider in-app notifications (call, WhatsApp, location, requests from customers).
+  Future<List<Map<String, dynamic>>> fetchProviderNotifications({int limit = 20}) async {
+    try {
+      final response = await _client.get(
+        ApiEndpoints.providerNotifications,
+        queryParameters: {'limit': limit},
+      );
+      if (response.statusCode == 200 && response.data is Map) {
+        final data = response.data as Map<String, dynamic>;
+        final payload = data['data'] is Map ? data['data'] as Map<String, dynamic> : data;
+        final items = payload['items'];
+        if (items is List) {
+          return items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        }
+      }
+    } catch (_) {}
+    return const [];
+  }
+
   /// Record customer discovery & engagement funnel event (profile_view, call_click, whatsapp_click, share_location_click)
   Future<bool> trackCustomerEvent({
     required String event,

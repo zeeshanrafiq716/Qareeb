@@ -262,10 +262,13 @@ export async function verifyOtp(phoneInput, otp, options = {}) {
     if (options.userType === "customer") {
       if (options.purpose === "signup") {
         const { rows: existingCust } = await client.query(
-          `SELECT id, phone FROM customers WHERE phone = $1`,
+          `SELECT id, phone, status FROM customers WHERE phone = $1`,
           [phone],
         );
         if (existingCust.length > 0) {
+          if (existingCust[0].status === "blocked") {
+            throw new AppError(403, "Your account has been blocked. Please contact support.", "ACCOUNT_BLOCKED");
+          }
           throw new AppError(
             409,
             "An account with this phone number already exists. Please log in instead.",
@@ -294,10 +297,13 @@ export async function verifyOtp(phoneInput, otp, options = {}) {
          SET password_hash = COALESCE(EXCLUDED.password_hash, customers.password_hash),
              name = CASE WHEN EXCLUDED.name IS NOT NULL AND EXCLUDED.name != '' THEN EXCLUDED.name ELSE customers.name END,
              updated_at = now()
-         RETURNING id, phone, name`,
+         RETURNING id, phone, name, status`,
         [phone, options.name || "Customer", hash],
       );
       const customer = custRes.rows[0];
+      if (customer.status === "blocked") {
+        throw new AppError(403, "Your account has been blocked. Please contact support.", "ACCOUNT_BLOCKED");
+      }
       const token = signProviderToken({
         id: customer.id,
         phone: customer.phone,
@@ -389,7 +395,7 @@ export async function loginWithPassword({ phone: phoneInput, password, userType 
 
   if (userType === "customer") {
     let { rows } = await client.query(
-      `SELECT id, phone, name, password_hash, created_at, updated_at FROM customers WHERE phone = $1`,
+      `SELECT id, phone, name, password_hash, status, created_at, updated_at FROM customers WHERE phone = $1`,
       [phone],
     );
     let customer = rows[0];
@@ -405,6 +411,9 @@ export async function loginWithPassword({ phone: phoneInput, password, userType 
         );
       }
       throw new AppError(404, "No customer account found with this phone number. Please switch to Sign Up.", "ACCOUNT_NOT_FOUND");
+    }
+    if (customer.status === "blocked") {
+      throw new AppError(403, "Your account has been blocked. Please contact support.", "ACCOUNT_BLOCKED");
     }
     if (!customer.password_hash) {
       const newHash = await bcrypt.hash(password, 10);

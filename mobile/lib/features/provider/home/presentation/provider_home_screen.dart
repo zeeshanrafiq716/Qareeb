@@ -21,6 +21,7 @@ import 'package:mobile/providers/backend_provider.dart';
 import 'package:mobile/providers/notifications_provider.dart';
 import 'package:mobile/services/backend_service.dart';
 import 'package:mobile/services/location_service.dart';
+import 'package:mobile/services/task_service.dart';
 
 /// Provider Home Screen
 /// Implements exact base branding specifications & artboard dimensions:
@@ -60,6 +61,8 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
 
   Timer? _gpsTrackingTimer;
   Timer? _statsRefreshTimer;
+  Timer? _notificationsPollTimer;
+  String? _lastProviderNotificationId;
   StreamSubscription<UserLocation>? _locationSubscription;
   bool _isUpdatingLocation = false;
   bool _isNavigatingAway = false;
@@ -87,6 +90,82 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
         _syncProviderAccountStatus();
       }
     });
+    _notificationsPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _pollProviderNotifications();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pollProviderNotifications());
+  }
+
+  String _formatCustomerLocationFromNotification(Map<String, dynamic> latest) {
+    final lat = latest['customerLatitude'];
+    final lng = latest['customerLongitude'];
+    if (lat != null && lng != null) {
+      final la = lat is num ? lat.toDouble() : double.tryParse(lat.toString());
+      final lo = lng is num ? lng.toDouble() : double.tryParse(lng.toString());
+      if (la != null && lo != null) {
+        return 'https://maps.google.com/?q=$la,$lo';
+      }
+    }
+    return 'Customer via Qareeb';
+  }
+
+  Future<void> _pollProviderNotifications() async {
+    if (!mounted || _isNavigatingAway) return;
+    try {
+      final items = await ref.read(backendServiceProvider).fetchProviderNotifications(limit: 5);
+      if (!mounted || items.isEmpty) return;
+      final latest = items.first;
+      final id = latest['id']?.toString() ?? '';
+      if (id.isEmpty || id == _lastProviderNotificationId) return;
+      _lastProviderNotificationId = id;
+
+      final tr = ref.read(translationsProvider);
+      final eventType = latest['eventType']?.toString() ?? '';
+      String badgeEn = 'New activity';
+      String badgeAr = 'نشاط جديد';
+      switch (eventType) {
+        case 'call_click':
+          badgeEn = 'Incoming call';
+          badgeAr = 'مكالمة واردة';
+          break;
+        case 'whatsapp_click':
+          badgeEn = 'WhatsApp';
+          badgeAr = 'واتساب';
+          break;
+        case 'share_location_click':
+          badgeEn = 'Location shared';
+          badgeAr = 'موقع مشترك';
+          break;
+        case 'send_request_click':
+          badgeEn = 'New Request';
+          badgeAr = 'طلب جديد';
+          await TaskService.instance.upsertIncomingRequestFromProviderNotification(
+            notificationId: id,
+            serviceCategory: tr.isArabic ? 'طلب خدمة' : 'Service request',
+            customerLocation: _formatCustomerLocationFromNotification(latest),
+            distance: '',
+            customerName: tr.isArabic ? 'عميل' : 'Customer',
+          );
+          break;
+      }
+
+      final title = latest['title']?.toString() ?? badgeEn;
+      ref.read(notificationsProvider.notifier).setProviderNotification(
+            AppNotificationItem(
+              id: id,
+              badgeTextEn: badgeEn,
+              badgeTextAr: badgeAr,
+              titleEn: title,
+              titleAr: title,
+              locationEn: tr.isArabic ? 'عميل عبر قريب' : 'Customer via Qareeb',
+              locationAr: 'عميل عبر قريب',
+              distanceEn: '',
+              distanceAr: '',
+              timeEn: 'Just now',
+              timeAr: 'الآن',
+            ),
+          );
+    } catch (_) {}
   }
 
   Future<void> _syncProviderAccountStatus() async {
@@ -169,6 +248,7 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
 
   @override
   void dispose() {
+    _notificationsPollTimer?.cancel();
     _statsRefreshTimer?.cancel();
     _stopGpsTrackingAndPresence(callBackend: false);
     _scrollControllerInstance?.dispose();

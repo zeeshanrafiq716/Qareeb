@@ -200,8 +200,8 @@ class TaskService {
       eta: eta ?? '8 min',
       customerName: customerName ?? 'Ahmed',
       customerLocation: customerLocation ?? 'Riyadh, Saudi Arabia',
-      status: 'active',
-      step: 1, // 1: Provider On The Way
+      status: 'new',
+      step: 0,
       dateTime: formattedTime,
       createdAt: now,
     );
@@ -212,6 +212,51 @@ class TaskService {
 
     await _saveActiveTask();
     return task;
+  }
+
+  /// When provider app receives [send_request_click] from the API, materialize a pending task locally.
+  Future<void> upsertIncomingRequestFromProviderNotification({
+    required String notificationId,
+    String serviceCategory = 'Roadside Assistance',
+    String? customerLocation,
+    String? distance,
+    String? customerName,
+  }) async {
+    if (notificationId.isEmpty) return;
+    final existing = _activeTask;
+    if (existing != null &&
+        existing.status != 'cancelled' &&
+        existing.status != 'completed') {
+      return;
+    }
+
+    final now = DateTime.now();
+    final formattedTime =
+        '${now.day.toString().padLeft(2, '0')} ${_monthName(now.month)} ${now.year}, ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    final task = ServiceTask(
+      id: 'REQ-$notificationId',
+      providerName: 'Qareeb',
+      serviceCategory: serviceCategory,
+      distance: distance?.isNotEmpty == true ? distance! : '—',
+      eta: '—',
+      customerName: customerName ?? 'Customer',
+      customerLocation: customerLocation ?? 'Shared via Qareeb',
+      status: 'new',
+      step: 0,
+      dateTime: formattedTime,
+      createdAt: now,
+    );
+
+    _activeTask = task;
+    activeTaskNotifier.value = _activeTask;
+    providerRequestsNotifier.value = providerRequests;
+    await _saveActiveTask();
+  }
+
+  /// Provider accepts a pending customer request — customer listeners can move to live tracking.
+  Future<void> acceptActiveRequest() async {
+    await updateTaskStatus(status: 'active', step: 1);
   }
 
   /// Update active task status and progress stepper

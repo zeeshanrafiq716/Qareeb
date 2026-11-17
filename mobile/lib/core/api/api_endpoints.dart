@@ -32,4 +32,5 @@ class ApiEndpoints {
   // Provider Stats & Dashboard Analytics endpoints
   static const String providerStats = '$v1Prefix/providers/me/stats';
   static const String providerDashboard = '$v1Prefix/providers/me/dashboard';
+  static const String providerNotifications = '$v1Prefix/providers/me/notifications';
 }

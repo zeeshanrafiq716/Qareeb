@@ -144,4 +144,49 @@ describe("admin authentication and provider management", () => {
       .set("Authorization", `Bearer ${token}`);
     expect(lookupRes.status).toBe(404);
   });
+
+  it("lists, creates, blocks, unblocks, and deletes customers", async () => {
+    const token = await adminAuth();
+
+    const createRes = await api()
+      .post("/api/v1/admin/customers")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ phone: "+966509991111", name: "Test Customer", password: "custpass1" });
+    expect(createRes.status).toBe(201);
+    const customerId = createRes.body.data.id;
+
+    const listRes = await api()
+      .get("/api/v1/admin/customers")
+      .set("Authorization", `Bearer ${token}`);
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.meta.total).toBeGreaterThanOrEqual(1);
+
+    const blockRes = await api()
+      .post(`/api/v1/admin/customers/${customerId}/block`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(blockRes.status).toBe(200);
+    expect(blockRes.body.data.status).toBe("blocked");
+
+    const unblockRes = await api()
+      .post(`/api/v1/admin/customers/${customerId}/unblock`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(unblockRes.status).toBe(200);
+    expect(unblockRes.body.data.status).toBe("active");
+
+    const delRes = await api()
+      .delete(`/api/v1/admin/customers/${customerId}`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(delRes.status).toBe(200);
+  });
+
+  it("creates a provider from the admin panel", async () => {
+    const token = await adminAuth();
+    const res = await api()
+      .post("/api/v1/admin/providers")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ phone: "+966509992222", name: "Admin Created Provider" });
+    expect(res.status).toBe(201);
+    expect(res.body.data.providerId).toMatch(/^QRB-/);
+    expect(res.body.data.status).toBe(PROVIDER_STATUS.PENDING_PROFILE);
+  });
 });

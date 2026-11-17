@@ -3,6 +3,132 @@ import { query } from "../db/pool.js";
 import { logger } from "../logger.js";
 import { AppError, NotFoundError } from "../utils/AppError.js";
 import { sendFcmMessage } from "../utils/fcm.js";
+const PROVIDER_NOTIFY_EVENTS = new Set([
+  "call_click",
+  "whatsapp_click",
+  "share_location_click",
+  "send_request_click",
+]);
+
+function notificationCopy(eventType) {
+  switch (eventType) {
+    case "call_click":
+      return {
+        title: "Incoming call",
+        body: "A customer tapped Call on your Qareeb profile.",
+      };
+    case "whatsapp_click":
+      return {
+        title: "WhatsApp contact",
+        body: "A customer opened WhatsApp to reach you on Qareeb.",
+      };
+    case "share_location_click":
+      return {
+        title: "Location shared",
+        body: "A customer is sharing their location with you on Qareeb.",
+      };
+    case "send_request_click":
+      return {
+        title: "New service request",
+        body: "A customer sent you a service request on Qareeb.",
+      };
+    default:
+      return { title: "Customer activity", body: "New customer activity on your profile." };
+  }
+}
+
+function serializeProviderNotification(row) {
+  return {
+    id: row.id,
+    eventType: row.event_type,
+    title: row.title,
+    body: row.body,
+    customerSessionId: row.customer_session_id,
+    customerLatitude: row.customer_latitude != null ? Number(row.customer_latitude) : null,
+    customerLongitude: row.customer_longitude != null ? Number(row.customer_longitude) : null,
+    metadata: row.metadata ?? {},
+    isRead: row.is_read,
+    createdAt: row.created_at,
+  };
+}
+
+export async function notifyProviderForCustomerEvent({
+  providerId,
+  eventType,
+  sessionId = null,
+  latitude = null,
+  longitude = null,
+  metadata = {},
+}) {
+  if (!PROVIDER_NOTIFY_EVENTS.has(eventType)) {
+    return { skipped: true, reason: "event_not_notifiable" };
+  }
+
+  const copy = notificationCopy(eventType);
+  const { rows } = await query(
+    `INSERT INTO provider_notifications
+       (provider_id, event_type, title, body, customer_session_id, customer_latitude, customer_longitude, metadata)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+     RETURNING id, event_type, title, body, created_at`,
+    [
+      providerId,
+      eventType,
+      copy.title,
+      copy.body,
+      sessionId,
+      latitude,
+      longitude,
+      JSON.stringify(metadata ?? {}),
+    ],
+  );
+
+  const push = await sendPushToProvider(providerId, {
+    title: copy.title,
+    body: copy.body,
+    data: {
+      eventType,
+      notificationId: rows[0].id,
+    },
+  });
+
+  return { notification: serializeProviderNotification(rows[0]), push };
+}
+
+export async function listProviderNotifications(providerId, { limit = 20 } = {}) {
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 20));
+  const { rows } = await query(
+    `SELECT id, event_type, title, body, customer_session_id, customer_latitude, customer_longitude, metadata, is_read, created_at
+     FROM provider_notifications
+     WHERE provider_id = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [providerId, safeLimit],
+  );
+  const unread = await query(
+    `SELECT COUNT(*)::int AS c FROM provider_notifications WHERE provider_id = $1 AND is_read = false`,
+    [providerId],
+  );
+  return {
+    items: rows.map(serializeProviderNotification),
+    unreadCount: unread.rows[0]?.c ?? 0,
+  };
+}
+
+export async function markProviderNotificationsRead(providerId, { ids = null } = {}) {
+  if (Array.isArray(ids) && ids.length > 0) {
+    await query(
+      `UPDATE provider_notifications SET is_read = true
+       WHERE provider_id = $1 AND id = ANY($2::uuid[])`,
+      [providerId, ids],
+    );
+  } else {
+    await query(
+      `UPDATE provider_notifications SET is_read = true WHERE provider_id = $1 AND is_read = false`,
+      [providerId],
+    );
+  }
+  return { success: true };
+}
 
 export async function registerProviderDeviceToken(providerId, { token, platform, appVersion }) {
   if (!token?.trim()) {

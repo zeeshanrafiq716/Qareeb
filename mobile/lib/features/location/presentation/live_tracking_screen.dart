@@ -1,12 +1,9 @@
-import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
-import '../../../services/task_service.dart';
-import 'provider_arrived_screen.dart';
 import 'widgets/top_down_car_widget.dart';
 import 'widgets/real_map_background_widget.dart';
 
@@ -35,12 +32,9 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
   AppTranslations get tr => ref.read(translationsProvider);
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
-  Timer? _arrivalTimer;
-
   @override
   void initState() {
     super.initState();
-    TaskService.instance.updateTaskStatus(status: 'active', step: 1);
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -50,18 +44,6 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Automatically navigate to ProviderArrivedScreen when provider reaches destination
-    _arrivalTimer = Timer(const Duration(seconds: 4), () {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => ProviderArrivedScreen(
-            serviceCategory: widget.serviceCategory,
-            providerName: widget.providerName,
-          ),
-        ),
-      );
-    });
   }
 
   @override
@@ -72,7 +54,6 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
 
   @override
   void dispose() {
-    _arrivalTimer?.cancel();
     _pulseController.stop();
     _pulseController.dispose();
     super.dispose();

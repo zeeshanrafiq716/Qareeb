@@ -18,6 +18,8 @@ import {
 } from "../funnel.service.js";
 import { deviceTokenSchema, locationUpdateSchema } from "../schemas.js";
 import {
+  listProviderNotifications,
+  markProviderNotificationsRead,
   registerProviderDeviceToken,
   removeProviderDeviceToken,
 } from "../notifications.service.js";
@@ -145,6 +147,24 @@ providerRoutes.delete(
   validate(deviceTokenSchema),
   asyncHandler(async (req, res) => {
     ok(res, await removeProviderDeviceToken(req.provider.id, req.body.token));
+  }),
+);
+
+providerRoutes.get(
+  "/me/notifications",
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    const limit = Number(req.query.limit) || 20;
+    ok(res, await listProviderNotifications(req.provider.id, { limit }));
+  }),
+);
+
+providerRoutes.post(
+  "/me/notifications/read",
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : null;
+    ok(res, await markProviderNotificationsRead(req.provider.id, { ids }));
   }),
 );
 

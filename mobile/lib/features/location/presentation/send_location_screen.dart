@@ -5,7 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/localization/app_locale.dart';
-import 'live_tracking_screen.dart';
+import '../../../core/utils/contact_launcher.dart';
+import '../../../providers/backend_provider.dart';
 import 'widgets/real_map_background_widget.dart';
 
 /// Screen displayed when user clicks 'Send My Location' on the Provider Detail screen.
@@ -13,12 +14,16 @@ import 'widgets/real_map_background_widget.dart';
 class SendLocationScreen extends ConsumerStatefulWidget {
   final String serviceCategory;
   final String providerName;
+  final String? providerPublicId;
+  final String? providerPhone;
   final String distance;
 
   const SendLocationScreen({
     super.key,
     this.serviceCategory = 'Pickup & Delivery',
     this.providerName = 'Ahamd Transport',
+    this.providerPublicId,
+    this.providerPhone,
     this.distance = '1.8 km',
   });
 
@@ -29,8 +34,136 @@ class SendLocationScreen extends ConsumerStatefulWidget {
 class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
   int _selectedShareIndex = 0;
   bool _isCardExpanded = true;
+  String? _resolvedPhone;
 
   AppTranslations get tr => ref.read(translationsProvider);
+
+  @override
+  void initState() {
+    super.initState();
+    _resolvedPhone = _cleanPhone(widget.providerPhone);
+    if (_resolvedPhone == null) {
+      _hydrateProviderPhone();
+    }
+  }
+
+  String? _cleanPhone(String? raw) {
+    final p = raw?.trim();
+    if (p == null || p.isEmpty) return null;
+    return p;
+  }
+
+  Future<void> _hydrateProviderPhone() async {
+    final id = widget.providerPublicId;
+    if (id == null || id.isEmpty) return;
+    final loc = ref.read(userLocationProvider).value;
+    final profile = await ref.read(backendServiceProvider).getPublicProviderProfile(
+          id,
+          latitude: loc?.latitude,
+          longitude: loc?.longitude,
+        );
+    if (!mounted) return;
+    final contact = profile?['contact'];
+    String? phone;
+    if (contact is Map && contact['phone'] != null) {
+      phone = contact['phone'].toString();
+    }
+    phone ??= profile?['phone']?.toString();
+    final cleaned = _cleanPhone(phone);
+    if (cleaned != null) {
+      setState(() => _resolvedPhone = cleaned);
+    }
+  }
+
+  String? _mapsShareUrl() {
+    final loc = ref.read(userLocationProvider).value;
+    if (loc == null) return null;
+    return 'https://maps.google.com/?q=${loc.latitude},${loc.longitude}';
+  }
+
+  void _trackShareLocation() {
+    final id = widget.providerPublicId;
+    if (id == null || id.isEmpty) return;
+    final loc = ref.read(userLocationProvider).value;
+    ref.read(backendServiceProvider).trackCustomerEvent(
+          event: 'share_location_click',
+          providerPublicId: id,
+          latitude: loc?.latitude,
+          longitude: loc?.longitude,
+        ).catchError((_) => false);
+  }
+
+  void _toast(String message, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+        backgroundColor: error ? const Color(0xFFEF4444) : const Color(0xFF8B53FE),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _onShareWhatsApp() async {
+    final loc = ref.read(userLocationProvider).value;
+    if (loc == null) {
+      _toast(tr.isArabic ? 'الموقع غير متاح حالياً' : 'Your location is not available yet', error: true);
+      return;
+    }
+    var phone = _resolvedPhone;
+    if (phone == null) {
+      await _hydrateProviderPhone();
+      phone = _resolvedPhone;
+    }
+    if (!mounted) return;
+    if (phone == null) {
+      _toast(tr.isArabic ? 'رقم واتساب غير متوفر' : 'WhatsApp number is not available', error: true);
+      return;
+    }
+    _trackShareLocation();
+    final ok = await ContactLauncher.shareLocation(
+      phone: phone,
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      providerName: widget.providerName,
+      isArabic: tr.isArabic,
+    );
+    if (!ok) {
+      _toast(tr.isArabic ? 'تعذر فتح واتساب' : 'Could not open WhatsApp', error: true);
+    }
+  }
+
+  Future<void> _onCopyShareLink() async {
+    final url = _mapsShareUrl();
+    if (url == null) {
+      _toast(tr.isArabic ? 'الموقع غير متاح حالياً' : 'Your location is not available yet', error: true);
+      return;
+    }
+    _trackShareLocation();
+    await Clipboard.setData(ClipboardData(text: url));
+    if (!mounted) return;
+    _toast(tr.linkCopied);
+  }
+
+  Future<void> _onShareInstagram() async {
+    final url = _mapsShareUrl();
+    if (url == null) {
+      _toast(tr.isArabic ? 'الموقع غير متاح حالياً' : 'Your location is not available yet', error: true);
+      return;
+    }
+    _trackShareLocation();
+    final caption = tr.isArabic
+        ? 'موقعي عبر قريب: $url'
+        : 'My Qareeb location: $url';
+    await Clipboard.setData(ClipboardData(text: caption));
+    final opened = await ContactLauncher.openInstagramDirect();
+    if (!mounted) return;
+    if (opened) {
+      _toast(tr.isArabic ? 'تم نسخ الموقع — الصقه في رسالة إنستغرام' : 'Location copied — paste it in Instagram DM');
+    } else {
+      _toast(tr.isArabic ? 'تم نسخ رابط الموقع' : 'Location link copied to clipboard');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +261,9 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                                   key: const Key('send_location_back_button'),
                                   onTap: () {
                                     HapticFeedback.lightImpact();
-                                    Navigator.of(context).maybePop();
+                                    if (Navigator.of(context).canPop()) {
+                                      Navigator.of(context).pop();
+                                    }
                                   },
                                   behavior: HitTestBehavior.opaque,
                                   child: Container(
@@ -654,29 +789,11 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
               _selectedShareIndex = index;
             });
             if (index == 0) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(tr.openingWhatsApp),
-                  duration: const Duration(seconds: 1),
-                ),
-              );
+              _onShareWhatsApp();
             } else if (index == 1) {
-              Clipboard.setData(
-                const ClipboardData(text: 'https://zesho.tech/location/live/track-8492'),
-              );
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(tr.linkCopied),
-                  duration: const Duration(seconds: 1),
-                ),
-              );
+              _onCopyShareLink();
             } else if (index == 2) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(tr.openingInstagram),
-                  duration: const Duration(seconds: 1),
-                ),
-              );
+              _onShareInstagram();
             }
           },
           behavior: HitTestBehavior.opaque,
@@ -886,7 +1003,9 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                       key: const Key('send_location_cancel_button'),
                       onTap: () {
                         HapticFeedback.lightImpact();
-                        Navigator.of(context).maybePop();
+                        if (Navigator.of(context).canPop()) {
+                          Navigator.of(context).pop();
+                        }
                       },
                       behavior: HitTestBehavior.opaque,
                       child: Container(
@@ -978,45 +1097,40 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
     );
   }
 
-  void _handleSendLocation() {
+  Future<void> _handleSendLocation() async {
+    final loc = ref.read(userLocationProvider).value;
+    if (loc == null) {
+      _toast(tr.isArabic ? 'الموقع غير متاح حالياً' : 'Your location is not available yet', error: true);
+      return;
+    }
+    var phone = _resolvedPhone;
+    if (phone == null) {
+      await _hydrateProviderPhone();
+      phone = _resolvedPhone;
+    }
+    if (!mounted) return;
+
+    _trackShareLocation();
+
     final String provider =
         widget.providerName.isNotEmpty ? widget.providerName : 'Ahmad Transport';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                tr.locationSentSuccess(tr.formatProviderName(provider)),
-                style: tr.font(
-                  fontSize: 13.0,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF8B53FE),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        duration: const Duration(seconds: 2),
-      ),
+    final sentViaWhatsApp = phone != null &&
+        await ContactLauncher.shareLocation(
+          phone: phone,
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          providerName: widget.providerName,
+          isArabic: tr.isArabic,
+        );
+
+    if (!mounted) return;
+    _toast(
+      sentViaWhatsApp
+          ? tr.locationSentSuccess(tr.formatProviderName(provider))
+          : (tr.isArabic
+              ? 'تم إرسال إشعار للمزود بالموقع'
+              : 'Provider was notified of your location'),
     );
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => LiveTrackingScreen(
-            serviceCategory: widget.serviceCategory,
-            providerName: widget.providerName,
-            distance: widget.distance,
-          ),
-        ),
-      );
-    });
   }
 }
 

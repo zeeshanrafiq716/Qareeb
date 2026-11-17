@@ -31,6 +31,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   Timer? _navTimer;
   bool _requiresBiometricUnlock = false;
+  bool _navigationDone = false;
+  bool _biometricInProgress = false;
 
   @override
   void initState() {
@@ -56,45 +58,26 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _checkModeAndScheduleNavigation() async {
+    if (_navigationDone) return;
+
     final mode = await ProviderRegistrationStore.instance.getActiveAppMode();
-    if (!mounted) return;
+    if (!mounted || _navigationDone) return;
 
     if (mode == 'provider') {
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (_, _, _) => const ProviderSplashScreen(),
-          transitionDuration: Duration.zero,
-        ),
-      );
+      _goTo(const ProviderSplashScreen());
       return;
     }
 
-    // Check if customer has already signed up
     final isSignedUp = await CustomerAuthStore.instance.isSignedUp();
-    if (!mounted) return;
+    if (!mounted || _navigationDone) return;
 
     if (isSignedUp) {
       final prefs = await SharedPreferences.getInstance();
       final biometricEnabled = prefs.getBool('customer_biometric_login') ?? false;
 
       if (biometricEnabled) {
-        _navTimer = Timer(const Duration(milliseconds: 1400), () async {
-          if (!mounted) return;
-          final tr = ref.read(translationsProvider);
-          final authenticated = await BiometricHelper.authenticate(
-            context: context,
-            localizedReason: tr.isArabic
-                ? 'يرجى تأكيد الهوية بالبصمة لفتح تطبيق قريب'
-                : 'Authenticate with Face ID or fingerprint to unlock Qareeb',
-          );
-          if (!mounted) return;
-          if (authenticated) {
-            _navigateToHome();
-          } else {
-            setState(() {
-              _requiresBiometricUnlock = true;
-            });
-          }
+        _navTimer = Timer(const Duration(milliseconds: 1400), () {
+          unawaited(_runBiometricGate());
         });
       } else {
         _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToHome);
@@ -108,8 +91,48 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     }
   }
 
+  Future<void> _runBiometricGate() async {
+    if (!mounted || _navigationDone || _biometricInProgress) return;
+    _biometricInProgress = true;
+    final tr = ref.read(translationsProvider);
+    try {
+      final authenticated = await BiometricHelper.authenticate(
+        context: context,
+        localizedReason: tr.isArabic
+            ? 'يرجى تأكيد الهوية بالبصمة لفتح تطبيق قريب'
+            : 'Authenticate with Face ID or fingerprint to unlock Qareeb',
+      ).timeout(
+        const Duration(seconds: 45),
+        onTimeout: () => false,
+      );
+      if (!mounted || _navigationDone) return;
+      if (authenticated) {
+        _navigateToHome();
+      } else {
+        setState(() => _requiresBiometricUnlock = true);
+      }
+    } catch (_) {
+      if (mounted && !_navigationDone) {
+        setState(() => _requiresBiometricUnlock = true);
+      }
+    } finally {
+      _biometricInProgress = false;
+    }
+  }
+
+  void _goTo(Widget page) {
+    if (!mounted || _navigationDone) return;
+    _navigationDone = true;
+    _navTimer?.cancel();
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => page),
+    );
+  }
+
   void _navigateToCustomerSignup({bool isLogin = false}) {
-    if (!mounted) return;
+    if (!mounted || _navigationDone) return;
+    _navigationDone = true;
+    _navTimer?.cancel();
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
@@ -122,7 +145,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   void _navigateToHome() {
-    if (!mounted) return;
+    if (!mounted || _navigationDone) return;
+    _navigationDone = true;
+    _navTimer?.cancel();
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
@@ -255,16 +280,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           child: InkWell(
                             onTap: () async {
                               HapticFeedback.lightImpact();
-                              final tr = ref.read(translationsProvider);
-                              final authenticated = await BiometricHelper.authenticate(
-                                context: context,
-                                localizedReason: tr.isArabic
-                                    ? 'يرجى تأكيد الهوية بالبصمة لفتح تطبيق قريب'
-                                    : 'Authenticate with biometrics to unlock Qareeb',
-                              );
-                              if (authenticated && mounted) {
-                                _navigateToHome();
-                              }
+                              await _runBiometricGate();
                             },
                             borderRadius: BorderRadius.circular(16.0),
                             child: Container(

@@ -77,6 +77,12 @@ describe("Phase 3 direct contact + funnel", () => {
       [provider.id],
     );
     expect(calls.length).toBe(1);
+
+    const { rows: notifs } = await query(
+      `SELECT event_type, title FROM provider_notifications WHERE provider_id = $1`,
+      [provider.id],
+    );
+    expect(notifs.some((n) => n.event_type === "call_click")).toBe(true);
   });
 
   it("admin funnel summary aggregates views and clicks", async () => {

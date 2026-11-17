@@ -1041,6 +1041,8 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                 builder: (_) => SendLocationScreen(
                                                   serviceCategory: widget.serviceCategory,
                                                   providerName: widget.providerName,
+                                                  providerPublicId: widget.providerPublicId,
+                                                  providerPhone: _phone,
                                                   distance: widget.distance ?? '1.8 km',
                                                 ),
                                               ),
@@ -1094,17 +1096,13 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                           key: const Key('provider_detail_send_request_button'),
                                           onTap: () {
                                             HapticFeedback.mediumImpact();
-                                            if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
-                                              ref.read(backendServiceProvider).trackCustomerEvent(
-                                                event: 'whatsapp_click',
-                                                providerPublicId: widget.providerPublicId!,
-                                              );
-                                            }
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
                                                 builder: (_) => SendRequestScreen(
                                                   serviceCategory: widget.serviceCategory,
                                                   providerName: widget.providerName,
+                                                  providerPublicId: widget.providerPublicId,
+                                                  providerPhone: _phone,
                                                   distance: widget.distance ?? '1.8 km',
                                                 ),
                                               ),

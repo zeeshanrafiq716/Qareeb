@@ -37,7 +37,7 @@ void main() {
     notifState = container.read(notificationsProvider);
     expect(notifState.hasCustomerUnread, isTrue);
     expect(notifState.customerNotification, isNotNull);
-    expect(notifState.customerNotification!.badgeTextEn, 'On The Way');
+    expect(notifState.customerNotification!.badgeTextEn, 'Request Sent');
     expect(notifState.customerNotification!.titleEn, contains('Fahad Towing'));
     expect(notifState.customerNotification!.distanceEn, contains('2.5 km'));
 

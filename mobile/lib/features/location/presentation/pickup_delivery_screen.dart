@@ -10,6 +10,8 @@ import '../../../models/provider_model.dart';
 import '../../../providers/backend_provider.dart';
 import '../../../services/location_service.dart';
 import 'find_provider_screen.dart';
+import 'widgets/google_maps_user_dot.dart';
+import 'widgets/location_access_helper.dart';
 import 'widgets/provider_detail_card_widget.dart';
 import 'widgets/top_down_car_widget.dart';
 
@@ -316,6 +318,27 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
         ref.invalidate(nearbyProvidersProvider);
       }
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _promptLocationIfNeededOnMapOpen());
+  }
+
+  Future<void> _promptLocationIfNeededOnMapOpen() async {
+    if (!mounted) return;
+    final live = ref.read(userLocationProvider).value;
+    if (live != null && live.isGpsDetected) return;
+
+    final issue = await LocationAccessHelper.diagnose(ref.read(locationServiceProvider));
+    if (!mounted || issue == LocationAccessIssue.unavailable) return;
+
+    await LocationAccessHelper.showEnableLocationDialog(
+      context,
+      ref,
+      issue: issue,
+      serviceName: widget.serviceName,
+    );
+    if (!mounted) return;
+    ref.invalidate(userLocationProvider);
+    ref.invalidate(nearbyProvidersProvider);
   }
 
   @override
@@ -430,155 +453,47 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     _recenterController.forward();
   }
 
-  /// Traces customer's exact device GPS location live.
-  /// Bypasses cache, refreshes global location state, repositions map beacon, and recalculates nearby routes.
-  Future<void> _traceCurrentGps() async {
+  void _refreshGpsInBackground() {
+    ref.read(locationServiceProvider).traceExactGps().then((loc) {
+      if (!mounted || !loc.isGpsDetected) return;
+      setState(() => _exactTracedLocation = loc);
+      ref.invalidate(userLocationProvider);
+      ref.invalidate(nearbyProvidersProvider);
+    }).catchError((_) {});
+  }
+
+  /// My location — instant recenter when GPS is on; friendly dialog when off.
+  Future<void> _onMyLocationButtonTap() async {
     if (_isTracingGps) return;
     HapticFeedback.mediumImpact();
 
-    setState(() {
-      _isTracingGps = true;
-    });
-
-    final tr = ref.read(translationsProvider);
-
-    // Initial feedback: Tracing GPS
-    if (mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const SizedBox(
-                width: 14.0,
-                height: 14.0,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.0,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              ),
-              const SizedBox(width: 10.0),
-              Text(
-                tr.isArabic ? 'جارٍ تحديد موقع GPS الدقيق...' : 'Tracing exact GPS location...',
-                style: tr.font(fontSize: 12.0, color: Colors.white),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFF8B53FE),
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    final live = ref.read(userLocationProvider).value;
+    if (live != null && live.isGpsDetected) {
+      if (_zoom < 14.0) {
+        setState(() => _zoom = 15.0);
+      }
+      _recenterMap(live.latitude, live.longitude);
+      _refreshGpsInBackground();
+      return;
     }
 
+    setState(() => _isTracingGps = true);
     try {
-      final locService = ref.read(locationServiceProvider);
-      final freshLoc = await locService.traceExactGps();
-
-      if (!mounted) return;
-
-      if (!freshLoc.isGpsDetected) {
-        setState(() {
-          _isTracingGps = false;
-        });
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(
-                  Icons.location_off_rounded,
-                  size: 16.0,
-                  color: Colors.white,
-                ),
-                const SizedBox(width: 8.0),
-                Expanded(
-                  child: Text(
-                    tr.isArabic
-                        ? 'خدمة الموقع غير مفعلة في جهازك. يرجى تفعيل GPS.'
-                        : 'Device location is OFF. Please turn ON location in device settings.',
-                    style: tr.font(fontSize: 12.0, color: Colors.white, fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFFE11D48),
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        return;
-      }
+      final resolved = await LocationAccessHelper.resolveForMapAction(
+        context,
+        ref,
+        serviceName: widget.serviceName,
+      );
+      if (!mounted || resolved == null || !resolved.isGpsDetected) return;
 
       setState(() {
-        _exactTracedLocation = freshLoc;
-        _isTracingGps = false;
+        _exactTracedLocation = resolved;
+        if (_zoom < 14.0) _zoom = 15.0;
       });
-
-      // Smoothly animate map camera directly to exact traced GPS
-      _recenterMap(freshLoc.latitude, freshLoc.longitude);
-
-      // Invalidate global providers so other screens stay updated
-      ref.invalidate(userLocationProvider);
+      _recenterMap(resolved.latitude, resolved.longitude);
       ref.invalidate(nearbyProvidersProvider);
-
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(
-                Icons.my_location_rounded,
-                size: 16.0,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 8.0),
-              Expanded(
-                child: Text(
-                  tr.isArabic
-                      ? 'تم تحديد GPS بدقة: ${freshLoc.exactCoordinatesDisplay} (${freshLoc.cityName})'
-                      : 'Exact GPS Traced: ${freshLoc.exactCoordinatesDisplay} (${freshLoc.cityName})',
-                  style: tr.font(fontSize: 12.0, color: Colors.white, fontWeight: FontWeight.w500),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFF1C2926),
-          duration: const Duration(seconds: 3),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isTracingGps = false;
-      });
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(
-                Icons.location_off_rounded,
-                size: 16.0,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 8.0),
-              Expanded(
-                child: Text(
-                  tr.isArabic
-                      ? 'تعذر تحديد الموقع. يرجى التأكد من تشغيل GPS.'
-                      : 'Unable to detect location. Please ensure GPS is turned ON.',
-                  style: tr.font(fontSize: 12.0, color: Colors.white, fontWeight: FontWeight.w500),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFFE11D48),
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    } finally {
+      if (mounted) setState(() => _isTracingGps = false);
     }
   }
 
@@ -960,48 +875,39 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
 
                               // E. Customer Location Center Beacon
                               Positioned(
-                                left: userScreenX - 15.0,
-                                top: userScreenY - 15.0,
+                                left: userScreenX - 24.0,
+                                top: userScreenY - 24.0,
                                 child: Tooltip(
                                   message: userLoc.isGpsDetected
                                       ? (tr.isArabic
                                           ? 'موقعك: ${userLoc.cityName}'
-                                          : 'Your Location: ${userLoc.cityName}')
+                                          : 'Your location: ${userLoc.cityName}')
                                       : (tr.isArabic
-                                          ? 'خدمة الموقع غير مفعلة - اضغط لتشغيل GPS'
-                                          : 'Location is OFF - Tap target button to enable GPS'),
-                                  child: Container(
-                                    key: const Key('user_gps_center_marker'),
-                                    width: 30.0,
-                                    height: 30.0,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: userLoc.isGpsDetected
-                                          ? const Color(0xFF8B53FE)
-                                          : const Color(0xFF6B7280),
-                                      border: Border.all(color: Colors.white, width: 2.6),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: userLoc.isGpsDetected
-                                              ? const Color(0x408B53FE)
-                                              : const Color(0x306B7280),
-                                          blurRadius: 12.0,
-                                          spreadRadius: 3.0,
+                                          ? 'اضغط زر الموقع لتفعيل الخدمة'
+                                          : 'Tap the location button to turn on Location'),
+                                  child: userLoc.isGpsDetected
+                                      ? const GoogleMapsUserDot(
+                                          key: Key('user_gps_center_marker'),
+                                          size: 18.0,
+                                        )
+                                      : GestureDetector(
+                                          onTap: _onMyLocationButtonTap,
+                                          child: Container(
+                                            key: const Key('user_gps_center_marker'),
+                                            width: 30.0,
+                                            height: 30.0,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: const Color(0xFF9AA0A6),
+                                              border: Border.all(color: Colors.white, width: 2.6),
+                                            ),
+                                            child: const Icon(
+                                              Icons.location_off_rounded,
+                                              size: 14.0,
+                                              color: Colors.white,
+                                            ),
+                                          ),
                                         ),
-                                        const BoxShadow(
-                                          color: Color(0x20000000),
-                                          blurRadius: 4.0,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Center(
-                                      child: Icon(
-                                        userLoc.isGpsDetected ? Icons.my_location : Icons.location_off_rounded,
-                                        size: 14.0,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
                                 ),
                               ),
 
@@ -1098,8 +1004,8 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                                   providerName: driver.name,
                                                   serviceCategory: tr.categoryName(widget.serviceName, widget.serviceName),
                                                   vehicleName: driver.vehicle,
-                                                  distance: tr.isArabic ? '${realDistKm.toStringAsFixed(1)} كم' : '${realDistKm.toStringAsFixed(1)} km',
-                                                  estimatedTime: tr.isArabic ? '${(realDistKm * 3.5).round().clamp(1, 99)} د' : '${(realDistKm * 3.5).round().clamp(1, 99)} min',
+                                                  distance: '',
+                                                  estimatedTime: '',
                                                   rating: driver.rating,
                                                   tripsCount: driver.reviews,
                                                   phoneNumber: driver.phone,
@@ -1107,6 +1013,8 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                                   avatarUrl: driver.photoUrl,
                                                   verified: driver.verified,
                                                   isAvailable: true,
+                                                  providerLatitude: driver.currentPos.latitude,
+                                                  providerLongitude: driver.currentPos.longitude,
                                                 );
                                               },
                                             ),
@@ -1203,7 +1111,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                           : (tr.isArabic ? 'الموقع مغلق - اضغط لتشغيل GPS' : 'Location is OFF - Tap to enable GPS'),
                                       iconColor: userLoc.isGpsDetected ? const Color(0xFF8B53FE) : const Color(0xFFEF4444),
                                       isLoading: _isTracingGps,
-                                      onTap: _traceCurrentGps,
+                                      onTap: _onMyLocationButtonTap,
                                     ),
                                   ],
                                 ),

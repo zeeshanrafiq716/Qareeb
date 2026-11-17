@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../providers/backend_provider.dart';
-import '../../../services/location_service.dart';
+import 'widgets/location_access_helper.dart';
 import 'widgets/real_map_background_widget.dart';
 
 /// Full Screen Interactive Tracking Map Screen
@@ -58,36 +58,16 @@ class _FullScreenTrackingMapScreenState
     });
   }
 
-  void _recenter() {
+  Future<void> _recenter() async {
     HapticFeedback.lightImpact();
-    final userLoc = ref.read(userLocationProvider).value ?? UserLocation.defaultLocation;
-    if (!userLoc.isGpsDetected) {
-      final tr = ref.read(translationsProvider);
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.location_off_rounded, size: 16.0, color: Colors.white),
-              const SizedBox(width: 8.0),
-              Expanded(
-                child: Text(
-                  tr.isArabic
-                      ? 'خدمة الموقع غير مفعلة في جهازك'
-                      : 'Device location is OFF. Please turn ON location in device settings.',
-                  style: tr.font(fontSize: 12.0, color: Colors.white, fontWeight: FontWeight.w500),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFFE11D48),
-          duration: const Duration(seconds: 3),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    final live = ref.read(userLocationProvider).value;
+    if (live != null && live.isGpsDetected) {
+      _mapKey.currentState?.recenterToUser(live);
       return;
     }
-    _mapKey.currentState?.recenter();
+    final resolved = await LocationAccessHelper.resolveForMapAction(context, ref);
+    if (!mounted || resolved == null || !resolved.isGpsDetected) return;
+    _mapKey.currentState?.recenterToUser(resolved);
   }
 
   @override

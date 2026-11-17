@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_auth_card.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_header_back_button.dart';
+import 'package:mobile/features/splash/presentation/app_mode_navigation.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_branding_header.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_splash_background.dart';
 
@@ -161,13 +163,26 @@ class PhoneVerificationScreen extends StatelessWidget {
                         ),
                       ),
 
-                      // 6. Centered Animated Language Toggle
+                      // 6. Top bar: back to role selection + language toggle
                       Positioned(
                         top: toggleTop,
-                        left: 0,
-                        right: 0,
-                        child: const Center(
-                          child: ProviderAnimatedLanguageToggle(),
+                        left: 20.0,
+                        right: 20.0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            ProviderHeaderBackButton(
+                              onTap: () {
+                                if (Navigator.of(context).canPop()) {
+                                  Navigator.of(context).pop();
+                                } else {
+                                  AppModeNavigation.openRoleSelection(context);
+                                }
+                              },
+                            ),
+                            const ProviderAnimatedLanguageToggle.compact(),
+                          ],
                         ),
                       ),
                     ],

@@ -8,8 +8,10 @@ import '../../../../core/localization/app_locale.dart';
 import '../../../../models/country_model.dart';
 import '../../../../services/backend_service.dart';
 import '../../../home/presentation/home_screen.dart';
+import '../../../splash/presentation/app_mode_navigation.dart';
 import '../../../provider/auth/data/provider_registration_state.dart';
-import '../../../provider/auth/presentation/phone_verification_screen.dart';
+import '../../../provider/auth/presentation/widgets/provider_header_back_button.dart';
+import '../../../provider/splash/presentation/provider_splash_screen.dart';
 import '../../../provider/auth/presentation/widgets/provider_animated_button.dart';
 import '../../../provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import '../../../provider/auth/presentation/widgets/provider_country_picker_modal.dart';
@@ -434,26 +436,22 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final mediaQuery = MediaQuery.of(context);
-            final screenWidth = constraints.maxWidth.isFinite
-                ? constraints.maxWidth
-                : mediaQuery.size.width;
-            final screenHeight = constraints.maxHeight.isFinite
-                ? constraints.maxHeight
-                : mediaQuery.size.height;
+      resizeToAvoidBottomInset: true,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final mediaQuery = MediaQuery.of(context);
+          final viewportWidth = constraints.maxWidth;
+          final viewportHeight = constraints.maxHeight;
 
-            final bool isDesktopWeb = screenWidth > 500;
-            final double containerWidth = isDesktopWeb ? 390.0 : screenWidth;
-            final double containerHeight = isDesktopWeb
-                ? math.min(844.0, (screenHeight - 32.0).clamp(520.0, 844.0))
-                : screenHeight;
+          final bool isDesktopWeb = viewportWidth > 500;
+          final double containerWidth = isDesktopWeb ? 390.0 : viewportWidth;
+          final double containerHeight = isDesktopWeb
+              ? math.min(844.0, (viewportHeight - 32.0).clamp(520.0, 844.0))
+              : viewportHeight;
 
-            final double safeTop = mediaQuery.padding.top;
-            final double toggleTop = math.max(safeTop + 14.0, 48.0);
-            final double contentTopPadding = toggleTop + 54.0;
+          final double safeTop = mediaQuery.padding.top;
+          final double toggleTop = safeTop + 12.0;
+          final double contentTopPadding = safeTop + 88.0;
 
             final Widget content = Container(
               width: containerWidth,
@@ -484,8 +482,9 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                   // 2. Main Form Area with comfortable top padding & smooth scroll
                   Positioned.fill(
                     child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 24.0),
                       child: Column(
@@ -1064,13 +1063,14 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                           Center(
                             child: InkWell(
                               onTap: () async {
-                                final nav = Navigator.of(context);
+                                HapticFeedback.lightImpact();
                                 await ProviderRegistrationStore.instance.setActiveAppMode('provider');
-                                if (!mounted) return;
-                                nav.pushReplacement(
+                                if (!context.mounted) return;
+                                Navigator.of(context).pushAndRemoveUntil(
                                   MaterialPageRoute(
-                                    builder: (_) => const PhoneVerificationScreen(),
+                                    builder: (_) => const ProviderSplashScreen(),
                                   ),
+                                  (route) => false,
                                 );
                               },
                               borderRadius: BorderRadius.circular(8.0),
@@ -1107,45 +1107,63 @@ class _CustomerSignupScreenState extends ConsumerState<CustomerSignupScreen>
                     ),
                   ),
 
-                  // 3. Floating Language switch toggle in top header (Foreground layer - fully clickable)
                   Positioned(
                     top: toggleTop,
+                    left: 20.0,
                     right: 20.0,
-                    child: const ProviderAnimatedLanguageToggle(),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        ProviderHeaderBackButton(
+                          onTap: () {
+                            if (Navigator.of(context).canPop()) {
+                              Navigator.of(context).pop();
+                            } else {
+                              AppModeNavigation.openRoleSelection(context);
+                            }
+                          },
+                        ),
+                        const ProviderAnimatedLanguageToggle.compact(),
+                      ],
+                    ),
                   ),
                 ],
               ),
             );
 
-            if (isDesktopWeb) {
-              return Container(
-                width: double.infinity,
-                height: double.infinity,
-                color: const Color(0xFF141C1A),
-                child: Center(
-                  child: Container(
-                    width: containerWidth,
-                    height: containerHeight,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(42),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 32,
-                        ),
-                      ],
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: content,
+          if (isDesktopWeb) {
+            return Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: const Color(0xFF141C1A),
+              child: Center(
+                child: Container(
+                  width: containerWidth,
+                  height: containerHeight,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(42),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 32,
+                      ),
+                    ],
                   ),
+                  clipBehavior: Clip.antiAlias,
+                  child: content,
                 ),
-              );
-            }
+              ),
+            );
+          }
 
-            return content;
-          },
-        ),
+          return SizedBox(
+            width: containerWidth,
+            height: containerHeight,
+            child: content,
+          );
+        },
       ),
     );
   }

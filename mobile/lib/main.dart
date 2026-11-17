@@ -30,20 +30,12 @@ import 'features/provider/home/presentation/provider_home_screen.dart';
 import 'features/provider/splash/presentation/provider_splash_screen.dart';
 import 'features/provider/theme/provider_text_styles.dart';
 import 'features/requests/presentation/requests_screen.dart';
+import 'features/splash/presentation/app_mode_selection_screen.dart';
 import 'features/splash/presentation/splash_screen.dart';
 import 'services/task_service.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize real task service
-  await TaskService.instance.init();
-
-  // Pre-load active mode from persistence before app boots up
-  // Ensures provider side directly launches ProviderSplashScreen, never flashing customer splash
-  await ProviderRegistrationStore.instance.loadFromPrefs();
-  await CustomerAuthStore.instance.loadFromPrefs();
-  final initialMode = await ProviderRegistrationStore.instance.getActiveAppMode();
 
   // Gracefully handle font loading & hero transition errors so offline/CORS/HotRestart issues never crash the app
   PlatformDispatcher.instance.onError = (error, stack) {
@@ -81,10 +73,74 @@ void main() async {
   ]);
 
   runApp(
-    ProviderScope(
-      child: QareebApp(initialMode: initialMode),
+    const ProviderScope(
+      child: QareebAppRoot(),
     ),
   );
+}
+
+/// Boots persisted state after the first frame so cold starts never sit on a gray native window.
+class QareebAppRoot extends StatefulWidget {
+  const QareebAppRoot({super.key});
+
+  @override
+  State<QareebAppRoot> createState() => _QareebAppRootState();
+}
+
+class _QareebAppRootState extends State<QareebAppRoot> {
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    try {
+      await TaskService.instance.init();
+      await ProviderRegistrationStore.instance.loadFromPrefs();
+      await CustomerAuthStore.instance.loadFromPrefs();
+      if (!mounted) return;
+      setState(() => _ready = true);
+    } catch (e) {
+      debugPrint('Bootstrap error: $e');
+      if (!mounted) return;
+      setState(() => _ready = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) {
+      return const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: _BootstrapPlaceholder(),
+      );
+    }
+    return const QareebApp();
+  }
+}
+
+class _BootstrapPlaceholder extends StatelessWidget {
+  const _BootstrapPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            color: Color(0xFF8B53FE),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class AppScrollBehavior extends MaterialScrollBehavior {
@@ -100,12 +156,7 @@ class AppScrollBehavior extends MaterialScrollBehavior {
 }
 
 class QareebApp extends ConsumerWidget {
-  final String initialMode;
-
-  const QareebApp({
-    super.key,
-    this.initialMode = 'customer',
-  });
+  const QareebApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -128,11 +179,10 @@ class QareebApp extends ConsumerWidget {
           child: child ?? const SizedBox(),
         );
       },
-      home: initialMode == 'provider'
-          ? const ProviderSplashScreen()
-          : const SplashScreen(),
+      home: const AppModeSelectionScreen(),
       routes: {
         '/splash': (context) => const SplashScreen(),
+        '/app-mode': (context) => const AppModeSelectionScreen(),
         '/home': (context) => const HomeScreen(),
         '/customer/signup': (context) => const CustomerSignupScreen(),
         '/customer/otp': (context) => const CustomerOtpVerificationScreen(),

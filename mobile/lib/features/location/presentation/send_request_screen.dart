@@ -1,10 +1,11 @@
-import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
+import '../../../core/utils/contact_launcher.dart';
+import '../../../providers/backend_provider.dart';
 import 'live_tracking_screen.dart';
 import 'widgets/real_map_background_widget.dart';
 import '../../../services/profile_stats_service.dart';
@@ -15,13 +16,19 @@ import '../../../services/task_service.dart';
 class SendRequestScreen extends ConsumerStatefulWidget {
   final String serviceCategory;
   final String providerName;
+  final String? providerPublicId;
+  final String? providerPhone;
   final String distance;
+  final String? eta;
 
   const SendRequestScreen({
     super.key,
     this.serviceCategory = 'Pickup & Delivery',
     this.providerName = 'Ahmad Transport',
+    this.providerPublicId,
+    this.providerPhone,
     this.distance = '1.8 km',
+    this.eta,
   });
 
   @override
@@ -29,52 +36,180 @@ class SendRequestScreen extends ConsumerStatefulWidget {
 }
 
 class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
-  Timer? _acceptanceTimer;
-  Timer? _navigationTimer;
   bool _isAccepted = false;
+  bool _navigatedToLive = false;
+  String? _resolvedPhone;
 
   AppTranslations get tr => ref.read(translationsProvider);
 
   @override
   void initState() {
     super.initState();
+    _resolvedPhone = _cleanPhone(widget.providerPhone);
     ProfileStatsService.instance.recordNewRequest(isProvider: false);
-    TaskService.instance.createCustomerRequest(
+    TaskService.instance.activeTaskNotifier.addListener(_onTaskChanged);
+    _bootstrapRequest();
+    if (_resolvedPhone == null) {
+      _hydrateProviderPhone();
+    }
+  }
+
+  String? _cleanPhone(String? raw) {
+    final p = raw?.trim();
+    if (p == null || p.isEmpty) return null;
+    return p;
+  }
+
+  Future<void> _hydrateProviderPhone() async {
+    final id = widget.providerPublicId;
+    if (id == null || id.isEmpty) return;
+    final loc = ref.read(userLocationProvider).value;
+    final profile = await ref.read(backendServiceProvider).getPublicProviderProfile(
+          id,
+          latitude: loc?.latitude,
+          longitude: loc?.longitude,
+        );
+    if (!mounted) return;
+    final contact = profile?['contact'];
+    String? phone;
+    if (contact is Map && contact['phone'] != null) {
+      phone = contact['phone'].toString();
+    }
+    phone ??= profile?['phone']?.toString();
+    final cleaned = _cleanPhone(phone);
+    if (cleaned != null) {
+      setState(() => _resolvedPhone = cleaned);
+    }
+  }
+
+  Future<void> _bootstrapRequest() async {
+    final loc = ref.read(userLocationProvider).value;
+    final locationLabel = loc != null
+        ? 'https://maps.google.com/?q=${loc.latitude},${loc.longitude}'
+        : 'Shared via Qareeb';
+    await TaskService.instance.createCustomerRequest(
       providerName: widget.providerName,
       serviceCategory: widget.serviceCategory,
       distance: widget.distance,
+      eta: widget.eta ?? '',
+      providerPhone: _resolvedPhone ?? '',
+      customerLocation: locationLabel,
     );
-    _startAcceptanceSimulation();
+
+    final id = widget.providerPublicId;
+    if (id != null && id.isNotEmpty) {
+      ref.read(backendServiceProvider).trackCustomerEvent(
+            event: 'send_request_click',
+            providerPublicId: id,
+            latitude: loc?.latitude,
+            longitude: loc?.longitude,
+          ).catchError((_) => false);
+    }
+    _syncAcceptedFromTask();
   }
 
-  void _startAcceptanceSimulation() {
-    // Automatically accept request after 3.5 seconds and move to LiveTrackingScreen
-    _acceptanceTimer = Timer(const Duration(milliseconds: 3500), () {
-      if (!mounted) return;
-      HapticFeedback.mediumImpact();
-      setState(() {
-        _isAccepted = true;
-      });
+  void _onTaskChanged() {
+    _syncAcceptedFromTask();
+  }
 
-      _navigationTimer = Timer(const Duration(milliseconds: 900), () {
-        if (!mounted) return;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => LiveTrackingScreen(
-              serviceCategory: widget.serviceCategory,
-              providerName: widget.providerName,
-              distance: widget.distance,
-            ),
-          ),
-        );
-      });
-    });
+  void _syncAcceptedFromTask() {
+    final task = TaskService.instance.activeTask;
+    if (task == null || _navigatedToLive) return;
+    final accepted = task.step >= 1 &&
+        (task.status == 'active' ||
+            task.status == 'in_progress' ||
+            task.status == 'arrived');
+    if (!accepted) return;
+    if (mounted) {
+      setState(() => _isAccepted = true);
+    }
+    _openLiveTracking();
+  }
+
+  void _openLiveTracking() {
+    if (_navigatedToLive || !mounted) return;
+    _navigatedToLive = true;
+    HapticFeedback.mediumImpact();
+    final task = TaskService.instance.activeTask;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => LiveTrackingScreen(
+          serviceCategory: widget.serviceCategory,
+          providerName: widget.providerName,
+          distance: task?.distance ?? widget.distance,
+          duration: task?.eta ?? widget.eta ?? '',
+        ),
+      ),
+    );
+  }
+
+  void _trackContact(String event) {
+    final id = widget.providerPublicId;
+    if (id == null || id.isEmpty) return;
+    final loc = ref.read(userLocationProvider).value;
+    ref.read(backendServiceProvider).trackCustomerEvent(
+          event: event,
+          providerPublicId: id,
+          latitude: loc?.latitude,
+          longitude: loc?.longitude,
+        ).catchError((_) => false);
+  }
+
+  void _toast(String message, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+        backgroundColor: error ? const Color(0xFFEF4444) : const Color(0xFF8B53FE),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _onWhatsApp() async {
+    var phone = _resolvedPhone;
+    if (phone == null) {
+      await _hydrateProviderPhone();
+      phone = _resolvedPhone;
+    }
+    if (!mounted) return;
+    if (phone == null) {
+      _toast(tr.isArabic ? 'رقم واتساب غير متوفر' : 'WhatsApp number is not available', error: true);
+      return;
+    }
+    _trackContact('whatsapp_click');
+    final ok = await ContactLauncher.sendServiceRequest(
+      phone: phone,
+      category: widget.serviceCategory,
+      providerName: widget.providerName,
+      isArabic: tr.isArabic,
+    );
+    if (!ok) {
+      _toast(tr.isArabic ? 'تعذر فتح واتساب' : 'Could not open WhatsApp', error: true);
+    }
+  }
+
+  Future<void> _onCall() async {
+    var phone = _resolvedPhone;
+    if (phone == null) {
+      await _hydrateProviderPhone();
+      phone = _resolvedPhone;
+    }
+    if (!mounted) return;
+    if (phone == null) {
+      _toast(tr.isArabic ? 'رقم الهاتف غير متوفر' : 'Phone number is not available', error: true);
+      return;
+    }
+    _trackContact('call_click');
+    final ok = await ContactLauncher.call(phone);
+    if (!ok) {
+      _toast(tr.isArabic ? 'تعذر بدء الاتصال' : 'Could not start the call', error: true);
+    }
   }
 
   @override
   void dispose() {
-    _acceptanceTimer?.cancel();
-    _navigationTimer?.cancel();
+    TaskService.instance.activeTaskNotifier.removeListener(_onTaskChanged);
     super.dispose();
   }
   @override
@@ -110,8 +245,13 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
             final containerHeight = isDesktopWeb
                 ? math.min(844.0, (screenHeight - 32.0).clamp(520.0, 844.0))
                 : screenHeight;
+            final double mapSectionHeight =
+                (containerHeight * 0.32).clamp(205.0, 268.0);
 
-            final Widget screenContent = ScrollConfiguration(
+            final Widget screenContent = SizedBox(
+              height: containerHeight,
+              width: containerWidth,
+              child: ScrollConfiguration(
               behavior: const MaterialScrollBehavior().copyWith(
                 scrollbars: false,
                 dragDevices: {
@@ -122,16 +262,17 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                 },
               ),
               child: SingleChildScrollView(
-                physics: const ClampingScrollPhysics(),
+                physics: const NeverScrollableScrollPhysics(),
                 child: SizedBox(
                   width: containerWidth,
+                  height: containerHeight,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // Top Map Section (width: containerWidth, height: 295.0)
                       SizedBox(
                         width: containerWidth,
-                        height: 295.0,
+                        height: mapSectionHeight,
                         child: Stack(
                           clipBehavior: Clip.none,
                           children: [
@@ -140,7 +281,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                     top: 0.0,
                     left: 0.0,
                     width: containerWidth,
-                    height: 325.0,
+                    height: mapSectionHeight,
                     child: RealMapBackgroundWidget(
                       enableDrag: true,
                       zoom: 15.0,
@@ -173,7 +314,9 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                               key: const Key('send_request_back_button'),
                               onTap: () {
                                 HapticFeedback.lightImpact();
-                                Navigator.of(context).maybePop();
+                                if (Navigator.of(context).canPop()) {
+                                  Navigator.of(context).pop();
+                                }
                               },
                               behavior: HitTestBehavior.opaque,
                               child: Container(
@@ -236,11 +379,13 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                         ),
                       ),
 
-                      // 8. Card Widget Branding (Send Request Card):
-                      // border-top-left-radius: 28px; border-top-right-radius: 28px;
-                      // angle: 0 deg; opacity: 1; background: #FFFFFF;
-                      // box-shadow: 0px -2px 12px 0px #00000014;
-                      Container(
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.topCenter,
+                          child: SizedBox(
+                            width: containerWidth,
+                            child: Container(
                         width: containerWidth,
                         decoration: const BoxDecoration(
                           color: Color(0xFFFFFFFF),
@@ -258,8 +403,8 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                           ],
                         ),
                         padding: EdgeInsets.only(
-                          top: 12.0,
-                          bottom: math.max(20.0, mediaQuery.padding.bottom + 8.0),
+                          top: 8.0,
+                          bottom: math.max(8.0, mediaQuery.padding.bottom + 2.0),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -275,7 +420,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 20.0), // gap: 20px;
+                            const SizedBox(height: 12.0),
 
                             // Content layout branding:
                             // width: 350; angle: 0 deg; opacity: 1; gap: 20px;
@@ -510,12 +655,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                         key: const Key('send_request_whatsapp_button'),
                                                         onTap: () {
                                                           HapticFeedback.lightImpact();
-                                                          ScaffoldMessenger.of(context).showSnackBar(
-                                                            SnackBar(
-                                                              content: Text(tr.openingWhatsApp),
-                                                              duration: const Duration(seconds: 1),
-                                                            ),
-                                                          );
+                                                          _onWhatsApp();
                                                         },
                                                         behavior: HitTestBehavior.opaque,
                                                         child: Container(
@@ -544,12 +684,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                         key: const Key('send_request_call_button'),
                                                         onTap: () {
                                                           HapticFeedback.lightImpact();
-                                                          ScaffoldMessenger.of(context).showSnackBar(
-                                                            SnackBar(
-                                                              content: Text(tr.callingProvider(tr.formatProviderName(widget.providerName.isNotEmpty ? widget.providerName : 'Ahmad Transport'))),
-                                                              duration: const Duration(seconds: 1),
-                                                            ),
-                                                          );
+                                                          _onCall();
                                                         },
                                                         behavior: HitTestBehavior.opaque,
                                                         child: Container(
@@ -1379,7 +1514,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                               ),
                             ),
 
-                            const SizedBox(height: 24.0),
+                            const SizedBox(height: 10.0),
 
                             // Bottom Bar Layout: width: 390; height: 24;
                             SizedBox(
@@ -1401,10 +1536,14 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                           ],
                         ),
                       ),
+                    ),
+                  ),
+                ),
                     ],
                   ),
                 ),
               ),
+            ),
             );
             if (isDesktopWeb) {
               return Container(
@@ -1519,17 +1658,19 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
           ],
         );
       },
-    ).then((confirmed) {
+    ).then((confirmed) async {
       if (confirmed == true && context.mounted) {
-        _acceptanceTimer?.cancel();
-        _navigationTimer?.cancel();
+        await TaskService.instance.cancelTask();
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(tr.requestCancelled),
             duration: const Duration(seconds: 2),
           ),
         );
-        Navigator.of(context).maybePop();
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
       }
     });
   }

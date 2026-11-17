@@ -24,10 +24,13 @@ import {
   Ban,
   PauseCircle,
   Trash2,
+  Plus,
+  X,
 } from 'lucide-react'
 import {
   fetchProviders,
   fetchCategories,
+  createProviderApi,
   suspendProviderApi,
   blockProviderApi,
   reinstateProviderApi,
@@ -50,6 +53,12 @@ export function ProviderDirectoryView({
   const [currentPage, setCurrentPage] = useState(1)
   const [providersList, setProvidersList] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [addForm, setAddForm] = useState({ phone: '', name: '', categoryId: '' })
+  const [categoryOptions, setCategoryOptions] = useState([])
+  const [addError, setAddError] = useState('')
+  const [addSaving, setAddSaving] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // Fetch real providers from backend API
   useEffect(() => {
@@ -155,7 +164,7 @@ export function ProviderDirectoryView({
       window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [])
+  }, [refreshKey])
 
   const stats = {
     total: providersList.length,
@@ -181,6 +190,7 @@ export function ProviderDirectoryView({
           .filter((cat) => cat && cat !== 'Pending Registration')
         const unique = Array.from(new Set([...apiNames, ...providerCatNames]))
         setCategories(['All Categories', ...unique])
+        setCategoryOptions(items.filter((c) => c.id && c.name))
       } catch {
         const providerCatNames = Array.from(
           new Set(
@@ -314,6 +324,30 @@ export function ProviderDirectoryView({
     }
   }
 
+  const handleAddProvider = async (e) => {
+    e.preventDefault()
+    setAddError('')
+    if (!addForm.phone.trim()) {
+      setAddError('Phone number is required.')
+      return
+    }
+    setAddSaving(true)
+    try {
+      await createProviderApi({
+        phone: addForm.phone.trim(),
+        ...(addForm.name.trim() ? { name: addForm.name.trim() } : {}),
+        ...(addForm.categoryId ? { categoryId: addForm.categoryId } : {}),
+      })
+      setShowAddModal(false)
+      setAddForm({ phone: '', name: '', categoryId: '' })
+      setRefreshKey((k) => k + 1)
+    } catch (err) {
+      setAddError(err?.response?.data?.message || 'Could not create provider.')
+    } finally {
+      setAddSaving(false)
+    }
+  }
+
   const handleDeleteProvider = async (prov) => {
     setActiveRowMenu(null)
     if (!window.confirm(`Are you sure you want to permanently delete provider "${prov.name}"? This action cannot be undone.`)) {
@@ -332,13 +366,26 @@ export function ProviderDirectoryView({
   return (
     <div className="w-full max-w-[1084px] flex flex-col gap-5 shrink-0 select-none pb-8 animate-in fade-in duration-150">
       {/* ================= 1. TITLE & SUBTITLE SECTION ================= */}
-      <div className="flex flex-col">
-        <h1 className="text-[22px] font-bold text-[#1C2926] tracking-tight leading-tight">
-          Provider Directory
-        </h1>
-        <p className="text-[13px] text-[#566663] font-normal mt-1 leading-snug">
-          Manage all registered providers view their details and control their account status.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col">
+          <h1 className="text-[22px] font-bold text-[#1C2926] tracking-tight leading-tight">
+            Provider Directory
+          </h1>
+          <p className="text-[13px] text-[#566663] font-normal mt-1 leading-snug">
+            Manage all registered providers view their details and control their account status.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setAddError('')
+            setShowAddModal(true)
+          }}
+          className="h-[40px] px-4 rounded-xl bg-[#8B53FE] text-white text-xs font-semibold hover:bg-[#7B43EE] flex items-center gap-2 shrink-0 cursor-pointer"
+        >
+          <Plus className="w-4 h-4" />
+          Add Provider
+        </button>
       </div>
 
       {/* ================= 2. 4 METRIC CARDS ROW (gap: 16px) ================= */}
@@ -809,6 +856,69 @@ export function ProviderDirectoryView({
           </div>
         </div>
       </div>
+
+      {showAddModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 relative">
+            <button
+              type="button"
+              onClick={() => setShowAddModal(false)}
+              className="absolute top-4 right-4 text-[#9EAFA9] hover:text-[#1C2926] cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-lg font-bold text-[#1C2926] mb-1">Add Provider</h2>
+            <p className="text-xs text-[#616166] mb-4">
+              Create a provider account. They can complete profile and verification in the app.
+            </p>
+            <form onSubmit={handleAddProvider} className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-[#616166]">Phone</label>
+                <input
+                  type="text"
+                  value={addForm.phone}
+                  onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
+                  placeholder="+966501234567"
+                  className="w-full mt-1 h-10 px-3 border border-[#EBEBEB] rounded-xl text-sm outline-none focus:border-[#8B53FE]"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[#616166]">Display name (optional)</label>
+                <input
+                  type="text"
+                  value={addForm.name}
+                  onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Provider name"
+                  className="w-full mt-1 h-10 px-3 border border-[#EBEBEB] rounded-xl text-sm outline-none focus:border-[#8B53FE]"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[#616166]">Category (optional)</label>
+                <select
+                  value={addForm.categoryId}
+                  onChange={(e) => setAddForm((f) => ({ ...f, categoryId: e.target.value }))}
+                  className="w-full mt-1 h-10 px-3 border border-[#EBEBEB] rounded-xl text-sm outline-none focus:border-[#8B53FE] bg-white"
+                >
+                  <option value="">Select category</option>
+                  {categoryOptions.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {addError && <p className="text-xs text-[#DC2626]">{addError}</p>}
+              <button
+                type="submit"
+                disabled={addSaving}
+                className="w-full h-10 rounded-xl bg-[#8B53FE] text-white text-sm font-semibold hover:bg-[#7B43EE] disabled:opacity-60 cursor-pointer"
+              >
+                {addSaving ? 'Saving…' : 'Create Provider'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -22,6 +22,9 @@ import {
   vehicleTypePatchSchema,
   cityCreateSchema,
   cityPatchSchema,
+  customerListSchema,
+  adminCreateCustomerSchema,
+  adminCreateProviderSchema,
 } from "../schemas.js";
 import * as adminService from "../admin.service.js";
 import { listOnlineProviders } from "../presence.service.js";
@@ -83,6 +86,61 @@ adminRoutes.get(
   asyncHandler(async (req, res) => {
     const result = await adminService.listProviders(validatedQuery(req));
     ok(res, result.items, 200, result.meta);
+  }),
+);
+
+adminRoutes.post(
+  "/providers",
+  requireAdmin,
+  validate(adminCreateProviderSchema),
+  asyncHandler(async (req, res) => {
+    created(res, await adminService.adminCreateProvider(req.body, req.admin));
+  }),
+);
+
+adminRoutes.get(
+  "/customers",
+  requireAdmin,
+  validate(customerListSchema),
+  asyncHandler(async (req, res) => {
+    const result = await adminService.listCustomers(validatedQuery(req));
+    ok(res, result.items, 200, result.meta);
+  }),
+);
+
+adminRoutes.post(
+  "/customers",
+  requireAdmin,
+  validate(adminCreateCustomerSchema),
+  asyncHandler(async (req, res) => {
+    created(res, await adminService.createCustomer(req.body));
+  }),
+);
+
+adminRoutes.post(
+  "/customers/:id/block",
+  requireAdmin,
+  validate(idParamSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.blockCustomer(req.params.id));
+  }),
+);
+
+adminRoutes.post(
+  "/customers/:id/unblock",
+  requireAdmin,
+  validate(idParamSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.unblockCustomer(req.params.id));
+  }),
+);
+
+adminRoutes.delete(
+  "/customers/:id",
+  requireAdmin,
+  validate(idParamSchema),
+  asyncHandler(async (req, res) => {
+    ok(res, await adminService.deleteCustomer(req.params.id));
   }),
 );
 

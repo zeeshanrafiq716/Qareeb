@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../services/profile_stats_service.dart';
 import '../../../services/task_service.dart';
+import 'completed_service_details_screen.dart';
 
 /// Screen displayed automatically after provider arrives.
 /// Contains the standard branding header and the success status layout,
@@ -34,6 +35,8 @@ class _ServiceInProgressScreenState
   late AnimationController _animController;
   late Animation<double> _scaleAnimation;
   int _userRating = 0;
+  bool _ratingSubmitted = false;
+  bool _isSubmittingRating = false;
 
   @override
   void initState() {
@@ -53,6 +56,57 @@ class _ServiceInProgressScreenState
   void dispose() {
     _animController.dispose();
     super.dispose();
+  }
+
+  ServiceTask? get _task => TaskService.instance.activeTask;
+
+  String get _displayProviderName =>
+      _task?.providerName ?? widget.providerName;
+
+  String get _displayCategory =>
+      _task?.serviceCategory ?? widget.serviceCategory;
+
+  String get _completedDateTime =>
+      _task?.dateTime ?? tr.sampleCompletedDateTime;
+
+  Future<void> _submitRating() async {
+    if (_userRating <= 0 || _ratingSubmitted || _isSubmittingRating) return;
+    setState(() => _isSubmittingRating = true);
+    await ProfileStatsService.instance.recordReview(
+      isProvider: false,
+      newRating: _userRating.toDouble(),
+    );
+    if (!mounted) return;
+    setState(() {
+      _ratingSubmitted = true;
+      _isSubmittingRating = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          tr.isArabic
+              ? 'شكراً! تم إرسال تقييمك.'
+              : 'Thanks! Your rating was submitted.',
+          style: tr.font(color: Colors.white, fontSize: 13),
+        ),
+        backgroundColor: const Color(0xFF8B53FE),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _openServiceDetails() {
+    HapticFeedback.lightImpact();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CompletedServiceDetailsScreen(
+          providerName: _displayProviderName,
+          serviceCategory: _displayCategory,
+          task: _task,
+        ),
+      ),
+    );
   }
 
   @override
@@ -93,27 +147,41 @@ class _ServiceInProgressScreenState
                 : (containerWidth - 32.0).clamp(280.0, 350.0);
             final double horizontalPadding = math.max(16.0, (containerWidth - cardWidth) / 2.0);
 
-            final Widget screenContent = ScrollConfiguration(
-              behavior: const MaterialScrollBehavior().copyWith(
-                scrollbars: false,
-                dragDevices: {
-                  PointerDeviceKind.touch,
-                  PointerDeviceKind.mouse,
-                  PointerDeviceKind.trackpad,
-                  PointerDeviceKind.stylus,
-                },
-              ),
-              child: SingleChildScrollView(
-                physics: const ClampingScrollPhysics(),
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                child: Center(
+            final Widget screenContent = SizedBox(
+              height: containerHeight,
+              width: containerWidth,
+              child: ScrollConfiguration(
+                behavior: const MaterialScrollBehavior().copyWith(
+                  scrollbars: false,
+                  dragDevices: {
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.mouse,
+                    PointerDeviceKind.trackpad,
+                    PointerDeviceKind.stylus,
+                  },
+                ),
+                child: SingleChildScrollView(
+                  physics: const NeverScrollableScrollPhysics(),
                   child: SizedBox(
-                    width: cardWidth,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 56.0), // top padding to header
-
+                    height: containerHeight,
+                    width: containerWidth,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: math.max(48.0, mediaQuery.padding.top + 8.0),
+                          ),
+                          Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.topCenter,
+                              child: SizedBox(
+                                width: cardWidth,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
                         // 1. Header with given branding:
                         // width: 350; height: 36; top: 56px; left: 20px; gap: 16px; angle: 0 deg; opacity: 1;
                         // follow previous screens header , header heading will be service complete
@@ -311,7 +379,7 @@ class _ServiceInProgressScreenState
                                     children: [
                                       // 1st row text branding: content: Ahmad Transport
                                       Text(
-                                        tr.formatProviderName(widget.providerName),
+                                        tr.formatProviderName(_displayProviderName),
                                         style: tr.font(
                                           fontSize: 14.0,
                                           fontWeight: FontWeight.w500,
@@ -326,7 +394,7 @@ class _ServiceInProgressScreenState
 
                                       // content: Pickup & Delivery
                                       Text(
-                                        tr.categoryName(widget.serviceCategory),
+                                        tr.categoryName(_displayCategory),
                                         style: tr.font(
                                           fontSize: 10.0,
                                           fontWeight: FontWeight.w400,
@@ -441,7 +509,8 @@ class _ServiceInProgressScreenState
                                     children: [
                                       // content: Toyota Hilux
                                       Text(
-                                        tr.formatVehicleName('Toyota Hilux'),
+                                        tr.formatVehicleName(
+                                            _task?.vehicleName ?? 'Toyota Hilux'),
                                         style: tr.font(
                                           fontSize: 14.0,
                                           fontWeight: FontWeight.w500,
@@ -456,7 +525,7 @@ class _ServiceInProgressScreenState
 
                                       // content: ABC-123
                                       Text(
-                                        'ABC-123',
+                                        _task?.plateNumber ?? 'ABC-123',
                                         style: tr.font(
                                           fontSize: 10.0,
                                           fontWeight: FontWeight.w400,
@@ -532,7 +601,7 @@ class _ServiceInProgressScreenState
 
                                     // content: 12 Sep 2026, 9:58 PM
                                     Text(
-                                      tr.sampleCompletedDateTime,
+                                      _completedDateTime,
                                       style: tr.font(
                                         fontSize: 14.0,
                                         fontWeight: FontWeight.w500,
@@ -675,50 +744,97 @@ class _ServiceInProgressScreenState
                                 const SizedBox(height: 10.0), // gap: 10px;
 
                                 // stars branding: width: 152; height: 24; justify-content: space-between;
-                                SizedBox(
-                                  width: 152.0,
-                                  height: 24.0,
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: List.generate(5, (index) {
-                                      final starNum = index + 1;
-                                      final isFilled = _userRating >= starNum;
-                                      return MouseRegion(
-                                        cursor: SystemMouseCursors.click,
-                                        child: GestureDetector(
-                                          key: Key('rating_star_$starNum'),
-                                          onTap: () {
-                                            HapticFeedback.lightImpact();
-                                            setState(() {
-                                              if (_userRating == starNum) {
-                                                _userRating = 0;
-                                              } else {
-                                                _userRating = starNum;
-                                              }
-                                            });
-                                          },
-                                          behavior: HitTestBehavior.opaque,
-                                          child: SizedBox(
-                                            width: 24.0,
-                                            height: 24.0,
-                                            child: CustomPaint(
-                                              size: const Size(24.0, 24.0),
-                                              painter: _RatingStarPainter(
-                                                isFilled: isFilled,
-                                                fillColor:
-                                                    const Color(0xFF8B53FE),
-                                                strokeColor:
-                                                    const Color(0xFF566663),
-                                                strokeWidth: 0.8,
-                                              ),
-                                            ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: List.generate(5, (index) {
+                                    final starNum = index + 1;
+                                    final isFilled = _userRating >= starNum;
+                                    return Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        key: Key('rating_star_$starNum'),
+                                        onTap: _ratingSubmitted
+                                            ? null
+                                            : () {
+                                                HapticFeedback.lightImpact();
+                                                setState(() {
+                                                  _userRating = starNum;
+                                                });
+                                              },
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 4,
+                                          ),
+                                          child: Icon(
+                                            isFilled
+                                                ? Icons.star_rounded
+                                                : Icons.star_outline_rounded,
+                                            size: 32,
+                                            color: isFilled
+                                                ? const Color(0xFF8B53FE)
+                                                : const Color(0xFF9CA3AF),
                                           ),
                                         ),
-                                      );
-                                    }),
-                                  ),
+                                      ),
+                                    );
+                                  }),
                                 ),
+                                if (_ratingSubmitted) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    tr.isArabic
+                                        ? 'تم إرسال تقييمك'
+                                        : 'Rating submitted',
+                                    style: tr.font(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF8B53FE),
+                                    ),
+                                  ),
+                                ] else if (_userRating > 0) ...[
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    height: 40,
+                                    child: ElevatedButton(
+                                      key: const Key('submit_rating_button'),
+                                      onPressed: _isSubmittingRating
+                                          ? null
+                                          : _submitRating,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF8B53FE),
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 20,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                      child: _isSubmittingRating
+                                          ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : Text(
+                                              tr.isArabic
+                                                  ? 'إرسال التقييم'
+                                                  : 'Submit rating',
+                                              style: tr.font(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -733,11 +849,8 @@ class _ServiceInProgressScreenState
                               key: const Key('service_completed_done_button'),
                               onTap: () async {
                                 HapticFeedback.mediumImpact();
-                                if (_userRating > 0) {
-                                  await ProfileStatsService.instance.recordReview(
-                                    isProvider: false,
-                                    newRating: _userRating.toDouble(),
-                                  );
+                                if (_userRating > 0 && !_ratingSubmitted) {
+                                  await _submitRating();
                                 }
                                 await ProfileStatsService.instance.recordCompletedRequest(
                                   isProvider: false,
@@ -785,26 +898,7 @@ class _ServiceInProgressScreenState
                             cursor: SystemMouseCursors.click,
                             child: GestureDetector(
                               key: const Key('service_completed_view_details_button'),
-                              onTap: () {
-                                HapticFeedback.lightImpact();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      tr.tripDetails(tr.formatProviderName(widget.providerName), tr.categoryName(widget.serviceCategory)),
-                                      style: tr.font(
-                                        color: Colors.white,
-                                        fontSize: 13.0,
-                                      ),
-                                    ),
-                                    backgroundColor: const Color(0xFF8B53FE),
-                                    duration: const Duration(seconds: 2),
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10.0),
-                                    ),
-                                  ),
-                                );
-                              },
+                              onTap: _openServiceDetails,
                               behavior: HitTestBehavior.opaque,
                               child: SizedBox(
                                 width: cardWidth,
@@ -845,8 +939,16 @@ class _ServiceInProgressScreenState
                             ),
                           ),
 
-                          const SizedBox(height: 24.0), // bottom safe padding
-                      ],
+                          SizedBox(
+                            height: math.max(8.0, mediaQuery.padding.bottom),
+                          ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -987,75 +1089,6 @@ class _SuccessTickPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Star painter matching branding specs (width: 24, height: 24, border: 0.8px solid #566663)
-class _RatingStarPainter extends CustomPainter {
-  final bool isFilled;
-  final Color fillColor;
-  final Color strokeColor;
-  final double strokeWidth;
-
-  const _RatingStarPainter({
-    required this.isFilled,
-    this.fillColor = const Color(0xFF8B53FE),
-    this.strokeColor = const Color(0xFF566663),
-    this.strokeWidth = 0.8,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double cx = size.width / 2.0;
-    final double cy = size.height / 2.0;
-    final double outerR = size.width * 0.44;
-    final double innerR = outerR * 0.44;
-
-    final path = Path();
-    for (int i = 0; i < 10; i++) {
-      final double r = i.isEven ? outerR : innerR;
-      final double angle = -math.pi / 2.0 + (i * math.pi / 5.0);
-      final double x = cx + r * math.cos(angle);
-      final double y = cy + r * math.sin(angle);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    path.close();
-
-    if (isFilled) {
-      final fillPaint = Paint()
-        ..color = fillColor
-        ..style = PaintingStyle.fill
-        ..isAntiAlias = true;
-      canvas.drawPath(path, fillPaint);
-
-      final borderPaint = Paint()
-        ..color = fillColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeJoin = StrokeJoin.round
-        ..strokeCap = StrokeCap.round
-        ..isAntiAlias = true;
-      canvas.drawPath(path, borderPaint);
-    } else {
-      final strokePaint = Paint()
-        ..color = strokeColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeJoin = StrokeJoin.round
-        ..strokeCap = StrokeCap.round
-        ..isAntiAlias = true;
-      canvas.drawPath(path, strokePaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _RatingStarPainter oldDelegate) =>
-      isFilled != oldDelegate.isFilled ||
-      fillColor != oldDelegate.fillColor ||
-      strokeColor != oldDelegate.strokeColor;
 }
 
 /// Alias matching the title branding

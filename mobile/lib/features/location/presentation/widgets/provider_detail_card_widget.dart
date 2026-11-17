@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -23,6 +24,8 @@ class ProviderDetailCardWidget extends ConsumerStatefulWidget {
   final String? providerPublicId;
   final bool verified;
   final bool isAvailable;
+  final double? providerLatitude;
+  final double? providerLongitude;
   final bool showCloseIcon;
   final VoidCallback? onClose;
   final VoidCallback? onSendMyLocation;
@@ -42,6 +45,8 @@ class ProviderDetailCardWidget extends ConsumerStatefulWidget {
     this.providerPublicId,
     this.verified = false,
     this.isAvailable = true,
+    this.providerLatitude,
+    this.providerLongitude,
     this.showCloseIcon = true,
     this.onClose,
     this.onSendMyLocation,
@@ -62,6 +67,8 @@ class ProviderDetailCardWidget extends ConsumerStatefulWidget {
     String? providerPublicId,
     bool verified = false,
     bool isAvailable = true,
+    double? providerLatitude,
+    double? providerLongitude,
     VoidCallback? onSendMyLocation,
     VoidCallback? onSendRequest,
   }) {
@@ -84,6 +91,8 @@ class ProviderDetailCardWidget extends ConsumerStatefulWidget {
         providerPublicId: providerPublicId,
         verified: verified,
         isAvailable: isAvailable,
+        providerLatitude: providerLatitude,
+        providerLongitude: providerLongitude,
         showCloseIcon: true,
         onClose: () => Navigator.of(ctx).pop(),
         onSendMyLocation: onSendMyLocation,
@@ -97,6 +106,17 @@ class ProviderDetailCardWidget extends ConsumerStatefulWidget {
       _ProviderDetailCardWidgetState();
 }
 
+String _formatDistanceMeters(double distanceM, bool isArabic) {
+  final km = (distanceM / 1000.0).clamp(0.0, 99.0);
+  final text = km.toStringAsFixed(1);
+  return isArabic ? '$text كم' : '$text km';
+}
+
+String _formatEtaMinutes(int minutes, bool isArabic) {
+  final mins = minutes.clamp(1, 999);
+  return isArabic ? '$mins د' : '$mins min';
+}
+
 class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWidget> {
   static const Color _brand = Color(0xFF8B53FE);
   static const Color _brandSoft = Color(0xFFF8F5FE);
@@ -108,6 +128,12 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
   String? _photoUrl;
   bool _verified = false;
   bool _busy = false;
+  bool _isOnline = true;
+  late String _liveDistance;
+  late String _liveEta;
+  double? _providerLat;
+  double? _providerLng;
+  Timer? _liveMetricsTimer;
 
   @override
   void initState() {
@@ -115,7 +141,24 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
     _phone = _cleanOptional(widget.phoneNumber);
     _photoUrl = _cleanPhoto(widget.avatarUrl);
     _verified = widget.verified;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _hydrateFromProfile());
+    _isOnline = widget.isAvailable;
+    _liveDistance = '';
+    _liveEta = '';
+    _providerLat = widget.providerLatitude;
+    _providerLng = widget.providerLongitude;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _hydrateFromProfile();
+      _refreshLiveMetrics();
+    });
+    _liveMetricsTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (mounted) _refreshLiveMetrics();
+    });
+  }
+
+  @override
+  void dispose() {
+    _liveMetricsTimer?.cancel();
+    super.dispose();
   }
 
   String? _cleanOptional(String? value) {
@@ -130,17 +173,7 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
     return text;
   }
 
-  Future<void> _hydrateFromProfile() async {
-    final publicId = widget.providerPublicId?.trim() ?? '';
-    if (publicId.isEmpty) return;
-    final loc = ref.read(userLocationProvider).value;
-    final profile = await ref.read(backendServiceProvider).getPublicProviderProfile(
-          publicId,
-          latitude: loc?.latitude,
-          longitude: loc?.longitude,
-        );
-    if (!mounted || profile == null) return;
-
+  void _applyProfileMap(Map<String, dynamic> profile, {required bool isArabic}) {
     final contact = profile['contact'];
     String? phone = _phone;
     if (contact is Map && contact['phone'] != null) {
@@ -148,14 +181,94 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
     }
     phone ??= profile['phone']?.toString();
 
+    final lat = (profile['latitude'] as num?)?.toDouble();
+    final lng = (profile['longitude'] as num?)?.toDouble();
+    if (lat != null && lng != null && lat != 0 && lng != 0) {
+      _providerLat = lat;
+      _providerLng = lng;
+    }
+
+    String? nextDistance;
+    final distanceM = (profile['distanceMeters'] as num?)?.toDouble();
+    if (distanceM != null && distanceM > 0) {
+      nextDistance = _formatDistanceMeters(distanceM, isArabic);
+    }
+
+    final availability = profile['availability'];
+    final badges = profile['badges'];
+    final online = profile['isOnline'] == true ||
+        (availability is Map && availability['isOnline'] == true) ||
+        (badges is Map && badges['available'] == true);
+
     setState(() {
       _phone = _cleanOptional(phone);
       _photoUrl = _cleanPhoto(profile['photoUrl']?.toString()) ?? _photoUrl;
-      final badges = profile['badges'];
       _verified = profile['verified'] == true ||
           (badges is Map && badges['verified'] == true) ||
           _verified;
+      _isOnline = online;
+      if (nextDistance != null) _liveDistance = nextDistance;
     });
+  }
+
+  Future<void> _fetchRealDriveEta({
+    required double originLat,
+    required double originLng,
+    required double destLat,
+    required double destLng,
+  }) async {
+    final tr = ref.read(translationsProvider);
+    final route = await ref.read(googleMapsServiceProvider).computeRoute(
+          originLat: originLat,
+          originLng: originLng,
+          destLat: destLat,
+          destLng: destLng,
+        );
+    if (!mounted || route.isFallback) return;
+    setState(() {
+      _liveEta = _formatEtaMinutes(route.durationMinutes, tr.isArabic);
+    });
+  }
+
+  Future<void> _hydrateFromProfile() async {
+    await _refreshLiveMetrics(contactOnly: true);
+  }
+
+  Future<void> _refreshLiveMetrics({bool contactOnly = false}) async {
+    final tr = ref.read(translationsProvider);
+    final loc = ref.read(userLocationProvider).value;
+    final publicId = widget.providerPublicId?.trim() ?? '';
+
+    if (publicId.isEmpty) return;
+
+    final profile = await ref.read(backendServiceProvider).getPublicProviderProfile(
+          publicId,
+          latitude: loc?.latitude,
+          longitude: loc?.longitude,
+        );
+    if (!mounted || profile == null) return;
+
+    _applyProfileMap(profile, isArabic: tr.isArabic);
+
+    if (contactOnly || loc == null) return;
+
+    final destLat = _providerLat;
+    final destLng = _providerLng;
+    if (destLat == null || destLng == null) return;
+
+    await _fetchRealDriveEta(
+      originLat: loc.latitude,
+      originLng: loc.longitude,
+      destLat: destLat,
+      destLng: destLng,
+    );
+  }
+
+  Future<String?> _ensurePhone() async {
+    final existing = _cleanOptional(_phone);
+    if (existing != null) return existing;
+    await _hydrateFromProfile();
+    return _cleanOptional(_phone);
   }
 
   void _track(String event) {
@@ -186,7 +299,10 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
 
   Future<void> _onWhatsApp() async {
     final tr = ref.read(translationsProvider);
-    final phone = _phone;
+    setState(() => _busy = true);
+    final phone = await _ensurePhone();
+    if (!mounted) return;
+    setState(() => _busy = false);
     if (phone == null) {
       _toast(tr.isArabic ? 'رقم واتساب غير متوفر' : 'WhatsApp number is not available', error: true);
       return;
@@ -200,7 +316,10 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
 
   Future<void> _onCall() async {
     final tr = ref.read(translationsProvider);
-    final phone = _phone;
+    setState(() => _busy = true);
+    final phone = await _ensurePhone();
+    if (!mounted) return;
+    setState(() => _busy = false);
     if (phone == null) {
       _toast(tr.isArabic ? 'رقم الهاتف غير متوفر' : 'Phone number is not available', error: true);
       return;
@@ -219,7 +338,6 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
       return;
     }
     _track('share_location_click');
-    Navigator.of(context).maybePop();
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => SendLocationScreen(
@@ -229,7 +347,9 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
           providerName: widget.providerName.isNotEmpty
               ? widget.providerName
               : 'Ahmad Transport',
-          distance: widget.distance.isNotEmpty ? widget.distance : '1.8 km',
+          providerPublicId: widget.providerPublicId,
+          providerPhone: _phone ?? widget.phoneNumber,
+          distance: _liveDistance.isNotEmpty ? _liveDistance : '—',
         ),
       ),
     );
@@ -241,8 +361,6 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
       widget.onSendRequest!();
       return;
     }
-    _track('whatsapp_click');
-    Navigator.of(context).maybePop();
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => SendRequestScreen(
@@ -252,7 +370,10 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
           providerName: widget.providerName.isNotEmpty
               ? widget.providerName
               : 'Ahmad Transport',
-          distance: widget.distance.isNotEmpty ? widget.distance : '1.8 km',
+          providerPublicId: widget.providerPublicId,
+          providerPhone: _phone ?? widget.phoneNumber,
+          distance: _liveDistance.isNotEmpty ? _liveDistance : '—',
+          eta: _liveEta.isNotEmpty ? _liveEta : null,
         ),
       ),
     );
@@ -324,9 +445,16 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
     );
   }
 
-  Widget _trustChip({required Widget icon, required String title, required String subtitle}) {
+  Widget _trustChip({
+    required Widget icon,
+    required String title,
+    required String subtitle,
+    double paddingLeft = 0,
+  }) {
     return Expanded(
-      child: Row(
+      child: Padding(
+        padding: EdgeInsets.only(left: paddingLeft),
+        child: Row(
         children: [
           Container(
             width: 28.0,
@@ -365,6 +493,7 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
             ),
           ),
         ],
+        ),
       ),
     );
   }
@@ -382,7 +511,10 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
         ? tr.categoryName(widget.serviceCategory)
         : (widget.vehicleName.trim().isNotEmpty ? widget.vehicleName : '');
     final showRating = widget.tripsCount > 0 && widget.rating > 0;
-    final hasPhone = _phone != null && _phone!.isNotEmpty;
+    final hasPhone = (_phone != null && _phone!.isNotEmpty) ||
+        (widget.phoneNumber != null && widget.phoneNumber!.trim().isNotEmpty);
+    final canContact =
+        hasPhone || (widget.providerPublicId != null && widget.providerPublicId!.trim().isNotEmpty);
 
     return Align(
       alignment: Alignment.bottomCenter,
@@ -546,7 +678,7 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
                             _roundAction(
                               key: const Key('provider_detail_card_whatsapp_btn'),
                               color: const Color(0xFF25D366),
-                              enabled: hasPhone && !_busy,
+                              enabled: canContact && !_busy,
                               onTap: _onWhatsApp,
                               child: const CustomPaint(
                                 size: Size(18.0, 18.0),
@@ -557,7 +689,7 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
                             _roundAction(
                               key: const Key('provider_detail_card_call_btn'),
                               color: _ink,
-                              enabled: hasPhone && !_busy,
+                              enabled: canContact && !_busy,
                               onTap: _onCall,
                               child: const Icon(Icons.phone_rounded, size: 17.0, color: Colors.white),
                             ),
@@ -570,13 +702,13 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
                       children: [
                         _brandStatCard(
                           icon: const Icon(Icons.place_rounded, size: 18.0, color: Colors.white),
-                          value: widget.distance.isNotEmpty ? widget.distance : '—',
+                          value: _liveDistance.isNotEmpty ? _liveDistance : '—',
                           label: tr.distanceAway,
                         ),
                         const SizedBox(width: 10.0),
                         _brandStatCard(
                           icon: const Icon(Icons.schedule_rounded, size: 18.0, color: Colors.white),
-                          value: widget.estimatedTime.isNotEmpty ? widget.estimatedTime : '—',
+                          value: _liveEta.isNotEmpty ? _liveEta : '—',
                           label: tr.estimatedTime,
                         ),
                       ],
@@ -606,14 +738,15 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
                           ),
                           _trustChip(
                             icon: Icon(
-                              widget.isAvailable ? Icons.wifi_rounded : Icons.wifi_off_rounded,
+                              _isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
                               size: 15.0,
                               color: Colors.white,
                             ),
-                            title: widget.isAvailable
+                            title: _isOnline
                                 ? (tr.isArabic ? 'متصل' : 'Online')
                                 : (tr.isArabic ? 'غير متصل' : 'Offline'),
                             subtitle: tr.isArabic ? 'مباشر' : 'Live',
+                            paddingLeft: 10.0,
                           ),
                         ],
                       ),

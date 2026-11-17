@@ -16,6 +16,7 @@ import '../../location/presentation/widgets/top_down_car_widget.dart';
 import '../../location/presentation/widgets/map_tracking_step.dart';
 import '../../location/presentation/widgets/real_map_background_widget.dart';
 import '../../profile/presentation/notifications_screen.dart';
+import '../../location/presentation/completed_service_details_screen.dart';
 
 /// Requests Tab screen with branding header layout.
 /// Hosts the request management view and floating bottom navigation bar.
@@ -1787,6 +1788,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
     final mapped = rawTasks.map((t) {
       final isCancelled = t.status == 'cancelled';
       return _HistoryRequestItem(
+        task: t,
         providerName: t.providerName,
         statusText: isCancelled ? (tr.isArabic ? 'ملغي' : 'Cancelled') : (tr.isArabic ? 'مكتمل' : 'Completed'),
         statusBgColor: isCancelled ? const Color(0xFFFFF0F0) : const Color(0xFFF0EAFE),
@@ -1870,6 +1872,16 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
     );
   }
 
+  void _openHistoryDetails(_HistoryRequestItem item) {
+    HapticFeedback.lightImpact();
+    if (item.task == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CompletedServiceDetailsScreen(task: item.task),
+      ),
+    );
+  }
+
   Widget _buildHistoryCard(_HistoryRequestItem item, double containerWidth) {
     return Container(
       width: double.infinity,
@@ -1891,9 +1903,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
         borderRadius: BorderRadius.circular(12.0),
         child: InkWell(
           borderRadius: BorderRadius.circular(12.0),
-          onTap: () {
-            HapticFeedback.lightImpact();
-          },
+          onTap: () => _openHistoryDetails(item),
           child: Padding(
             padding: const EdgeInsets.all(16.0), // padding: 16px;
             child: Row(
@@ -2182,6 +2192,7 @@ enum _RequestStepState { completed, active, pending }
 
 /// Data model for history tab request cards
 class _HistoryRequestItem {
+  final ServiceTask? task;
   final String providerName;
   final String statusText;
   final Color statusBgColor;
@@ -2197,6 +2208,7 @@ class _HistoryRequestItem {
   final Color avatarFallbackColor;
 
   const _HistoryRequestItem({
+    this.task,
     required this.providerName,
     required this.statusText,
     required this.statusBgColor,

@@ -4,6 +4,54 @@ import apiClient from './client'
  * Admin Panel Backend APIs
  */
 
+export async function createProviderApi(data) {
+  const response = await apiClient.post('/admin/providers', data)
+  return response.data
+}
+
+export async function fetchCustomers(params = {}) {
+  const query = new URLSearchParams()
+  if (params.status) query.append('status', params.status)
+  if (params.search) query.append('search', params.search)
+  if (params.page) query.append('page', params.page)
+  if (params.limit) query.append('limit', params.limit)
+  const url = `/admin/customers${query.toString() ? `?${query.toString()}` : ''}`
+  const response = await apiClient.get(url)
+  const items = Array.isArray(response.data?.data)
+    ? response.data.data
+    : Array.isArray(response.data?.items)
+    ? response.data.items
+    : Array.isArray(response.data)
+    ? response.data
+    : []
+  return {
+    ...response.data,
+    items,
+    data: items,
+    meta: response.data?.meta || { total: items.length },
+  }
+}
+
+export async function createCustomerApi(data) {
+  const response = await apiClient.post('/admin/customers', data)
+  return response.data
+}
+
+export async function blockCustomerApi(id) {
+  const response = await apiClient.post(`/admin/customers/${id}/block`)
+  return response.data
+}
+
+export async function unblockCustomerApi(id) {
+  const response = await apiClient.post(`/admin/customers/${id}/unblock`)
+  return response.data
+}
+
+export async function deleteCustomerApi(id) {
+  const response = await apiClient.delete(`/admin/customers/${id}`)
+  return response.data
+}
+
 export async function fetchProviders(params = {}) {
   const query = new URLSearchParams()
   if (params.status) query.append('status', params.status)

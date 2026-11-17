@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_header_back_button.dart';
+import 'package:mobile/features/splash/presentation/app_mode_navigation.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_otp_card.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_branding_header.dart';
 import 'package:mobile/features/provider/splash/presentation/widgets/provider_splash_background.dart';
@@ -167,7 +168,15 @@ class OtpVerificationScreen extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              const ProviderHeaderBackButton(),
+                              ProviderHeaderBackButton(
+                                onTap: () {
+                                  if (Navigator.of(context).canPop()) {
+                                    Navigator.of(context).pop();
+                                  } else {
+                                    AppModeNavigation.openRoleSelection(context);
+                                  }
+                                },
+                              ),
                               const ProviderAnimatedLanguageToggle.compact(),
                             ],
                           ),

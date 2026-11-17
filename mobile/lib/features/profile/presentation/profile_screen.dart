@@ -16,8 +16,7 @@ import '../../provider/auth/data/provider_registration_state.dart';
 import '../../provider/auth/presentation/phone_verification_screen.dart';
 import '../../provider/auth/presentation/provider_profile_details_screen.dart';
 import '../../provider/auth/presentation/vehicle_service_details_screen.dart';
-import '../../provider/splash/presentation/provider_splash_screen.dart';
-import '../../splash/presentation/splash_screen.dart';
+import '../../splash/presentation/app_mode_navigation.dart';
 import 'customer_feedback_support_screen.dart';
 import 'customer_personal_info_screen.dart';
 import 'notifications_screen.dart';
@@ -549,69 +548,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               ),
                               const SizedBox(height: 10.0),
 
-                              // Switch Mode Card:
-                              // On Provider side: "Login as Customer"
-                              // On Customer side: "Login as Service Provider"
-                              if (widget.isProvider)
-                                _buildProfileMenuCard(
-                                  tr: tr,
-                                  icon: Icons.person_pin_circle_rounded,
-                                  title: isArabic
-                                      ? 'تسجيل الدخول كعميل'
-                                      : 'Login as Customer',
-                                  subtitle: isArabic
-                                      ? 'التبديل إلى حساب العميل وطلب الخدمات'
-                                      : 'Switch to customer mode & request services',
-                                  onTap: () async {
-                                    await ProviderRegistrationStore.instance
-                                        .setActiveAppMode('customer');
-                                    if (!context.mounted) return;
-                                    Navigator.of(context).pushAndRemoveUntil(
-                                      PageRouteBuilder(
-                                        pageBuilder: (_, _, _) => const SplashScreen(),
-                                        transitionsBuilder: (_, animation, _, child) => FadeTransition(
-                                          opacity: CurvedAnimation(
-                                            parent: animation,
-                                            curve: Curves.easeInOutCubic,
-                                          ),
-                                          child: child,
-                                        ),
-                                        transitionDuration: const Duration(milliseconds: 350),
-                                      ),
-                                      (route) => false,
-                                    );
-                                  },
-                                )
-                              else
-                                _buildProfileMenuCard(
-                                  tr: tr,
-                                  icon: Icons.handyman_rounded,
-                                  title: isArabic
-                                      ? 'تسجيل الدخول كمزود خدمة'
-                                      : 'Login as Service Provider',
-                                  subtitle: isArabic
-                                      ? 'التبديل إلى وضع مزود الخدمة وتقديم الخدمات'
-                                      : 'Switch to partner mode & offer services',
-                                  onTap: () async {
-                                    await ProviderRegistrationStore.instance
-                                        .setActiveAppMode('provider');
-                                    if (!context.mounted) return;
-                                    Navigator.of(context).pushAndRemoveUntil(
-                                      PageRouteBuilder(
-                                        pageBuilder: (_, _, _) => const ProviderSplashScreen(),
-                                        transitionsBuilder: (_, animation, _, child) => FadeTransition(
-                                          opacity: CurvedAnimation(
-                                            parent: animation,
-                                            curve: Curves.easeInOutCubic,
-                                          ),
-                                          child: child,
-                                        ),
-                                        transitionDuration: const Duration(milliseconds: 350),
-                                      ),
-                                      (route) => false,
-                                    );
-                                  },
-                                ),
+                              _buildProfileMenuCard(
+                                tr: tr,
+                                icon: Icons.swap_horiz_rounded,
+                                title: isArabic ? 'تغيير نوع التطبيق' : 'Change App Role',
+                                subtitle: isArabic
+                                    ? 'العودة لشاشة اختيار عميل أو مزود'
+                                    : 'Return to Customer or Provider selection',
+                                onTap: () => AppModeNavigation.openRoleSelection(context),
+                              ),
                               const SizedBox(height: 10.0),
 
                               // 6. Privacy & Security

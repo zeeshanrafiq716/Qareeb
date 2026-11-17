@@ -8,6 +8,8 @@ import '../../../../core/localization/app_locale.dart';
 import '../../../../providers/backend_provider.dart';
 import '../../../../services/location_service.dart';
 import '../full_screen_tracking_map_screen.dart';
+import 'google_maps_user_dot.dart';
+import 'location_access_helper.dart';
 import 'map_tracking_step.dart';
 import 'provider_detail_card_widget.dart';
 import 'top_down_car_widget.dart';
@@ -91,6 +93,8 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
   double _panOffsetX = 0.0;
   double _panOffsetY = 0.0;
   double? _internalZoom;
+  double? _mapCenterLat;
+  double? _mapCenterLng;
   double _baseScale = 1.0;
   bool _isDragging = false;
 
@@ -152,12 +156,45 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
     }
   }
 
-  /// Recenter the map to user location
-  void recenter() {
+  /// Centers the map on the user's live GPS (Google Maps my-location behavior).
+  void recenterToUser(UserLocation userLoc) {
     setState(() {
+      _mapCenterLat = userLoc.latitude;
+      _mapCenterLng = userLoc.longitude;
       _panOffsetX = 0.0;
       _panOffsetY = 0.0;
+      _internalZoom = (_internalZoom ?? widget.zoom).clamp(14.0, 17.0);
     });
+  }
+
+  /// Back-compat alias used by full-screen map host.
+  void recenter() {
+    final userLoc = ref.read(userLocationProvider).value;
+    if (userLoc != null && userLoc.isGpsDetected) {
+      recenterToUser(userLoc);
+    } else {
+      setState(() {
+        _panOffsetX = 0.0;
+        _panOffsetY = 0.0;
+      });
+    }
+  }
+
+  Future<void> _onMyLocationControlTap(UserLocation userLoc) async {
+    HapticFeedback.lightImpact();
+    if (userLoc.isGpsDetected) {
+      recenterToUser(userLoc);
+      ref.read(locationServiceProvider).traceExactGps().then((loc) {
+        if (mounted && loc.isGpsDetected) {
+          recenterToUser(loc);
+          ref.invalidate(userLocationProvider);
+        }
+      }).catchError((_) {});
+      return;
+    }
+    final resolved = await LocationAccessHelper.resolveForMapAction(context, ref);
+    if (!mounted || resolved == null || !resolved.isGpsDetected) return;
+    recenterToUser(resolved);
   }
 
   @override
@@ -166,8 +203,10 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
     final userLocAsync = ref.watch(userLocationProvider);
     final userLoc = userLocAsync.value ?? UserLocation.defaultLocation;
 
-    final double centerLat = widget.latitude ?? userLoc.latitude;
-    final double centerLng = widget.longitude ?? userLoc.longitude;
+    final double centerLat =
+        _mapCenterLat ?? widget.latitude ?? userLoc.latitude;
+    final double centerLng =
+        _mapCenterLng ?? widget.longitude ?? userLoc.longitude;
 
     final double activeZoom = currentZoom;
     final double baseCenterPxX =
@@ -387,6 +426,14 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
                 top: userScreenPos.dy - 24.0,
                 child: _buildUserLocationMarker(tr),
               ),
+            ] else if (widget.trackingStep == MapTrackingStep.none &&
+                widget.showControls &&
+                userLoc.isGpsDetected) ...[
+              Positioned(
+                left: userScreenPos.dx - 24.0,
+                top: userScreenPos.dy - 24.0,
+                child: const GoogleMapsUserDot(size: 16.0),
+              ),
             ] else if (widget.trackingStep == MapTrackingStep.requestSent) ...[
               // Radar ripple waves around user's GPS pin (only when GPS is detected)
               if (userLoc.isGpsDetected)
@@ -542,39 +589,7 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
                     const SizedBox(height: 6.0),
                     // GPS Recenter Button
                     GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        if (!userLoc.isGpsDetected) {
-                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.location_off_rounded,
-                                    size: 16.0,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 8.0),
-                                  Expanded(
-                                    child: Text(
-                                      tr.isArabic
-                                          ? 'خدمة الموقع غير مفعلة في جهازك'
-                                          : 'Device location is OFF. Please turn ON location in device settings.',
-                                      style: tr.font(fontSize: 12.0, color: Colors.white, fontWeight: FontWeight.w500),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              backgroundColor: const Color(0xFFE11D48),
-                              duration: const Duration(seconds: 3),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                          return;
-                        }
-                        recenter();
-                      },
+                      onTap: () => _onMyLocationControlTap(userLoc),
                       child: Container(
                         width: 32.0,
                         height: 32.0,
@@ -728,33 +743,7 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
           ),
         ),
         const SizedBox(height: 1.0),
-        // Pin with pulsing halo
-        Container(
-          width: 38.0,
-          height: 38.0,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0xFFF0EAFE),
-            border: Border.all(
-              color: const Color(0x808B53FE),
-              width: 1.5,
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x338B53FE),
-                blurRadius: 8.0,
-                spreadRadius: 2.0,
-              ),
-            ],
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.location_on_rounded,
-              size: 24.0,
-              color: Color(0xFF8B53FE),
-            ),
-          ),
-        ),
+        const GoogleMapsUserDot(size: 18.0, showAccuracyRing: true),
       ],
     );
   }

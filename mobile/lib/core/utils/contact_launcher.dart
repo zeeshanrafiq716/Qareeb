@@ -70,6 +70,24 @@ class ContactLauncher {
     return whatsApp(phone, message: message);
   }
 
+  static Future<bool> openInstagramDirect() async {
+    HapticFeedback.lightImpact();
+    const candidates = [
+      'instagram://direct-inbox',
+      'https://www.instagram.com/direct/inbox/',
+    ];
+    for (final raw in candidates) {
+      final uri = Uri.parse(raw);
+      try {
+        if (await canLaunchUrl(uri)) {
+          final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+          if (ok) return true;
+        }
+      } catch (_) {}
+    }
+    return false;
+  }
+
   static Future<bool> sendServiceRequest({
     required String phone,
     required String category,

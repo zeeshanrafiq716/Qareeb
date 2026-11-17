@@ -1067,7 +1067,7 @@ class _ProviderRequestDetailsScreenState
                                           child: GestureDetector(
                                             onTap: () async {
                                               HapticFeedback.mediumImpact();
-                                              await TaskService.instance.updateTaskStatus(status: 'active', step: 1);
+                                              await TaskService.instance.acceptActiveRequest();
                                               if (!context.mounted) return;
                                               ScaffoldMessenger.of(context).showSnackBar(
                                                 SnackBar(

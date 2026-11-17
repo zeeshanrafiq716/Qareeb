@@ -338,10 +338,36 @@ export const customerFunnelEventSchema = z.object({
       "call_click",
       "whatsapp_click",
       "share_location_click",
+      "send_request_click",
     ]),
     providerPublicId: z.string().min(1).max(64),
     latitude: z.coerce.number().min(-90).max(90).optional(),
     longitude: z.coerce.number().min(-180).max(180).optional(),
     metadata: z.record(z.unknown()).optional(),
+  }),
+});
+
+export const customerListSchema = z.object({
+  query: z.object({
+    status: z.enum(["active", "blocked", "all"]).optional(),
+    search: z.string().optional(),
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().max(100).optional(),
+  }),
+});
+
+export const adminCreateCustomerSchema = z.object({
+  body: z.object({
+    phone: z.string().min(10).max(20),
+    name: z.string().trim().min(2).max(255),
+    password: z.string().min(6).max(128).optional(),
+  }),
+});
+
+export const adminCreateProviderSchema = z.object({
+  body: z.object({
+    phone: z.string().min(10).max(20),
+    name: z.string().trim().min(2).max(255).optional(),
+    categoryId: z.string().uuid().optional(),
   }),
 });

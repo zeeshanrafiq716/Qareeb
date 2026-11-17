@@ -17,6 +17,7 @@ import {
   fetchLatestVerification,
   fetchLocation,
   fetchProviderById,
+  fetchProviderByPhone,
   PROVIDER_SELECT,
   recordStatusChange,
   serializeAdmin,
@@ -32,6 +33,7 @@ import { isLocationFresh } from "./location.service.js";
 import { buildPresence } from "./presence.service.js";
 import { assertAllCompulsoryDocumentsSubmitted } from "./providers.service.js";
 import { logger } from "../logger.js";
+import { normalizePhone } from "../utils/phone.js";
 
 export async function adminLogin(email, password) {
   const { rows } = await query(
@@ -1097,4 +1099,174 @@ export async function removeCategoryAsset(id) {
 
   await query(`DELETE FROM category_asset_library WHERE id = $1`, [id]);
   return { deleted: true, id };
+}
+
+function serializeCustomer(row) {
+  return {
+    id: row.id,
+    phone: row.phone,
+    name: row.name,
+    status: row.status || "active",
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function nextProviderPublicId(client) {
+  while (true) {
+    const { rows } = await client.query("SELECT nextval('provider_public_id_seq') AS n");
+    const candidate = `QRB-${rows[0].n}`;
+    const exists = await client.query("SELECT 1 FROM providers WHERE public_id = $1", [candidate]);
+    if (exists.rowCount === 0) return candidate;
+  }
+}
+
+export async function listCustomers({ status, search, page, limit }) {
+  const pageInfo = pagination({ page, limit });
+  const values = [];
+  const where = [];
+
+  if (status && status !== "all") {
+    values.push(status);
+    where.push(`c.status = $${values.length}`);
+  }
+  if (search?.trim()) {
+    values.push(`%${search.trim()}%`);
+    const idx = values.length;
+    where.push(
+      `(c.phone ILIKE $${idx} OR c.name ILIKE $${idx})`,
+    );
+  }
+
+  const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  const count = await query(`SELECT COUNT(*)::int AS total FROM customers c ${clause}`, values);
+
+  values.push(pageInfo.limit, pageInfo.offset);
+  const { rows } = await query(
+    `SELECT c.id, c.phone, c.name, c.status, c.created_at, c.updated_at
+     FROM customers c
+     ${clause}
+     ORDER BY c.created_at DESC
+     LIMIT $${values.length - 1} OFFSET $${values.length}`,
+    values,
+  );
+
+  return {
+    items: rows.map(serializeCustomer),
+    meta: {
+      page: pageInfo.page,
+      limit: pageInfo.limit,
+      total: count.rows[0].total,
+      totalPages: Math.max(1, Math.ceil(count.rows[0].total / pageInfo.limit)),
+    },
+  };
+}
+
+export async function createCustomer(input) {
+  const phone = normalizePhone(input.phone);
+  const name = input.name?.trim() || "Customer";
+
+  const { rows: existingProv } = await query(`SELECT id FROM providers WHERE phone = $1`, [phone]);
+  if (existingProv[0]) {
+    throw new AppError(
+      409,
+      "This phone number is already registered as a provider.",
+      "PHONE_IN_USE",
+    );
+  }
+
+  const { rows: existingCust } = await query(`SELECT id FROM customers WHERE phone = $1`, [phone]);
+  if (existingCust[0]) {
+    throw new AppError(409, "A customer with this phone number already exists.", "PHONE_IN_USE");
+  }
+
+  let passwordHash = null;
+  if (input.password) {
+    passwordHash = await bcrypt.hash(input.password, 10);
+  }
+
+  const { rows } = await query(
+    `INSERT INTO customers (phone, name, password_hash, status, created_at, updated_at)
+     VALUES ($1, $2, $3, 'active', now(), now())
+     RETURNING id, phone, name, status, created_at, updated_at`,
+    [phone, name, passwordHash],
+  );
+  return serializeCustomer(rows[0]);
+}
+
+export async function blockCustomer(id) {
+  const { rows } = await query(
+    `UPDATE customers SET status = 'blocked', updated_at = now()
+     WHERE id = $1
+     RETURNING id, phone, name, status, created_at, updated_at`,
+    [id],
+  );
+  if (!rows[0]) throw new NotFoundError("Customer not found");
+  return serializeCustomer(rows[0]);
+}
+
+export async function unblockCustomer(id) {
+  const { rows } = await query(
+    `UPDATE customers SET status = 'active', updated_at = now()
+     WHERE id = $1
+     RETURNING id, phone, name, status, created_at, updated_at`,
+    [id],
+  );
+  if (!rows[0]) throw new NotFoundError("Customer not found");
+  return serializeCustomer(rows[0]);
+}
+
+export async function deleteCustomer(id) {
+  const { rows } = await query(`DELETE FROM customers WHERE id = $1 RETURNING id`, [id]);
+  if (!rows[0]) throw new NotFoundError("Customer not found");
+  return { success: true, id, message: "Customer deleted successfully" };
+}
+
+export async function adminCreateProvider(input, admin) {
+  const phone = normalizePhone(input.phone);
+
+  return withTransaction(async (client) => {
+    const { rows: existingCust } = await client.query(`SELECT id FROM customers WHERE phone = $1`, [phone]);
+    if (existingCust[0]) {
+      throw new AppError(
+        409,
+        "This phone number is already registered as a customer.",
+        "PHONE_IN_USE",
+      );
+    }
+
+    const existingProv = await fetchProviderByPhone(client, phone);
+    if (existingProv) {
+      throw new AppError(409, "A provider with this phone number already exists.", "PHONE_IN_USE");
+    }
+
+    if (input.categoryId) {
+      const cat = await client.query(`SELECT id FROM categories WHERE id = $1`, [input.categoryId]);
+      if (!cat.rows[0]) {
+        throw new AppError(400, "Invalid category", "INVALID_CATEGORY");
+      }
+    }
+
+    const pendingProfile = await getStatus(ENTITY.PROVIDER, PROVIDER_STATUS.PENDING_PROFILE);
+    const publicId = await nextProviderPublicId(client);
+    const name = input.name?.trim() || null;
+
+    const inserted = await client.query(
+      `INSERT INTO providers (public_id, phone, phone_verified_at, name, category_id, status_id)
+       VALUES ($1, $2, now(), $3, $4, $5)
+       RETURNING id`,
+      [publicId, phone, name, input.categoryId || null, pendingProfile.id],
+    );
+
+    await recordStatusChange(client, {
+      providerId: inserted.rows[0].id,
+      fromStatusId: null,
+      toStatusId: pendingProfile.id,
+      reason: "Created by admin",
+      adminId: admin?.id || null,
+    });
+
+    const provider = await fetchProviderById(client, inserted.rows[0].id);
+    return serializeProvider(provider);
+  });
 }

@@ -2,6 +2,7 @@ import { query } from "../db/pool.js";
 import { ENTITY } from "../config/constants.js";
 import { getStatus } from "../db/status.js";
 import { NotFoundError } from "../utils/AppError.js";
+import { notifyProviderForCustomerEvent } from "./notifications.service.js";
 
 export const FUNNEL_EVENT = {
   LIST_IMPRESSION: "list_impression",
@@ -10,6 +11,7 @@ export const FUNNEL_EVENT = {
   CALL_CLICK: "call_click",
   WHATSAPP_CLICK: "whatsapp_click",
   SHARE_LOCATION_CLICK: "share_location_click",
+  SEND_REQUEST_CLICK: "send_request_click",
 };
 
 const CALL_LOG_EVENTS = new Set([FUNNEL_EVENT.CALL_CLICK]);
@@ -97,7 +99,7 @@ export async function resolveApprovedProviderByPublicId(publicId) {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(publicId);
 
   const { rows } = await query(
-    `SELECT p.id, p.public_id, p.phone, s.code AS provider_status
+    `SELECT p.id, p.public_id, p.phone, p.name, s.code AS provider_status
      FROM providers p
      JOIN statuses s ON s.id = p.status_id
      WHERE p.public_id = $1 OR p.public_id = $2 ${isUuid ? "OR p.id = $3" : ""}`,
@@ -122,6 +124,16 @@ export async function trackCustomerDiscoveryEvent(input) {
     longitude: lng,
     metadata: input.metadata ?? {},
   });
+
+  await notifyProviderForCustomerEvent({
+    providerId: provider.id,
+    eventType: input.event,
+    sessionId: input.sessionId ?? null,
+    latitude: lat,
+    longitude: lng,
+    metadata: input.metadata ?? {},
+  }).catch(() => {});
+
   return {
     recorded: true,
     eventId: row.id,

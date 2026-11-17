@@ -39,6 +39,7 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
 
   Timer? _timer;
   bool _precached = false;
+  bool _navigationDone = false;
 
   @override
   void initState() {
@@ -109,7 +110,8 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
   }
 
   void _navigateToNextScreen() {
-    if (!mounted) return;
+    if (!mounted || _navigationDone) return;
+    _navigationDone = true;
     _timer?.cancel();
 
     final data = ProviderRegistrationStore.instance.data;

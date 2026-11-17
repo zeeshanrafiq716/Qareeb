@@ -33,8 +33,8 @@ void main() {
     expect(task.serviceCategory, 'Fuel Delivery');
     expect(task.vehicleName, 'Wheel Lift Tow Truck');
     expect(task.plateNumber, '1122');
-    expect(task.status, 'active');
-    expect(task.step, 1);
+    expect(task.status, 'new');
+    expect(task.step, 0);
 
     expect(TaskService.instance.activeTask, isNotNull);
     expect(TaskService.instance.activeTask?.id, task.id);

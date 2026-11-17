@@ -14,6 +14,7 @@ import { CallLogsView } from './CallLogsView'
 import { CategoryManagementView } from './CategoryManagementView'
 import { SettingsView } from './SettingsView'
 import { ReportsComplaintsView } from './ReportsComplaintsView'
+import { CustomerDirectoryView } from './CustomerDirectoryView'
 import { useAuth } from '../context/AuthContext'
 import { fetchProviders, fetchOnlineProviders, fetchReportsStatsApi } from '../api/admin'
 
@@ -25,7 +26,7 @@ const VALID_TABS = [
   'call-logs',
   'reports',
   'categories',
-  'admin-access',
+  'customers',
   'settings',
 ]
 
@@ -361,6 +362,8 @@ export default function DashboardView() {
           ) : activeTab === 'categories' ? (
             /* ===== CATEGORY MANAGEMENT SCREEN ===== */
             <CategoryManagementView />
+          ) : activeTab === 'customers' ? (
+            <CustomerDirectoryView />
           ) : activeTab === 'reports' ? (
             /* ===== REPORTS & COMPLAINTS SCREEN ===== */
             <ReportsComplaintsView />
