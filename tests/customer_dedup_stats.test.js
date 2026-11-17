@@ -112,3 +112,4 @@ describe("Customer interaction deduplication for provider dashboard & stats card
     expect(dashboard.contactsCard.counts[0]).toBe(2);
   });
 });
+
