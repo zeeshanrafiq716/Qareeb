@@ -42,6 +42,11 @@ class CustomerAccountWatch {
       return;
     }
 
+    if (state.status == CustomerAccountStatus.unauthenticated ||
+        state.status == CustomerAccountStatus.networkError) {
+      return;
+    }
+
     if (state.status != CustomerAccountStatus.deleted &&
         state.status != CustomerAccountStatus.blocked) {
       return;

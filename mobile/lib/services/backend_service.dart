@@ -485,8 +485,11 @@ class BackendService {
       if (errorCode == 'ACCOUNT_BLOCKED') {
         return const CustomerAccountState(status: CustomerAccountStatus.blocked);
       }
-      if (dioErr.response?.statusCode == 401 || dioErr.response?.statusCode == 403) {
-        return const CustomerAccountState(status: CustomerAccountStatus.deleted);
+      if (errorCode == 'UNAUTHORIZED' ||
+          errorCode == 'INVALID_TOKEN' ||
+          errorMessage?.toLowerCase().contains('expired') == true ||
+          errorMessage?.toLowerCase().contains('invalid or expired') == true) {
+        return const CustomerAccountState(status: CustomerAccountStatus.unauthenticated);
       }
     } catch (_) {}
 

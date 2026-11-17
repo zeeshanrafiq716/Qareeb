@@ -83,11 +83,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToHome);
       }
     } else {
-      final hasKnownAccount = CustomerAuthStore.instance.phone.isNotEmpty;
-      _navTimer = Timer(
-        const Duration(milliseconds: 1800),
-        () => _navigateToCustomerSignup(isLogin: hasKnownAccount),
-      );
+      _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToHome);
     }
   }
 

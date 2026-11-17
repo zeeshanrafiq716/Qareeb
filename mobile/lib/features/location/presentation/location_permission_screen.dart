@@ -205,33 +205,12 @@ class _LocationPermissionScreenState
         _showMobileLocationSettingsDialog();
       }
     } catch (_) {
-      // If any issue occurs, check if location is genuinely disabled on the device
-      final bool stillEnabled = await locationService.isLocationServiceEnabled();
-      if (!stillEnabled) {
-        if (mounted) {
-          setState(() {
-            _isLocating = false;
-            _statusMessage = null;
-          });
-          _showMobileLocationSettingsDialog();
-        }
-      } else {
-        // Location is already ON! Land directly on map with NO popup!
-        await LocationPermissionScreen.markLocationAllowed();
-        ref.invalidate(userLocationProvider);
-        if (mounted) {
-          setState(() {
-            _isLocating = false;
-            _statusMessage = null;
-          });
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (_) => PickupDeliveryScreen(
-                serviceName: widget.serviceName,
-              ),
-            ),
-          );
-        }
+      if (mounted) {
+        setState(() {
+          _isLocating = false;
+          _statusMessage = null;
+        });
+        _showMobileLocationSettingsDialog();
       }
     }
   }

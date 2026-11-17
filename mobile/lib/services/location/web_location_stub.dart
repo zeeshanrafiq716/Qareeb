@@ -1,5 +1,5 @@
-/// Non-web fallback stub for platform GPS
-Future<Map<String, dynamic>?> getPlatformCoordinates() async {
+/// Non-web stub. Native GPS is read through the platform location APIs.
+Future<Map<String, dynamic>?> getPlatformCoordinates({Duration? timeout}) async {
   return null;
 }
 

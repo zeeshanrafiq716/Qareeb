@@ -209,15 +209,10 @@ class LocationAccessHelper {
     WidgetRef ref, {
     String? serviceName,
   }) async {
-    final current = ref.read(userLocationProvider).value;
-    if (current != null && current.isGpsDetected) {
-      return current;
-    }
-
     final loc = ref.read(locationServiceProvider);
     try {
       final fresh = await loc.traceExactGps();
-      if (fresh.isGpsDetected) {
+      if (fresh.hasValidDeviceGps) {
         ref.invalidate(userLocationProvider);
         return fresh;
       }
@@ -230,7 +225,7 @@ class LocationAccessHelper {
           granted == LocationPermission.always) {
         try {
           final fresh = await loc.traceExactGps();
-          if (fresh.isGpsDetected) {
+          if (fresh.hasValidDeviceGps) {
             ref.invalidate(userLocationProvider);
             return fresh;
           }
@@ -262,7 +257,7 @@ class LocationAccessHelper {
     ref.invalidate(userLocationProvider);
     try {
       final after = await loc.traceExactGps();
-      return after.isGpsDetected ? after : null;
+      return after.hasValidDeviceGps ? after : null;
     } catch (_) {
       return null;
     }

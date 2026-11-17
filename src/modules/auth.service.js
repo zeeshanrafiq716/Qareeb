@@ -7,7 +7,7 @@ import { getStatus } from "../db/status.js";
 import { logger } from "../logger.js";
 import { AppError } from "../utils/AppError.js";
 import { normalizePhone } from "../utils/phone.js";
-import { signProviderToken } from "../utils/tokens.js";
+import { signCustomerToken, signProviderToken } from "../utils/tokens.js";
 import { sendTwilioOtp } from "./twilio.service.js";
 import {
   fetchLocation,
@@ -304,12 +304,7 @@ export async function verifyOtp(phoneInput, otp, options = {}) {
       if (customer.status === "blocked") {
         throw new AppError(403, "Your account has been blocked. Please contact support.", "ACCOUNT_BLOCKED");
       }
-      const token = signProviderToken({
-        id: customer.id,
-        phone: customer.phone,
-        name: customer.name,
-        role: "customer",
-      });
+      const token = signCustomerToken(customer);
       return {
         token,
         userType: "customer",
@@ -428,12 +423,7 @@ export async function loginWithPassword({ phone: phoneInput, password, userType 
       throw new AppError(401, "Invalid phone number or password", "INVALID_CREDENTIALS");
     }
 
-    const token = signProviderToken({
-      id: customer.id,
-      phone: customer.phone,
-      name: customer.name,
-      role: "customer",
-    });
+    const token = signCustomerToken(customer);
 
     return {
       token,

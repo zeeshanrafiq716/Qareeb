@@ -97,18 +97,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final userLocAsync = ref.watch(userLocationProvider);
     final String locationText = userLocAsync.when(
       data: (loc) {
-        if (!loc.isGpsDetected) {
+        if (!loc.hasValidDeviceGps) {
           return tr.isArabic ? 'خدمة الموقع غير مفعلة' : 'Location is OFF';
         }
-        return loc.cityName.isNotEmpty
-            ? loc.cityName
-            : (tr.isArabic ? 'الرياض، المملكة العربية السعودية' : 'Riyadh, Saudi Arabia');
+        final city = loc.cityName.trim();
+        if (city.isNotEmpty && city != 'Location is OFF') return city;
+        return loc.coordinatesDisplay;
       },
       loading: () => tr.gpsDetecting,
       error: (_, _) => tr.isArabic ? 'خدمة الموقع غير مفعلة' : 'Location is OFF',
     );
     final String locationLabel = userLocAsync.when(
-      data: (loc) => loc.isGpsDetected ? tr.realGps : (tr.isArabic ? 'الموقع غير مفعل' : 'Location Disabled'),
+      data: (loc) => loc.hasValidDeviceGps ? tr.realGps : (tr.isArabic ? 'الموقع غير مفعل' : 'Location Disabled'),
       loading: () => tr.gpsDetecting,
       error: (_, _) => (tr.isArabic ? 'الموقع غير مفعل' : 'Location Disabled'),
     );

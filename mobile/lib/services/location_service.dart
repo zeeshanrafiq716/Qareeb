@@ -1,6 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'google_maps_service.dart';
 import 'dart:math' as math;
 import 'location/web_location.dart';
@@ -25,15 +27,12 @@ class UserLocation {
     this.accuracy,
   });
 
-  /// 4-decimal coordinates (standard GPS precision, e.g. 31.2049, 73.9431)
   String get coordinatesDisplay =>
       '${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}';
 
-  /// 6-decimal exact real GPS coordinates (centimeter precision, e.g. 31.204918, 73.943124)
   String get exactCoordinatesDisplay =>
       '${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)}';
 
-  /// Compass formatted coordinates (e.g. 31.2049° N, 73.9431° E)
   String get formattedGps =>
       '${latitude.abs().toStringAsFixed(4)}° ${latitude >= 0 ? 'N' : 'S'}, ${longitude.abs().toStringAsFixed(4)}° ${longitude >= 0 ? 'E' : 'W'}';
 
@@ -55,24 +54,48 @@ class UserLocation {
     );
   }
 
-  // Default fallback when GPS is OFF or not yet acquired
+  /// Sentinel when no satellite fix is available. Never plot these coordinates.
   static const UserLocation defaultLocation = UserLocation(
-    latitude: 31.5204,
-    longitude: 74.3587,
+    latitude: 0,
+    longitude: 0,
     cityName: 'Location is OFF',
     address: 'Device Location is OFF',
     isGpsDetected: false,
   );
+
+  /// A locked phone GPS fix is typically well under 50m.
+  /// Network, Wi-Fi, and IP estimates are coarser and are rejected.
+  static bool isPreciseGpsFix(double? accuracyMeters) {
+    if (accuracyMeters == null || accuracyMeters.isNaN || accuracyMeters <= 0) {
+      return false;
+    }
+    return accuracyMeters <= 50;
+  }
+
+  bool get hasValidDeviceGps =>
+      isGpsDetected && !(latitude == 0 && longitude == 0);
 }
 
 class LocationService {
   final GoogleMapsService _googleMaps;
-  static UserLocation? _cachedLocation;
+
+  static const MethodChannel _androidGps = MethodChannel('com.qareeb.mobile/gps');
+  static const EventChannel _androidGpsStream = EventChannel('com.qareeb.mobile/gps_stream');
 
   LocationService([dynamic dio, GoogleMapsService? googleMaps])
       : _googleMaps = googleMaps ?? GoogleMapsService();
 
-  /// Checks whether GPS / Location services are enabled at the device system level.
+  bool get _isAndroidNative =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+  bool get _isIosNative => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  /// Mobile browsers can expose the phone GPS. Desktop browsers only have IP/Wi-Fi.
+  bool get _isMobileWeb =>
+      kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
   Future<bool> isLocationServiceEnabled() async {
     try {
       return await Geolocator.isLocationServiceEnabled();
@@ -81,7 +104,6 @@ class LocationService {
     }
   }
 
-  /// Checks the current location permission status.
   Future<LocationPermission> checkPermission() async {
     try {
       return await Geolocator.checkPermission();
@@ -90,7 +112,6 @@ class LocationService {
     }
   }
 
-  /// Requests location permission from the device OS / browser.
   Future<LocationPermission> requestPermission() async {
     try {
       return await Geolocator.requestPermission();
@@ -99,7 +120,6 @@ class LocationService {
     }
   }
 
-  /// Opens the native device location settings screen so user can toggle GPS ON.
   Future<bool> openLocationSettings() async {
     try {
       return await Geolocator.openLocationSettings();
@@ -108,7 +128,6 @@ class LocationService {
     }
   }
 
-  /// Opens the app's OS settings page so user can grant permissions if blocked.
   Future<bool> openAppSettings() async {
     try {
       return await Geolocator.openAppSettings();
@@ -117,21 +136,20 @@ class LocationService {
     }
   }
 
-  /// Actively acquires real device GPS coordinates.
-  /// If device location is enabled, resolves coordinates seamlessly and navigates to map with NO popup.
-  /// Throws [LocationServiceDisabledException] ONLY if location is disabled at device level.
+  /// Reads one fresh satellite GPS fix.
+  /// Network, Wi-Fi, IP, cached, and mock locations are not used.
   Future<UserLocation> acquireDeviceLocation({
-    Duration timeout = const Duration(seconds: 12),
+    Duration timeout = const Duration(seconds: 25),
   }) async {
-    // 1. On native mobile (Android/iOS), check if device location service is turned ON
-    if (!kIsWeb) {
+    if (_isAndroidNative || _isIosNative) {
       final serviceEnabled = await isLocationServiceEnabled();
       if (!serviceEnabled) {
         throw const LocationServiceDisabledException();
       }
+    } else if (!_isMobileWeb) {
+      throw const LocationServiceDisabledException();
     }
 
-    // 2. Request runtime permission if needed without throwing hard errors
     try {
       final permission = await checkPermission();
       if (permission == LocationPermission.denied) {
@@ -139,239 +157,207 @@ class LocationService {
       }
     } catch (_) {}
 
-    // 3. Acquire real GPS coordinates from device / browser
-    double? lat;
-    double? lng;
-    double? acc;
-    String? webCity;
-    String? webAddress;
-
-    // On Web, direct HTML5 browser geolocation or real IP fallback
-    if (kIsWeb) {
-      try {
-        final coords = await getBrowserCoordinates();
-        if (coords != null && coords['latitude'] != null && coords['longitude'] != null) {
-          lat = (coords['latitude'] as num).toDouble();
-          lng = (coords['longitude'] as num).toDouble();
-          if (coords['accuracy'] != null) {
-            acc = (coords['accuracy'] as num).toDouble();
-          }
-          if (coords['city'] != null && coords['city'].toString().isNotEmpty) {
-            webCity = coords['city'].toString();
-          }
-          if (coords['address'] != null && coords['address'].toString().isNotEmpty) {
-            webAddress = coords['address'].toString();
-          }
-        }
-      } catch (_) {}
-    }
-
-    if (lat == null || lng == null) {
-      try {
-        bool isPrecise = true;
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          isPrecise = prefs.getBool('customer_precise_location') ?? true;
-        } catch (_) {}
-
-        final position = await Geolocator.getCurrentPosition(
-          locationSettings: LocationSettings(
-            accuracy: isPrecise ? LocationAccuracy.high : LocationAccuracy.medium,
-            timeLimit: const Duration(seconds: 5),
-          ),
-        );
-        lat = position.latitude;
-        lng = position.longitude;
-        acc = position.accuracy;
-      } catch (_) {
-        // Fallback 1: Try last known location or medium accuracy
-        try {
-          final lastKnown = await Geolocator.getLastKnownPosition();
-          if (lastKnown != null) {
-            lat = lastKnown.latitude;
-            lng = lastKnown.longitude;
-            acc = lastKnown.accuracy;
-          } else {
-            final pos = await Geolocator.getCurrentPosition(
-              locationSettings: const LocationSettings(
-                accuracy: LocationAccuracy.medium,
-                timeLimit: Duration(seconds: 4),
-              ),
-            );
-            lat = pos.latitude;
-            lng = pos.longitude;
-            acc = pos.accuracy;
-          }
-        } catch (_) {
-          // Fallback 2: Browser coordinates (for Chrome / Web)
-          try {
-            final coords = await getBrowserCoordinates();
-            if (coords != null && coords['latitude'] != null && coords['longitude'] != null) {
-              lat = (coords['latitude'] as num).toDouble();
-              lng = (coords['longitude'] as num).toDouble();
-              if (coords['accuracy'] != null) {
-                acc = (coords['accuracy'] as num).toDouble();
-              }
-              if (coords['city'] != null && coords['city'].toString().isNotEmpty) {
-                webCity = coords['city'].toString();
-              }
-              if (coords['address'] != null && coords['address'].toString().isNotEmpty) {
-                webAddress = coords['address'].toString();
-              }
-            }
-          } catch (_) {}
-        }
-      }
-    }
-
-    // If real GPS coordinates could not be acquired, location is OFF or permission is not granted
-    if (lat == null || lng == null) {
-      _cachedLocation = null;
+    final UserLocation userLoc;
+    if (_isAndroidNative) {
+      userLoc = await _acquireAndroidGps(timeout);
+    } else if (_isIosNative) {
+      userLoc = await _acquireIosGps(timeout);
+    } else if (_isMobileWeb) {
+      userLoc = await _acquireWebGps(timeout);
+    } else {
       throw const LocationServiceDisabledException();
     }
 
-    // 4. Reverse geocode to resolve city & address with safe timeout
-    Map<String, String> geoInfo = {};
-    if (webCity != null && webCity.isNotEmpty) {
-      geoInfo['city'] = webCity;
-      geoInfo['address'] = webAddress ?? webCity;
-    } else {
-      try {
-        geoInfo = await _reverseGeocode(lat, lng).timeout(const Duration(seconds: 4));
-      } catch (_) {
-        geoInfo = {
-          'city': '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
-          'address': 'GPS: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
-        };
-      }
-    }
-
-    final userLoc = UserLocation(
-      latitude: lat,
-      longitude: lng,
-      cityName: geoInfo['city'] ?? '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
-      address: geoInfo['address'] ?? 'Current GPS Location',
-      isGpsDetected: true,
-      accuracy: acc,
-    );
-
-    _cachedLocation = userLoc;
     return userLoc;
   }
 
-  /// Real-time continuous GPS tracking stream.
-  /// Emits new exact coordinates whenever the device/browser location updates.
-  Stream<UserLocation> watchLocation() async* {
-    yield _cachedLocation ?? UserLocation.defaultLocation;
-
+  Future<UserLocation> _acquireAndroidGps(Duration timeout) async {
     try {
-      final initial = await getCurrentLocation();
-      yield initial;
+      final raw = await _androidGps.invokeMethod<dynamic>('getGpsFix', {
+        'timeoutMs': timeout.inMilliseconds,
+      });
+      final loc = await _userLocationFromRaw(raw);
+      if (loc == null) {
+        throw const LocationServiceDisabledException();
+      }
+      return loc;
+    } on LocationServiceDisabledException {
+      rethrow;
     } catch (_) {
-      _cachedLocation = null;
-      yield UserLocation.defaultLocation;
+      throw const LocationServiceDisabledException();
     }
+  }
 
-    // Listen to real-time device GPS updates
+  Future<UserLocation> _acquireIosGps(Duration timeout) async {
     try {
-      await for (final pos in Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 10,
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: AppleSettings(
+          accuracy: LocationAccuracy.bestForNavigation,
+          activityType: ActivityType.otherNavigation,
+          pauseLocationUpdatesAutomatically: false,
+          allowBackgroundLocationUpdates: false,
+          timeLimit: timeout,
         ),
-      )) {
-        final double lat = pos.latitude;
-        final double lng = pos.longitude;
-        final double acc = pos.accuracy;
+      );
+      if (!_isLiveGpsPosition(position)) {
+        throw const LocationServiceDisabledException();
+      }
+      return await _userLocationFromCoords(
+        position.latitude,
+        position.longitude,
+        position.accuracy,
+      );
+    } on LocationServiceDisabledException {
+      rethrow;
+    } catch (_) {
+      throw const LocationServiceDisabledException();
+    }
+  }
 
-        String city = _cachedLocation?.cityName ?? '';
-        String addr = _cachedLocation?.address ?? '';
+  Future<UserLocation> _acquireWebGps(Duration timeout) async {
+    final coords = await getBrowserCoordinates(timeout: timeout);
+    final loc = await _userLocationFromRaw(coords);
+    if (loc == null) {
+      throw const LocationServiceDisabledException();
+    }
+    return loc;
+  }
 
-        final bool needsGeocode = city.isEmpty ||
-            city == 'Detecting Location...' ||
-            city == 'Location is OFF' ||
-            _cachedLocation == null ||
-            calculateDistanceKm(lat, lng, _cachedLocation!.latitude, _cachedLocation!.longitude) > 0.5;
+  bool _isLiveGpsPosition(Position position) {
+    if (position.isMocked) return false;
+    if (!UserLocation.isPreciseGpsFix(position.accuracy)) return false;
+    if (position.latitude == 0 && position.longitude == 0) return false;
+    final age = DateTime.now().toUtc().difference(position.timestamp.toUtc()).abs();
+    return age <= const Duration(seconds: 20);
+  }
 
-        if (needsGeocode) {
-          final geoInfo = await _reverseGeocode(lat, lng);
-          city = geoInfo['city'] ?? '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
-          addr = geoInfo['address'] ?? 'Current GPS Location';
-        }
-
-        final live = UserLocation(
-          latitude: lat,
-          longitude: lng,
-          cityName: city,
-          address: addr,
-          isGpsDetected: true,
-          accuracy: acc,
-        );
-        _cachedLocation = live;
-        yield live;
+  /// Emits satellite GPS updates only. The off sentinel is used when no fix arrives.
+  Stream<UserLocation> watchLocation() async* {
+    final iterator = StreamIterator<UserLocation>(_liveGpsFixes());
+    var deliveredGps = false;
+    try {
+      final pending = iterator.moveNext();
+      bool firstArrived;
+      try {
+        firstArrived = await pending.timeout(const Duration(seconds: 25));
+      } on TimeoutException {
+        yield UserLocation.defaultLocation;
+        firstArrived = await pending;
+      }
+      if (!firstArrived) {
+        yield UserLocation.defaultLocation;
+        return;
+      }
+      deliveredGps = true;
+      yield iterator.current;
+      while (await iterator.moveNext()) {
+        yield iterator.current;
       }
     } catch (_) {
-      // Fallback: try web location stream if running on web
-      try {
-        await for (final coords in watchBrowserCoordinates()) {
-          if (coords.containsKey('latitude') && coords.containsKey('longitude')) {
-            final double lat = (coords['latitude'] as num).toDouble();
-            final double lng = (coords['longitude'] as num).toDouble();
-            final double? acc = (coords['accuracy'] as num?)?.toDouble();
-
-            String city = _cachedLocation?.cityName ?? '';
-            String addr = _cachedLocation?.address ?? '';
-
-            final bool needsGeocode = city.isEmpty ||
-                city == 'Detecting Location...' ||
-                city == 'Location is OFF' ||
-                _cachedLocation == null ||
-                calculateDistanceKm(lat, lng, _cachedLocation!.latitude, _cachedLocation!.longitude) > 0.5;
-
-            if (needsGeocode) {
-              final geoInfo = await _reverseGeocode(lat, lng);
-              city = geoInfo['city'] ?? '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
-              addr = geoInfo['address'] ?? 'Current GPS Location';
-            }
-
-            final live = UserLocation(
-              latitude: lat,
-              longitude: lng,
-              cityName: city,
-              address: addr,
-              isGpsDetected: true,
-              accuracy: acc,
-            );
-            _cachedLocation = live;
-            yield live;
-          }
-        }
-      } catch (_) {
-        // Location turned OFF or permission denied
-        _cachedLocation = null;
+      if (!deliveredGps) {
         yield UserLocation.defaultLocation;
       }
+    } finally {
+      await iterator.cancel();
     }
   }
 
-  /// Actively trace fresh, exact GPS coordinates from the device / browser.
-  /// Bypasses and clears any stale cached coordinates.
-  Future<UserLocation> traceExactGps() async {
-    _cachedLocation = null;
-    return getCurrentLocation();
+  Stream<UserLocation> _liveGpsFixes() async* {
+    if (_isAndroidNative) {
+      yield* _androidGpsFixes();
+      return;
+    }
+    if (_isIosNative) {
+      yield* _iosGpsFixes();
+      return;
+    }
+    if (_isMobileWeb) {
+      yield* _webGpsFixes();
+    }
   }
+
+  Stream<UserLocation> _androidGpsFixes() async* {
+    await for (final event in _androidGpsStream.receiveBroadcastStream()) {
+      final loc = await _userLocationFromRaw(event);
+      if (loc != null) yield loc;
+    }
+  }
+
+  Stream<UserLocation> _iosGpsFixes() async* {
+    await for (final position in Geolocator.getPositionStream(
+      locationSettings: AppleSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        activityType: ActivityType.otherNavigation,
+        pauseLocationUpdatesAutomatically: false,
+        allowBackgroundLocationUpdates: false,
+      ),
+    )) {
+      if (!_isLiveGpsPosition(position)) continue;
+      yield await _userLocationFromCoords(
+        position.latitude,
+        position.longitude,
+        position.accuracy,
+      );
+    }
+  }
+
+  Stream<UserLocation> _webGpsFixes() async* {
+    await for (final coords in watchBrowserCoordinates()) {
+      if (coords['isIp'] == true) continue;
+      final loc = await _userLocationFromRaw(coords);
+      if (loc != null) yield loc;
+    }
+  }
+
+  Future<UserLocation> traceExactGps() => getCurrentLocation();
 
   Future<UserLocation> getCurrentLocation() async {
     try {
       return await acquireDeviceLocation();
     } catch (_) {
-      // When location is OFF on device, do NOT use stale GPS cache.
-      _cachedLocation = null;
       return UserLocation.defaultLocation;
     }
   }
 
-  /// Reverse geocodes latitude/longitude into city & locality name using Google Maps Platform
+  Future<UserLocation?> _userLocationFromRaw(dynamic raw) async {
+    if (raw is! Map) return null;
+    if (raw['isIp'] == true) return null;
+    final lat = (raw['latitude'] as num?)?.toDouble();
+    final lng = (raw['longitude'] as num?)?.toDouble();
+    final accuracy = (raw['accuracy'] as num?)?.toDouble();
+    if (lat == null || lng == null) return null;
+    if (!UserLocation.isPreciseGpsFix(accuracy)) return null;
+    if (lat == 0 && lng == 0) return null;
+    return _userLocationFromCoords(lat, lng, accuracy!);
+  }
+
+  Future<UserLocation> _userLocationFromCoords(
+    double lat,
+    double lng,
+    double accuracy,
+  ) async {
+    Map<String, String> geoInfo;
+    try {
+      geoInfo = await _reverseGeocode(lat, lng).timeout(const Duration(seconds: 4));
+    } catch (_) {
+      final coords = '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
+      geoInfo = {
+        'city': coords,
+        'address': 'GPS: $coords',
+      };
+    }
+
+    final coords = '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
+    return UserLocation(
+      latitude: lat,
+      longitude: lng,
+      cityName: geoInfo['city'] ?? coords,
+      address: geoInfo['address'] ?? 'Current GPS Location',
+      isGpsDetected: true,
+      accuracy: accuracy,
+    );
+  }
+
   Future<Map<String, String>> _reverseGeocode(double lat, double lng) async {
     try {
       final googleAddr = await _googleMaps.reverseGeocode(lat, lng);
@@ -380,21 +366,23 @@ class LocationService {
         'address': googleAddr.formattedAddress,
       };
     } catch (_) {
+      final coords = '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
       return {
-        'city': 'GPS (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})',
+        'city': coords,
         'address': 'Exact GPS: ${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}',
       };
     }
   }
+
   double calculateDistanceKm(double lat1, double lon1, double lat2, double lon2) {
-    const double p = 0.017453292519943295; // math.pi / 180
+    const double p = 0.017453292519943295;
     final double a = 0.5 -
         math.cos((lat2 - lat1) * p) / 2 +
         math.cos(lat1 * p) *
             math.cos(lat2 * p) *
             (1 - math.cos((lon2 - lon1) * p)) /
             2;
-    return 12742 * math.asin(math.sqrt(a)); // 2 * R; R = 6371 km
+    return 12742 * math.asin(math.sqrt(a));
   }
 }
 

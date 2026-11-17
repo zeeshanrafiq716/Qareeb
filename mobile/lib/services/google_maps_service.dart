@@ -197,9 +197,10 @@ class GoogleMapsService {
             cityName = formatted.split(',').first.trim();
           }
 
+          final coordStr = '${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}';
           return GoogleAddress(
-            formattedAddress: formatted.isNotEmpty ? formatted : (displayName.isNotEmpty ? displayName : cityName),
-            cityName: cityName.isNotEmpty ? cityName : 'Riyadh',
+            formattedAddress: formatted.isNotEmpty ? formatted : (displayName.isNotEmpty ? displayName : coordStr),
+            cityName: cityName.isNotEmpty ? cityName : coordStr,
             latitude: latitude,
             longitude: longitude,
           );
@@ -244,7 +245,10 @@ class GoogleMapsService {
               }
             }
 
-            final displayCity = city.isNotEmpty ? city : (locality.isNotEmpty ? locality : 'Riyadh');
+            final coordStr = '${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}';
+            final displayCity = city.isNotEmpty
+                ? city
+                : (locality.isNotEmpty ? locality : (country.isNotEmpty ? country : coordStr));
             return GoogleAddress(
               formattedAddress: formatted.isNotEmpty ? formatted : displayCity,
               cityName: displayCity,

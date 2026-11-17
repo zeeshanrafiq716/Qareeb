@@ -14,9 +14,7 @@ import 'package:mobile/features/provider/auth/presentation/widgets/provider_card
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 import 'package:mobile/services/backend_service.dart';
-import 'package:mobile/services/google_maps_service.dart';
 import 'package:mobile/services/location_service.dart';
-import 'package:mobile/services/location/web_location.dart';
 
 /// Provider Location Permission Screen
 /// Follows the exact same branding and visual design as the Customer side LocationPermissionScreen:
@@ -131,66 +129,37 @@ class _ProviderLocationPermissionScreenState
         } catch (_) {}
       }
 
-      UserLocation? detectedLocation;
-
-      // 1. Try real GPS/browser coordinate detection
+      UserLocation detectedLocation;
       try {
         detectedLocation = await _locationService
-            .acquireDeviceLocation(timeout: const Duration(seconds: 8));
+            .acquireDeviceLocation(timeout: const Duration(seconds: 25));
       } catch (locErr) {
-        debugPrint('acquireDeviceLocation error: $locErr, trying browser/IP coordinates fallback');
+        debugPrint('acquireDeviceLocation error: $locErr');
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage = null;
+          });
+          _showMobileLocationSettingsDialog();
+        }
+        return;
       }
 
-      // 2. If primary detection did not resolve, try direct browser / IP coordinates
-      if (detectedLocation == null) {
-        try {
-          final browserCoords = await getBrowserCoordinates();
-          if (browserCoords != null && browserCoords['latitude'] != null && browserCoords['longitude'] != null) {
-            final lat = (browserCoords['latitude'] as num).toDouble();
-            final lng = (browserCoords['longitude'] as num).toDouble();
-            String cityName = browserCoords['city']?.toString() ?? '';
-            String address = browserCoords['address']?.toString() ?? '';
-
-            if (cityName.isEmpty) {
-              try {
-                final resolved = await GoogleMapsService().reverseGeocode(lat, lng);
-                cityName = resolved.cityName;
-                address = resolved.formattedAddress;
-              } catch (_) {
-                cityName = '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
-                address = 'GPS: $cityName';
-              }
-            }
-
-            detectedLocation = UserLocation(
-              latitude: lat,
-              longitude: lng,
-              cityName: cityName,
-              address: address.isNotEmpty ? address : cityName,
-              isGpsDetected: true,
-              accuracy: (browserCoords['accuracy'] as num?)?.toDouble(),
-            );
-          }
-        } catch (_) {}
-      }
-
-      // 3. Fallback only if no coordinates could be found from GPS, Browser, or IP
-      if (detectedLocation == null) {
-        final fallbackLat = 31.5204;
-        final fallbackLng = 74.3587;
-        detectedLocation = UserLocation(
-          latitude: fallbackLat,
-          longitude: fallbackLng,
-          cityName: '${fallbackLat.toStringAsFixed(4)}, ${fallbackLng.toStringAsFixed(4)}',
-          address: 'Location Detected',
-          isGpsDetected: false,
-        );
+      if (!detectedLocation.hasValidDeviceGps) {
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage = null;
+          });
+          _showMobileLocationSettingsDialog();
+        }
+        return;
       }
 
       // 4. Persist real coordinates in ProviderRegistrationStore
       ProviderRegistrationStore.instance.update(
         (data) => data.copyWith(
-          latitude: detectedLocation!.latitude,
+          latitude: detectedLocation.latitude,
           longitude: detectedLocation.longitude,
           status: 'PENDING_VERIFICATION',
           isOnboardingCompleted: true,
@@ -221,7 +190,11 @@ class _ProviderLocationPermissionScreenState
     } catch (e) {
       debugPrint('Unexpected error in _handleAllowLocation: $e');
       if (mounted) {
-        _navigateToNextScreen();
+        setState(() {
+          _isLocating = false;
+          _statusMessage = null;
+        });
+        _showMobileLocationSettingsDialog();
       }
     } finally {
       if (mounted) {

@@ -30,6 +30,7 @@ export const CALL_STATUS = {
 export const ROLES = {
   PROVIDER: "provider",
   ADMIN: "admin",
+  CUSTOMER: "customer",
 };
 
 export const DOCUMENT_TYPES = [

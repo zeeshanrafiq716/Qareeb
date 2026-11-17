@@ -170,7 +170,7 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
   /// Back-compat alias used by full-screen map host.
   void recenter() {
     final userLoc = ref.read(userLocationProvider).value;
-    if (userLoc != null && userLoc.isGpsDetected) {
+    if (userLoc != null && userLoc.hasValidDeviceGps) {
       recenterToUser(userLoc);
     } else {
       setState(() {
@@ -182,18 +182,15 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
 
   Future<void> _onMyLocationControlTap(UserLocation userLoc) async {
     HapticFeedback.lightImpact();
-    if (userLoc.isGpsDetected) {
-      recenterToUser(userLoc);
-      ref.read(locationServiceProvider).traceExactGps().then((loc) {
-        if (mounted && loc.isGpsDetected) {
-          recenterToUser(loc);
-          ref.invalidate(userLocationProvider);
-        }
-      }).catchError((_) {});
+    if (userLoc.hasValidDeviceGps) {
+      final traced = await ref.read(locationServiceProvider).traceExactGps();
+      if (!mounted || !traced.hasValidDeviceGps) return;
+      recenterToUser(traced);
+      ref.invalidate(userLocationProvider);
       return;
     }
     final resolved = await LocationAccessHelper.resolveForMapAction(context, ref);
-    if (!mounted || resolved == null || !resolved.isGpsDetected) return;
+    if (!mounted || resolved == null || !resolved.hasValidDeviceGps) return;
     recenterToUser(resolved);
   }
 
@@ -201,7 +198,9 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
   Widget build(BuildContext context) {
     final tr = ref.watch(translationsProvider);
     final userLocAsync = ref.watch(userLocationProvider);
-    final userLoc = userLocAsync.value ?? UserLocation.defaultLocation;
+    final raw = userLocAsync.value;
+    final userLoc =
+        (raw != null && raw.hasValidDeviceGps) ? raw : UserLocation.defaultLocation;
 
     final double centerLat =
         _mapCenterLat ?? widget.latitude ?? userLoc.latitude;

@@ -129,26 +129,32 @@ final vehicleTypesProvider =
 
 /// Real nearby providers based on real user GPS coordinates
 final nearbyProvidersProvider = FutureProvider<List<ProviderMarkerModel>>((ref) async {
-  final userLoc = ref.watch(userLocationProvider).value ?? UserLocation.defaultLocation;
+  final userLoc = ref.watch(userLocationProvider).value;
+  if (userLoc == null || !userLoc.hasValidDeviceGps) {
+    return const [];
+  }
   final backendService = ref.watch(backendServiceProvider);
 
   return await backendService.getNearbyProviders(
     latitude: userLoc.latitude,
     longitude: userLoc.longitude,
-    radiusKm: 5.0,
+    radiusKm: 25,
   );
 });
 
 /// Filtered nearby providers by category slug
 final categoryNearbyProvidersProvider =
     FutureProvider.family<List<ProviderMarkerModel>, String?>((ref, categorySlug) async {
-  final userLoc = ref.watch(userLocationProvider).value ?? UserLocation.defaultLocation;
+  final userLoc = ref.watch(userLocationProvider).value;
+  if (userLoc == null || !userLoc.hasValidDeviceGps) {
+    return const [];
+  }
   final backendService = ref.watch(backendServiceProvider);
 
   return await backendService.getNearbyProviders(
     latitude: userLoc.latitude,
     longitude: userLoc.longitude,
-    radiusKm: 5.0,
+    radiusKm: 25,
     categorySlug: categorySlug,
   );
 });

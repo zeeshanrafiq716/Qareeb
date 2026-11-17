@@ -1,11 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../services/location/web_location.dart';
+import '../../services/location_service.dart';
 
 /// Representation of an active logged-in device session
 class DeviceSession {
@@ -42,7 +40,7 @@ class DeviceSession {
         name: json['name'] as String? ?? 'Device',
         platform: json['platform'] as String? ?? 'Mobile',
         osVersion: json['osVersion'] as String? ?? '',
-        location: json['location'] as String? ?? 'Riyadh, Saudi Arabia',
+        location: json['location'] as String? ?? 'Location unavailable',
         lastActive: DateTime.tryParse(json['lastActive'] as String? ?? '') ?? DateTime.now(),
         isCurrent: json['isCurrent'] as bool? ?? false,
       );
@@ -74,136 +72,21 @@ class DeviceSessionService {
   static const String _sessionsKey = 'active_device_sessions_v1';
   static const String _currentDeviceIdKey = 'current_device_unique_id_v1';
 
-  /// Resolves the real geographic location of the device using GPS / Browser Geolocation / IP Lookup
+  /// Fresh satellite GPS only. IP, Wi-Fi, cached, and city defaults are not used.
   static Future<String> resolveRealLocation() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final cached = prefs.getString('cached_real_device_location');
-      final cachedTime = prefs.getInt('cached_real_device_location_time') ?? 0;
-      final now = DateTime.now().millisecondsSinceEpoch;
-      // Use cached location if under 30 minutes old
-      if (cached != null && cached.isNotEmpty && (now - cachedTime < 1800000)) {
-        return cached;
+      final loc = await LocationService().acquireDeviceLocation();
+      if (!loc.hasValidDeviceGps) return 'Location unavailable';
+      final city = loc.cityName.trim();
+      if (city.isNotEmpty &&
+          city != 'Location is OFF' &&
+          city != 'Detecting Location...') {
+        return city;
       }
-    } catch (_) {}
-
-    String resolved = '';
-
-    // 1. Try browser HTML5 geolocation if on Web (Reverse geocoded from real GPS / WiFi coordinates)
-    if (kIsWeb) {
-      try {
-        final coords = await getBrowserCoordinates().timeout(const Duration(seconds: 4));
-        if (coords != null && coords['latitude'] != null && coords['longitude'] != null) {
-          final lat = (coords['latitude'] as num).toDouble();
-          final lng = (coords['longitude'] as num).toDouble();
-
-          // Reverse geocode high-precision GPS coordinates using BigDataCloud
-          try {
-            final dio = Dio(
-              BaseOptions(
-                connectTimeout: const Duration(seconds: 3),
-                receiveTimeout: const Duration(seconds: 3),
-              ),
-            );
-            final res = await dio.get(
-              'https://api.bigdatacloud.net/data/reverse-geocode-client',
-              queryParameters: {
-                'latitude': lat,
-                'longitude': lng,
-                'localityLanguage': 'en',
-              },
-            );
-            if (res.statusCode == 200 && res.data is Map) {
-              final data = res.data as Map;
-              final city = (data['city'] ?? data['locality'] ?? data['principalSubdivision'] ?? '').toString().trim();
-              final country = (data['countryName'] ?? '').toString().trim();
-              if (city.isNotEmpty && country.isNotEmpty) {
-                resolved = '$city, $country';
-              } else if (city.isNotEmpty) {
-                resolved = city;
-              }
-            }
-          } catch (_) {}
-
-          if (resolved.isEmpty) {
-            final city = coords['city']?.toString() ?? '';
-            final country = coords['country']?.toString() ?? '';
-            if (city.isNotEmpty && country.isNotEmpty) {
-              resolved = '$city, $country';
-            } else if (city.isNotEmpty) {
-              resolved = city;
-            } else if (coords['address'] != null && coords['address'].toString().isNotEmpty) {
-              resolved = coords['address'].toString();
-            }
-          }
-        }
-      } catch (_) {}
+      return loc.coordinatesDisplay;
+    } catch (_) {
+      return 'Location unavailable';
     }
-
-    // 2. Cross-platform IP Geolocation (instant, no GPS prompt required)
-    if (resolved.isEmpty) {
-      try {
-        final dio = Dio(
-          BaseOptions(
-            connectTimeout: const Duration(seconds: 3),
-            receiveTimeout: const Duration(seconds: 3),
-          ),
-        );
-        final response = await dio.get('https://freeipapi.com/api/json');
-        if (response.statusCode == 200 && response.data is Map) {
-          final data = response.data as Map;
-          final city = data['cityName']?.toString() ?? '';
-          final country = data['countryName']?.toString() ?? '';
-          if (city.isNotEmpty && country.isNotEmpty) {
-            resolved = '$city, $country';
-          } else if (city.isNotEmpty) {
-            resolved = city;
-          }
-        }
-      } catch (_) {}
-    }
-
-    // 3. Secondary IP Geolocation fallback
-    if (resolved.isEmpty) {
-      try {
-        final dio = Dio(
-          BaseOptions(
-            connectTimeout: const Duration(seconds: 3),
-            receiveTimeout: const Duration(seconds: 3),
-          ),
-        );
-        final response = await dio.get('https://ipapi.co/json/');
-        if (response.statusCode == 200 && response.data is Map) {
-          final data = response.data as Map;
-          final city = data['city']?.toString() ?? '';
-          final country = data['country_name']?.toString() ?? '';
-          if (city.isNotEmpty && country.isNotEmpty) {
-            resolved = '$city, $country';
-          }
-        }
-      } catch (_) {}
-    }
-
-    // 4. Native device GPS position if available
-    if (resolved.isEmpty && !kIsWeb) {
-      try {
-        final pos = await Geolocator.getLastKnownPosition().timeout(const Duration(seconds: 2));
-        if (pos != null) {
-          resolved = '${pos.latitude.toStringAsFixed(2)}°, ${pos.longitude.toStringAsFixed(2)}°';
-        }
-      } catch (_) {}
-    }
-
-    if (resolved.isNotEmpty) {
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('cached_real_device_location', resolved);
-        await prefs.setInt('cached_real_device_location_time', DateTime.now().millisecondsSinceEpoch);
-      } catch (_) {}
-      return resolved;
-    }
-
-    return 'Riyadh, Saudi Arabia';
   }
 
   /// Resolves the real hardware name and OS version of the current device

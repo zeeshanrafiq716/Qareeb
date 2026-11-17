@@ -14,7 +14,7 @@ function readToken(req) {
 export async function requireCustomer(req, _res, next) {
   try {
     const payload = verifyToken(readToken(req));
-    if (payload.role !== "customer") {
+    if (payload.role !== ROLES.CUSTOMER) {
       throw new ForbiddenError("Customer token required");
     }
 

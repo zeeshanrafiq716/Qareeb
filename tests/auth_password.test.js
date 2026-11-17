@@ -145,6 +145,12 @@ describe("Phone + Password Authentication (Customer & Provider)", () => {
       });
     expect(loginRes.status).toBe(200);
     expect(loginRes.body.data.customer.phone).toBe(phone);
+
+    const meRes = await api()
+      .get("/api/v1/customers/me")
+      .set("Authorization", `Bearer ${loginRes.body.data.token}`);
+    expect(meRes.status).toBe(200);
+    expect(meRes.body.data.phone).toBe(phone);
   });
 
   it("allows setting a password during provider OTP verification and logging in", async () => {

@@ -257,20 +257,6 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
                         child: ProviderIndicatorBar(),
                       ),
                     ),
-
-                    // 8. iOS Home Indicator Bar
-                    Positioned(
-                      left: (containerWidth - 134.0) / 2,
-                      bottom: isDesktopWeb ? 12.0 : (bottomSafeArea > 0 ? (bottomSafeArea / 2) : 10.0),
-                      child: Container(
-                        width: 134.0,
-                        height: 5.0,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1C2926),
-                          borderRadius: BorderRadius.circular(100.0),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),

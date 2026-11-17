@@ -286,6 +286,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
   double _mapScaleBase = 1.0;
 
   List<NearbyDriverRoute>? _driverRoutes;
+  List<ProviderMarkerModel> _gpsProviders = const [];
   final Map<String, MapLatLng> _lastKnownPositions = {};
   final Map<String, double> _driverHeadings = {};
   Timer? _providerLocationPollTimer;
@@ -314,7 +315,11 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
 
     // 4. Real-time background provider tracking poll: refresh providers every 4s
     _providerLocationPollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (mounted) {
+      if (!mounted) return;
+      final loc = _exactTracedLocation ?? ref.read(userLocationProvider).value;
+      if (loc != null && loc.hasValidDeviceGps) {
+        unawaited(_refreshNearbyCars(loc));
+      } else {
         ref.invalidate(nearbyProvidersProvider);
       }
     });
@@ -362,7 +367,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     final validProviders = providers
         .where((p) => p.latitude != 0.0 && p.longitude != 0.0)
         .toList();
-    if (validProviders.isEmpty) return const [];
+    if (validProviders.isEmpty) return <NearbyDriverRoute>[];
 
     final colors = [
       const Color(0xFF8B53FE),
@@ -453,6 +458,92 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     _recenterController.forward();
   }
 
+  bool _looksLikeCoordinates(String value) {
+    final text = value.trim();
+    return RegExp(r'^-?\d{1,3}\.\d+').hasMatch(text);
+  }
+
+  String _placeLabel(UserLocation loc) {
+    final city = loc.cityName.trim();
+    if (city.isNotEmpty &&
+        city != 'Detecting Location...' &&
+        city != 'Location is OFF' &&
+        !_looksLikeCoordinates(city)) {
+      return city;
+    }
+    final address = loc.address.trim();
+    if (address.isNotEmpty &&
+        !address.startsWith('GPS') &&
+        !address.startsWith('Exact GPS') &&
+        !_looksLikeCoordinates(address)) {
+      return address;
+    }
+    return loc.coordinatesDisplay;
+  }
+
+  Future<UserLocation> _withPlaceName(UserLocation loc) async {
+    if (!_looksLikeCoordinates(loc.cityName) &&
+        loc.cityName.trim().isNotEmpty &&
+        loc.cityName != 'Location is OFF' &&
+        loc.cityName != 'Detecting Location...') {
+      return loc;
+    }
+    try {
+      final addr = await ref.read(googleMapsServiceProvider).reverseGeocode(
+            loc.latitude,
+            loc.longitude,
+            lang: 'en',
+          );
+      final city = addr.cityName.trim();
+      if (city.isNotEmpty && !_looksLikeCoordinates(city)) {
+        return loc.copyWith(
+          cityName: city,
+          address: addr.formattedAddress.isNotEmpty ? addr.formattedAddress : city,
+        );
+      }
+    } catch (_) {}
+    return loc;
+  }
+
+  Future<void> _refreshNearbyCars(UserLocation loc) async {
+    if (!loc.hasValidDeviceGps) return;
+    try {
+      final list = await ref.read(backendServiceProvider).getNearbyProviders(
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            radiusKm: 25,
+          );
+      if (!mounted) return;
+      setState(() => _gpsProviders = list);
+    } catch (_) {}
+  }
+
+  void _showLocationMessage(UserLocation loc) {
+    if (!mounted) return;
+    final tr = ref.read(translationsProvider);
+    final place = _placeLabel(loc);
+    final coords = loc.coordinatesDisplay;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF8B53FE),
+        behavior: SnackBarBehavior.floating,
+        content: Text(
+          tr.isArabic
+              ? 'موقعك: $place\n$coords'
+              : 'Your location: $place\n$coords',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            height: 1.35,
+          ),
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   void _applyUserLocationToMap(UserLocation resolved) {
     final double targetZoom =
         _calculateZoomForCount(_selectedProviderCount).clamp(10.0, 18.0);
@@ -473,27 +564,18 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     HapticFeedback.mediumImpact();
     setState(() => _isTracingGps = true);
     try {
-      final locationService = ref.read(locationServiceProvider);
-      UserLocation? resolved;
+      final UserLocation? resolved = await LocationAccessHelper.resolveForMapAction(
+        context,
+        ref,
+        serviceName: widget.serviceName,
+      );
 
-      final live = ref.read(userLocationProvider).value;
-      if (live != null && live.isGpsDetected) {
-        try {
-          final traced = await locationService.traceExactGps();
-          resolved = traced.isGpsDetected ? traced : live;
-        } catch (_) {
-          resolved = live;
-        }
-      } else {
-        resolved = await LocationAccessHelper.resolveForMapAction(
-          context,
-          ref,
-          serviceName: widget.serviceName,
-        );
-      }
-
-      if (!mounted || resolved == null || !resolved.isGpsDetected) return;
-      _applyUserLocationToMap(resolved);
+      if (!mounted || resolved == null || !resolved.hasValidDeviceGps) return;
+      final named = await _withPlaceName(resolved);
+      if (!mounted) return;
+      _applyUserLocationToMap(named);
+      await _refreshNearbyCars(named);
+      _showLocationMessage(named);
     } finally {
       if (mounted) setState(() => _isTracingGps = false);
     }
@@ -533,10 +615,9 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
       if (count <= 8) return 5200.0;
       return 7500.0;
     }
-    final distances = _driverRoutes!.map((d) {
-      return RoadPath.haversineDistance(d.currentPos, userPos);
-    }).toList()
-      ..sort();
+    final distances = List<double>.from(
+      _driverRoutes!.map((d) => RoadPath.haversineDistance(d.currentPos, userPos)),
+    )..sort();
 
     final int idx = (count - 1).clamp(0, distances.length - 1);
     final double buffer = count <= 2
@@ -658,27 +739,48 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                   : 16.0;
 
               final userLocAsync = ref.watch(userLocationProvider);
-              final userLoc = _exactTracedLocation ?? userLocAsync.value ?? UserLocation.defaultLocation;
-              final userPos = MapLatLng(userLoc.latitude, userLoc.longitude);
+              final UserLocation? rawUserLoc =
+                  _exactTracedLocation ?? userLocAsync.value;
+              final userLoc = (rawUserLoc != null && rawUserLoc.hasValidDeviceGps)
+                  ? rawUserLoc
+                  : UserLocation.defaultLocation;
+              final userPos = userLoc.hasValidDeviceGps
+                  ? MapLatLng(userLoc.latitude, userLoc.longitude)
+                  : const MapLatLng(0, 0);
               final double targetCircleRadiusMeters = _calculateRadiusForCount(_selectedProviderCount, userPos);
 
               // Build routes strictly from real live providers
               final providersAsync = ref.watch(nearbyProvidersProvider);
-              final liveProviders = providersAsync.value ?? const <ProviderMarkerModel>[];
-              final allRoutes = _buildDriverRoutesFromProviders(
-                liveProviders,
-                userLoc.latitude,
-                userLoc.longitude,
-              );
-              allRoutes.sort((a, b) => a.initialDistanceKm.compareTo(b.initialDistanceKm));
-              _driverRoutes = allRoutes.take(_selectedProviderCount).toList();
+              final streamed = providersAsync.value ?? const <ProviderMarkerModel>[];
+              final liveProviders = _gpsProviders.isNotEmpty ? _gpsProviders : streamed;
+              final routeUser = (rawUserLoc != null && rawUserLoc.hasValidDeviceGps)
+                  ? rawUserLoc
+                  : null;
+              if (routeUser != null) {
+                final allRoutes = List<NearbyDriverRoute>.from(
+                  _buildDriverRoutesFromProviders(
+                    liveProviders,
+                    routeUser.latitude,
+                    routeUser.longitude,
+                  ),
+                );
+                allRoutes.sort((a, b) => a.initialDistanceKm.compareTo(b.initialDistanceKm));
+                _driverRoutes = allRoutes.take(_selectedProviderCount).toList();
+              } else {
+                _driverRoutes = <NearbyDriverRoute>[];
+              }
 
-              // Initialize or sync center pixel coordinates to user location
-              _centerPixelX ??= MercatorProjection.lngToX(userLoc.longitude, _zoom);
-              _centerPixelY ??= MercatorProjection.latToY(userLoc.latitude, _zoom);
+              // Initialize map center only from real GPS (not placeholder 0,0)
+              if (userLoc.hasValidDeviceGps) {
+                _centerPixelX ??= MercatorProjection.lngToX(userLoc.longitude, _zoom);
+                _centerPixelY ??= MercatorProjection.latToY(userLoc.latitude, _zoom);
+              } else {
+                _centerPixelX ??= MercatorProjection.lngToX(0, _zoom);
+                _centerPixelY ??= MercatorProjection.latToY(0, _zoom);
+              }
 
-              // Calculate geographic scale in meters per pixel using Web Mercator
-              final double metersPerPixel = (156543.03392 * math.cos(userLoc.latitude * math.pi / 180.0)) / (1 << _zoom.toInt());
+              final double mapLat = userLoc.hasValidDeviceGps ? userLoc.latitude : 0;
+              final double metersPerPixel = (156543.03392 * math.cos(mapLat * math.pi / 180.0)) / (1 << _zoom.toInt());
 
               final double leftPx = _centerPixelX! - (effectiveBeaconWidth / 2.0);
               final double topPx = _centerPixelY! - (effectiveBeaconHeight / 2.0);
@@ -889,10 +991,10 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                 left: userScreenX - 24.0,
                                 top: userScreenY - 24.0,
                                 child: Tooltip(
-                                  message: userLoc.isGpsDetected
+                                  message: userLoc.hasValidDeviceGps
                                       ? (tr.isArabic
-                                          ? 'موقعك: ${userLoc.cityName}'
-                                          : 'Your location: ${userLoc.cityName}')
+                                          ? 'موقعك: ${_placeLabel(userLoc)}'
+                                          : 'Your location: ${_placeLabel(userLoc)}')
                                       : (tr.isArabic
                                           ? 'اضغط زر الموقع لتفعيل الخدمة'
                                           : 'Tap the location button to turn on Location'),
@@ -1530,12 +1632,9 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     final String baseSubtitle = tr.isArabic
         ? 'اختر مزود خدمة بالقرب منك'
         : 'Choose a provider near you';
-    final String locationSubtitle = userLoc.isGpsDetected
-        ? (userLoc.cityName.isNotEmpty &&
-                userLoc.cityName != 'Detecting Location...' &&
-                !userLoc.cityName.contains(',')
-            ? '$baseSubtitle • ${userLoc.cityName}'
-            : '$baseSubtitle • ${userLoc.coordinatesDisplay}')
+    final String place = userLoc.hasValidDeviceGps ? _placeLabel(userLoc) : '';
+    final String locationSubtitle = userLoc.hasValidDeviceGps
+        ? '$baseSubtitle • $place'
         : (tr.isArabic
             ? '$baseSubtitle • خدمة الموقع مغلقة'
             : '$baseSubtitle • Location is OFF');

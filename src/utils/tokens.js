@@ -15,6 +15,18 @@ export function signProviderToken(provider) {
   );
 }
 
+export function signCustomerToken(customer) {
+  return jwt.sign(
+    {
+      sub: customer.id,
+      role: ROLES.CUSTOMER,
+      phone: customer.phone,
+    },
+    env.JWT_SECRET,
+    { expiresIn: env.JWT_PROVIDER_EXPIRES_IN },
+  );
+}
+
 export function signAdminToken(admin) {
   return jwt.sign(
     {

@@ -320,7 +320,9 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
     // 4. Also listen to location stream for instantaneous movements
     _locationSubscription?.cancel();
     _locationSubscription = ref.read(locationServiceProvider).watchLocation().listen((loc) {
-      _sendLocationToBackend(loc);
+      if (loc.hasValidDeviceGps) {
+        _sendLocationToBackend(loc);
+      }
     });
   }
 
@@ -349,7 +351,7 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
   }
 
   Future<void> _sendLocationToBackend(UserLocation loc) async {
-    if (loc.latitude == 0 && loc.longitude == 0) return;
+    if (!loc.hasValidDeviceGps) return;
     try {
       await ref.read(backendServiceProvider).updateProviderLocation(
         latitude: loc.latitude,
