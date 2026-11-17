@@ -19,6 +19,9 @@ class ApiEndpoints {
   static String discoveryProvider(String publicId) =>
       '$v1Prefix/discovery/providers/$publicId';
 
+  // Customer session
+  static const String customerMe = '$v1Prefix/customers/me';
+
   // Auth endpoints
   static const String authOtpRequest = '$v1Prefix/auth/otp/request';
   static const String authOtpVerify = '$v1Prefix/auth/otp/verify';
@@ -33,4 +36,5 @@ class ApiEndpoints {
   static const String providerStats = '$v1Prefix/providers/me/stats';
   static const String providerDashboard = '$v1Prefix/providers/me/dashboard';
   static const String providerNotifications = '$v1Prefix/providers/me/notifications';
+  static const String providerPhoneChangeRequest = '$v1Prefix/providers/me/phone-change-request';
 }

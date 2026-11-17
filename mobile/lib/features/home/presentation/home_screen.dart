@@ -9,6 +9,8 @@ import '../../../services/task_service.dart';
 import '../../location/presentation/live_tracking_screen.dart';
 import '../../location/presentation/location_permission_screen.dart';
 import '../../profile/presentation/notifications_screen.dart';
+import '../../customer/auth/customer_account_watch.dart';
+import '../../customer/auth/data/customer_auth_store.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../requests/presentation/requests_screen.dart';
 import '../../../providers/backend_provider.dart';
@@ -42,6 +44,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     _currentTabIndex = widget.initialTabIndex;
     _scrollControllerInstance ??= ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (CustomerAuthStore.instance.hasCompletedSignup) {
+        CustomerAccountWatch.start(context, ref);
+      }
+    });
   }
 
   @override
@@ -54,6 +62,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    CustomerAccountWatch.stop();
     _scrollControllerInstance?.dispose();
     super.dispose();
   }

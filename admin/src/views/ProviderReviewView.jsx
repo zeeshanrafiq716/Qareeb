@@ -588,20 +588,11 @@ export function ProviderReviewView({
               </span>
             </div>
 
-            {/* Bottom row: Application ID & Submitted Date */}
-            <div className="grid grid-cols-2 pt-2 border-t border-[#F0EFF2]">
-              <div>
-                <span className="text-[11px] text-[#9EAFA9] block">Application ID</span>
-                <span className="text-[13px] font-semibold text-[#1C2926] mt-0.5 block">
-                  {activeProvider.providerId || activeProvider.id}
-                </span>
-              </div>
-              <div>
-                <span className="text-[11px] text-[#9EAFA9] block">Submitted Date</span>
-                <span className="text-[13px] font-semibold text-[#1C2926] mt-0.5 block">
-                  {activeProvider.submittedDate || 'Recent'}
-                </span>
-              </div>
+            <div className="pt-2 border-t border-[#F0EFF2]">
+              <span className="text-[11px] text-[#9EAFA9] block">Submitted Date</span>
+              <span className="text-[13px] font-semibold text-[#1C2926] mt-0.5 block">
+                {activeProvider.submittedDate || 'Recent'}
+              </span>
             </div>
           </div>
 

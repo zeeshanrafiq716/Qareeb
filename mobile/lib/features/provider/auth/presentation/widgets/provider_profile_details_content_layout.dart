@@ -4,7 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_phone_change_watcher.dart';
 import 'package:mobile/features/provider/auth/presentation/vehicle_service_details_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_onboarding_guard.dart';
+import 'package:mobile/features/provider/auth/presentation/widgets/provider_phone_change_support_dialog.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
@@ -75,6 +78,9 @@ class _ProviderProfileDetailsContentLayoutState
           : _registeredPhone,
     );
     _backendService = BackendService(ApiClient());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ProviderPhoneChangeWatcher.start(context);
+    });
   }
 
   @override
@@ -184,53 +190,10 @@ class _ProviderProfileDetailsContentLayoutState
   }
 
   void _showSupportDialog(BuildContext context, bool isArabic) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
-        title: Row(
-          children: [
-            const Icon(Icons.headset_mic_rounded, color: Color(0xFF8B53FE)),
-            const SizedBox(width: 10.0),
-            Text(
-              isArabic ? 'تغيير رقم تسجيل الدخول' : 'Change Login Number',
-              style: GoogleFonts.inter(fontSize: 16.5, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-        content: Text(
-          isArabic
-              ? 'لحماية أمان حسابك، يتطلب تغيير رقم الهاتف المسجل التحقق من الهوية عبر فريق دعم زيشو (Zesho). يرجى التواصل معنا للمتابعة.'
-              : 'For security and account safety, changing your registered login phone number requires identity verification via Zesho Partner Support.',
-          style: GoogleFonts.inter(fontSize: 13.0, color: const Color(0xFF566663), height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              isArabic ? 'إلغاء' : 'Cancel',
-              style: GoogleFonts.inter(color: const Color(0xFF6B7280)),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF8B53FE),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
-            ),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(isArabic ? 'تم فتح تذكرة دعم لتغيير الرقم' : 'Support ticket opened for phone change'),
-                  backgroundColor: const Color(0xFF8B53FE),
-                ),
-              );
-            },
-            child: Text(isArabic ? 'تواصل مع الدعم' : 'Contact Support'),
-          ),
-        ],
-      ),
+    showProviderPhoneChangeSupportDialog(
+      context,
+      currentPhone: _registeredPhone,
+      onSubmitted: (_) => ProviderPhoneChangeWatcher.start(context),
     );
   }
 
@@ -715,6 +678,9 @@ class _ProviderProfileDetailsContentLayoutState
                   color: Colors.white,
                 ),
               ),
+
+              if (!ProviderRegistrationStore.instance.data.isOnboardingCompleted)
+                const ProviderSkipOnboardingButton(),
 
               // Flexible bottom indicator
               const SizedBox(height: 24.0),

@@ -356,6 +356,21 @@ export async function patchReportStatusApi(id, data = {}) {
   return response.data?.data || response.data
 }
 
+export async function acceptPhoneChangeReportApi(id, data = {}) {
+  const response = await apiClient.post(`/admin/reports/${id}/accept-phone-change`, data)
+  return response.data?.data || response.data
+}
+
+export async function deleteReportApi(id) {
+  const response = await apiClient.delete(`/admin/reports/${id}`)
+  return response.data?.data || response.data
+}
+
+export async function blockReportProviderApi(id, data = {}) {
+  const response = await apiClient.post(`/admin/reports/${id}/block`, data)
+  return response.data?.data || response.data
+}
+
 
 
 

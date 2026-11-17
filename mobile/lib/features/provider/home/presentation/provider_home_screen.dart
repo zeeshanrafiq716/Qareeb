@@ -7,6 +7,8 @@ import 'package:mobile/features/home/presentation/widgets/bottom_nav_bar_widget.
 import 'package:mobile/features/home/presentation/widgets/notification_popup_card.dart';
 import 'package:mobile/features/profile/presentation/profile_screen.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_onboarding_guard.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_phone_change_watcher.dart';
 import 'package:mobile/features/provider/auth/presentation/admin_approval_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/phone_verification_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/provider_blocked_screen.dart';
@@ -14,6 +16,7 @@ import 'package:mobile/features/provider/dashboard/presentation/provider_dashboa
 import 'package:mobile/features/provider/home/presentation/widgets/provider_home_header.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_online_status_text.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_online_toggle.dart';
+import 'package:mobile/features/provider/home/provider_online_session.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_stats_cards.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_vehicle_card.dart';
 import 'package:mobile/features/provider/requests/presentation/provider_requests_screen.dart';
@@ -75,12 +78,30 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
   void initState() {
     super.initState();
     _currentTabIndex = widget.initialTabIndex;
-    _isOnline = ProviderRegistrationStore.instance.data.isOnline;
+    final reg = ProviderRegistrationStore.instance.data;
+    _isOnline = reg.isOnline && ProviderOnboardingGuard.canGoOnline(reg);
+    if (reg.isOnline && !_isOnline) {
+      ProviderRegistrationStore.instance.update(
+        (data) => data.copyWith(isOnline: false),
+      );
+    }
+    ProviderOnlineSession.loadPersisted().then((_) async {
+      if (!mounted) return;
+      if (_isOnline) {
+        if (!ProviderOnlineSession.hasActiveSession) {
+          await ProviderOnlineSession.goOnline();
+        }
+      } else {
+        await ProviderOnlineSession.goOffline();
+      }
+      if (mounted) setState(() {});
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_isOnline) {
         _startGpsTrackingAndPresence();
       }
       _syncProviderAccountStatus();
+      ProviderPhoneChangeWatcher.start(context);
     });
     // High-frequency stats polling and account status synchronization (every 2.5s)
     // Instantly reacts if admin blocks, suspends, or deletes provider
@@ -248,6 +269,7 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
 
   @override
   void dispose() {
+    ProviderPhoneChangeWatcher.stop();
     _notificationsPollTimer?.cancel();
     _statsRefreshTimer?.cancel();
     _stopGpsTrackingAndPresence(callBackend: false);
@@ -257,6 +279,14 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
 
   void _setOnlineStatus(bool online) {
     if (_isOnline == online) return;
+    if (online) {
+      final data = ProviderRegistrationStore.instance.data;
+      if (!ProviderOnboardingGuard.canGoOnline(data)) {
+        ProviderOnboardingGuard.showMustCompleteOnboarding(context, data);
+        setState(() => _isOnline = false);
+        return;
+      }
+    }
     setState(() {
       _isOnline = online;
     });
@@ -264,8 +294,10 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
       (data) => data.copyWith(isOnline: online),
     );
     if (online) {
+      ProviderOnlineSession.goOnline();
       _startGpsTrackingAndPresence();
     } else {
+      ProviderOnlineSession.goOffline();
       _stopGpsTrackingAndPresence(callBackend: true);
     }
   }

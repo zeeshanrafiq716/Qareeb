@@ -53,6 +53,4 @@ export const COMPULSORY_DOCUMENT_TYPES = [
   "license",
   "vehicle_front",
   "vehicle_rear",
-  "vehicle_left_side",
-  "vehicle_right_side",
 ];

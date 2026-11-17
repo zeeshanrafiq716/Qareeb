@@ -104,9 +104,16 @@ export function ProviderDirectoryView({
           const locationCity = item.location?.city || item.city || (lat != null && lng != null ? `${lat.toFixed(4)}, ${lng.toFixed(4)}` : 'Location Pending')
           const locationAddress = item.location?.address || ''
 
-          const displayName = item.name && item.name.trim().length > 0 && item.name !== 'Provider'
-            ? item.name
-            : (item.phone ? `Provider (${item.phone})` : 'New Provider')
+          const rawName = (item.name || '').trim()
+          const hasRealName =
+            rawName.length > 0 &&
+            rawName !== 'Provider' &&
+            !/^provider\s*\(/i.test(rawName)
+          const displayName = hasRealName
+            ? rawName
+            : item.phone
+              ? 'Provider'
+              : 'New Provider'
 
           return {
             id: item.providerId || `QRB-1000${String(idx + 1).padStart(2, '0')}`,
@@ -258,6 +265,11 @@ export function ProviderDirectoryView({
         return 'text-[#616166]'
     }
   }
+
+  /** Shared grid: checkbox | provider | category | location | registered | status | action */
+  const providerRowGrid =
+    'grid w-full items-center gap-x-5 md:gap-x-6 ' +
+    'grid-cols-[2rem_minmax(8rem,1.4fr)_minmax(7rem,1.15fr)_minmax(7rem,1.05fr)_minmax(6.25rem,0.95fr)_minmax(5.75rem,0.9fr)_minmax(6.25rem,auto)]'
 
   // Filtering
   const filteredProviders = providersList.filter((p) => {
@@ -439,7 +451,7 @@ export function ProviderDirectoryView({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, provider ID, or phone number..."
+              placeholder="Search by name or phone number..."
               className="w-full h-[40px] pl-10 pr-4 text-xs font-normal text-[#1C2926] placeholder-[#9EAFA9] bg-white border border-[#EBEBEB] rounded-xl focus:border-[#8B53FE] focus:ring-2 focus:ring-[#8B53FE]/15 transition-all outline-none"
             />
           </div>
@@ -562,9 +574,9 @@ export function ProviderDirectoryView({
             style={{
               height: '56px',
             }}
-            className="w-full bg-[#F4F2F7] px-5 flex items-center shrink-0 text-[12px] font-semibold text-[#616166]"
+            className={`w-full bg-[#F4F2F7] px-5 shrink-0 text-[12px] font-semibold text-[#616166] ${providerRowGrid}`}
           >
-            <div className="w-[32px] flex items-center justify-start shrink-0">
+            <div className="flex items-center justify-start">
               <input
                 type="checkbox"
                 checked={
@@ -575,33 +587,29 @@ export function ProviderDirectoryView({
                 className="w-4 h-4 rounded border-[#D1D5DB] text-[#8B53FE] focus:ring-[#8B53FE] cursor-pointer"
               />
             </div>
-            <div className="flex-1 min-w-[130px] flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
               <span>Provider</span>
-              <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
+              <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9] shrink-0" />
             </div>
-            <div className="w-[105px] flex items-center gap-1.5 shrink-0">
-              <span>Provider ID</span>
-              <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
-            </div>
-            <div className="w-[130px] flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 min-w-0">
               <span>Service Category</span>
-              <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
+              <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9] shrink-0" />
             </div>
-            <div className="w-[110px] flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 min-w-0">
               <span>Location (GPS)</span>
-              <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
+              <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9] shrink-0" />
             </div>
-            <div className="w-[110px] flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 min-w-0">
               <span>Registered On</span>
-              <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
+              <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9] shrink-0" />
             </div>
-            <div className="w-[110px] flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 min-w-0">
               <span>Status</span>
-              <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
+              <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9] shrink-0" />
             </div>
-            <div className="w-[115px] flex items-center justify-end gap-1.5 shrink-0 pr-1">
+            <div className="flex items-center justify-end gap-1.5 pr-1">
               <span>Action</span>
-              <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
+              <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9] shrink-0" />
             </div>
           </div>
 
@@ -630,14 +638,11 @@ export function ProviderDirectoryView({
                 return (
                   <div
                     key={p.id}
-                    style={{
-                      height: '60px',
-                    }}
-                    className={`w-full px-5 flex items-center shrink-0 border-b border-[#F0EFF2] transition-colors hover:bg-[#FAF9FD] ${
+                    className={`w-full px-5 min-h-[60px] py-2 shrink-0 border-b border-[#F0EFF2] transition-colors hover:bg-[#FAF9FD] ${
                       isSelected ? 'bg-[#F9F7FE]' : 'bg-white'
-                    } ${activeRowMenu === p.id ? 'relative z-30' : 'relative z-0'}`}
+                    } ${activeRowMenu === p.id ? 'relative z-30' : 'relative z-0'} ${providerRowGrid}`}
                   >
-                    <div className="w-[32px] flex items-center justify-start shrink-0">
+                    <div className="flex items-center justify-start">
                       <input
                         type="checkbox"
                         checked={isSelected}
@@ -646,10 +651,10 @@ export function ProviderDirectoryView({
                       />
                     </div>
 
-                    <div className="flex-1 min-w-[130px] flex items-center">
-                      <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[13px] font-semibold text-[#1C2926] leading-tight truncate">
+                    <div className="flex items-center min-w-0">
+                      <div className="flex flex-col min-w-0 w-full">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-[13px] font-semibold text-[#1C2926] leading-tight">
                             {p.name}
                           </span>
                           <span
@@ -661,36 +666,34 @@ export function ProviderDirectoryView({
                             }`}
                           />
                         </div>
-                        <div className="flex items-center gap-1 text-[11px] text-[#616166] mt-0.5">
+                        <div className="flex items-center gap-1 text-[11px] text-[#616166] mt-0.5 min-w-0">
                           <Phone className="w-2.5 h-2.5 text-[#9EAFA9] shrink-0" />
-                          <span className="truncate">{p.phone}</span>
+                          <span className="whitespace-nowrap">{p.phone}</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="w-[105px] text-xs font-normal text-[#616166] shrink-0">
-                      {p.id}
-                    </div>
-
-                    <div className="w-[130px] flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 min-w-0">
                       <CategoryIcon className="w-4 h-4 text-[#9EAFA9] shrink-0" />
-                      <span className="text-xs font-normal text-[#1C2926] truncate">
+                      <span className="text-xs font-normal text-[#1C2926] whitespace-normal break-words leading-snug">
                         {p.category}
                       </span>
                     </div>
 
-                    <div className="w-[110px] flex flex-col shrink-0 text-xs">
-                      <div className="flex items-center gap-1 text-[#1C2926]">
+                    <div className="flex flex-col min-w-0 text-xs">
+                      <div className="flex items-center gap-1 text-[#1C2926] min-w-0">
                         <Compass
                           className={`w-3.5 h-3.5 shrink-0 ${
                             p.isOnline ? 'text-[#16A34A] animate-pulse' : 'text-[#9EAFA9]'
                           }`}
                         />
-                        <span className="truncate font-medium">{p.location}</span>
+                        <span className="font-medium whitespace-normal break-words leading-snug">
+                          {p.location}
+                        </span>
                       </div>
                       {p.hasCoordinates ? (
                         <span
-                          className="text-[10px] text-[#616166] font-mono mt-0.5 truncate"
+                          className="text-[10px] text-[#616166] font-mono mt-0.5"
                           title={`GPS: ${p.latitude}, ${p.longitude}${
                             p.address ? ` (${p.address})` : ''
                           }`}
@@ -702,7 +705,7 @@ export function ProviderDirectoryView({
                       )}
                     </div>
 
-                    <div className="w-[110px] flex flex-col shrink-0">
+                    <div className="flex flex-col min-w-0">
                       <span className="text-xs font-medium text-[#1C2926] leading-tight">
                         {p.registeredDate}
                       </span>
@@ -711,7 +714,7 @@ export function ProviderDirectoryView({
                       </span>
                     </div>
 
-                    <div className="w-[110px] flex flex-col gap-1 shrink-0">
+                    <div className="flex flex-col gap-1 min-w-0">
                       <div className="flex items-center">
                         <span
                           className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
@@ -739,7 +742,7 @@ export function ProviderDirectoryView({
                       </span>
                     </div>
 
-                    <div className="w-[115px] flex items-center justify-end gap-2 shrink-0 relative pr-1">
+                    <div className="flex items-center justify-end gap-2 relative pr-1">
                       <button
                         type="button"
                         onClick={() => onViewProfile && onViewProfile(p)}

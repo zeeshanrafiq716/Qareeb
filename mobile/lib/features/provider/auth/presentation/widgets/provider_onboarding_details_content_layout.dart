@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_onboarding_guard.dart';
 import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
 import 'package:mobile/models/category_model.dart';
@@ -925,6 +926,8 @@ class _ProviderOnboardingDetailsContentLayoutState
             color: Colors.white,
           ),
         ),
+
+        const ProviderSkipOnboardingButton(),
 
         const SizedBox(height: 24.0),
       ],

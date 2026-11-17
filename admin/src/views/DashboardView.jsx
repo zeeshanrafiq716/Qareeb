@@ -420,6 +420,7 @@ export default function DashboardView() {
 
               {/* 3RD ROW CARDS LAYOUT: 1084x216 (560x216 & 508x216) */}
               <DashboardThirdRow
+                openReportsCount={stats.openReports}
                 onViewAllVerifications={() => handleSelectTab('verification')}
                 onViewAllReports={() => handleSelectTab('reports')}
                 onSelectProvider={(p) => {

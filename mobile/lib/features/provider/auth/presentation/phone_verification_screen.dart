@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_auth_card.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_header_back_button.dart';
@@ -30,16 +31,52 @@ import 'package:mobile/features/provider/splash/presentation/widgets/provider_sp
 ///   opacity: 1;
 ///   background: #FFFFFF;
 ///   box-shadow: 0px -2px 12px 0px #00000014;
-class PhoneVerificationScreen extends StatelessWidget {
+class PhoneVerificationScreen extends StatefulWidget {
   final bool initialIsLogin;
+  final String? flashMessage;
+  final Color? flashMessageBackground;
 
   const PhoneVerificationScreen({
     super.key,
     this.initialIsLogin = false,
+    this.flashMessage,
+    this.flashMessageBackground,
   });
 
   static const double designWidth = 390.0;
   static const double designHeight = 844.0;
+
+  @override
+  State<PhoneVerificationScreen> createState() => _PhoneVerificationScreenState();
+}
+
+class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
+  @override
+  void initState() {
+    super.initState();
+    final msg = widget.flashMessage?.trim();
+    if (msg != null && msg.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            backgroundColor: widget.flashMessageBackground ?? const Color(0xFF8B53FE),
+            duration: const Duration(seconds: 5),
+            content: Text(
+              msg,
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        );
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,8 +95,10 @@ class PhoneVerificationScreen extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final bool isDesktopWeb = constraints.maxWidth > 500;
-            final double containerWidth = isDesktopWeb ? designWidth : constraints.maxWidth;
-            final double containerHeight = isDesktopWeb ? designHeight : constraints.maxHeight;
+            final double containerWidth =
+                isDesktopWeb ? PhoneVerificationScreen.designWidth : constraints.maxWidth;
+            final double containerHeight =
+                isDesktopWeb ? PhoneVerificationScreen.designHeight : constraints.maxHeight;
 
             final double topSafeArea = MediaQuery.of(context).padding.top;
             final double toggleTop = topSafeArea > 0 ? (topSafeArea + 16.0) : 48.0;
@@ -159,7 +198,7 @@ class PhoneVerificationScreen extends StatelessWidget {
                         child: ProviderAuthCard(
                           width: containerWidth,
                           height: cardHeight,
-                          initialIsLogin: initialIsLogin,
+                          initialIsLogin: widget.initialIsLogin,
                         ),
                       ),
 
@@ -201,8 +240,8 @@ class PhoneVerificationScreen extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.center,
                   child: Container(
-                    width: designWidth,
-                    height: designHeight,
+                    width: PhoneVerificationScreen.designWidth,
+                    height: PhoneVerificationScreen.designHeight,
                     margin: const EdgeInsets.symmetric(vertical: 24.0),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(44),

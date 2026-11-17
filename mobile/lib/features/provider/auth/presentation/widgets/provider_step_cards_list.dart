@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_profile_details_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_step_card.dart';
 
@@ -52,7 +53,7 @@ class ProviderStepCardsList extends StatelessWidget {
             onTap: () {
               Navigator.of(context).push(
                 PageRouteBuilder(
-                  pageBuilder: (_, _, _) => const UploadDocumentsScreen(),
+                  pageBuilder: (_, _, _) => const ProviderProfileDetailsScreen(),
                   transitionsBuilder: (_, animation, _, child) => FadeTransition(
                     opacity: CurvedAnimation(
                       parent: animation,

@@ -41,6 +41,24 @@ enum ProviderAccountStatus {
   networkError,
 }
 
+enum CustomerAccountStatus {
+  active,
+  blocked,
+  deleted,
+  unauthenticated,
+  networkError,
+}
+
+class CustomerAccountState {
+  final CustomerAccountStatus status;
+  final Map<String, dynamic>? profile;
+
+  const CustomerAccountState({
+    required this.status,
+    this.profile,
+  });
+}
+
 class ProviderAccountState {
   final ProviderAccountStatus status;
   final String rawStatus;
@@ -55,10 +73,38 @@ class ProviderAccountState {
   });
 }
 
+class PhoneChangeRequestResult {
+  final bool success;
+  final String? ticketNumber;
+  final String? errorMessage;
+
+  const PhoneChangeRequestResult._({
+    required this.success,
+    this.ticketNumber,
+    this.errorMessage,
+  });
+
+  factory PhoneChangeRequestResult.success({String? ticketNumber}) =>
+      PhoneChangeRequestResult._(success: true, ticketNumber: ticketNumber);
+
+  factory PhoneChangeRequestResult.failure(String message) =>
+      PhoneChangeRequestResult._(success: false, errorMessage: message);
+}
+
 class BackendService {
   final ApiClient _client;
 
   BackendService(this._client);
+
+  String? _extractErrorMessage(DioException e) {
+    final resData = e.response?.data;
+    if (resData is Map<String, dynamic>) {
+      return resData['message']?.toString() ??
+          resData['error']?.toString() ??
+          resData['error']?['message']?.toString();
+    }
+    return e.message;
+  }
 
   /// Request OTP for customer or provider phone verification via Twilio (SMS or WhatsApp).
   /// Hits backend endpoint /api/v1/auth/otp/request with channel and userType.
@@ -399,6 +445,54 @@ class BackendService {
     }
   }
 
+  /// Returns whether the signed-in customer still exists (admin delete / block).
+  Future<CustomerAccountState> checkCustomerAccountState() async {
+    final token = ApiClient.globalAuthToken;
+    if (token == null || token.isEmpty) {
+      return const CustomerAccountState(status: CustomerAccountStatus.unauthenticated);
+    }
+    try {
+      final response = await _client.get(ApiEndpoints.customerMe);
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data;
+        final profile = resData is Map<String, dynamic> && resData['data'] is Map<String, dynamic>
+            ? resData['data'] as Map<String, dynamic>
+            : (resData is Map<String, dynamic> ? resData : <String, dynamic>{});
+        return CustomerAccountState(
+          status: CustomerAccountStatus.active,
+          profile: profile,
+        );
+      }
+    } on DioException catch (dioErr) {
+      final resData = dioErr.response?.data;
+      final errorCode = resData is Map<String, dynamic>
+          ? (resData['error'] is Map<String, dynamic>
+              ? resData['error']['code']?.toString()
+              : resData['code']?.toString())
+          : null;
+      final errorMessage = resData is Map<String, dynamic>
+          ? (resData['error'] is Map<String, dynamic>
+              ? resData['error']['message']?.toString()
+              : resData['message']?.toString())
+          : null;
+
+      if (errorCode == 'ACCOUNT_DELETED' ||
+          errorCode == 'CUSTOMER_DELETED' ||
+          dioErr.response?.statusCode == 404 ||
+          (errorMessage != null && errorMessage.toLowerCase().contains('deleted'))) {
+        return const CustomerAccountState(status: CustomerAccountStatus.deleted);
+      }
+      if (errorCode == 'ACCOUNT_BLOCKED') {
+        return const CustomerAccountState(status: CustomerAccountStatus.blocked);
+      }
+      if (dioErr.response?.statusCode == 401 || dioErr.response?.statusCode == 403) {
+        return const CustomerAccountState(status: CustomerAccountStatus.deleted);
+      }
+    } catch (_) {}
+
+    return const CustomerAccountState(status: CustomerAccountStatus.networkError);
+  }
+
   /// Unified account status check for providers:
   /// Reacts in real time when admin approves, suspends, blocks, or deletes a provider.
   Future<ProviderAccountState> checkProviderAccountState() async {
@@ -564,6 +658,50 @@ class BackendService {
     } catch (_) {
       return true; // Graceful fallback
     }
+  }
+
+  Future<PhoneChangeRequestResult> submitProviderPhoneChangeRequest({
+    required String requestedPhone,
+    required String message,
+  }) async {
+    try {
+      final response = await _client.post(
+        ApiEndpoints.providerPhoneChangeRequest,
+        data: {
+          'requestedPhone': requestedPhone,
+          'message': message,
+        },
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final raw = response.data;
+        final Map<String, dynamic>? data = raw is Map<String, dynamic>
+            ? (raw['data'] is Map<String, dynamic> ? raw['data'] as Map<String, dynamic> : raw)
+            : null;
+        return PhoneChangeRequestResult.success(
+          ticketNumber: data?['ticket_number']?.toString(),
+        );
+      }
+    } on DioException catch (e) {
+      final msg = _extractErrorMessage(e);
+      if (msg != null) return PhoneChangeRequestResult.failure(msg);
+    } catch (_) {}
+    return PhoneChangeRequestResult.failure('Request failed');
+  }
+
+  Future<Map<String, dynamic>?> getProviderPhoneChangeRequest() async {
+    try {
+      final response = await _client.get(ApiEndpoints.providerPhoneChangeRequest);
+      if (response.statusCode == 200 && response.data != null) {
+        final raw = response.data;
+        if (raw is Map<String, dynamic>) {
+          final data = raw['data'] ?? raw;
+          if (data is Map<String, dynamic> && data['id'] != null) {
+            return data;
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// Complete onboarding flow and submit provider for admin approval

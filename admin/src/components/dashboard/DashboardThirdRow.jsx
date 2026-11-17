@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowRight, ChevronRight, ShieldAlert, AlertTriangle, Clock } from 'lucide-react'
-import { fetchProviders, fetchReportsApi } from '../../api/admin'
+import { ArrowRight, ChevronRight, ShieldAlert, Clock, MessageSquare } from 'lucide-react'
+import { fetchProviders } from '../../api/admin'
 
 export function DashboardThirdRow({
   onViewAllVerifications,
   onViewAllReports,
   onSelectProvider,
-  onSelectReport,
+  openReportsCount = '0',
 }) {
   const [verifications, setVerifications] = useState([])
 
@@ -33,7 +33,9 @@ export function DashboardThirdRow({
           const displayName =
             p.name && p.name.trim().length > 0 && p.name !== 'Provider'
               ? p.name
-              : (p.phone ? `Provider (${p.phone})` : 'New Provider')
+              : p.phone
+                ? 'Provider'
+                : 'New Provider'
 
           let statusText = 'Inactive'
           let statusColor = 'bg-[#F3F4F6] text-[#4B5563]'
@@ -88,27 +90,6 @@ export function DashboardThirdRow({
       clearInterval(intervalTimer)
       window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibility)
-    }
-  }, [])
-
-  const [reports, setReports] = useState([])
-
-  useEffect(() => {
-    let mounted = true
-    async function loadRecentReports() {
-      try {
-        const res = await fetchReportsApi({ limit: 3 })
-        if (!mounted) return
-        setReports(res || [])
-      } catch {
-        if (mounted) setReports([])
-      }
-    }
-    loadRecentReports()
-    const timer = setInterval(loadRecentReports, 4000)
-    return () => {
-      mounted = false
-      clearInterval(timer)
     }
   }, [])
 
@@ -170,7 +151,7 @@ export function DashboardThirdRow({
                     <span className="text-[13px] font-semibold text-[#1C2926] leading-tight truncate">
                       {item.name}
                     </span>
-                    <span className="text-[11px] text-[#616166] leading-tight truncate">
+                    <span className="text-[11px] text-[#616166] leading-tight whitespace-normal break-words">
                       {item.category}
                     </span>
                   </div>
@@ -194,7 +175,7 @@ export function DashboardThirdRow({
         </div>
       </div>
 
-      {/* ================= 2ND CARD: RECENT REPORTS (508x216) ================= */}
+      {/* ================= 2ND CARD: REPORTS SUMMARY (508x216) — list lives in Reports tab only ================= */}
       <div
         style={{
           minHeight: '216px',
@@ -202,11 +183,11 @@ export function DashboardThirdRow({
           borderRadius: '20px',
           boxSizing: 'border-box',
         }}
-        className="w-full bg-white rounded-[20px] px-5 py-3.5 border border-[#EBEBEB] shadow-xs flex flex-col justify-between shrink-0"
+        className="w-full bg-white rounded-[20px] px-5 py-3.5 border border-[#EBEBEB] shadow-xs flex flex-col justify-between shrink-0 overflow-hidden"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between shrink-0">
           <h3 className="text-[17px] font-bold text-[#1C2926] tracking-tight">
-            Recent Reports
+            Reports &amp; Complaints
           </h3>
 
           <button
@@ -214,55 +195,34 @@ export function DashboardThirdRow({
             onClick={onViewAllReports}
             className="text-xs font-semibold text-[#8B53FE] hover:text-[#7032F0] flex items-center gap-1 transition-colors cursor-pointer group"
           >
-            <span>View All</span>
+            <span>Open tab</span>
             <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
           </button>
         </div>
 
-        <div className="flex flex-col gap-2.5 flex-1 min-h-0 justify-center pt-1.5">
-          {reports.length === 0 ? (
-            <div className="w-full py-6 flex flex-col items-center justify-center text-center text-[#9EAFA9]">
-              <ShieldAlert className="w-8 h-8 mb-1.5 text-[#DECFFC]" />
-              <p className="text-xs font-semibold text-[#1C2926]">No open dispute reports</p>
-              <p className="text-[11px] text-[#616166] mt-0.5">
-                Customer feedback and incident reports will appear here.
-              </p>
+        <div className="flex flex-col flex-1 min-h-0 justify-center items-center text-center px-2 overflow-hidden">
+          <div className="w-full py-4 flex flex-col items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-[#F5F0FF] flex items-center justify-center text-[#8B53FE] mb-3">
+              <MessageSquare className="w-6 h-6" />
             </div>
-          ) : (
-            reports.map((report) => (
-              <div
-                key={report.id}
-                onClick={() => onSelectReport && onSelectReport(report)}
-                className="w-full rounded-[14px] border border-[#EBEBEB] p-2.5 flex items-center justify-between hover:border-[#DECFFC] hover:bg-[#FAF9FF] transition-all cursor-pointer"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[#FEF2F2] text-[#EF4444]">
-                    <ShieldAlert className="w-4 h-4" />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[13px] font-semibold text-[#1C2926] leading-tight truncate">
-                      {report.category || report.ticket_number}
-                    </span>
-                    <span className="text-[11px] text-[#616166] leading-tight truncate mt-0.5">
-                      {report.customer_phone || report.customer_name || 'Customer'} · {report.description ? (report.description.length > 32 ? report.description.slice(0, 32) + '...' : report.description) : (report.ticket_number || 'Report')}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0 pl-2">
-                  <span
-                    className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full ${
-                      report.status === 'resolved'
-                        ? 'bg-[#ECFDF5] text-[#059669]'
-                        : 'bg-[#FEE2E2] text-[#DC2626]'
-                    }`}
-                  >
-                    {report.status || 'open'}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-[#9EAFA9]" />
-                </div>
-              </div>
-            ))
-          )}
+            <p className="text-2xl font-extrabold text-[#1C2926] tracking-tight">
+              {openReportsCount}
+            </p>
+            <p className="text-xs font-semibold text-[#616166] mt-1">
+              Open tickets need review
+            </p>
+            <p className="text-[11px] text-[#9EAFA9] mt-2 max-w-[280px] leading-relaxed">
+              Support requests (including phone change) are managed only in the
+              Reports &amp; Complaints tab — not on this dashboard.
+            </p>
+            <button
+              type="button"
+              onClick={onViewAllReports}
+              className="mt-4 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#8B53FE] hover:bg-[#7032F0] shadow-xs"
+            >
+              Go to Reports &amp; Complaints
+            </button>
+          </div>
         </div>
       </div>
     </div>

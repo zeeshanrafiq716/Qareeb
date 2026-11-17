@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/location/presentation/widgets/top_down_car_widget.dart';
+import 'package:mobile/features/provider/home/provider_online_session.dart';
 
 /// Provider Online / Offline Toggle & Live Presence Section
 /// Implements exact Figma branding specifications:
@@ -143,8 +144,7 @@ class _ProviderOnlineToggleState extends State<ProviderOnlineToggle>
   late AnimationController _controller;
   late Animation<double> _thumbPositionAnimation;
 
-  // Live timer simulation starting from Figma timestamp: 02:14:26 = 8066 seconds
-  int _onlineSeconds = 8066;
+  int _onlineSeconds = 0;
   Timer? _timer;
 
   @override
@@ -168,18 +168,25 @@ class _ProviderOnlineToggleState extends State<ProviderOnlineToggle>
 
     if (_isOnline) {
       _controller.value = 1.0;
+      _refreshElapsed();
       _startTimer();
     } else {
       _controller.value = 0.0;
+      _onlineSeconds = 0;
     }
+  }
+
+  void _refreshElapsed() {
+    _onlineSeconds = _isOnline ? ProviderOnlineSession.elapsedSeconds() : 0;
   }
 
   void _startTimer() {
     _timer?.cancel();
+    _refreshElapsed();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _isOnline) {
         setState(() {
-          _onlineSeconds++;
+          _refreshElapsed();
         });
       }
     });
@@ -201,6 +208,7 @@ class _ProviderOnlineToggleState extends State<ProviderOnlineToggle>
       } else {
         _controller.reverse();
         _stopTimer();
+        setState(() => _onlineSeconds = 0);
       }
     }
   }
@@ -222,6 +230,7 @@ class _ProviderOnlineToggleState extends State<ProviderOnlineToggle>
       } else {
         _controller.reverse();
         _stopTimer();
+        _onlineSeconds = 0;
       }
     });
     widget.onChanged?.call(nextState);

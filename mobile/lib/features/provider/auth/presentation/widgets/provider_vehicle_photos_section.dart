@@ -194,7 +194,7 @@ class _ProviderVehiclePhotosSectionState
                   Expanded(
                     child: ProviderVehiclePhotoCard(
                       title: l10n.frontView,
-                      subtitle: l10n.tapToUpload,
+                      subtitle: l10n.vehiclePhotoRequiredHint,
                       imageAsset: 'assets/images/vehicle_photo_front_view.jpg',
                       imageBytes: _frontImageBytes,
                       isUploaded: _frontUploaded,
@@ -223,7 +223,7 @@ class _ProviderVehiclePhotosSectionState
                   Expanded(
                     child: ProviderVehiclePhotoCard(
                       title: l10n.rearView,
-                      subtitle: l10n.tapToUpload,
+                      subtitle: l10n.vehiclePhotoRequiredHint,
                       imageAsset: 'assets/images/vehicle_photo_rear_view.jpg',
                       imageBytes: _rearImageBytes,
                       isUploaded: _rearUploaded,
@@ -257,7 +257,7 @@ class _ProviderVehiclePhotosSectionState
                   Expanded(
                     child: ProviderVehiclePhotoCard(
                       title: l10n.leftSideView,
-                      subtitle: l10n.tapToUpload,
+                      subtitle: l10n.vehiclePhotoOptionalHint,
                       imageAsset: 'assets/images/vehicle_photo_front_view.jpg',
                       imageBytes: _leftSideImageBytes,
                       isUploaded: _leftSideUploaded,
@@ -286,7 +286,7 @@ class _ProviderVehiclePhotosSectionState
                   Expanded(
                     child: ProviderVehiclePhotoCard(
                       title: l10n.rightSideView,
-                      subtitle: l10n.tapToUpload,
+                      subtitle: l10n.vehiclePhotoOptionalHint,
                       imageAsset: 'assets/images/vehicle_photo_rear_view.jpg',
                       imageBytes: _rightSideImageBytes,
                       isUploaded: _rightSideUploaded,

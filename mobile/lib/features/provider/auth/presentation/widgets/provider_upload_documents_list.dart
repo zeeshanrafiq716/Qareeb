@@ -4,6 +4,7 @@ import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
 import 'package:mobile/features/provider/auth/presentation/provider_location_permission_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_onboarding_guard.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_continue_button.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_document_upload_card.dart';
@@ -341,6 +342,8 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
             onTap: widget.onContinue ?? () => _defaultOnContinue(context),
           ),
 
+          const ProviderSkipOnboardingButton(),
+
           // Flexible bottom indicator: scrolls naturally at the end of the content
           const SizedBox(height: 24.0),
           const ProviderCardBottomIndicator(),
@@ -353,7 +356,7 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
   void _defaultOnContinue(BuildContext context) {
     final isArabic = context.isArabic;
 
-    // All documents and 4 vehicle photos are compulsory: check if any are missing
+    // Documents + front/rear vehicle photos are required; side photos are optional.
     final List<String> missingItems = [];
     if (!_iqamaUploaded) {
       missingItems.add(isArabic ? 'الإقامة / الهوية' : 'Iqama');
@@ -370,18 +373,12 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
     if (!_rearUploaded) {
       missingItems.add(isArabic ? 'صورة المركبة من الخلف' : 'Rear View Photo');
     }
-    if (!_leftSideUploaded) {
-      missingItems.add(isArabic ? 'صورة الجانب الأيسر' : 'Left Side Photo');
-    }
-    if (!_rightSideUploaded) {
-      missingItems.add(isArabic ? 'صورة الجانب الأيمن' : 'Right Side Photo');
-    }
 
     if (missingItems.isNotEmpty) {
       final missingStr = missingItems.join(isArabic ? ' و ' : ', ');
       final message = isArabic
-          ? 'جميع المستندات وصور المركبة إلزامية. يرجى إكمال: $missingStr'
-          : 'All documents and vehicle photos are compulsory. Please upload: $missingStr';
+          ? 'يرجى رفع المستندات المطلوبة وصورتي الأمام والخلف: $missingStr'
+          : 'Please upload required documents plus front and rear vehicle photos: $missingStr';
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

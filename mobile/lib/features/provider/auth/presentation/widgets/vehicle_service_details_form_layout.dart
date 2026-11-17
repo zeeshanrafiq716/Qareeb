@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_onboarding_guard.dart';
+import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
@@ -281,7 +283,25 @@ class _VehicleServiceDetailsFormLayoutState
       return;
     }
 
-    // Return to Profile Tab screen
+    final onboarding = ProviderRegistrationStore.instance.data;
+    if (!onboarding.isOnboardingCompleted) {
+      Navigator.of(context).push(
+        PageRouteBuilder(
+          pageBuilder: (_, _, _) => const UploadDocumentsScreen(),
+          transitionsBuilder: (_, animation, _, child) => FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeInOutCubic,
+            ),
+            child: child,
+          ),
+          transitionDuration: const Duration(milliseconds: 350),
+        ),
+      );
+      return;
+    }
+
+    // Return to Profile Tab when editing from profile
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).popUntil((route) => route.settings.name == '/profile' || route.isFirst);
     }
@@ -691,6 +711,9 @@ class _VehicleServiceDetailsFormLayoutState
               color: Colors.white,
             ),
           ),
+
+          if (!ProviderRegistrationStore.instance.data.isOnboardingCompleted)
+            const ProviderSkipOnboardingButton(),
 
           // Flexible bottom indicator
           const SizedBox(height: 24.0),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/core/localization/app_locale.dart';
-import 'package:mobile/features/provider/auth/presentation/provider_onboarding_details_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_onboarding_guard.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_button.dart';
 import 'package:mobile/features/provider/theme/provider_text_styles.dart';
 
@@ -94,19 +94,7 @@ class ProviderBackToHomeButton extends StatelessWidget {
   }
 
   void _defaultNavigation(BuildContext context) {
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) => const ProviderOnboardingDetailsScreen(),
-        transitionsBuilder: (_, animation, _, child) => FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeInOutCubic,
-          ),
-          child: child,
-        ),
-        transitionDuration: const Duration(milliseconds: 350),
-      ),
-    );
+    ProviderOnboardingGuard.skipToHome(context);
   }
 }
 

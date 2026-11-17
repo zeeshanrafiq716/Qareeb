@@ -11,6 +11,33 @@ function readToken(req) {
   return header.slice(7).trim();
 }
 
+export async function requireCustomer(req, _res, next) {
+  try {
+    const payload = verifyToken(readToken(req));
+    if (payload.role !== "customer") {
+      throw new ForbiddenError("Customer token required");
+    }
+
+    const { rows } = await query(
+      `SELECT id, phone, name, status FROM customers WHERE id = $1`,
+      [payload.sub],
+    );
+
+    if (!rows[0]) {
+      throw new AppError(401, "Your customer account has been deleted by administration", "ACCOUNT_DELETED");
+    }
+    if (rows[0].status === "blocked") {
+      throw new AppError(403, "Your account has been blocked. Please contact support.", "ACCOUNT_BLOCKED");
+    }
+
+    req.user = payload;
+    req.customer = rows[0];
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function requireProvider(req, _res, next) {
   try {
     const payload = verifyToken(readToken(req));

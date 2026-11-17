@@ -60,6 +60,17 @@ class ProviderRegistrationData {
   String get publicId => _publicId ?? 'QRB-1082';
   bool get isOnboardingCompleted => _isOnboardingCompleted == true;
   bool get isOnline => _isOnline == true;
+
+  /// Front and rear vehicle photos are required; left/right are optional.
+  bool get hasRequiredVehiclePhotos =>
+      vehicleFrontUploaded && vehicleRearUploaded;
+
+  bool get hasRequiredDocuments =>
+      iqamaUploaded && registrationUploaded && licenceUploaded;
+
+  /// Provider may use the app after skip, but cannot go online until setup is finished.
+  bool get canGoOnline =>
+      isOnboardingCompleted && !isSuspended && !isBlocked;
   bool get isSuspended =>
       _status == 'SUSPENDED' || _status == 'REJECTED' || _status == 'DECLINED';
   bool get isBlocked => _status == 'BLOCKED' || _status == 'blocked';

@@ -453,45 +453,47 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     _recenterController.forward();
   }
 
-  void _refreshGpsInBackground() {
-    ref.read(locationServiceProvider).traceExactGps().then((loc) {
-      if (!mounted || !loc.isGpsDetected) return;
-      setState(() => _exactTracedLocation = loc);
-      ref.invalidate(userLocationProvider);
-      ref.invalidate(nearbyProvidersProvider);
-    }).catchError((_) {});
+  void _applyUserLocationToMap(UserLocation resolved) {
+    final double targetZoom =
+        _calculateZoomForCount(_selectedProviderCount).clamp(10.0, 18.0);
+    setState(() {
+      _exactTracedLocation = resolved;
+      if (_zoom < targetZoom - 0.25) {
+        _zoom = targetZoom;
+      }
+    });
+    ref.invalidate(userLocationProvider);
+    ref.invalidate(nearbyProvidersProvider);
+    _recenterMap(resolved.latitude, resolved.longitude);
   }
 
-  /// My location — instant recenter when GPS is on; friendly dialog when off.
+  /// My location — refresh GPS, recenter, and reload nearby providers on the map.
   Future<void> _onMyLocationButtonTap() async {
     if (_isTracingGps) return;
     HapticFeedback.mediumImpact();
-
-    final live = ref.read(userLocationProvider).value;
-    if (live != null && live.isGpsDetected) {
-      if (_zoom < 14.0) {
-        setState(() => _zoom = 15.0);
-      }
-      _recenterMap(live.latitude, live.longitude);
-      _refreshGpsInBackground();
-      return;
-    }
-
     setState(() => _isTracingGps = true);
     try {
-      final resolved = await LocationAccessHelper.resolveForMapAction(
-        context,
-        ref,
-        serviceName: widget.serviceName,
-      );
-      if (!mounted || resolved == null || !resolved.isGpsDetected) return;
+      final locationService = ref.read(locationServiceProvider);
+      UserLocation? resolved;
 
-      setState(() {
-        _exactTracedLocation = resolved;
-        if (_zoom < 14.0) _zoom = 15.0;
-      });
-      _recenterMap(resolved.latitude, resolved.longitude);
-      ref.invalidate(nearbyProvidersProvider);
+      final live = ref.read(userLocationProvider).value;
+      if (live != null && live.isGpsDetected) {
+        try {
+          final traced = await locationService.traceExactGps();
+          resolved = traced.isGpsDetected ? traced : live;
+        } catch (_) {
+          resolved = live;
+        }
+      } else {
+        resolved = await LocationAccessHelper.resolveForMapAction(
+          context,
+          ref,
+          serviceName: widget.serviceName,
+        );
+      }
+
+      if (!mounted || resolved == null || !resolved.isGpsDetected) return;
+      _applyUserLocationToMap(resolved);
     } finally {
       if (mounted) setState(() => _isTracingGps = false);
     }
@@ -635,15 +637,15 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                   : (containerWidth - (beaconLeft * 2.0));
 
               final double safeTop = math.max(12.0, MediaQuery.of(context).padding.top);
-              final double sliderTop = isDesktopWeb ? 16.0 : (safeTop + 4.0);
-              const double sliderHeight = 56.0;
-              final double headerTop = sliderTop + sliderHeight + 8.0;
+              final double sliderTop = isDesktopWeb ? 20.0 : (safeTop + 10.0);
+              const double sliderHeight = 62.0;
+              final double headerTop = sliderTop + sliderHeight + 12.0;
               const double headerHeight = 36.0;
               final double safeBottom = MediaQuery.of(context).padding.bottom;
               final double beaconTop = headerTop + headerHeight + 10.0;
               final double bottomCardHeight = isDesktopWeb
-                  ? 130.0
-                  : math.max(124.0, safeBottom + 104.0);
+                  ? 108.0
+                  : math.max(96.0, safeBottom + 78.0);
               final double bottomCardTop = containerHeight - bottomCardHeight;
               final double beaconHeight = (bottomCardTop - beaconTop - 10.0).clamp(280.0, 540.0);
 
@@ -651,6 +653,9 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
               final double effectiveBeaconLeft = _isFullViewMode ? 0.0 : beaconLeft;
               final double effectiveBeaconWidth = _isFullViewMode ? containerWidth : beaconWidth;
               final double effectiveBeaconHeight = _isFullViewMode ? containerHeight : beaconHeight;
+              final double mapControlsBottom = _isFullViewMode
+                  ? math.max(20.0, safeBottom + 18.0)
+                  : 16.0;
 
               final userLocAsync = ref.watch(userLocationProvider);
               final userLoc = _exactTracedLocation ?? userLocAsync.value ?? UserLocation.defaultLocation;
@@ -660,7 +665,13 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
               // Build routes strictly from real live providers
               final providersAsync = ref.watch(nearbyProvidersProvider);
               final liveProviders = providersAsync.value ?? const <ProviderMarkerModel>[];
-              _driverRoutes = _buildDriverRoutesFromProviders(liveProviders, userLoc.latitude, userLoc.longitude);
+              final allRoutes = _buildDriverRoutesFromProviders(
+                liveProviders,
+                userLoc.latitude,
+                userLoc.longitude,
+              );
+              allRoutes.sort((a, b) => a.initialDistanceKm.compareTo(b.initialDistanceKm));
+              _driverRoutes = allRoutes.take(_selectedProviderCount).toList();
 
               // Initialize or sync center pixel coordinates to user location
               _centerPixelX ??= MercatorProjection.lngToX(userLoc.longitude, _zoom);
@@ -1086,7 +1097,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
 
                               // H. Floating Map Controls (Zoom in, Zoom out, Recenter)
                               Positioned(
-                                bottom: 16.0,
+                                bottom: mapControlsBottom,
                                 right: 14.0,
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
@@ -1231,165 +1242,74 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                             ),
                           ],
                         ),
-                        child: Stack(
-                          children: [
-                            // Top drag / indicator handle
-                            Positioned(
-                              top: 8.0,
-                              left: 0.0,
-                              right: 0.0,
-                              child: Center(
-                                child: Container(
-                                  width: 36.0,
-                                  height: 4.0,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE2E8F0),
-                                    borderRadius: BorderRadius.circular(100.0),
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                20.0,
-                                20.0,
-                                20.0,
-                                math.max(16.0, safeBottom + 12.0),
-                              ),
-                              child: _buildProvidersInnerCard(
-                                containerWidth,
-                                liveProviders,
-                                userLoc,
-                              ),
-                            ),
-
-                            // Bottom home indicator bar
-                            Positioned(
-                              bottom: math.max(6.0, safeBottom + 2.0),
-                              left: 0.0,
-                              right: 0.0,
-                              height: 24.0,
-                              child: Center(
-                                child: Container(
-                                  key: const Key('bottom_bar_indicator'),
-                                  width: 134.0,
-                                  height: 4.0,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1C2926),
-                                    borderRadius: BorderRadius.circular(100.0),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            20.0,
+                            14.0,
+                            20.0,
+                            math.max(10.0, safeBottom + 6.0),
+                          ),
+                          child: _buildProvidersInnerCard(
+                            containerWidth,
+                            liveProviders,
+                            userLoc,
+                          ),
                         ),
                       ),
                     ),
 
-                  // 5. FULL VIEW TOP FLOATING BAR: Back button (<) and Provider count filter slider
+                  // 5. FULL VIEW TOP: Back + nearest-providers filter (no title / "Full Map" pill)
                   if (_isFullViewMode)
                     Positioned(
-                      top: isDesktopWeb ? 16.0 : (safeTop + 4.0),
+                      top: isDesktopWeb ? 20.0 : (safeTop + 10.0),
                       left: containerWidth >= 390 ? 20.0 : 12.0,
                       right: containerWidth >= 390 ? 20.0 : 12.0,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              GestureDetector(
-                                key: const Key('full_view_back_button'),
-                                onTap: () {
-                                  HapticFeedback.lightImpact();
-                                  setState(() => _isFullViewMode = false);
-                                },
-                                behavior: HitTestBehavior.opaque,
-                                child: Container(
-                                  width: 36.0,
-                                  height: 36.0,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white,
-                                    border: Border.all(
-                                      color: const Color(0xFF566663),
-                                      width: 1.0,
-                                    ),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0x18000000),
-                                        blurRadius: 10.0,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: GestureDetector(
+                              key: const Key('full_view_back_button'),
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                setState(() => _isFullViewMode = false);
+                              },
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                width: 36.0,
+                                height: 36.0,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white,
+                                  border: Border.all(
+                                    color: const Color(0xFF566663),
+                                    width: 1.0,
                                   ),
-                                  child: Center(
-                                    child: Transform.scale(
-                                      scaleX: (tr.isArabic || Directionality.of(context) == TextDirection.rtl) ? -1.0 : 1.0,
-                                      child: const CustomPaint(
-                                        size: Size(6.0, 13.0),
-                                        painter: _BackChevronPainter(
-                                          color: Color(0xFF566663),
-                                        ),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x18000000),
+                                      blurRadius: 10.0,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Transform.scale(
+                                    scaleX: (tr.isArabic || Directionality.of(context) == TextDirection.rtl) ? -1.0 : 1.0,
+                                    child: const CustomPaint(
+                                      size: Size(6.0, 13.0),
+                                      painter: _BackChevronPainter(
+                                        color: Color(0xFF566663),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12.0),
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 7.0),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.95),
-                                    borderRadius: BorderRadius.circular(20.0),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0x14000000),
-                                        blurRadius: 10.0,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          tr.categoryName(widget.serviceName, widget.serviceName),
-                                          style: tr.font(
-                                            fontSize: 14.0,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF1C2926),
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.5),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF8B53FE).withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(10.0),
-                                        ),
-                                        child: Text(
-                                          tr.isArabic ? 'خريطة كاملة' : 'Full Map',
-                                          style: tr.font(
-                                            fontSize: 11.0,
-                                            fontWeight: FontWeight.w700,
-                                            color: const Color(0xFF8B53FE),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                          const SizedBox(height: 8.0),
+                          const SizedBox(height: 12.0),
                           _buildTopProviderSliderCard(),
                         ],
                       ),
@@ -1443,7 +1363,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     return Container(
       key: const Key('top_provider_slider_card'),
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14.0, 7.0, 14.0, 4.0),
+      padding: const EdgeInsets.fromLTRB(14.0, 12.0, 14.0, 6.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16.0),
@@ -1611,9 +1531,11 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
         ? 'اختر مزود خدمة بالقرب منك'
         : 'Choose a provider near you';
     final String locationSubtitle = userLoc.isGpsDetected
-        ? (userLoc.cityName.isNotEmpty && userLoc.cityName != 'Detecting Location...'
+        ? (userLoc.cityName.isNotEmpty &&
+                userLoc.cityName != 'Detecting Location...' &&
+                !userLoc.cityName.contains(',')
             ? '$baseSubtitle • ${userLoc.cityName}'
-            : baseSubtitle)
+            : '$baseSubtitle • ${userLoc.coordinatesDisplay}')
         : (tr.isArabic
             ? '$baseSubtitle • خدمة الموقع مغلقة'
             : '$baseSubtitle • Location is OFF');
@@ -1638,10 +1560,10 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                     applyHeightToLastDescent: false,
                   ),
                   style: tr.font(
-                    fontSize: 16.0,
+                    fontSize: 15.0,
                     fontWeight: FontWeight.w600,
                     color: const Color(0xFF1C2926),
-                    height: tr.isArabic ? 1.05 : 1.15,
+                    height: tr.isArabic ? 1.05 : 1.12,
                     letterSpacing: 0.0,
                   ),
                   maxLines: 1,
@@ -1657,10 +1579,10 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                       applyHeightToLastDescent: false,
                     ),
                     style: tr.font(
-                      fontSize: 12.0,
+                      fontSize: 11.0,
                       fontWeight: FontWeight.w400,
                       color: const Color(0xFF566663),
-                      height: tr.isArabic ? 1.05 : 1.15,
+                      height: tr.isArabic ? 1.05 : 1.12,
                       letterSpacing: 0.0,
                     ),
                     maxLines: 1,
@@ -1686,19 +1608,19 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
             },
             behavior: HitTestBehavior.opaque,
             child: Container(
-              height: 41.0,
+              height: 36.0,
               decoration: BoxDecoration(
                 color: const Color(0xFF8B53FE),
                 borderRadius: BorderRadius.circular(60.0),
                 boxShadow: const [
                   BoxShadow(
                     color: Color(0x338B53FE),
-                    blurRadius: 6.0,
+                    blurRadius: 5.0,
                     offset: Offset(0, 2),
                   ),
                 ],
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 14.0),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,

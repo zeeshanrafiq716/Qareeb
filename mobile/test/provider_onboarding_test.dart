@@ -126,7 +126,10 @@ void main() {
     await tester.pump();
 
     // Verify compulsory warning snackbar shows
-    expect(find.textContaining('All documents and vehicle photos are compulsory'), findsOneWidget);
+    expect(
+      find.textContaining('front and rear vehicle photos'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('ProviderVehicleCard displays real data configured during onboarding', (tester) async {

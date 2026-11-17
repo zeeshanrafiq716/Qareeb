@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_onboarding_guard.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_back_to_home_button.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_phone_verified_first_part.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_step_cards_list.dart';
@@ -68,6 +69,8 @@ class ProviderPhoneVerifiedContentLayout extends StatelessWidget {
 
               // 3. Button Layout (Back to Home Button: height: 52)
               backToHomeButton ?? const ProviderBackToHomeButton(),
+
+              const ProviderSkipOnboardingButton(),
 
               // Future content parts with 20px gap
               if (remainingParts != null && remainingParts!.isNotEmpty) ...[

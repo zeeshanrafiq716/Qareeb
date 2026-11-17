@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { query } from "../../db/pool.js";
+import * as supportService from "../support.service.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { created, ok } from "../../utils/http.js";
 import { validate, validatedQuery } from "../../middleware/validate.js";
@@ -448,11 +449,15 @@ adminRoutes.get(
   requireAdmin,
   asyncHandler(async (req, res) => {
     const { status } = req.query;
-    let sql = `SELECT id, ticket_number, category, description, customer_phone, customer_name, photos, status, source, admin_notes, created_at, updated_at FROM support_tickets`;
+    let sql = `SELECT id, ticket_number, category, description, customer_phone, customer_name, photos, status, source, admin_notes, created_at, updated_at, ticket_type, provider_id, requested_phone FROM support_tickets`;
     const params = [];
     if (status && status !== "all") {
-      params.push(status);
-      sql += ` WHERE status = $1`;
+      if (status === "resolved") {
+        sql += ` WHERE status IN ('resolved', 'accepted')`;
+      } else {
+        params.push(status);
+        sql += ` WHERE status = $1`;
+      }
     }
     sql += ` ORDER BY created_at DESC LIMIT 100`;
     const { rows } = await query(sql, params);
@@ -467,7 +472,7 @@ adminRoutes.get(
     const { rows } = await query(
       `SELECT 
          count(*) FILTER (WHERE status = 'open') AS open_count,
-         count(*) FILTER (WHERE status = 'resolved') AS resolved_count,
+         count(*) FILTER (WHERE status IN ('resolved', 'accepted')) AS resolved_count,
          count(*) AS total_count
        FROM support_tickets`
     );
@@ -494,5 +499,31 @@ adminRoutes.patch(
       [status, adminNotes, req.params.id]
     );
     ok(res, rows[0]);
+  }),
+);
+
+adminRoutes.post(
+  "/reports/:id/accept-phone-change",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { adminNotes } = req.body;
+    ok(res, await supportService.acceptPhoneChangeTicket(req.params.id, adminNotes));
+  }),
+);
+
+adminRoutes.delete(
+  "/reports/:id",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    ok(res, await supportService.deleteSupportTicket(req.params.id));
+  }),
+);
+
+adminRoutes.post(
+  "/reports/:id/block",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const reason = req.body?.reason || req.body?.adminNotes;
+    ok(res, await supportService.blockProviderFromTicket(req.params.id, req.admin, reason));
   }),
 );

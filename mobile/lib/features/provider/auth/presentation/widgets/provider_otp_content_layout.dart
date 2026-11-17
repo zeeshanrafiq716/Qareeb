@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
-import 'package:mobile/features/provider/auth/presentation/phone_verified_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_profile_details_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_handle_bar.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_change_phone_button.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_otp_heading.dart';
@@ -200,9 +200,9 @@ class _ProviderOtpInnerContentLayoutState extends State<ProviderOtpInnerContentL
       } else if (isPendingVerification) {
         Navigator.of(context).pushNamedAndRemoveUntil('/provider/admin-approval', (route) => false);
       } else {
-        Navigator.of(context).push(
+        Navigator.of(context).pushReplacement(
           PageRouteBuilder(
-            pageBuilder: (_, _, _) => const PhoneVerifiedScreen(),
+            pageBuilder: (_, _, _) => const ProviderProfileDetailsScreen(),
             transitionsBuilder: (_, animation, _, child) => FadeTransition(
               opacity: CurvedAnimation(
                 parent: animation,

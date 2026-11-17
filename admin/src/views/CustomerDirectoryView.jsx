@@ -49,12 +49,14 @@ export function CustomerDirectoryView() {
           phone: item.phone,
           status: st,
           statusType: item.status || 'active',
-          registeredDate: createdAt.toLocaleDateString('en-GB', {
+          providerReachCount:
+            item.providerReachCount ?? item.totalReachEvents ?? 0,
+          joinDate: createdAt.toLocaleDateString('en-GB', {
             day: '2-digit',
             month: 'short',
             year: 'numeric',
           }),
-          registeredTime: createdAt.toLocaleTimeString('en-US', {
+          joinTime: createdAt.toLocaleTimeString('en-US', {
             hour: '2-digit',
             minute: '2-digit',
           }),
@@ -128,6 +130,12 @@ export function CustomerDirectoryView() {
     if (status === 'Active') return 'text-[#16A34A]'
     return 'text-[#616166]'
   }
+
+  /** Shared grid: name | reach | join | phone (md+) | status | action */
+  const customerRowGrid =
+    'grid w-full items-center gap-x-5 md:gap-x-6 ' +
+    'grid-cols-[minmax(7.5rem,1.35fr)_5.5rem_minmax(6.5rem,0.95fr)_minmax(4.25rem,0.65fr)_3rem] ' +
+    'md:grid-cols-[minmax(8rem,1.4fr)_6.25rem_minmax(7rem,1fr)_minmax(7.5rem,1.05fr)_4.5rem_3rem]'
 
   const handleAddCustomer = async (e) => {
     e.preventDefault()
@@ -298,12 +306,17 @@ export function CustomerDirectoryView() {
           </div>
         </div>
 
-        <div className="w-full bg-[#F4F2F7] px-5 h-14 flex items-center text-[12px] font-semibold text-[#616166]">
-          <div className="flex-1 min-w-[140px]">Customer</div>
-          <div className="w-[130px] shrink-0">Phone</div>
-          <div className="w-[120px] shrink-0">Registered On</div>
-          <div className="w-[90px] shrink-0">Status</div>
-          <div className="w-[80px] shrink-0 text-right">Action</div>
+        <div
+          className={`w-full bg-[#F4F2F7] px-5 py-3 min-h-[56px] text-[12px] font-semibold text-[#616166] ${customerRowGrid}`}
+        >
+          <div className="min-w-0 pr-1">Customer name</div>
+          <div className="text-center text-[11px] leading-snug px-0.5 min-w-0">
+            Reach to providers
+          </div>
+          <div className="min-w-0">Join date</div>
+          <div className="min-w-0 hidden md:block">Phone</div>
+          <div className="min-w-0">Status</div>
+          <div className="text-right min-w-0">Action</div>
         </div>
 
         {loading ? (
@@ -325,28 +338,33 @@ export function CustomerDirectoryView() {
             return (
               <div
                 key={c.id}
-                className="w-full px-5 h-[60px] flex items-center border-b border-[#F0EFF2] hover:bg-[#FAF9FD] bg-white"
+                className={`w-full px-5 min-h-[60px] py-2 border-b border-[#F0EFF2] hover:bg-[#FAF9FD] bg-white ${customerRowGrid}`}
               >
-                <div className="flex-1 min-w-[140px]">
+                <div className="min-w-0 pr-1">
                   <span className="text-[13px] font-semibold text-[#1C2926] truncate block">
                     {c.name}
                   </span>
-                  <span className="text-[10px] text-[#9EAFA9] font-mono truncate block">
-                    {c.id.slice(0, 8)}…
+                  <span className="text-[10px] text-[#9EAFA9] font-mono truncate block md:hidden">
+                    {c.phone}
                   </span>
                 </div>
-                <div className="w-[130px] shrink-0 flex items-center gap-1 text-xs text-[#616166]">
-                  <Phone className="w-3 h-3 text-[#9EAFA9]" />
-                  {c.phone}
+                <div className="flex justify-center min-w-0">
+                  <span className="inline-flex min-w-[28px] justify-center px-2 py-0.5 rounded-lg bg-[#F4EFFE] text-[#8B53FE] text-xs font-bold">
+                    {c.providerReachCount}
+                  </span>
                 </div>
-                <div className="w-[120px] shrink-0 flex flex-col text-xs">
-                  <span className="text-[#1C2926]">{c.registeredDate}</span>
-                  <span className="text-[#9EAFA9] text-[11px]">{c.registeredTime}</span>
+                <div className="min-w-0 flex flex-col text-xs leading-tight">
+                  <span className="text-[#1C2926] font-medium whitespace-nowrap">{c.joinDate}</span>
+                  <span className="text-[#9EAFA9] text-[11px]">{c.joinTime}</span>
                 </div>
-                <div className={`w-[90px] shrink-0 text-xs font-semibold ${getStatusColor(c.status)}`}>
+                <div className="min-w-0 hidden md:flex items-center gap-1 text-xs text-[#616166] truncate">
+                  <Phone className="w-3 h-3 shrink-0 text-[#9EAFA9]" />
+                  <span className="truncate">{c.phone}</span>
+                </div>
+                <div className={`min-w-0 text-xs font-semibold ${getStatusColor(c.status)}`}>
                   {c.status}
                 </div>
-                <div className="w-[80px] shrink-0 flex justify-end relative">
+                <div className="flex justify-end relative min-w-0">
                   <button
                     type="button"
                     onClick={() => setActiveRowMenu((prev) => (prev === c.id ? null : c.id))}

@@ -1109,6 +1109,8 @@ function serializeCustomer(row) {
     status: row.status || "active",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    providerReachCount: Number(row.provider_reach_count ?? 0),
+    totalReachEvents: Number(row.total_reach_events ?? 0),
   };
 }
 
@@ -1143,8 +1145,25 @@ export async function listCustomers({ status, search, page, limit }) {
 
   values.push(pageInfo.limit, pageInfo.offset);
   const { rows } = await query(
-    `SELECT c.id, c.phone, c.name, c.status, c.created_at, c.updated_at
+    `SELECT c.id, c.phone, c.name, c.status, c.created_at, c.updated_at,
+            COALESCE(reach.provider_reach_count, 0)::int AS provider_reach_count,
+            COALESCE(reach.total_reach_events, 0)::int AS total_reach_events
      FROM customers c
+     LEFT JOIN LATERAL (
+       SELECT
+         COUNT(DISTINCT e.provider_id) FILTER (
+           WHERE e.event_type IN (
+             'call_click', 'whatsapp_click', 'share_location_click', 'send_request_click'
+           )
+         )::int AS provider_reach_count,
+         COUNT(*) FILTER (
+           WHERE e.event_type IN (
+             'call_click', 'whatsapp_click', 'share_location_click', 'send_request_click'
+           )
+         )::int AS total_reach_events
+       FROM customer_funnel_events e
+       WHERE e.customer_session_id = 'customer_' || regexp_replace(c.phone, '[^0-9]', '', 'g')
+     ) reach ON true
      ${clause}
      ORDER BY c.created_at DESC
      LIMIT $${values.length - 1} OFFSET $${values.length}`,

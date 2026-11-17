@@ -115,9 +115,16 @@ export function VerificationTableSection({
             stType = 'under_review'
           }
 
-          const displayName = item.name && item.name.trim().length > 0 && item.name !== 'Provider'
-            ? item.name
-            : (item.phone ? `Provider (${item.phone})` : 'New Provider')
+          const rawName = (item.name || '').trim()
+          const hasRealName =
+            rawName.length > 0 &&
+            rawName !== 'Provider' &&
+            !/^provider\s*\(/i.test(rawName)
+          const displayName = hasRealName
+            ? rawName
+            : item.phone
+              ? 'Provider'
+              : 'New Provider'
 
           const isOnline = Boolean(item.isOnline ?? item.presence?.isOnline)
           const lat = item.location?.latitude != null ? Number(item.location.latitude) : null
@@ -587,7 +594,7 @@ export function VerificationTableSection({
             <span>Provider</span>
             <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
           </div>
-          <div className="w-[130px] flex items-center gap-1.5 shrink-0">
+          <div className="min-w-[160px] flex-1 flex items-center gap-1.5 shrink-0">
             <span>Service Category</span>
             <ChevronsUpDown className="w-3.5 h-3.5 text-[#9EAFA9]" />
           </div>
@@ -653,7 +660,7 @@ export function VerificationTableSection({
                   <div className="flex-1 min-w-[120px] flex items-center pr-2">
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[13px] font-semibold text-[#1C2926] leading-tight truncate">
+                        <span className="text-[13px] font-semibold text-[#1C2926] leading-tight">
                           {app.name}
                         </span>
                         <span
@@ -668,7 +675,7 @@ export function VerificationTableSection({
                       {app.phone ? (
                         <div className="flex items-center gap-1 text-[11px] text-[#616166] mt-0.5">
                           <Phone className="w-2.5 h-2.5 text-[#9EAFA9] shrink-0" />
-                          <span className="truncate">{app.phone}</span>
+                          <span className="whitespace-nowrap">{app.phone}</span>
                         </div>
                       ) : (
                         <span className="text-[11px] text-[#9EAFA9] mt-0.5">New Registration</span>
@@ -676,11 +683,11 @@ export function VerificationTableSection({
                     </div>
                   </div>
 
-                  <div className="w-[130px] flex items-center gap-2 shrink-0">
+                  <div className="min-w-[160px] flex-1 flex items-center gap-2 shrink-0">
                     <div className="w-6 h-6 rounded-md bg-[#F5F3FF] flex items-center justify-center shrink-0 text-[#8B53FE]">
                       <CategoryIcon className="w-3.5 h-3.5" />
                     </div>
-                    <span className="text-xs font-medium text-[#1C2926] truncate">
+                    <span className="text-xs font-medium text-[#1C2926] whitespace-normal break-words leading-snug">
                       {app.category}
                     </span>
                   </div>

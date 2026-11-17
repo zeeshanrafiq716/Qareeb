@@ -29,6 +29,7 @@ import {
   inspectDocumentImage,
   processKycWebhook,
 } from "../kyc.service.js";
+import * as supportService from "../support.service.js";
 
 export const providerRoutes = Router();
 
@@ -193,6 +194,29 @@ providerRoutes.get(
       req.provider.id,
     );
     ok(res, docStatus);
+  }),
+);
+
+providerRoutes.post(
+  "/me/phone-change-request",
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    const { requestedPhone, message } = req.body;
+    created(
+      res,
+      await supportService.createProviderPhoneChangeRequest(req.provider, {
+        requestedPhone,
+        message,
+      }),
+    );
+  }),
+);
+
+providerRoutes.get(
+  "/me/phone-change-request",
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    ok(res, await supportService.getLatestPhoneChangeRequestForProvider(req.provider.id));
   }),
 );
 

@@ -506,8 +506,14 @@ extension AppLocalizationsDomainExtension on AppLocalizations {
   String get vehiclePhotosTitle => isArabic ? 'صور المركبة' : 'Vehicle Photos';
 
   String get vehiclePhotosSubtitle => isArabic
-      ? 'ارفع 4 صور لمركبتك (الأمامية، الخلفية، والجانبين)'
-      : 'Upload 4 photos of your vehicle (Front, Rear, and Sides)';
+      ? 'صورتان إلزاميتان (الأمام والخلف)، وجانبان اختياريان'
+      : '2 required (Front & Rear); left and right sides are optional';
+
+  String get vehiclePhotoRequiredHint =>
+      isArabic ? 'إلزامي — اضغط للرفع' : 'Required — tap to upload';
+
+  String get vehiclePhotoOptionalHint =>
+      isArabic ? 'اختياري — اضغط للرفع' : 'Optional — tap to upload';
 
   String get frontView => isArabic ? 'الجهة الأمامية' : 'Front View';
 

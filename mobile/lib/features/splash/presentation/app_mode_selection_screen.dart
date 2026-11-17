@@ -49,7 +49,6 @@ class _AppModeSelectionScreenState extends ConsumerState<AppModeSelectionScreen>
     HapticFeedback.mediumImpact();
     await ProviderRegistrationStore.instance.setActiveAppMode('customer');
     if (!mounted) return;
-    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const SplashScreen()),
       (route) => false,
@@ -100,12 +99,17 @@ class _AppModeSelectionScreenState extends ConsumerState<AppModeSelectionScreen>
                 ? AppModeSelectionScreen.designHeight
                 : constraints.maxHeight;
             final double topSafe = mediaQuery.padding.top;
-            final double toggleTop = topSafe + 12.0;
+            final double toggleTop = topSafe + 16.0;
+            final double brandTop = math.max(
+              toggleTop + 56.0,
+              containerHeight * 0.46,
+            );
 
             final Widget frame = SizedBox(
               width: containerWidth,
               height: containerHeight,
               child: Stack(
+                clipBehavior: Clip.none,
                 children: [
                   Positioned.fill(
                     child: CustomPaint(
@@ -133,7 +137,7 @@ class _AppModeSelectionScreenState extends ConsumerState<AppModeSelectionScreen>
                   Positioned(
                     left: 20,
                     right: 20,
-                    top: containerHeight * 0.12,
+                    top: brandTop,
                     child: const BrandingHeaderWidget(),
                   ),
                   Positioned(

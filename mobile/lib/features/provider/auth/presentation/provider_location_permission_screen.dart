@@ -8,6 +8,7 @@ import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
 import 'package:mobile/features/provider/auth/presentation/admin_approval_screen.dart';
+import 'package:mobile/features/provider/auth/presentation/provider_onboarding_guard.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_bottom_indicator.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
@@ -1014,6 +1015,8 @@ class _ProviderLocationPermissionScreenState
                                         ),
                                       ),
                                     ),
+
+                                    const ProviderSkipOnboardingButton(),
 
                                     const SizedBox(height: 16.0),
 

@@ -14,14 +14,21 @@ import {
   AlertCircle,
   ExternalLink,
 } from 'lucide-react'
-import { fetchReportsApi, fetchReportsStatsApi, patchReportStatusApi } from '../api/admin'
+import {
+  fetchReportsApi,
+  fetchReportsStatsApi,
+  patchReportStatusApi,
+  acceptPhoneChangeReportApi,
+  deleteReportApi,
+  blockReportProviderApi,
+} from '../api/admin'
 
 export function ReportsComplaintsView() {
   const [reports, setReports] = useState([])
   const [stats, setStats] = useState({ open: 0, resolved: 0, total: 0 })
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all') // 'all', 'open', 'resolved'
+  const [statusFilter, setStatusFilter] = useState('open') // 'all', 'open', 'resolved'
   const [selectedReport, setSelectedReport] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
 
@@ -45,6 +52,53 @@ export function ReportsComplaintsView() {
     const interval = setInterval(loadData, 4000)
     return () => clearInterval(interval)
   }, [statusFilter])
+
+  const handleAcceptPhoneChange = async (report) => {
+    if (!window.confirm('Accept this phone number change and update the provider login?')) return
+    try {
+      setActionLoading(true)
+      await acceptPhoneChangeReportApi(report.id, { adminNotes: 'Accepted via admin panel' })
+      setReports((prev) => prev.filter((r) => r.id !== report.id))
+      await loadData()
+      setSelectedReport(null)
+    } catch (err) {
+      console.error('Accept phone change failed:', err)
+      alert(err.response?.data?.message || 'Failed to accept phone change')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleDeleteReport = async (report) => {
+    if (!window.confirm('Delete this report permanently?')) return
+    try {
+      setActionLoading(true)
+      await deleteReportApi(report.id)
+      setReports((prev) => prev.filter((r) => r.id !== report.id))
+      await loadData()
+      setSelectedReport(null)
+    } catch (err) {
+      console.error('Delete report failed:', err)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleBlockFromReport = async (report) => {
+    const reason = window.prompt('Reason for blocking provider (optional):') || ''
+    if (reason === null) return
+    try {
+      setActionLoading(true)
+      await blockReportProviderApi(report.id, { reason })
+      setReports((prev) => prev.filter((r) => r.id !== report.id))
+      await loadData()
+      setSelectedReport(null)
+    } catch (err) {
+      console.error('Block provider failed:', err)
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   const handleToggleStatus = async (report) => {
     const nextStatus = report.status === 'open' ? 'resolved' : 'open'
@@ -213,7 +267,8 @@ export function ReportsComplaintsView() {
         ) : (
           <div className="divide-y divide-[#F2F2F2]">
             {filteredReports.map((report) => {
-              const isResolved = report.status === 'resolved'
+              const isResolved =
+                report.status === 'resolved' || report.status === 'accepted'
               const formattedDate = new Date(report.created_at).toLocaleString('en-US', {
                 month: 'short',
                 day: 'numeric',
@@ -265,10 +320,16 @@ export function ReportsComplaintsView() {
                       </p>
 
                       <div className="flex items-center gap-4 mt-2 text-[11px] text-[#616166] flex-wrap">
+                        {report.requested_phone && (
+                          <span className="flex items-center gap-1 font-mono text-[#8B53FE]">
+                            <Phone className="w-3 h-3" />
+                            New: {report.requested_phone}
+                          </span>
+                        )}
                         {report.customer_phone && (
                           <span className="flex items-center gap-1 font-mono">
                             <Phone className="w-3 h-3 text-[#9EAFA9]" />
-                            {report.customer_phone}
+                            Current: {report.customer_phone}
                           </span>
                         )}
                         {report.customer_name && (
@@ -285,20 +346,49 @@ export function ReportsComplaintsView() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                    <button
-                      type="button"
-                      disabled={actionLoading}
-                      onClick={() => handleToggleStatus(report)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                        isResolved
-                          ? 'bg-[#F3F4F6] text-[#616166] hover:bg-[#E5E7EB]'
-                          : 'bg-[#10B981] text-white hover:bg-[#059669] shadow-xs'
-                      }`}
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>{isResolved ? 'Mark Open' : 'Resolve'}</span>
-                    </button>
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center flex-wrap justify-end">
+                    {report.ticket_type === 'provider_phone_change' && report.status === 'open' ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={actionLoading}
+                          onClick={() => handleAcceptPhoneChange(report)}
+                          className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#10B981] text-white hover:bg-[#059669]"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          disabled={actionLoading}
+                          onClick={() => handleDeleteReport(report)}
+                          className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#F3F4F6] text-[#616166] hover:bg-[#E5E7EB]"
+                        >
+                          Delete
+                        </button>
+                        <button
+                          type="button"
+                          disabled={actionLoading}
+                          onClick={() => handleBlockFromReport(report)}
+                          className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#EF4444] text-white hover:bg-[#DC2626]"
+                        >
+                          Block
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={actionLoading}
+                        onClick={() => handleToggleStatus(report)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                          isResolved
+                            ? 'bg-[#F3F4F6] text-[#616166] hover:bg-[#E5E7EB]'
+                            : 'bg-[#10B981] text-white hover:bg-[#059669] shadow-xs'
+                        }`}
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{isResolved ? 'Mark Open' : 'Resolve'}</span>
+                      </button>
+                    )}
 
                     <button
                       type="button"
@@ -354,6 +444,14 @@ export function ReportsComplaintsView() {
                     {selectedReport.customer_phone || 'Not Provided'}
                   </span>
                 </div>
+                {selectedReport.requested_phone && (
+                  <div>
+                    <span className="font-semibold text-[#616166] block">Requested New Phone:</span>
+                    <span className="font-mono text-[#8B53FE] font-medium">
+                      {selectedReport.requested_phone}
+                    </span>
+                  </div>
+                )}
                 <div>
                   <span className="font-semibold text-[#616166] block">Customer Name:</span>
                   <span className="text-[#1C2926] font-medium">
@@ -375,7 +473,7 @@ export function ReportsComplaintsView() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#F2F2F2]">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#F2F2F2] flex-wrap">
               <button
                 type="button"
                 onClick={() => setSelectedReport(null)}
@@ -383,21 +481,51 @@ export function ReportsComplaintsView() {
               >
                 Close
               </button>
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={() => handleToggleStatus(selectedReport)}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 text-white ${
-                  selectedReport.status === 'resolved'
-                    ? 'bg-[#616166] hover:bg-[#4B5563]'
-                    : 'bg-[#10B981] hover:bg-[#059669]'
-                }`}
-              >
-                <Check className="w-3.5 h-3.5" />
-                <span>
-                  {selectedReport.status === 'resolved' ? 'Re-open Ticket' : 'Mark as Resolved'}
-                </span>
-              </button>
+              {selectedReport.ticket_type === 'provider_phone_change' &&
+              selectedReport.status === 'open' ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={() => handleAcceptPhoneChange(selectedReport)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#10B981] hover:bg-[#059669]"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={() => handleDeleteReport(selectedReport)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-[#616166] hover:bg-[#F3F4F6]"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={() => handleBlockFromReport(selectedReport)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#EF4444] hover:bg-[#DC2626]"
+                  >
+                    Block
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={() => handleToggleStatus(selectedReport)}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 text-white ${
+                    selectedReport.status === 'resolved'
+                      ? 'bg-[#616166] hover:bg-[#4B5563]'
+                      : 'bg-[#10B981] hover:bg-[#059669]'
+                  }`}
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>
+                    {selectedReport.status === 'resolved' ? 'Re-open Ticket' : 'Mark as Resolved'}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </div>
