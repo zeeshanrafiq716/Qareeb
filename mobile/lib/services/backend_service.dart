@@ -826,6 +826,77 @@ class BackendService {
     }
   }
 
+  /// Sends a customer service request event and returns the real backend request UUID
+  /// so customer & provider stay synced across devices.
+  Future<String?> sendCustomerServiceRequest({
+    required String providerPublicId,
+    String? sessionId,
+    double? latitude,
+    double? longitude,
+    Map<String, dynamic>? metadata,
+  }) async {
+    final effectiveSessionId = sessionId ?? ApiClient.globalCustomerSessionId;
+    try {
+      final response = await _client.post(
+        ApiEndpoints.discoveryEvents,
+        data: {
+          'event': 'send_request_click',
+          'providerPublicId': providerPublicId,
+          'sessionId': effectiveSessionId,
+          if (latitude != null) 'latitude': latitude,
+          if (longitude != null) 'longitude': longitude,
+          if (metadata != null && metadata.isNotEmpty) 'metadata': metadata,
+        },
+      );
+      if ((response.statusCode == 200 || response.statusCode == 201) &&
+          response.data is Map) {
+        final root = response.data as Map;
+        final payload = root['data'] is Map ? root['data'] as Map : root;
+        final reqId = payload['requestId']?.toString().trim();
+        if (reqId != null && reqId.isNotEmpty) return reqId;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Provider updates a service request status ('active', 'arrived', 'in_progress', 'completed', 'cancelled')
+  /// so the customer receives the update live on their device.
+  Future<bool> updateProviderRequestStatus({
+    required String requestId,
+    required String status,
+    required int step,
+  }) async {
+    final cleanId = requestId.replaceFirst(RegExp(r'^REQ-', caseSensitive: false), '').trim();
+    if (cleanId.isEmpty) return false;
+    try {
+      final response = await _client.put(
+        '/api/v1/provider/me/requests/$cleanId/status',
+        data: {
+          'status': status,
+          'step': step,
+        },
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Customer polls the live status of their sent service request from backend.
+  Future<Map<String, dynamic>?> getCustomerRequestStatus(String requestId) async {
+    final cleanId = requestId.replaceFirst(RegExp(r'^REQ-', caseSensitive: false), '').trim();
+    if (cleanId.isEmpty) return null;
+    try {
+      final response = await _client.get('/api/v1/discovery/requests/$cleanId');
+      if (response.statusCode == 200 && response.data is Map) {
+        final root = response.data as Map;
+        final payload = root['data'] is Map ? root['data'] as Map : root;
+        return Map<String, dynamic>.from(payload);
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Update provider online/offline presence status
   Future<bool> updateProviderPresence(bool isOnline) async {
     try {

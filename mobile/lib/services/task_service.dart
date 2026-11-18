@@ -190,6 +190,7 @@ class TaskService {
   Future<ServiceTask> createCustomerRequest({
     required String providerName,
     required String serviceCategory,
+    String? requestId,
     String? distance,
     String? eta,
     String? vehicleName,
@@ -202,17 +203,21 @@ class TaskService {
     final formattedTime =
         '${now.day.toString().padLeft(2, '0')} ${_monthName(now.month)} ${now.year}, ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
+    final String taskId = (requestId != null && requestId.trim().isNotEmpty)
+        ? (requestId.startsWith('REQ-') ? requestId.trim() : 'REQ-${requestId.trim()}')
+        : 'REQ-${now.millisecondsSinceEpoch.toString().substring(7)}';
+
     final task = ServiceTask(
-      id: 'REQ-${now.millisecondsSinceEpoch.toString().substring(7)}',
-      providerName: providerName.isNotEmpty ? providerName : 'kinza',
-      providerPhone: providerPhone ?? '+966 54 545 6467',
-      serviceCategory: serviceCategory.isNotEmpty ? serviceCategory : 'Fuel Delivery',
-      vehicleName: vehicleName ?? 'Wheel Lift Tow Truck',
-      plateNumber: plateNumber ?? '1122',
-      distance: distance ?? '1.8 km',
-      eta: eta ?? '8 min',
-      customerName: customerName ?? 'Ahmed',
-      customerLocation: customerLocation ?? 'Riyadh, Saudi Arabia',
+      id: taskId,
+      providerName: providerName.isNotEmpty ? providerName : 'Provider',
+      providerPhone: providerPhone ?? '',
+      serviceCategory: serviceCategory.isNotEmpty ? serviceCategory : 'Service Request',
+      vehicleName: vehicleName ?? serviceCategory,
+      plateNumber: plateNumber ?? '',
+      distance: distance ?? '--',
+      eta: eta ?? '--',
+      customerName: customerName ?? 'Customer',
+      customerLocation: customerLocation ?? 'Shared via Zesho',
       status: 'new',
       step: 0,
       dateTime: formattedTime,
@@ -227,7 +232,27 @@ class TaskService {
     return task;
   }
 
-  /// When provider app receives [send_request_click] from the API, materialize a pending task locally.
+  /// Attaches the real backend UUID returned from POST /api/v1/discovery/events to the active customer task.
+  Future<void> attachBackendRequestId(String backendRequestId) async {
+    final clean = backendRequestId.trim();
+    if (clean.isEmpty || _activeTask == null) return;
+    final nextId = clean.startsWith('REQ-') ? clean : 'REQ-$clean';
+    if (_activeTask!.id == nextId) return;
+    _activeTask = _activeTask!.copyWith(id: nextId);
+    activeTaskNotifier.value = _activeTask;
+    providerRequestsNotifier.value = providerRequests;
+    await _saveActiveTask();
+  }
+
+  /// Extracts a real backend UUID from a task ID (`REQ-<uuid>`) if present.
+  static String? extractBackendUuid(String? taskId) {
+    if (taskId == null || taskId.isEmpty) return null;
+    final clean = taskId.replaceFirst(RegExp(r'^REQ-', caseSensitive: false), '').trim();
+    final uuidRegex = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', caseSensitive: false);
+    return uuidRegex.hasMatch(clean) ? clean : null;
+  }
+
+  /// When provider app receives [send_request_click] from the API, materialize or sync its real status.
   /// Supports multiple incoming customer requests without dropping new requests.
   Future<void> upsertIncomingRequestFromProviderNotification({
     required String notificationId,
@@ -235,30 +260,92 @@ class TaskService {
     String? customerLocation,
     String? distance,
     String? customerName,
+    String status = 'new',
+    int step = 0,
     DateTime? createdAt,
   }) async {
     if (notificationId.isEmpty) return;
     final taskId = 'REQ-$notificationId';
-
-    // Skip if already completed/cancelled in history or already tracked
-    if (_historyTasks.any((t) => t.id == taskId)) return;
-    if (_activeTask?.id == taskId) return;
-    if (_incomingRequests.any((t) => t.id == taskId)) return;
+    final normalizedStatus = status.trim().toLowerCase().isNotEmpty
+        ? status.trim().toLowerCase()
+        : 'new';
 
     final ts = (createdAt ?? DateTime.now()).toLocal();
     final formattedTime =
         '${ts.day.toString().padLeft(2, '0')} ${_monthName(ts.month)} ${ts.year}, ${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}';
 
+    // If backend says completed or cancelled, ensure it's in history and not pending/active
+    if (normalizedStatus == 'completed' || normalizedStatus == 'cancelled') {
+      _incomingRequests.removeWhere((t) => t.id == taskId);
+      if (_activeTask?.id == taskId) {
+        _activeTask = _incomingRequests.isNotEmpty ? _incomingRequests.first : null;
+        activeTaskNotifier.value = _activeTask;
+        await _saveActiveTask();
+      }
+      if (!_historyTasks.any((t) => t.id == taskId)) {
+        _historyTasks.insert(
+          0,
+          ServiceTask(
+            id: taskId,
+            providerName: 'Zesho',
+            serviceCategory: serviceCategory.trim().isNotEmpty ? serviceCategory.trim() : 'Roadside Assistance',
+            distance: distance?.trim().isNotEmpty == true ? distance!.trim() : '--',
+            eta: '--',
+            customerName: customerName?.trim().isNotEmpty == true ? customerName!.trim() : 'Customer',
+            customerLocation: customerLocation?.trim().isNotEmpty == true ? customerLocation!.trim() : 'Shared via Zesho',
+            status: normalizedStatus,
+            step: normalizedStatus == 'completed' ? 4 : step,
+            dateTime: formattedTime,
+            createdAt: ts,
+          ),
+        );
+        historyNotifier.value = List.unmodifiable(_historyTasks);
+        await _saveHistory();
+      }
+      providerRequestsNotifier.value = providerRequests;
+      return;
+    }
+
+    // Already completed/cancelled locally -> skip re-adding
+    if (_historyTasks.any((t) => t.id == taskId)) return;
+
+    // Update existing tracked request if backend status progressed (e.g. 'new' -> 'active')
+    final existingIdx = _incomingRequests.indexWhere((t) => t.id == taskId);
+    if (existingIdx != -1) {
+      final existing = _incomingRequests[existingIdx];
+      if (existing.status == 'new' && normalizedStatus != 'new') {
+        final updated = existing.copyWith(status: normalizedStatus, step: step);
+        _incomingRequests[existingIdx] = updated;
+        if (_activeTask?.id == taskId) {
+          _activeTask = updated;
+          activeTaskNotifier.value = _activeTask;
+          await _saveActiveTask();
+        }
+        providerRequestsNotifier.value = providerRequests;
+      }
+      return;
+    }
+
+    if (_activeTask?.id == taskId) {
+      if (_activeTask!.status == 'new' && normalizedStatus != 'new') {
+        _activeTask = _activeTask!.copyWith(status: normalizedStatus, step: step);
+        activeTaskNotifier.value = _activeTask;
+        providerRequestsNotifier.value = providerRequests;
+        await _saveActiveTask();
+      }
+      return;
+    }
+
     final task = ServiceTask(
       id: taskId,
       providerName: 'Zesho',
       serviceCategory: serviceCategory.trim().isNotEmpty ? serviceCategory.trim() : 'Roadside Assistance',
-      distance: distance?.trim().isNotEmpty == true ? distance!.trim() : '—',
-      eta: '—',
+      distance: distance?.trim().isNotEmpty == true ? distance!.trim() : '--',
+      eta: '--',
       customerName: customerName?.trim().isNotEmpty == true ? customerName!.trim() : 'Customer',
       customerLocation: customerLocation?.trim().isNotEmpty == true ? customerLocation!.trim() : 'Shared via Zesho',
-      status: 'new',
-      step: 0,
+      status: normalizedStatus,
+      step: step,
       dateTime: formattedTime,
       createdAt: ts,
     );
@@ -283,6 +370,34 @@ class TaskService {
     activeTaskNotifier.value = _activeTask;
     providerRequestsNotifier.value = providerRequests;
     await _saveActiveTask();
+  }
+
+  /// Provider accepts a specific pending request -> moves from New tab to Active tab!
+  Future<void> acceptRequestById(String taskId) async {
+    await selectIncomingRequest(taskId);
+    await updateTaskStatus(status: 'active', step: 1);
+  }
+
+  /// Provider declines/cancels a specific request -> moves to Cancelled tab!
+  Future<void> cancelRequestById(String taskId) async {
+    await selectIncomingRequest(taskId);
+    await cancelTask();
+  }
+
+  /// Provider updates a specific request status & step (e.g. 'arrived', 'in_progress')
+  Future<void> updateRequestStatusById({
+    required String taskId,
+    required String status,
+    required int step,
+  }) async {
+    await selectIncomingRequest(taskId);
+    await updateTaskStatus(status: status, step: step);
+  }
+
+  /// Provider completes a specific request -> moves to Completed tab!
+  Future<void> completeRequestById(String taskId) async {
+    await selectIncomingRequest(taskId);
+    await completeTask();
   }
 
   /// Provider accepts a pending customer request — customer listeners can move to live tracking.

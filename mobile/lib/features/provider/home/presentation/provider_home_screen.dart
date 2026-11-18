@@ -70,6 +70,8 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
   bool _hasCompletedInitialNotifPoll = false;
   StreamSubscription<UserLocation>? _locationSubscription;
   bool _isUpdatingLocation = false;
+  DateTime? _lastSentLocationAt;
+  UserLocation? _lastSentLocation;
   bool _isNavigatingAway = false;
 
   ScrollController? _scrollControllerInstance;
@@ -160,6 +162,10 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
         final custName = meta['customerName']?.toString().trim() ?? '';
         final custAddr = meta['customerAddress']?.toString().trim() ?? '';
         final dist = meta['distance']?.toString().trim() ?? '';
+        final reqStatus = meta['requestStatus']?.toString().trim() ?? 'new';
+        final reqStep = (meta['step'] is num)
+            ? (meta['step'] as num).toInt()
+            : int.tryParse(meta['step']?.toString() ?? '') ?? 0;
         final tsRaw = item['createdAt']?.toString();
         await TaskService.instance.upsertIncomingRequestFromProviderNotification(
           notificationId: itemId,
@@ -173,6 +179,8 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
           customerName: custName.isNotEmpty
               ? custName
               : (tr.isArabic ? 'عميل' : 'Customer'),
+          status: reqStatus,
+          step: reqStep,
           createdAt: tsRaw != null ? DateTime.tryParse(tsRaw) : null,
         );
       }
@@ -427,13 +435,13 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
     // 2. Immediately acquire and send exact GPS location
     _acquireAndSendGpsLocation();
 
-    // 3. Setup periodic GPS refresh timer (every 15s)
+    // 3. Setup periodic GPS refresh timer (every 6s for exact real-time provider tracking)
     _gpsTrackingTimer?.cancel();
-    _gpsTrackingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    _gpsTrackingTimer = Timer.periodic(const Duration(seconds: 6), (_) {
       _acquireAndSendGpsLocation();
     });
 
-    // 4. Also listen to location stream for instantaneous movements
+    // 4. Also listen to location stream for instantaneous movements & accuracy refinements
     _locationSubscription?.cancel();
     _locationSubscription = ref.read(locationServiceProvider).watchLocation().listen((loc) {
       if (loc.hasValidDeviceGps) {
@@ -447,6 +455,8 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
     _gpsTrackingTimer = null;
     _locationSubscription?.cancel();
     _locationSubscription = null;
+    _lastSentLocationAt = null;
+    _lastSentLocation = null;
     if (callBackend) {
       try {
         ref.read(backendServiceProvider).updateProviderPresence(false);
@@ -459,15 +469,34 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
     _isUpdatingLocation = true;
     try {
       final loc = await ref.read(locationServiceProvider).getCurrentLocation();
-      await _sendLocationToBackend(loc);
+      await _sendLocationToBackend(loc, force: true);
     } catch (_) {
     } finally {
       _isUpdatingLocation = false;
     }
   }
 
-  Future<void> _sendLocationToBackend(UserLocation loc) async {
+  Future<void> _sendLocationToBackend(UserLocation loc, {bool force = false}) async {
     if (!loc.hasValidDeviceGps) return;
+    final now = DateTime.now();
+    final prev = _lastSentLocation;
+    if (!force && prev != null && _lastSentLocationAt != null) {
+      final elapsedMs = now.difference(_lastSentLocationAt!).inMilliseconds;
+      final movedMeters = ref.read(locationServiceProvider).calculateDistanceKm(
+            prev.latitude,
+            prev.longitude,
+            loc.latitude,
+            loc.longitude,
+          ) * 1000.0;
+      final prevAcc = prev.accuracy ?? 999.0;
+      final curAcc = loc.accuracy ?? 999.0;
+      final accuracySharpened = curAcc + 4.0 < prevAcc;
+      if (elapsedMs < 2500 && movedMeters < 2.0 && !accuracySharpened) {
+        return;
+      }
+    }
+    _lastSentLocationAt = now;
+    _lastSentLocation = loc;
     try {
       await ref.read(backendServiceProvider).updateProviderLocation(
         latitude: loc.latitude,

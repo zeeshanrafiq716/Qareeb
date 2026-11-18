@@ -362,7 +362,13 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
             .toList();
 
         final Offset userScreenPos = toScreen(userLat, userLng);
-        final Offset providerScreenPos = toScreen(providerLat, providerLng);
+        final Offset rawProviderScreenPos = toScreen(providerLat, providerLng);
+        // When customer & provider are very close (< 28px apart), slightly offset the provider car
+        // vertically so both the "You" badge and the provider distance badge stay clearly legible.
+        final double screenGap = (rawProviderScreenPos - userScreenPos).distance;
+        final Offset providerScreenPos = (hasRealProviderCoords && userLoc.hasValidDeviceGps && screenGap < 28.0)
+            ? Offset(rawProviderScreenPos.dx + 14.0, rawProviderScreenPos.dy - 26.0)
+            : rawProviderScreenPos;
 
         Widget baseMapLayer = Stack(
           children: [

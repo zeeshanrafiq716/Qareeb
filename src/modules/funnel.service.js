@@ -125,18 +125,19 @@ export async function trackCustomerDiscoveryEvent(input) {
     metadata: input.metadata ?? {},
   });
 
-  await notifyProviderForCustomerEvent({
+  const notifRes = await notifyProviderForCustomerEvent({
     providerId: provider.id,
     eventType: input.event,
     sessionId: input.sessionId ?? null,
     latitude: lat,
     longitude: lng,
     metadata: input.metadata ?? {},
-  }).catch(() => {});
+  }).catch(() => null);
 
   return {
     recorded: true,
     eventId: row.id,
+    requestId: notifRes?.notification?.id ?? null,
     eventType: row.event_type,
     providerPublicId: provider.public_id,
   };

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/gestures.dart';
@@ -35,6 +36,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentTabIndex = 0;
+  Timer? _customerRequestPollTimer;
+  String? _lastNotifiedCustomerStatusKey;
   ScrollController? _scrollControllerInstance;
   ScrollController get _scrollController =>
       _scrollControllerInstance ??= ScrollController();
@@ -49,7 +52,103 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (CustomerAuthStore.instance.hasCompletedSignup) {
         CustomerAccountWatch.start(context, ref);
       }
+      _pollCustomerRequestUpdates();
     });
+    _customerRequestPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _pollCustomerRequestUpdates();
+    });
+  }
+
+  Future<void> _pollCustomerRequestUpdates() async {
+    if (!mounted) return;
+    final task = TaskService.instance.activeTask;
+    final reqId = TaskService.extractBackendUuid(task?.id);
+    if (task == null || reqId == null) return;
+
+    final data = await ref.read(backendServiceProvider).getCustomerRequestStatus(reqId);
+    if (!mounted || data == null) return;
+
+    final status = (data['status']?.toString() ?? task.status).toLowerCase();
+    final step = (data['step'] is num)
+        ? (data['step'] as num).toInt()
+        : int.tryParse(data['step']?.toString() ?? '') ?? task.step;
+    final statusKey = '${reqId}_$status';
+
+    if (status != task.status || step != task.step) {
+      if (status == 'completed') {
+        await TaskService.instance.completeTask();
+      } else if (status == 'cancelled') {
+        await TaskService.instance.cancelTask();
+      } else {
+        await TaskService.instance.updateTaskStatus(status: status, step: step);
+      }
+
+      if (!mounted || _lastNotifiedCustomerStatusKey == statusKey) return;
+      _lastNotifiedCustomerStatusKey = statusKey;
+
+      String badgeEn = 'Request Update';
+      String badgeAr = 'تحديث الطلب';
+      String titleEn = '${task.providerName} updated your request';
+      String titleAr = 'قام ${task.providerName} بتحديث طلبك';
+      String bodyEn = task.serviceCategory;
+      String bodyAr = task.serviceCategory;
+
+      switch (status) {
+        case 'active':
+          badgeEn = 'Request Accepted';
+          badgeAr = 'تم قبول الطلب';
+          titleEn = '${task.providerName} accepted your request';
+          titleAr = 'قبل ${task.providerName} طلبك';
+          bodyEn = '${task.serviceCategory} • Provider is on the way';
+          bodyAr = '${task.serviceCategory} • مزود الخدمة في الطريق إليك';
+          break;
+        case 'arrived':
+          badgeEn = 'Provider Arrived';
+          badgeAr = 'وصل المزود';
+          titleEn = '${task.providerName} has arrived';
+          titleAr = 'وصل ${task.providerName} إلى موقعك';
+          break;
+        case 'in_progress':
+          badgeEn = 'In Progress';
+          badgeAr = 'جاري التنفيذ';
+          titleEn = '${task.serviceCategory} is now in progress';
+          titleAr = 'بدأ تنفيذ ${task.serviceCategory}';
+          break;
+        case 'completed':
+          badgeEn = 'Completed';
+          badgeAr = 'مكتمل';
+          titleEn = '${task.serviceCategory} completed';
+          titleAr = 'تمت الخدمة بنجاح';
+          break;
+        case 'cancelled':
+          badgeEn = 'Request Declined';
+          badgeAr = 'تم رفض الطلب';
+          titleEn = '${task.providerName} declined your request';
+          titleAr = 'اعتذر ${task.providerName} عن الطلب';
+          break;
+      }
+
+      HapticFeedback.heavyImpact();
+      ref.read(notificationsProvider.notifier).setCustomerNotification(
+            AppNotificationItem(
+              id: statusKey,
+              badgeTextEn: badgeEn,
+              badgeTextAr: badgeAr,
+              titleEn: titleEn,
+              titleAr: titleAr,
+              locationEn: bodyEn,
+              locationAr: bodyAr,
+              distanceEn: task.distance != '--' ? task.distance : '',
+              distanceAr: task.distance != '--' ? task.distance : '',
+              timeEn: 'Just now',
+              timeAr: 'الآن',
+              createdAt: DateTime.now().toUtc(),
+              imageAsset: task.providerAvatar,
+            ),
+            showCard: true,
+            autoHideDuration: const Duration(seconds: 4),
+          );
+    }
   }
 
   @override
@@ -62,6 +161,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    _customerRequestPollTimer?.cancel();
     CustomerAccountWatch.stop();
     _scrollControllerInstance?.dispose();
     super.dispose();

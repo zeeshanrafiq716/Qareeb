@@ -232,8 +232,31 @@ export async function searchDiscovery(input) {
     const redisOnline = await presenceStore.isOnline(row.id);
     const isOnline = Boolean(redisOnline || row.is_online);
     if (!isOnline) continue;
-    list.push(buildCustomerDiscoveryCard(row, Number(row.distance_m), redisOnline));
+
+    // Prefer the freshest exact GPS coordinates from Redis presenceStore if available
+    const liveRedisLoc = await presenceStore.getLocation(row.id);
+    const effectiveRow =
+      liveRedisLoc &&
+      Number.isFinite(Number(liveRedisLoc.latitude)) &&
+      Number.isFinite(Number(liveRedisLoc.longitude)) &&
+      (Math.abs(Number(liveRedisLoc.latitude)) > 0.001 || Math.abs(Number(liveRedisLoc.longitude)) > 0.001)
+        ? {
+            ...row,
+            latitude: Number(liveRedisLoc.latitude),
+            longitude: Number(liveRedisLoc.longitude),
+            location_updated_at: liveRedisLoc.updatedAt || row.location_updated_at,
+          }
+        : row;
+
+    const exactDistM = distanceMeters(
+      Number(input.latitude),
+      Number(input.longitude),
+      Number(effectiveRow.latitude),
+      Number(effectiveRow.longitude),
+    );
+    list.push(buildCustomerDiscoveryCard(effectiveRow, exactDistM, redisOnline));
   }
+  list.sort((a, b) => a.distanceMeters - b.distanceMeters);
 
   const sessionId = input.sessionId?.trim();
   if (sessionId && list.length > 0) {
@@ -308,25 +331,39 @@ export async function getPublicProviderProfile(publicId, customerLat, customerLn
   }
 
   const redisOnline = await presenceStore.isOnline(row.id);
+  const liveRedisLoc = await presenceStore.getLocation(row.id);
+  const effectiveRow =
+    liveRedisLoc &&
+    Number.isFinite(Number(liveRedisLoc.latitude)) &&
+    Number.isFinite(Number(liveRedisLoc.longitude)) &&
+    (Math.abs(Number(liveRedisLoc.latitude)) > 0.001 || Math.abs(Number(liveRedisLoc.longitude)) > 0.001)
+      ? {
+          ...row,
+          latitude: Number(liveRedisLoc.latitude),
+          longitude: Number(liveRedisLoc.longitude),
+          location_updated_at: liveRedisLoc.updatedAt || row.location_updated_at,
+        }
+      : row;
+
   let distanceM = null;
   if (
     customerLat !== undefined &&
     customerLng !== undefined &&
-    row.latitude != null &&
-    row.longitude != null
+    effectiveRow.latitude != null &&
+    effectiveRow.longitude != null
   ) {
     distanceM = distanceMeters(
       Number(customerLat),
       Number(customerLng),
-      Number(row.latitude),
-      Number(row.longitude),
+      Number(effectiveRow.latitude),
+      Number(effectiveRow.longitude),
     );
   }
 
   const sessionId = options.sessionId?.trim();
   if (sessionId) {
     await recordFunnelEvent({
-      providerId: row.id,
+      providerId: effectiveRow.id,
       eventType: FUNNEL_EVENT.PROFILE_VIEW,
       sessionId,
       latitude: customerLat ?? null,
@@ -334,7 +371,7 @@ export async function getPublicProviderProfile(publicId, customerLat, customerLn
     });
   }
 
-  const card = buildCustomerDiscoveryCard(row, distanceM ?? 0, redisOnline);
+  const card = buildCustomerDiscoveryCard(effectiveRow, distanceM ?? 0, redisOnline);
   return {
     ...card,
     distanceMeters: distanceM === null ? null : Math.round(distanceM),

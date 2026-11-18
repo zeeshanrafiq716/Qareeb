@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -100,6 +101,7 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
 
   int _selectedFilterIndex = 0; // 0: New (10), 1: Active (2), 2: Completed, 3: Cancelled
   int _selectedCardIndex = 0; // Selected card index (default 0)
+  Timer? _syncTimer;
 
   void _onTasksChanged() {
     if (mounted) setState(() {});
@@ -113,6 +115,9 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
     TaskService.instance.providerRequestsNotifier.addListener(_onTasksChanged);
     TaskService.instance.historyNotifier.addListener(_onTasksChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncRequestsFromBackend());
+    _syncTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) _syncRequestsFromBackend();
+    });
   }
 
   Future<void> _syncRequestsFromBackend() async {
@@ -134,6 +139,10 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
         final custName = meta['customerName']?.toString().trim() ?? '';
         final custAddr = meta['customerAddress']?.toString().trim() ?? '';
         final dist = meta['distance']?.toString().trim() ?? '';
+        final reqStatus = meta['requestStatus']?.toString().trim() ?? 'new';
+        final reqStep = (meta['step'] is num)
+            ? (meta['step'] as num).toInt()
+            : int.tryParse(meta['step']?.toString() ?? '') ?? 0;
         final lat = item['customerLatitude'];
         final lng = item['customerLongitude'];
         final fallbackLoc = (lat != null && lng != null)
@@ -146,6 +155,8 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
           customerLocation: custAddr.isNotEmpty ? custAddr : fallbackLoc,
           distance: dist,
           customerName: custName.isNotEmpty ? custName : 'Customer',
+          status: reqStatus,
+          step: reqStep,
           createdAt: ts,
         );
       }
@@ -155,6 +166,7 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
     TaskService.instance.activeTaskNotifier.removeListener(_onTasksChanged);
     TaskService.instance.providerRequestsNotifier.removeListener(_onTasksChanged);
     TaskService.instance.historyNotifier.removeListener(_onTasksChanged);
@@ -437,7 +449,9 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                                             _selectedCardIndex = index;
                                           });
                                           TaskService.instance.selectIncomingRequest(item.id);
-                                          if (item.status == 'active') {
+                                          if (item.status == 'active' ||
+                                              item.status == 'arrived' ||
+                                              item.status == 'in_progress') {
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
                                                 builder: (_) => ProviderActiveRequestScreen(
@@ -450,6 +464,8 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                                                   distanceAr: item.distanceAr,
                                                   timeEn: item.timeEn,
                                                   timeAr: item.timeAr,
+                                                  customerNameEn: item.customerNameEn,
+                                                  customerNameAr: item.customerNameAr,
                                                 ),
                                               ),
                                             );
@@ -470,9 +486,16 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                                                   badgeAr: item.badgeAr,
                                                   imageAsset: item.imageAsset,
                                                   status: item.status,
+                                                  customerName: item.customerNameEn,
                                                 ),
                                               ),
-                                            );
+                                            ).then((accepted) {
+                                              if (accepted == true && mounted) {
+                                                setState(() {
+                                                  _selectedFilterIndex = 1; // Jump to Active tab!
+                                                });
+                                              }
+                                            });
                                           }
                                         },
                                       ),

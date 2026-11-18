@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/providers/backend_provider.dart';
 import 'package:mobile/services/task_service.dart';
 import 'package:mobile/features/provider/requests/presentation/provider_active_request_screen.dart';
 import 'package:mobile/features/location/presentation/widgets/top_down_car_widget.dart';
@@ -53,22 +54,24 @@ class ProviderRequestDetailsScreen extends ConsumerStatefulWidget {
   final String badgeAr;
   final String imageAsset;
   final String status;
+  final String customerName;
 
   const ProviderRequestDetailsScreen({
     super.key,
     this.requestId = 'REQ-101',
-    this.serviceTypeEn = 'Battery Jump Start',
-    this.serviceTypeAr = 'شحن وتبديل بطارية',
-    this.locationEn = 'King Abdullah Rd, Riyadh',
-    this.locationAr = 'طريق الملك عبدالله، الرياض',
-    this.distanceEn = '2.4 km',
-    this.distanceAr = '٢.٤ كم',
+    this.serviceTypeEn = 'Service Request',
+    this.serviceTypeAr = 'طلب خدمة',
+    this.locationEn = 'Shared via Zesho',
+    this.locationAr = 'تمت المشاركة عبر زيشو',
+    this.distanceEn = '--',
+    this.distanceAr = '--',
     this.timeEn = 'Just now',
     this.timeAr = 'الآن',
     this.badgeEn = 'New Request',
     this.badgeAr = 'طلب جديد',
     this.imageAsset = 'assets/images/img.png',
     this.status = 'new',
+    this.customerName = 'Customer',
   });
 
   static const double designWidth = 390.0;
@@ -1023,9 +1026,18 @@ class _ProviderRequestDetailsScreenState
                                           child: GestureDetector(
                                             onTap: () async {
                                               HapticFeedback.lightImpact();
-                                              await TaskService.instance.cancelTask();
+                                              await ref
+                                                  .read(backendServiceProvider)
+                                                  .updateProviderRequestStatus(
+                                                    requestId: widget.requestId,
+                                                    status: 'cancelled',
+                                                    step: 0,
+                                                  )
+                                                  .catchError((_) => false);
+                                              await TaskService.instance
+                                                  .cancelRequestById(widget.requestId);
                                               if (context.mounted) {
-                                                Navigator.of(context).maybePop();
+                                                Navigator.of(context).maybePop(false);
                                               }
                                             },
                                             child: Container(
@@ -1062,12 +1074,21 @@ class _ProviderRequestDetailsScreenState
 
                                         const SizedBox(width: 12.0),
 
-                                        // Accept button
+                                        // Accept button -> syncs 'active' status to backend so customer updates live AND moves task to Active tab
                                         Expanded(
                                           child: GestureDetector(
                                             onTap: () async {
                                               HapticFeedback.mediumImpact();
-                                              await TaskService.instance.acceptActiveRequest();
+                                              await ref
+                                                  .read(backendServiceProvider)
+                                                  .updateProviderRequestStatus(
+                                                    requestId: widget.requestId,
+                                                    status: 'active',
+                                                    step: 1,
+                                                  )
+                                                  .catchError((_) => false);
+                                              await TaskService.instance
+                                                  .acceptRequestById(widget.requestId);
                                               if (!context.mounted) return;
                                               ScaffoldMessenger.of(context).showSnackBar(
                                                 SnackBar(
@@ -1078,9 +1099,12 @@ class _ProviderRequestDetailsScreenState
                                                         : 'Request Accepted Successfully!',
                                                     style: GoogleFonts.inter(color: Colors.white),
                                                   ),
-                                                  duration: const Duration(seconds: 1),
+                                                  duration: const Duration(seconds: 2),
                                                 ),
                                               );
+                                              final custName = widget.customerName.trim().isNotEmpty
+                                                  ? widget.customerName.trim()
+                                                  : (TaskService.instance.activeTask?.customerName ?? 'Customer');
                                               Navigator.of(context).pushReplacement(
                                                 MaterialPageRoute(
                                                   builder: (_) => ProviderActiveRequestScreen(
@@ -1091,15 +1115,10 @@ class _ProviderRequestDetailsScreenState
                                                     locationAr: widget.locationAr,
                                                     distanceEn: widget.distanceEn,
                                                     distanceAr: widget.distanceAr,
-                                                    timeEn: '8 min',
-                                                    timeAr: '٨ دقائق',
-                                                    customerNameEn: 'Ahmed Khan',
-                                                    customerNameAr: 'أحمد خان',
-                                                    vehicleModelEn: 'Toyota Corolla',
-                                                    vehicleModelAr: 'تويوتا كورولا',
-                                                    plateNumber: 'KSA 1234',
-                                                    customerNoteEn: 'Battery is dead and the car won’t start. Need a jump start.',
-                                                    customerNoteAr: 'البطارية فارغة والسيارة لا تعمل. أحتاج إلى شحن بطارية.',
+                                                    timeEn: widget.timeEn,
+                                                    timeAr: widget.timeAr,
+                                                    customerNameEn: custName,
+                                                    customerNameAr: custName,
                                                   ),
                                                 ),
                                               );

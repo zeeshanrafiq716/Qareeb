@@ -1,8 +1,20 @@
 import { env } from "../config/env.js";
 import { query } from "../db/pool.js";
 import { logger } from "../logger.js";
+import { presenceStore } from "../redis/presenceStore.js";
 import { AppError, NotFoundError } from "../utils/AppError.js";
 import { sendFcmMessage } from "../utils/fcm.js";
+
+const ALLOWED_REQUEST_STATUSES = new Set([
+  "new",
+  "active",
+  "arrived",
+  "in_progress",
+  "completed",
+  "cancelled",
+]);
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PROVIDER_NOTIFY_EVENTS = new Set([
   "call_click",
   "whatsapp_click",
@@ -65,11 +77,20 @@ export async function notifyProviderForCustomerEvent({
   }
 
   const copy = notificationCopy(eventType);
+  const enrichedMetadata =
+    eventType === "send_request_click"
+      ? {
+          requestStatus: "new",
+          step: 0,
+          ...(metadata ?? {}),
+        }
+      : (metadata ?? {});
+
   const { rows } = await query(
     `INSERT INTO provider_notifications
        (provider_id, event_type, title, body, customer_session_id, customer_latitude, customer_longitude, metadata)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
-     RETURNING id, event_type, title, body, created_at`,
+     RETURNING id, event_type, title, body, customer_session_id, customer_latitude, customer_longitude, metadata, is_read, created_at`,
     [
       providerId,
       eventType,
@@ -78,7 +99,7 @@ export async function notifyProviderForCustomerEvent({
       sessionId,
       latitude,
       longitude,
-      JSON.stringify(metadata ?? {}),
+      JSON.stringify(enrichedMetadata),
     ],
   );
 
@@ -128,6 +149,107 @@ export async function markProviderNotificationsRead(providerId, { ids = null } =
     );
   }
   return { success: true };
+}
+
+export async function updateProviderRequestStatus(providerId, rawRequestId, { status, step } = {}) {
+  const cleanId = String(rawRequestId || "").replace(/^REQ-/i, "").trim();
+  if (!UUID_REGEX.test(cleanId)) {
+    throw new AppError(400, "Invalid request ID", "INVALID_REQUEST_ID");
+  }
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+  if (!ALLOWED_REQUEST_STATUSES.has(normalizedStatus)) {
+    throw new AppError(400, "Invalid request status", "INVALID_REQUEST_STATUS");
+  }
+  const defaultStepMap = {
+    new: 0,
+    active: 1,
+    arrived: 2,
+    in_progress: 3,
+    completed: 4,
+    cancelled: 0,
+  };
+  const resolvedStep = Number.isFinite(Number(step))
+    ? Number(step)
+    : (defaultStepMap[normalizedStatus] ?? 0);
+  const updatedAt = new Date().toISOString();
+
+  const patch = {
+    requestStatus: normalizedStatus,
+    step: resolvedStep,
+    statusUpdatedAt: updatedAt,
+  };
+
+  const { rows } = await query(
+    `UPDATE provider_notifications
+     SET is_read = true,
+         metadata = COALESCE(metadata, '{}'::jsonb) || $3::jsonb
+     WHERE id = $1::uuid AND provider_id = $2 AND event_type = 'send_request_click'
+     RETURNING id, event_type, title, body, customer_session_id, customer_latitude, customer_longitude, metadata, is_read, created_at`,
+    [cleanId, providerId, JSON.stringify(patch)],
+  );
+
+  if (!rows[0]) {
+    throw new NotFoundError("Service request not found");
+  }
+
+  return {
+    requestId: rows[0].id,
+    status: normalizedStatus,
+    step: resolvedStep,
+    updatedAt,
+    notification: serializeProviderNotification(rows[0]),
+  };
+}
+
+export async function getCustomerRequestStatus(rawRequestId) {
+  const cleanId = String(rawRequestId || "").replace(/^REQ-/i, "").trim();
+  if (!UUID_REGEX.test(cleanId)) {
+    throw new AppError(400, "Invalid request ID", "INVALID_REQUEST_ID");
+  }
+
+  const { rows } = await query(
+    `SELECT pn.id, pn.provider_id, pn.metadata, pn.created_at,
+            p.public_id, p.name AS provider_name, p.phone AS provider_phone, p.photo_url AS provider_photo_url,
+            l.latitude AS provider_lat, l.longitude AS provider_lng
+     FROM provider_notifications pn
+     JOIN providers p ON p.id = pn.provider_id
+     LEFT JOIN locations l ON l.provider_id = p.id
+     WHERE pn.id = $1::uuid AND pn.event_type = 'send_request_click'`,
+    [cleanId],
+  );
+
+  const row = rows[0];
+  if (!row) {
+    throw new NotFoundError("Service request not found");
+  }
+
+  const meta = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
+  const liveRedisLoc = await presenceStore.getLocation(row.provider_id);
+  const liveLat =
+    liveRedisLoc && Number.isFinite(Number(liveRedisLoc.latitude))
+      ? Number(liveRedisLoc.latitude)
+      : (row.provider_lat != null ? Number(row.provider_lat) : null);
+  const liveLng =
+    liveRedisLoc && Number.isFinite(Number(liveRedisLoc.longitude))
+      ? Number(liveRedisLoc.longitude)
+      : (row.provider_lng != null ? Number(row.provider_lng) : null);
+
+  return {
+    requestId: row.id,
+    status: String(meta.requestStatus || "new").toLowerCase(),
+    step: Number(meta.step ?? 0),
+    providerPublicId: row.public_id,
+    providerName: row.provider_name,
+    providerPhone: row.provider_phone,
+    providerPhotoUrl: row.provider_photo_url,
+    providerLatitude: liveLat,
+    providerLongitude: liveLng,
+    serviceCategory: meta.serviceCategory || "",
+    customerName: meta.customerName || "",
+    customerAddress: meta.customerAddress || "",
+    distance: meta.distance || "",
+    updatedAt: meta.statusUpdatedAt || row.created_at,
+  };
 }
 
 export async function registerProviderDeviceToken(providerId, { token, platform, appVersion }) {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/gestures.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/localization/app_locale.dart';
+import '../../../providers/backend_provider.dart';
 import '../../../providers/notifications_provider.dart';
 import '../../../services/task_service.dart';
 import '../../home/presentation/widgets/bottom_nav_bar_widget.dart';
@@ -50,6 +52,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
 
   late AppTranslations _tr;
   AppTranslations get tr => _tr;
+  Timer? _statusSyncTimer;
 
   void _onTasksChanged() {
     if (mounted) {
@@ -64,10 +67,38 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
     _searchControllerInstance ??= TextEditingController();
     TaskService.instance.activeTaskNotifier.addListener(_onTasksChanged);
     TaskService.instance.historyNotifier.addListener(_onTasksChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncCustomerRequestStatus());
+    _statusSyncTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _syncCustomerRequestStatus();
+    });
+  }
+
+  Future<void> _syncCustomerRequestStatus() async {
+    if (!mounted) return;
+    final task = TaskService.instance.activeTask;
+    final reqId = TaskService.extractBackendUuid(task?.id);
+    if (task == null || reqId == null) return;
+
+    final data = await ref.read(backendServiceProvider).getCustomerRequestStatus(reqId);
+    if (!mounted || data == null) return;
+
+    final status = (data['status']?.toString() ?? task.status).toLowerCase();
+    final step = (data['step'] is num)
+        ? (data['step'] as num).toInt()
+        : int.tryParse(data['step']?.toString() ?? '') ?? task.step;
+
+    if (status == 'completed') {
+      await TaskService.instance.completeTask();
+    } else if (status == 'cancelled') {
+      await TaskService.instance.cancelTask();
+    } else if (status != task.status || step != task.step) {
+      await TaskService.instance.updateTaskStatus(status: status, step: step);
+    }
   }
 
   @override
   void dispose() {
+    _statusSyncTimer?.cancel();
     TaskService.instance.activeTaskNotifier.removeListener(_onTasksChanged);
     TaskService.instance.historyNotifier.removeListener(_onTasksChanged);
     _scrollControllerInstance?.dispose();

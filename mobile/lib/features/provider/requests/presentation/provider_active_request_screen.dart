@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/providers/backend_provider.dart';
 import 'package:mobile/services/task_service.dart';
 import 'package:mobile/features/location/presentation/widgets/top_down_car_widget.dart';
 import 'package:mobile/features/location/presentation/widgets/real_map_background_widget.dart';
@@ -1317,7 +1318,19 @@ class _ProviderActiveRequestScreenState
                                     _currentStep++;
                                   });
                                   final String newStatus = _currentStep == 2 ? 'arrived' : 'in_progress';
-                                  await TaskService.instance.updateTaskStatus(status: newStatus, step: _currentStep);
+                                  await ref
+                                      .read(backendServiceProvider)
+                                      .updateProviderRequestStatus(
+                                        requestId: widget.requestId,
+                                        status: newStatus,
+                                        step: _currentStep,
+                                      )
+                                      .catchError((_) => false);
+                                  await TaskService.instance.updateRequestStatusById(
+                                    taskId: widget.requestId,
+                                    status: newStatus,
+                                    step: _currentStep,
+                                  );
                                   if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
@@ -1334,7 +1347,16 @@ class _ProviderActiveRequestScreenState
                                   setState(() {
                                     _currentStep = 4;
                                   });
-                                  await TaskService.instance.completeTask();
+                                  await ref
+                                      .read(backendServiceProvider)
+                                      .updateProviderRequestStatus(
+                                        requestId: widget.requestId,
+                                        status: 'completed',
+                                        step: 4,
+                                      )
+                                      .catchError((_) => false);
+                                  await TaskService.instance
+                                      .completeRequestById(widget.requestId);
                                   if (!context.mounted) return;
                                   Navigator.of(context).push(
                                     MaterialPageRoute(

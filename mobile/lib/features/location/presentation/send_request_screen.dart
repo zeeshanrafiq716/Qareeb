@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../core/utils/contact_launcher.dart';
 import '../../../providers/backend_provider.dart';
+import '../../../providers/notifications_provider.dart';
 import '../../../services/location_service.dart';
 import '../../customer/auth/data/customer_auth_store.dart';
 import 'live_tracking_screen.dart';
@@ -57,6 +59,10 @@ class SendRequestScreen extends ConsumerStatefulWidget {
 class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
   bool _isAccepted = false;
   bool _navigatedToLive = false;
+  String? _backendRequestId;
+  Timer? _statusPollTimer;
+  Timer? _elapsedTimer;
+  late final DateTime _requestSentAt;
   String? _resolvedPhone;
   String? _photoUrl;
   String? _vehicleName;
@@ -73,6 +79,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
   @override
   void initState() {
     super.initState();
+    _requestSentAt = DateTime.now();
     _resolvedPhone = _cleanPhone(widget.providerPhone);
     _photoUrl = _cleanPhoto(widget.photoUrl);
     _vehicleName = _cleanPhone(widget.vehicleName);
@@ -85,8 +92,19 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
 
     ProfileStatsService.instance.recordNewRequest(isProvider: false);
     TaskService.instance.activeTaskNotifier.addListener(_onTaskChanged);
+    _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
     _bootstrapRequest();
     _hydrateProviderPhone();
+  }
+
+  String _formatElapsedRequestTimer() {
+    final elapsed = DateTime.now().difference(_requestSentAt);
+    final totalSeconds = elapsed.isNegative ? 0 : elapsed.inSeconds;
+    final mins = (totalSeconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (totalSeconds % 60).toString().padLeft(2, '0');
+    return '$mins:$secs';
   }
 
   String? _cleanPhone(String? raw) {
@@ -224,8 +242,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
 
     final id = widget.providerPublicId;
     if (id != null && id.isNotEmpty) {
-      await ref.read(backendServiceProvider).trackCustomerEvent(
-            event: 'send_request_click',
+      final serverReqId = await ref.read(backendServiceProvider).sendCustomerServiceRequest(
             providerPublicId: id,
             latitude: hasGps ? loc.latitude : null,
             longitude: hasGps ? loc.longitude : null,
@@ -233,12 +250,123 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
               'serviceCategory': widget.serviceCategory,
               'customerName': customerName,
               'customerAddress': addressLabel,
-              if (widget.distance.trim().isNotEmpty && widget.distance.trim() != '—')
+              if (widget.distance.trim().isNotEmpty &&
+                  widget.distance.trim() != '—' &&
+                  widget.distance.trim() != '--')
                 'distance': widget.distance.trim(),
+              if (widget.eta != null && widget.eta!.trim().isNotEmpty && widget.eta!.trim() != '--')
+                'eta': widget.eta!.trim(),
             },
-          ).catchError((_) => false);
+          );
+      if (serverReqId != null && serverReqId.isNotEmpty) {
+        _backendRequestId = serverReqId;
+        await TaskService.instance.attachBackendRequestId(serverReqId);
+        _startStatusPolling();
+      }
     }
     _syncAcceptedFromTask();
+  }
+
+  void _startStatusPolling() {
+    _statusPollTimer?.cancel();
+    _statusPollTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
+      _pollBackendRequestStatus();
+    });
+  }
+
+  Future<void> _pollBackendRequestStatus() async {
+    if (!mounted || _navigatedToLive) return;
+    final reqId = _backendRequestId ??
+        TaskService.extractBackendUuid(TaskService.instance.activeTask?.id);
+    if (reqId == null || reqId.isEmpty) return;
+
+    final data = await ref.read(backendServiceProvider).getCustomerRequestStatus(reqId);
+    if (!mounted || data == null || _navigatedToLive) return;
+
+    final status = (data['status']?.toString() ?? 'new').toLowerCase();
+    final step = (data['step'] is num)
+        ? (data['step'] as num).toInt()
+        : int.tryParse(data['step']?.toString() ?? '') ?? 0;
+
+    final double? pLat = (data['providerLatitude'] as num?)?.toDouble();
+    final double? pLng = (data['providerLongitude'] as num?)?.toDouble();
+    if (pLat != null && pLng != null && (pLat.abs() > 0.001 || pLng.abs() > 0.001)) {
+      setState(() {
+        _providerLat = pLat;
+        _providerLng = pLng;
+      });
+    }
+
+    if (status == 'active' || status == 'arrived' || status == 'in_progress' || step >= 1) {
+      _statusPollTimer?.cancel();
+      await TaskService.instance.updateTaskStatus(
+        status: status == 'new' ? 'active' : status,
+        step: step >= 1 ? step : 1,
+      );
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      ref.read(notificationsProvider.notifier).setCustomerNotification(
+            AppNotificationItem(
+              id: 'accepted_$reqId',
+              badgeTextEn: 'Request Accepted',
+              badgeTextAr: 'تم قبول الطلب',
+              titleEn: '${widget.providerName} accepted your request',
+              titleAr: 'قبل ${widget.providerName} طلبك',
+              locationEn: '${widget.serviceCategory} • On the way',
+              locationAr: '${widget.serviceCategory} • في الطريق إليك',
+              distanceEn: widget.distance != '--' ? widget.distance : '',
+              distanceAr: widget.distance != '--' ? widget.distance : '',
+              timeEn: 'Just now',
+              timeAr: 'الآن',
+              createdAt: DateTime.now().toUtc(),
+              imageAsset: _photoUrl,
+            ),
+            showCard: true,
+            autoHideDuration: const Duration(seconds: 4),
+          );
+      _toast(
+        tr.isArabic
+            ? 'تم قبول طلبك! مزود الخدمة في الطريق إليك'
+            : 'Request accepted! Provider is on the way',
+      );
+      _syncAcceptedFromTask();
+    } else if (status == 'cancelled') {
+      _statusPollTimer?.cancel();
+      await TaskService.instance.cancelTask();
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      ref.read(notificationsProvider.notifier).setCustomerNotification(
+            AppNotificationItem(
+              id: 'declined_$reqId',
+              badgeTextEn: 'Request Declined',
+              badgeTextAr: 'تم رفض الطلب',
+              titleEn: '${widget.providerName} declined the request',
+              titleAr: 'اعتذر ${widget.providerName} عن الطلب',
+              locationEn: widget.serviceCategory,
+              locationAr: widget.serviceCategory,
+              distanceEn: '',
+              distanceAr: '',
+              timeEn: 'Just now',
+              timeAr: 'الآن',
+              createdAt: DateTime.now().toUtc(),
+              imageAsset: _photoUrl,
+            ),
+            showCard: true,
+            autoHideDuration: const Duration(seconds: 4),
+          );
+      _toast(
+        tr.isArabic
+            ? 'اعتذر مزود الخدمة عن الطلب'
+            : 'Provider declined the request',
+        error: true,
+      );
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    } else if (status == 'completed') {
+      _statusPollTimer?.cancel();
+      await TaskService.instance.completeTask();
+    }
   }
 
   void _onTaskChanged() {
@@ -267,6 +395,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => LiveTrackingScreen(
+          requestId: _backendRequestId ?? TaskService.extractBackendUuid(task?.id),
           serviceCategory: widget.serviceCategory,
           providerName: widget.providerName,
           vehicleName: _vehicleName ?? widget.serviceCategory,
@@ -346,6 +475,8 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
 
   @override
   void dispose() {
+    _statusPollTimer?.cancel();
+    _elapsedTimer?.cancel();
     TaskService.instance.activeTaskNotifier.removeListener(_onTaskChanged);
     super.dispose();
   }
@@ -505,27 +636,106 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                           ),
                           const SizedBox(width: 16.0), // gap: 16px;
 
-                          // Title: Pickup & Delivery
-                          Expanded(
-                            child: Text(
-                              tr.categoryName(widget.serviceCategory),
-                              textHeightBehavior: const TextHeightBehavior(
-                                applyHeightToFirstAscent: false,
-                                applyHeightToLastDescent: false,
+                          // Title pill over map for crisp readability
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(20.0),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x14000000),
+                                    blurRadius: 8.0,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
                               ),
-                              style: tr.font(
-                                fontSize: 16.0,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF1C2926),
-                                height: 22.0 / 16.0,
-                                letterSpacing: 0.0,
+                              child: Text(
+                                tr.categoryName(widget.serviceCategory),
+                                textHeightBehavior: const TextHeightBehavior(
+                                  applyHeightToFirstAscent: false,
+                                  applyHeightToLastDescent: false,
+                                ),
+                                style: tr.font(
+                                  fontSize: 15.0,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF1C2926),
+                                  height: 1.15,
+                                  letterSpacing: 0.0,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
+                    ),
+                  ),
+
+                  // Live real location badge on top map (shows customer's exact live detected location)
+                  Positioned(
+                    bottom: 12.0,
+                    left: 16.0,
+                    right: 16.0,
+                    child: Builder(
+                      builder: (context) {
+                        final streamLoc = ref.watch(userLocationProvider).value;
+                        final activeLoc = (streamLoc != null && streamLoc.hasValidDeviceGps)
+                            ? streamLoc
+                            : LocationService.lastKnownValidLocation;
+                        if (activeLoc == null || !activeLoc.hasValidDeviceGps) {
+                          return const SizedBox.shrink();
+                        }
+                        final addr = activeLoc.address.trim().isNotEmpty &&
+                                activeLoc.address != 'Device Location is OFF'
+                            ? activeLoc.address.trim()
+                            : (activeLoc.cityName.trim().isNotEmpty
+                                ? activeLoc.cityName.trim()
+                                : activeLoc.coordinatesDisplay);
+                        return Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.94),
+                              borderRadius: BorderRadius.circular(18.0),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x18000000),
+                                  blurRadius: 8.0,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.my_location_rounded,
+                                  size: 13.0,
+                                  color: Color(0xFF8B53FE),
+                                ),
+                                const SizedBox(width: 5.0),
+                                Flexible(
+                                  child: Text(
+                                    addr,
+                                    style: tr.font(
+                                      fontSize: 11.0,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF1C2926),
+                                      height: 1.15,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
 
@@ -583,26 +793,22 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                        // width: 350; height: 41; justify-content: space-between; angle: 0 deg; opacity: 1;
+                                        // Provider identity row: Full name without ellipsis truncation + status + WhatsApp/Call
                                         SizedBox(
                                           width: math.max(280.0, containerWidth - 40.0),
-                                          height: 41.0,
                                           child: Row(
                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            crossAxisAlignment: CrossAxisAlignment.center,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              // Left side content branding layout:
-                                              // width: 236; height: 41; angle: 0 deg; opacity: 1; gap: 16px;
-                                              SizedBox(
-                                                width: 236.0,
-                                                height: 41.0,
+                                              // Left side content branding layout (Expanded so full name never gets dotted)
+                                              Expanded(
                                                 child: Row(
                                                   crossAxisAlignment: CrossAxisAlignment.center,
                                                   children: [
                                                     // Left side real avatar or purple initials
                                                     Container(
-                                                      width: 36.0,
-                                                      height: 36.0,
+                                                      width: 38.0,
+                                                      height: 38.0,
                                                       decoration: const BoxDecoration(
                                                         shape: BoxShape.circle,
                                                         color: Color(0xFF8B53FE),
@@ -611,8 +817,8 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                       child: _photoUrl != null
                                                           ? Image.network(
                                                               _photoUrl!,
-                                                              width: 36.0,
-                                                              height: 36.0,
+                                                              width: 38.0,
+                                                              height: 38.0,
                                                               fit: BoxFit.cover,
                                                               errorBuilder: (_, _, _) => Center(
                                                                 child: Text(
@@ -636,166 +842,123 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                               ),
                                                             ),
                                                     ),
-                                                    const SizedBox(width: 16.0), // gap: 16px;
+                                                    const SizedBox(width: 12.0),
 
-                                                    // Content inner layout: width: 184; height: 41; gap: 12px;
-                                                    SizedBox(
-                                                      width: 184.0,
-                                                      height: 41.0,
+                                                    // Full Provider Name + Available badge + Reviews & Status
+                                                    Expanded(
                                                       child: Column(
-                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                        mainAxisSize: MainAxisSize.min,
                                                         crossAxisAlignment: CrossAxisAlignment.start,
                                                         children: [
-                                                          // Text row layout: width: 184; height: 19; gap: 12px;
-                                                          SizedBox(
-                                                            width: 184.0,
-                                                            height: 19.0,
-                                                            child: Row(
-                                                              crossAxisAlignment: CrossAxisAlignment.center,
-                                                              children: [
-                                                                // content: Ahmad Transport
-                                                                SizedBox(
-                                                                  width: 117.0,
-                                                                  child: Align(
-                                                                    alignment: Alignment.centerLeft,
-                                                                    child: Text(
-                                                                      tr.formatProviderName(widget.providerName.isNotEmpty ? widget.providerName : 'Ahmad Transport'),
-                                                                      textHeightBehavior: const TextHeightBehavior(
-                                                                        applyHeightToFirstAscent: false,
-                                                                        applyHeightToLastDescent: false,
-                                                                      ),
+                                                          // Full Provider Name (no dots / ellipsis!)
+                                                          Text(
+                                                            tr.formatProviderName(
+                                                              widget.providerName.isNotEmpty
+                                                                  ? widget.providerName
+                                                                  : 'Provider',
+                                                            ),
+                                                            textHeightBehavior: const TextHeightBehavior(
+                                                              applyHeightToFirstAscent: false,
+                                                              applyHeightToLastDescent: false,
+                                                            ),
+                                                            style: tr.font(
+                                                              fontSize: 14.5,
+                                                              fontWeight: FontWeight.w600,
+                                                              color: const Color(0xFF1C2926),
+                                                              height: 1.2,
+                                                              letterSpacing: 0.0,
+                                                            ),
+                                                            maxLines: 2,
+                                                            softWrap: true,
+                                                          ),
+                                                          const SizedBox(height: 5.0),
+
+                                                          // Available badge + Real reviews + Waiting status
+                                                          Wrap(
+                                                            spacing: 6.0,
+                                                            runSpacing: 4.0,
+                                                            crossAxisAlignment: WrapCrossAlignment.center,
+                                                            children: [
+                                                              Container(
+                                                                padding: const EdgeInsets.symmetric(
+                                                                  horizontal: 7.0,
+                                                                  vertical: 2.0,
+                                                                ),
+                                                                decoration: BoxDecoration(
+                                                                  color: const Color(0xFFF0EAFE),
+                                                                  borderRadius: BorderRadius.circular(60.0),
+                                                                ),
+                                                                child: Text(
+                                                                  tr.available,
+                                                                  textHeightBehavior: const TextHeightBehavior(
+                                                                    applyHeightToFirstAscent: false,
+                                                                    applyHeightToLastDescent: false,
+                                                                  ),
+                                                                  style: tr.font(
+                                                                    fontSize: 9.5,
+                                                                    fontWeight: FontWeight.w600,
+                                                                    color: const Color(0xFF8B53FE),
+                                                                    height: 1.1,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                              Row(
+                                                                mainAxisSize: MainAxisSize.min,
+                                                                children: [
+                                                                  const Icon(
+                                                                    Icons.star_rounded,
+                                                                    size: 11.0,
+                                                                    color: Color(0xFF8B53FE),
+                                                                  ),
+                                                                  const SizedBox(width: 2.5),
+                                                                  Text.rich(
+                                                                    TextSpan(
+                                                                      text: _rating.toStringAsFixed(1),
                                                                       style: tr.font(
-                                                                        fontSize: 14.0,
+                                                                        fontSize: 10.0,
                                                                         fontWeight: FontWeight.w500,
                                                                         color: const Color(0xFF1C2926),
-                                                                        height: 22.0 / 14.0,
-                                                                        letterSpacing: 0.0,
+                                                                        height: 1.0,
                                                                       ),
-                                                                      maxLines: 1,
-                                                                      overflow: TextOverflow.ellipsis,
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                                const SizedBox(width: 12.0), // gap: 12px;
-
-                                                                // available word layout:
-                                                                Container(
-                                                                  width: 55.0,
-                                                                  height: 19.0,
-                                                                  decoration: BoxDecoration(
-                                                                    color: const Color(0xFFF0EAFE),
-                                                                    borderRadius: BorderRadius.circular(60.0),
-                                                                  ),
-                                                                  alignment: Alignment.center,
-                                                                  child: Text(
-                                                                    tr.available,
-                                                                    textHeightBehavior: const TextHeightBehavior(
-                                                                      applyHeightToFirstAscent: false,
-                                                                      applyHeightToLastDescent: false,
-                                                                    ),
-                                                                    style: tr.font(
-                                                                      fontSize: 10.0,
-                                                                      fontWeight: FontWeight.w500,
-                                                                      color: const Color(0xFF8B53FE),
-                                                                      height: 22.0 / 10.0,
-                                                                      letterSpacing: 0.0,
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-
-                                                          // reviews and status layout:
-                                                          // width: 177; height: 10; gap: 8px;
-                                                          SizedBox(
-                                                            width: 177.0,
-                                                            child: Row(
-                                                              crossAxisAlignment: CrossAxisAlignment.center,
-                                                              children: [
-                                                                // reviews layout: width: 57; height: 10; gap: 4px;
-                                                                SizedBox(
-                                                                  width: 57.0,
-                                                                  child: Row(
-                                                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                                                    children: [
-                                                                      // star branding: width: 10; height: 10; border-radius: 0.4px; background: #07AF2C;
-                                                                      const Icon(
-                                                                        Icons.star_rounded,
-                                                                        size: 10.0,
-                                                                        color: Color(0xFF8B53FE),
-                                                                      ),
-                                                                      const SizedBox(width: 4.0), // gap: 4px;
-                                                                      // Real provider rating & review count
-                                                                      Text.rich(
+                                                                      children: [
                                                                         TextSpan(
-                                                                          text: _rating.toStringAsFixed(1),
-                                                                          style: tr.font(
-                                                                            fontSize: 10.0,
-                                                                            fontWeight: FontWeight.w500,
-                                                                            color: const Color(0xFF1C2926),
-                                                                            height: 1.0,
-                                                                            letterSpacing: 0.0,
-                                                                          ),
-                                                                          children: [
-                                                                            TextSpan(
-                                                                              text: ' ($_reviews)',
-                                                                              style: tr.font(
-                                                                                fontSize: 10.0,
-                                                                                fontWeight: FontWeight.w400,
-                                                                                color: const Color(0xFF566663),
-                                                                                height: 1.0,
-                                                                                letterSpacing: 0.0,
-                                                                              ),
-                                                                            ),
-                                                                          ],
-                                                                        ),
-                                                                        textHeightBehavior: const TextHeightBehavior(
-                                                                          applyHeightToFirstAscent: false,
-                                                                          applyHeightToLastDescent: false,
-                                                                        ),
-                                                                      ),
-                                                                    ],
-                                                                  ),
-                                                                ),
-                                                                const SizedBox(width: 8.0), // gap: 8px;
-
-                                                                // status layout: width: 112; height: 10; gap: 4px;
-                                                                SizedBox(
-                                                                  width: 112.0,
-                                                                  child: Row(
-                                                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                                                    children: [
-                                                                      // rotating loader layout: width: 10; height: 10; background: #FFAE00;
-                                                                      const _RotatingLoaderWidget(
-                                                                        size: 10.0,
-                                                                        color: Color(0xFFFFAE00),
-                                                                      ),
-                                                                      const SizedBox(width: 4.0), // gap: 4px;
-                                                                      // content: Waiting for response
-                                                                      Expanded(
-                                                                        child: Text(
-                                                                          tr.waitingForResponse,
-                                                                          textHeightBehavior: const TextHeightBehavior(
-                                                                            applyHeightToFirstAscent: false,
-                                                                            applyHeightToLastDescent: false,
-                                                                          ),
+                                                                          text: ' ($_reviews)',
                                                                           style: tr.font(
                                                                             fontSize: 10.0,
                                                                             fontWeight: FontWeight.w400,
-                                                                            color: const Color(0xFFFFAE00),
+                                                                            color: const Color(0xFF566663),
                                                                             height: 1.0,
-                                                                            letterSpacing: 0.0,
                                                                           ),
-                                                                          maxLines: 1,
-                                                                          overflow: TextOverflow.ellipsis,
                                                                         ),
-                                                                      ),
-                                                                    ],
+                                                                      ],
+                                                                    ),
                                                                   ),
-                                                                ),
-                                                              ],
-                                                            ),
+                                                                ],
+                                                              ),
+                                                              Row(
+                                                                mainAxisSize: MainAxisSize.min,
+                                                                children: [
+                                                                  const _RotatingLoaderWidget(
+                                                                    size: 10.0,
+                                                                    color: Color(0xFFFFAE00),
+                                                                  ),
+                                                                  const SizedBox(width: 4.0),
+                                                                  Text(
+                                                                    _isAccepted
+                                                                        ? tr.providerAccepted
+                                                                        : tr.waitingForResponse,
+                                                                    style: tr.font(
+                                                                      fontSize: 10.0,
+                                                                      fontWeight: FontWeight.w500,
+                                                                      color: _isAccepted
+                                                                          ? const Color(0xFF8B53FE)
+                                                                          : const Color(0xFFFFAE00),
+                                                                      height: 1.1,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ],
                                                           ),
                                                         ],
                                                       ),
@@ -803,6 +966,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                   ],
                                                 ),
                                               ),
+                                              const SizedBox(width: 8.0),
                                               // right side icons layout:
                                               // width: 84; height: 36; angle: 0 deg; opacity: 1; gap: 12px;
                                               SizedBox(
@@ -1588,20 +1752,21 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                             ),
                                                           ),
 
-                                                          // content: Just now
-                                                          // font-family: Inter; font-weight: 400; font-size: 10px; line-height: 22px; color: #566663;
+                                                          // Live ticking Request Sent timer (mm:ss)
                                                           Text(
-                                                            tr.justNow,
+                                                            _formatElapsedRequestTimer(),
                                                             textHeightBehavior: const TextHeightBehavior(
                                                               applyHeightToFirstAscent: false,
                                                               applyHeightToLastDescent: false,
                                                             ),
                                                             style: tr.font(
-                                                              fontSize: 10.0,
-                                                              fontWeight: FontWeight.w400,
-                                                              color: const Color(0xFF566663),
+                                                              fontSize: 11.0,
+                                                              fontWeight: FontWeight.w600,
+                                                              color: const Color(0xFF8B53FE),
                                                               height: 1.0,
                                                               letterSpacing: 0.0,
+                                                            ).copyWith(
+                                                              fontFeatures: const [FontFeature.tabularFigures()],
                                                             ),
                                                           ),
                                                         ],

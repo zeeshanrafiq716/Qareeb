@@ -1,15 +1,19 @@
+import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
-import 'widgets/top_down_car_widget.dart';
+import '../../../providers/backend_provider.dart';
+import '../../../providers/notifications_provider.dart';
+import '../../../services/task_service.dart';
+import '../../home/presentation/widgets/notification_popup_card.dart';
 import 'widgets/real_map_background_widget.dart';
 
 /// Screen displayed automatically when provider accepts the request.
-/// Integrates the exact same header and map layer as SendRequestScreen.
+/// Integrates live backend status sync & real provider GPS tracking.
 class LiveTrackingScreen extends ConsumerStatefulWidget {
+  final String? requestId;
   final String serviceCategory;
   final String providerName;
   final String? vehicleName;
@@ -21,6 +25,7 @@ class LiveTrackingScreen extends ConsumerStatefulWidget {
 
   const LiveTrackingScreen({
     super.key,
+    this.requestId,
     this.serviceCategory = 'Service',
     this.providerName = 'Provider',
     this.vehicleName,
@@ -39,19 +44,110 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
     with SingleTickerProviderStateMixin {
   AppTranslations get tr => ref.read(translationsProvider);
   late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
+  Timer? _statusPollTimer;
+  double? _liveProviderLat;
+  double? _liveProviderLng;
+  String _liveStatus = 'active';
+
   @override
   void initState() {
     super.initState();
+    _liveProviderLat = widget.providerLatitude;
+    _liveProviderLng = widget.providerLongitude;
+    _liveStatus = TaskService.instance.activeTask?.status ?? 'active';
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
 
-    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.15).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pollStatus());
+    _statusPollTimer = Timer.periodic(const Duration(seconds: 3), (_) => _pollStatus());
+  }
 
+  Future<void> _pollStatus() async {
+    if (!mounted) return;
+    final reqId = widget.requestId ??
+        TaskService.extractBackendUuid(TaskService.instance.activeTask?.id);
+    if (reqId == null || reqId.isEmpty) return;
+
+    final data = await ref.read(backendServiceProvider).getCustomerRequestStatus(reqId);
+    if (!mounted || data == null) return;
+
+    final status = (data['status']?.toString() ?? _liveStatus).toLowerCase();
+    final step = (data['step'] is num)
+        ? (data['step'] as num).toInt()
+        : int.tryParse(data['step']?.toString() ?? '') ?? 1;
+    final pLat = (data['providerLatitude'] as num?)?.toDouble();
+    final pLng = (data['providerLongitude'] as num?)?.toDouble();
+
+    final prevStatus = _liveStatus;
+    if (mounted) {
+      setState(() {
+        _liveStatus = status;
+        if (pLat != null && pLng != null && (pLat.abs() > 0.001 || pLng.abs() > 0.001)) {
+          _liveProviderLat = pLat;
+          _liveProviderLng = pLng;
+        }
+      });
+    }
+
+    if (status != prevStatus) {
+      String badgeEn = 'Request Update';
+      String badgeAr = 'تحديث الطلب';
+      String titleEn = '${widget.providerName} updated your request';
+      String titleAr = 'قام ${widget.providerName} بتحديث طلبك';
+      if (status == 'arrived') {
+        badgeEn = 'Provider Arrived';
+        badgeAr = 'وصل المزود';
+        titleEn = '${widget.providerName} has arrived';
+        titleAr = 'وصل ${widget.providerName} إلى موقعك';
+      } else if (status == 'in_progress') {
+        badgeEn = 'In Progress';
+        badgeAr = 'جاري التنفيذ';
+        titleEn = '${widget.serviceCategory} is now in progress';
+        titleAr = 'بدأ تنفيذ ${widget.serviceCategory}';
+      } else if (status == 'completed') {
+        badgeEn = 'Completed';
+        badgeAr = 'مكتمل';
+        titleEn = '${widget.serviceCategory} completed';
+        titleAr = 'تمت الخدمة بنجاح';
+      } else if (status == 'cancelled') {
+        badgeEn = 'Request Cancelled';
+        badgeAr = 'تم إلغاء الطلب';
+        titleEn = '${widget.providerName} cancelled the request';
+        titleAr = 'ألغى ${widget.providerName} الطلب';
+      }
+      HapticFeedback.heavyImpact();
+      ref.read(notificationsProvider.notifier).setCustomerNotification(
+            AppNotificationItem(
+              id: '${reqId}_$status',
+              badgeTextEn: badgeEn,
+              badgeTextAr: badgeAr,
+              titleEn: titleEn,
+              titleAr: titleAr,
+              locationEn: widget.serviceCategory,
+              locationAr: widget.serviceCategory,
+              distanceEn: '',
+              distanceAr: '',
+              timeEn: 'Just now',
+              timeAr: 'الآن',
+              createdAt: DateTime.now().toUtc(),
+              imageAsset: widget.photoUrl,
+            ),
+            showCard: true,
+            autoHideDuration: const Duration(seconds: 4),
+          );
+    }
+
+    if (status == 'completed') {
+      _statusPollTimer?.cancel();
+      await TaskService.instance.completeTask();
+    } else if (status == 'cancelled') {
+      _statusPollTimer?.cancel();
+      await TaskService.instance.cancelTask();
+    } else {
+      await TaskService.instance.updateTaskStatus(status: status, step: step);
+    }
   }
 
   @override
@@ -62,6 +158,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
 
   @override
   void dispose() {
+    _statusPollTimer?.cancel();
     _pulseController.stop();
     _pulseController.dispose();
     super.dispose();
@@ -112,9 +209,11 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                       child: RealMapBackgroundWidget(
                         enableDrag: true,
                         zoom: 15.0,
-                        providerLatitude: widget.providerLatitude,
-                        providerLongitude: widget.providerLongitude,
-                        trackingStep: MapTrackingStep.onTheWay,
+                        providerLatitude: _liveProviderLat ?? widget.providerLatitude,
+                        providerLongitude: _liveProviderLng ?? widget.providerLongitude,
+                        trackingStep: _liveStatus == 'arrived'
+                            ? MapTrackingStep.arrived
+                            : MapTrackingStep.onTheWay,
                         driverName: widget.providerName,
                         serviceCategory: widget.serviceCategory,
                         vehicleName: widget.vehicleName ?? widget.serviceCategory,
@@ -242,7 +341,34 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                               ),
                             ),
 
-                  // 8. Main Card Widget (Live Tracking Card):
+                  // 8. Customer Live Notification Banner Overlay (shows for 4s when provider accepts/updates)
+                  Builder(
+                    builder: (context) {
+                      final notifState = ref.watch(notificationsProvider);
+                      final n = notifState.customerNotification;
+                      if (!notifState.isCustomerCardVisible || n == null) {
+                        return const SizedBox.shrink();
+                      }
+                      return Positioned(
+                        top: math.max(92.0, mediaQuery.padding.top + 52.0),
+                        left: 16.0,
+                        right: 16.0,
+                        child: NotificationPopupCard(
+                          badgeText: tr.isArabic ? n.badgeTextAr : n.badgeTextEn,
+                          title: tr.isArabic ? n.titleAr : n.titleEn,
+                          location: tr.isArabic ? n.locationAr : n.locationEn,
+                          distance: tr.isArabic ? n.distanceAr : n.distanceEn,
+                          time: tr.isArabic ? n.timeAr : n.timeEn,
+                          createdAt: n.createdAt,
+                          imageAsset: n.imageAsset,
+                          onTap: () => ref.read(notificationsProvider.notifier).hideCustomerCard(),
+                          onDismiss: () => ref.read(notificationsProvider.notifier).hideCustomerCard(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  // 9. Main Card Widget (Live Tracking Card):
                   Positioned(
                     bottom: 0.0,
                     left: 0.0,

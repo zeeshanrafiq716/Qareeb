@@ -22,6 +22,7 @@ import {
   markProviderNotificationsRead,
   registerProviderDeviceToken,
   removeProviderDeviceToken,
+  updateProviderRequestStatus,
 } from "../notifications.service.js";
 import {
   checkDocumentExpiry,
@@ -168,6 +169,19 @@ providerRoutes.post(
     ok(res, await markProviderNotificationsRead(req.provider.id, { ids }));
   }),
 );
+
+const handleUpdateRequestStatus = asyncHandler(async (req, res) => {
+  ok(
+    res,
+    await updateProviderRequestStatus(req.provider.id, req.params.requestId, {
+      status: req.body?.status,
+      step: req.body?.step,
+    }),
+  );
+});
+
+providerRoutes.patch("/me/requests/:requestId/status", requireProvider, handleUpdateRequestStatus);
+providerRoutes.put("/me/requests/:requestId/status", requireProvider, handleUpdateRequestStatus);
 
 providerRoutes.put(
   "/me/profile",

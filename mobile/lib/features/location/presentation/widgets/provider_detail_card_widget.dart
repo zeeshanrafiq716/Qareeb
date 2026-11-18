@@ -239,6 +239,12 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
     required double destLng,
   }) async {
     final tr = ref.read(translationsProvider);
+    final straightM = ref.read(locationServiceProvider).calculateDistanceKm(
+          originLat,
+          originLng,
+          destLat,
+          destLng,
+        ) * 1000.0;
     final route = await ref.read(googleMapsServiceProvider).computeRoute(
           originLat: originLat,
           originLng: originLng,
@@ -246,6 +252,8 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
           destLng: destLng,
         );
     if (!mounted || route.isFallback) return;
+    // Ignore anomalous road-snap detours that inflate short distances > 3.5x
+    if (straightM > 0 && route.distanceMeters > straightM * 3.5) return;
     setState(() {
       if (route.distanceMeters >= 0) {
         _liveDistance = _formatDistanceMeters(route.distanceMeters.toDouble(), tr.isArabic);
@@ -340,6 +348,16 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
     final destLat = _providerLat;
     final destLng = _providerLng;
     if (destLat == null || destLng == null) return;
+
+    // For short distances (< 300 m), keep exact GPS distance so Google Routes road-snapping
+    // does not inflate nearby distances (e.g. turning 5 m into a 1.2 km U-turn loop).
+    final straightMeters = ref.read(locationServiceProvider).calculateDistanceKm(
+          loc.latitude,
+          loc.longitude,
+          destLat,
+          destLng,
+        ) * 1000.0;
+    if (straightMeters < 300.0) return;
 
     await _fetchRealDriveEta(
       originLat: loc.latitude,

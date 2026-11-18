@@ -6,6 +6,15 @@ import { env } from "../config/env.js";
  * Same providerId → same offset until salt rotates (daily).
  */
 export function approximateLocation(latitude, longitude, providerId) {
+  const maskRadius = Number(env.PRIVACY_MASK_RADIUS_METERS ?? 0);
+  if (!Number.isFinite(maskRadius) || maskRadius <= 0) {
+    return {
+      latitude: Number(Number(latitude).toFixed(7)),
+      longitude: Number(Number(longitude).toFixed(7)),
+      accuracyRadiusMeters: 0,
+    };
+  }
+
   const day = new Date().toISOString().slice(0, 10);
   const hash = crypto
     .createHash("sha256")
@@ -13,7 +22,7 @@ export function approximateLocation(latitude, longitude, providerId) {
     .digest();
 
   const angle = (hash.readUInt32BE(0) / 0xffffffff) * 2 * Math.PI;
-  const dist = (hash.readUInt32BE(4) / 0xffffffff) * env.PRIVACY_MASK_RADIUS_METERS;
+  const dist = (hash.readUInt32BE(4) / 0xffffffff) * maskRadius;
 
   const latRad = (latitude * Math.PI) / 180;
   const dLat = (dist * Math.cos(angle)) / 111320;
@@ -22,7 +31,7 @@ export function approximateLocation(latitude, longitude, providerId) {
   return {
     latitude: Number((latitude + dLat).toFixed(6)),
     longitude: Number((longitude + dLon).toFixed(6)),
-    accuracyRadiusMeters: env.PRIVACY_MASK_RADIUS_METERS,
+    accuracyRadiusMeters: maskRadius,
   };
 }
 
