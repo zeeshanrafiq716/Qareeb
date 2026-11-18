@@ -15,22 +15,22 @@ function notificationCopy(eventType) {
     case "call_click":
       return {
         title: "Incoming call",
-        body: "A customer tapped Call on your Qareeb profile.",
+        body: "A customer tapped Call on your Zesho profile.",
       };
     case "whatsapp_click":
       return {
         title: "WhatsApp contact",
-        body: "A customer opened WhatsApp to reach you on Qareeb.",
+        body: "A customer opened WhatsApp to reach you on Zesho.",
       };
     case "share_location_click":
       return {
         title: "Location shared",
-        body: "A customer is sharing their location with you on Qareeb.",
+        body: "A customer is sharing their location with you on Zesho.",
       };
     case "send_request_click":
       return {
         title: "New service request",
-        body: "A customer sent you a service request on Qareeb.",
+        body: "A customer sent you a service request on Zesho.",
       };
     default:
       return { title: "Customer activity", body: "New customer activity on your profile." };

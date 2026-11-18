@@ -198,14 +198,29 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
   Widget build(BuildContext context) {
     final tr = ref.watch(translationsProvider);
     final userLocAsync = ref.watch(userLocationProvider);
-    final raw = userLocAsync.value;
+    final streamRaw = userLocAsync.value;
+    final raw = (streamRaw != null && streamRaw.hasValidDeviceGps)
+        ? streamRaw
+        : LocationService.lastKnownValidLocation;
     final userLoc =
         (raw != null && raw.hasValidDeviceGps) ? raw : UserLocation.defaultLocation;
 
-    final double centerLat =
-        _mapCenterLat ?? widget.latitude ?? userLoc.latitude;
-    final double centerLng =
-        _mapCenterLng ?? widget.longitude ?? userLoc.longitude;
+    final bool widgetHasValidCoords = widget.latitude != null &&
+        widget.longitude != null &&
+        !(widget.latitude == 0.0 && widget.longitude == 0.0);
+
+    final double centerLat = _mapCenterLat ??
+        (widgetHasValidCoords
+            ? widget.latitude!
+            : (userLoc.hasValidDeviceGps
+                ? userLoc.latitude
+                : UserLocation.fallbackMapLat));
+    final double centerLng = _mapCenterLng ??
+        (widgetHasValidCoords
+            ? widget.longitude!
+            : (userLoc.hasValidDeviceGps
+                ? userLoc.longitude
+                : UserLocation.fallbackMapLng));
 
     final double activeZoom = currentZoom;
     final double baseCenterPxX =

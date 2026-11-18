@@ -126,48 +126,69 @@ class _ProviderLocationPermissionScreenState
             }
             return;
           }
+          var permission = await _locationService.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await _locationService.requestPermission();
+          }
+          if (permission == LocationPermission.deniedForever) {
+            if (mounted) {
+              setState(() {
+                _isLocating = false;
+                _statusMessage = null;
+              });
+              _waitingForLocationSettings = true;
+              await _locationService.openAppSettings();
+            }
+            return;
+          }
+          if (permission == LocationPermission.denied) {
+            if (mounted) {
+              setState(() {
+                _isLocating = false;
+                _statusMessage = null;
+              });
+            }
+            return;
+          }
         } catch (_) {}
       }
 
-      UserLocation detectedLocation;
+      UserLocation? detectedLocation;
       try {
         detectedLocation = await _locationService
-            .acquireDeviceLocation(timeout: const Duration(seconds: 25));
+            .acquireDeviceLocation(timeout: const Duration(seconds: 6));
+      } on LocationServiceDisabledException {
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage = null;
+          });
+          _showMobileLocationSettingsDialog();
+        }
+        return;
       } catch (locErr) {
-        debugPrint('acquireDeviceLocation error: $locErr');
-        if (mounted) {
-          setState(() {
-            _isLocating = false;
-            _statusMessage = null;
-          });
-          _showMobileLocationSettingsDialog();
-        }
-        return;
+        debugPrint('acquireDeviceLocation fallback: $locErr');
+        detectedLocation = await _locationService.getFastLastKnownLocation();
       }
 
-      if (!detectedLocation.hasValidDeviceGps) {
-        if (mounted) {
-          setState(() {
-            _isLocating = false;
-            _statusMessage = null;
-          });
-          _showMobileLocationSettingsDialog();
-        }
-        return;
-      }
-
-      // 4. Persist real coordinates in ProviderRegistrationStore
+      // 4. Persist coordinates (if resolved) and complete onboarding without blocking when GPS is ON
       ProviderRegistrationStore.instance.update(
         (data) => data.copyWith(
-          latitude: detectedLocation.latitude,
-          longitude: detectedLocation.longitude,
+          latitude: (detectedLocation != null && detectedLocation.hasValidDeviceGps)
+              ? detectedLocation.latitude
+              : data.latitude,
+          longitude: (detectedLocation != null && detectedLocation.hasValidDeviceGps)
+              ? detectedLocation.longitude
+              : data.longitude,
           status: 'PENDING_VERIFICATION',
           isOnboardingCompleted: true,
         ),
       );
 
-      // 5. Update backend location synchronously so Admin panel immediately has real location
-      await _syncLocationToBackend(detectedLocation);
+      // 5. Update backend location synchronously if resolved
+      if (detectedLocation != null && detectedLocation.hasValidDeviceGps) {
+        await _syncLocationToBackend(detectedLocation);
+      }
 
       // 6. Complete onboarding on backend to transition status to pending_verification
       try {

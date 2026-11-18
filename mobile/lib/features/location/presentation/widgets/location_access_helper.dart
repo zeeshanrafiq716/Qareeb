@@ -18,10 +18,12 @@ class LocationAccessHelper {
   LocationAccessHelper._();
 
   static Future<LocationAccessIssue> diagnose(LocationService loc) async {
-    if (!kIsWeb) {
-      final enabled = await loc.isLocationServiceEnabled();
-      if (!enabled) return LocationAccessIssue.serviceDisabled;
-    }
+    // Browser geolocation uses its own permission prompt (not Geolocator state).
+    if (kIsWeb) return LocationAccessIssue.unavailable;
+
+    final enabled = await loc.isLocationServiceEnabled();
+    if (!enabled) return LocationAccessIssue.serviceDisabled;
+
     final permission = await loc.checkPermission();
     if (permission == LocationPermission.deniedForever) {
       return LocationAccessIssue.permissionDeniedForever;
@@ -240,6 +242,20 @@ class LocationAccessHelper {
       ref.invalidate(userLocationProvider);
       if (cached != null && cached.hasValidDeviceGps) {
         return cached;
+      }
+      if (kIsWeb && context.mounted) {
+        final acted = await showEnableLocationDialog(
+          context,
+          ref,
+          issue: LocationAccessIssue.permissionDenied,
+          serviceName: serviceName,
+        );
+        if (!acted || !context.mounted) return null;
+        ref.invalidate(userLocationProvider);
+        try {
+          final after = await loc.traceExactGps();
+          if (after.hasValidDeviceGps) return after;
+        } catch (_) {}
       }
       return null;
     }

@@ -86,7 +86,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
     final loc = ref.read(userLocationProvider).value;
     final locationLabel = loc != null
         ? 'https://maps.google.com/?q=${loc.latitude},${loc.longitude}'
-        : 'Shared via Qareeb';
+        : 'Shared via Zesho';
     await TaskService.instance.createCustomerRequest(
       providerName: widget.providerName,
       serviceCategory: widget.serviceCategory,

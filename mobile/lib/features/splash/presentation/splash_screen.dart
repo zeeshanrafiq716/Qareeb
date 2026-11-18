@@ -60,30 +60,36 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Future<void> _checkModeAndScheduleNavigation() async {
     if (_navigationDone) return;
 
-    final mode = await ProviderRegistrationStore.instance.getActiveAppMode();
-    if (!mounted || _navigationDone) return;
+    try {
+      final mode = await ProviderRegistrationStore.instance.getActiveAppMode();
+      if (!mounted || _navigationDone) return;
 
-    if (mode == 'provider') {
-      _goTo(const ProviderSplashScreen());
-      return;
-    }
+      if (mode == 'provider') {
+        _goTo(const ProviderSplashScreen());
+        return;
+      }
 
-    final isSignedUp = await CustomerAuthStore.instance.isSignedUp();
-    if (!mounted || _navigationDone) return;
+      final isSignedUp = await CustomerAuthStore.instance.isSignedUp();
+      if (!mounted || _navigationDone) return;
 
-    if (isSignedUp) {
-      final prefs = await SharedPreferences.getInstance();
-      final biometricEnabled = prefs.getBool('customer_biometric_login') ?? false;
+      if (isSignedUp) {
+        final prefs = await SharedPreferences.getInstance();
+        final biometricEnabled = prefs.getBool('customer_biometric_login') ?? false;
 
-      if (biometricEnabled) {
-        _navTimer = Timer(const Duration(milliseconds: 1400), () {
-          unawaited(_runBiometricGate());
-        });
+        if (biometricEnabled) {
+          _navTimer = Timer(const Duration(milliseconds: 1400), () {
+            unawaited(_runBiometricGate());
+          });
+        } else {
+          _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToHome);
+        }
       } else {
         _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToHome);
       }
-    } else {
-      _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToHome);
+    } catch (_) {
+      if (mounted && !_navigationDone) {
+        _navTimer = Timer(const Duration(milliseconds: 1800), _navigateToHome);
+      }
     }
   }
 
@@ -95,8 +101,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       final authenticated = await BiometricHelper.authenticate(
         context: context,
         localizedReason: tr.isArabic
-            ? 'يرجى تأكيد الهوية بالبصمة لفتح تطبيق قريب'
-            : 'Authenticate with Face ID or fingerprint to unlock Qareeb',
+            ? 'يرجى تأكيد الهوية بالبصمة لفتح تطبيق زيشو'
+            : 'Authenticate with Face ID or fingerprint to unlock Zesho',
       ).timeout(
         const Duration(seconds: 45),
         onTimeout: () => false,

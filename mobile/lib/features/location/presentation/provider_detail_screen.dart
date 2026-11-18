@@ -904,7 +904,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                           overflow: TextOverflow.ellipsis,
                                                         ),
                                                         Text(
-                                                          tr.isArabic ? 'قريب' : 'Qareeb',
+                                                          tr.isArabic ? 'زيشو' : 'Zesho',
                                                           style: tr.font(
                                                             fontSize: 10.0,
                                                             fontWeight: FontWeight.w400,

@@ -227,8 +227,8 @@ class _CustomerFeedbackSupportScreenState
     HapticFeedback.mediumImpact();
     final digitsOnly = phone.replaceAll(RegExp(r'[^0-9]'), '');
     final defaultMessage = isArabic
-        ? Uri.encodeComponent('مرحباً، أحتاج مساعدة بخصوص تطبيق قريب')
-        : Uri.encodeComponent('Hello, I need assistance with Qareeb app');
+        ? Uri.encodeComponent('مرحباً، أحتاج مساعدة بخصوص تطبيق زيشو')
+        : Uri.encodeComponent('Hello, I need assistance with Zesho app');
 
     final Uri nativeWhatsAppUri = Uri.parse('whatsapp://send?phone=$digitsOnly&text=$defaultMessage');
     final Uri webWhatsAppUri = Uri.parse('https://wa.me/$digitsOnly?text=$defaultMessage');
@@ -273,7 +273,7 @@ class _CustomerFeedbackSupportScreenState
 
   Future<void> _launchEmail(BuildContext context, String email, bool isArabic, {String? subject, String? body}) async {
     HapticFeedback.mediumImpact();
-    final String encodedSubject = Uri.encodeComponent(subject ?? (isArabic ? 'استفسار ودعم عملاء قريب' : 'Qareeb Customer Support Inquiry'));
+    final String encodedSubject = Uri.encodeComponent(subject ?? (isArabic ? 'استفسار ودعم عملاء زيشو' : 'Zesho Customer Support Inquiry'));
     final String encodedBody = body != null ? Uri.encodeComponent(body) : '';
     final Uri emailUri = Uri.parse('mailto:$email?subject=$encodedSubject&body=$encodedBody');
 
@@ -355,7 +355,7 @@ class _CustomerFeedbackSupportScreenState
     }
 
     // 2. Prepare & open email report to zeshoapp@gmail.com
-    final String emailSubject = Uri.encodeComponent('[Qareeb Support $ticketNumber] $_selectedCategory');
+    final String emailSubject = Uri.encodeComponent('[Zesho Support $ticketNumber] $_selectedCategory');
     final String emailBody = Uri.encodeComponent(
       'Ticket Number: $ticketNumber\n'
       'Category: $_selectedCategory\n'

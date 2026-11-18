@@ -236,12 +236,12 @@ class TaskService {
 
     final task = ServiceTask(
       id: 'REQ-$notificationId',
-      providerName: 'Qareeb',
+      providerName: 'Zesho',
       serviceCategory: serviceCategory,
       distance: distance?.isNotEmpty == true ? distance! : '—',
       eta: '—',
       customerName: customerName ?? 'Customer',
-      customerLocation: customerLocation ?? 'Shared via Qareeb',
+      customerLocation: customerLocation ?? 'Shared via Zesho',
       status: 'new',
       step: 0,
       dateTime: formattedTime,

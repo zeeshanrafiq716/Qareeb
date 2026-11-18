@@ -35,6 +35,10 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // Disable R8 Java shrinking/minification so release APK builds complete fast on 8GB RAM machines.
+            // Flutter Dart code is still fully AOT-compiled and tree-shaken in release mode.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../core/utils/contact_launcher.dart';
 import '../../../providers/backend_provider.dart';
+import '../../../services/location_service.dart';
 import 'widgets/real_map_background_widget.dart';
 
 /// Screen displayed when user clicks 'Send My Location' on the Provider Detail screen.
@@ -32,11 +33,19 @@ class SendLocationScreen extends ConsumerStatefulWidget {
 }
 
 class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
-  int _selectedShareIndex = 0;
+  int? _selectedShareIndex;
   bool _isCardExpanded = true;
   String? _resolvedPhone;
 
   AppTranslations get tr => ref.read(translationsProvider);
+
+  UserLocation? get _currentLocation {
+    final live = ref.read(userLocationProvider).value;
+    if (live != null && live.hasValidDeviceGps) return live;
+    final cached = LocationService.lastKnownValidLocation;
+    if (cached != null && cached.hasValidDeviceGps) return cached;
+    return null;
+  }
 
   @override
   void initState() {
@@ -56,7 +65,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
   Future<void> _hydrateProviderPhone() async {
     final id = widget.providerPublicId;
     if (id == null || id.isEmpty) return;
-    final loc = ref.read(userLocationProvider).value;
+    final loc = _currentLocation;
     final profile = await ref.read(backendServiceProvider).getPublicProviderProfile(
           id,
           latitude: loc?.latitude,
@@ -76,15 +85,15 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
   }
 
   String? _mapsShareUrl() {
-    final loc = ref.read(userLocationProvider).value;
+    final loc = _currentLocation;
     if (loc == null) return null;
-    return 'https://maps.google.com/?q=${loc.latitude},${loc.longitude}';
+    return 'https://maps.google.com/?q=${loc.latitude.toStringAsFixed(6)},${loc.longitude.toStringAsFixed(6)}';
   }
 
   void _trackShareLocation() {
     final id = widget.providerPublicId;
     if (id == null || id.isEmpty) return;
-    final loc = ref.read(userLocationProvider).value;
+    final loc = _currentLocation;
     ref.read(backendServiceProvider).trackCustomerEvent(
           event: 'share_location_click',
           providerPublicId: id,
@@ -105,7 +114,7 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
   }
 
   Future<void> _onShareWhatsApp() async {
-    final loc = ref.read(userLocationProvider).value;
+    final loc = _currentLocation;
     if (loc == null) {
       _toast(tr.isArabic ? 'الموقع غير متاح حالياً' : 'Your location is not available yet', error: true);
       return;
@@ -128,41 +137,55 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
       providerName: widget.providerName,
       isArabic: tr.isArabic,
     );
-    if (!ok) {
+    if (!mounted) return;
+    if (ok) {
+      final String provider =
+          widget.providerName.isNotEmpty ? widget.providerName : 'Ahmad Transport';
+      _toast(tr.locationSentSuccess(tr.formatProviderName(provider)));
+    } else {
       _toast(tr.isArabic ? 'تعذر فتح واتساب' : 'Could not open WhatsApp', error: true);
     }
   }
 
   Future<void> _onCopyShareLink() async {
+    final loc = _currentLocation;
     final url = _mapsShareUrl();
-    if (url == null) {
+    if (loc == null || url == null) {
       _toast(tr.isArabic ? 'الموقع غير متاح حالياً' : 'Your location is not available yet', error: true);
       return;
     }
-    _trackShareLocation();
-    await Clipboard.setData(ClipboardData(text: url));
-    if (!mounted) return;
-    _toast(tr.linkCopied);
-  }
 
-  Future<void> _onShareInstagram() async {
-    final url = _mapsShareUrl();
-    if (url == null) {
-      _toast(tr.isArabic ? 'الموقع غير متاح حالياً' : 'Your location is not available yet', error: true);
-      return;
-    }
+    // 1. Copy customer's exact live GPS Google Maps link to clipboard
+    await Clipboard.setData(ClipboardData(text: url));
     _trackShareLocation();
-    final caption = tr.isArabic
-        ? 'موقعي عبر قريب: $url'
-        : 'My Qareeb location: $url';
-    await Clipboard.setData(ClipboardData(text: caption));
-    final opened = await ContactLauncher.openInstagramDirect();
-    if (!mounted) return;
-    if (opened) {
-      _toast(tr.isArabic ? 'تم نسخ الموقع — الصقه في رسالة إنستغرام' : 'Location copied — paste it in Instagram DM');
-    } else {
-      _toast(tr.isArabic ? 'تم نسخ رابط الموقع' : 'Location link copied to clipboard');
+
+    // 2. Also send the copied exact location link through WhatsApp
+    var phone = _resolvedPhone;
+    if (phone == null) {
+      await _hydrateProviderPhone();
+      phone = _resolvedPhone;
     }
+    if (!mounted) return;
+
+    bool sentViaWhatsApp = false;
+    if (phone != null) {
+      sentViaWhatsApp = await ContactLauncher.shareLocation(
+        phone: phone,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        providerName: widget.providerName,
+        isArabic: tr.isArabic,
+      );
+    }
+
+    if (!mounted) return;
+    _toast(
+      sentViaWhatsApp
+          ? (tr.isArabic
+              ? 'تم نسخ رابط موقعك وإرساله عبر واتساب'
+              : 'Exact location link copied & opening WhatsApp')
+          : tr.linkCopied,
+    );
   }
 
   @override
@@ -720,51 +743,23 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
           // 2nd card layout: Copy Link
           _buildShareCard(
             index: 1,
-            iconWidget: const SizedBox(
+            iconWidget: Container(
               width: 28.0,
               height: 28.0,
-              child: Center(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.22),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
                 child: Icon(
                   Icons.link_rounded,
-                  size: 26.0,
-                  color: Color(0xFF2563EB),
+                  size: 18.0,
+                  color: Colors.white,
                 ),
               ),
             ),
             title: tr.copyLink,
             subtitle: tr.copyToShare,
-          ),
-          const SizedBox(width: 12.0), // gap: 12px;
-
-          // 3rd card layout: Instagram
-          _buildShareCard(
-            index: 2,
-            iconWidget: Container(
-              width: 26.0,
-              height: 26.0,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(7.0),
-                gradient: const LinearGradient(
-                  begin: Alignment.bottomLeft,
-                  end: Alignment.topRight,
-                  colors: [
-                    Color(0xFFFEDA75), // Yellow
-                    Color(0xFFFA7E1E), // Orange
-                    Color(0xFFD62976), // Pink
-                    Color(0xFF962FBF), // Purple
-                    Color(0xFF4F5BD5), // Blue
-                  ],
-                ),
-              ),
-              child: const Center(
-                child: CustomPaint(
-                  size: Size(15.0, 15.0),
-                  painter: _InstagramCameraPainter(),
-                ),
-              ),
-            ),
-            title: tr.instagram,
-            subtitle: tr.shareInDm,
           ),
         ],
       ),
@@ -788,33 +783,33 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
             setState(() {
               _selectedShareIndex = index;
             });
-            if (index == 0) {
-              _onShareWhatsApp();
-            } else if (index == 1) {
-              _onCopyShareLink();
-            } else if (index == 2) {
-              _onShareInstagram();
-            }
           },
           behavior: HitTestBehavior.opaque,
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
             constraints: const BoxConstraints(minHeight: 106.0),
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFF8B53FE) : const Color(0xFF2D2A3D),
+              color: const Color(0xFF8B53FE),
               borderRadius: BorderRadius.circular(12.0),
               border: Border.all(
-                color: isSelected ? const Color(0xFF8B53FE) : Colors.transparent,
-                width: 0.8,
+                color: isSelected ? Colors.black : Colors.transparent,
+                width: 2.2,
               ),
               boxShadow: isSelected
                   ? const [
                       BoxShadow(
-                        color: Color(0x338B53FE),
+                        color: Color(0x33000000),
                         blurRadius: 8.0,
                         offset: Offset(0, 2),
                       ),
                     ]
-                  : null,
+                  : const [
+                      BoxShadow(
+                        color: Color(0x228B53FE),
+                        blurRadius: 6.0,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
             ),
             padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
             child: Column(
@@ -960,10 +955,26 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                       ),
                       const SizedBox(height: 2.0),
 
-                      // content: King Fahd Road, Al Olaya Riyadh, Saudi Arabia
+                      // Real live GPS address (never hardcoded fake sample address)
                       Flexible(
                         child: Text(
-                          tr.sampleAddress,
+                          () {
+                            final loc = _currentLocation;
+                            if (loc != null && loc.hasValidDeviceGps) {
+                              if (loc.address.isNotEmpty &&
+                                  loc.address != 'Device Location is OFF') {
+                                return loc.address;
+                              }
+                              if (loc.cityName.isNotEmpty &&
+                                  loc.cityName != 'Location is OFF') {
+                                return loc.cityName;
+                              }
+                              return loc.coordinatesDisplay;
+                            }
+                            return tr.isArabic
+                                ? 'جارٍ تحديد موقعك الفعلي...'
+                                : 'Detecting your live location...';
+                          }(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textHeightBehavior: const TextHeightBehavior(
@@ -1039,19 +1050,34 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                 // 2nd button branding: Send Location
                 Expanded(
                   child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
+                    cursor: _selectedShareIndex != null
+                        ? SystemMouseCursors.click
+                        : SystemMouseCursors.basic,
                     child: GestureDetector(
                       key: const Key('send_location_submit_button'),
                       onTap: () {
+                        if (_selectedShareIndex == null) {
+                          HapticFeedback.lightImpact();
+                          _toast(
+                            tr.isArabic
+                                ? 'يرجى اختيار وسيلة المشاركة أولاً'
+                                : 'Please select a share option first',
+                            error: true,
+                          );
+                          return;
+                        }
                         HapticFeedback.mediumImpact();
                         _handleSendLocation();
                       },
                       behavior: HitTestBehavior.opaque,
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
                         height: 52.0,
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF8B53FE),
+                          color: _selectedShareIndex != null
+                              ? const Color(0xFF8B53FE)
+                              : const Color(0xFF8B53FE).withValues(alpha: 0.45),
                           borderRadius: BorderRadius.circular(12.0),
                         ),
                         child: Row(
@@ -1092,45 +1118,29 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
               ],
             ),
           ),
+          SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
       ),
     );
   }
 
   Future<void> _handleSendLocation() async {
-    final loc = ref.read(userLocationProvider).value;
-    if (loc == null) {
-      _toast(tr.isArabic ? 'الموقع غير متاح حالياً' : 'Your location is not available yet', error: true);
+    final selected = _selectedShareIndex;
+    if (selected == null) {
+      _toast(
+        tr.isArabic
+            ? 'يرجى اختيار وسيلة المشاركة أولاً'
+            : 'Please select a share option first',
+        error: true,
+      );
       return;
     }
-    var phone = _resolvedPhone;
-    if (phone == null) {
-      await _hydrateProviderPhone();
-      phone = _resolvedPhone;
+
+    if (selected == 0) {
+      await _onShareWhatsApp();
+    } else if (selected == 1) {
+      await _onCopyShareLink();
     }
-    if (!mounted) return;
-
-    _trackShareLocation();
-
-    final String provider =
-        widget.providerName.isNotEmpty ? widget.providerName : 'Ahmad Transport';
-    final sentViaWhatsApp = phone != null &&
-        await ContactLauncher.shareLocation(
-          phone: phone,
-          latitude: loc.latitude,
-          longitude: loc.longitude,
-          providerName: widget.providerName,
-          isArabic: tr.isArabic,
-        );
-
-    if (!mounted) return;
-    _toast(
-      sentViaWhatsApp
-          ? tr.locationSentSuccess(tr.formatProviderName(provider))
-          : (tr.isArabic
-              ? 'تم إرسال إشعار للمزود بالموقع'
-              : 'Provider was notified of your location'),
-    );
   }
 }
 
@@ -1496,47 +1506,6 @@ class _WhatsAppIconPainter extends CustomPainter {
 
     canvas.drawPath(path, paint);
     canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-
-
-/// Official Instagram glyph camera painter:
-class _InstagramCameraPainter extends CustomPainter {
-  const _InstagramCameraPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final strokePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
-      ..strokeCap = StrokeCap.round;
-
-    final fillPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-
-    final w = size.width;
-    final h = size.height;
-
-    // 1. Camera rounded square body
-    final cameraRRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0.5, 0.5, w - 1.0, h - 1.0),
-      const Radius.circular(3.8),
-    );
-    canvas.drawRRect(cameraRRect, strokePaint);
-
-    // 2. Center lens circle
-    final cx = w / 2.0;
-    final cy = h / 2.0;
-    canvas.drawCircle(Offset(cx, cy), 3.0, strokePaint);
-
-    // 3. Small flash dot at top-right
-    canvas.drawCircle(Offset(w - 3.2, 3.2), 0.9, fillPaint);
   }
 
   @override

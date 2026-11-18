@@ -62,11 +62,12 @@ class ContactLauncher {
     String? providerName,
     bool isArabic = false,
   }) {
-    final mapsUrl = 'https://maps.google.com/?q=$latitude,$longitude';
+    final mapsUrl =
+        'https://maps.google.com/?q=${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}';
     final name = providerName?.trim();
     final message = isArabic
-        ? 'مرحباً${name != null && name.isNotEmpty ? ' $name' : ''}، أحتاج خدمتك عبر قريب. موقعي: $mapsUrl'
-        : 'Hi${name != null && name.isNotEmpty ? ' $name' : ''}, I need your service via Qareeb. My location: $mapsUrl';
+        ? 'مرحباً${name != null && name.isNotEmpty ? ' $name' : ''}، أحتاج خدمتك عبر زيشو. موقعي: $mapsUrl'
+        : 'Hi${name != null && name.isNotEmpty ? ' $name' : ''}, I need your service via Zesho. My location: $mapsUrl';
     return whatsApp(phone, message: message);
   }
 
@@ -97,8 +98,8 @@ class ContactLauncher {
     final name = providerName?.trim();
     final cat = category.trim();
     final message = isArabic
-        ? 'مرحباً${name != null && name.isNotEmpty ? ' $name' : ''}، أريد طلب خدمة${cat.isNotEmpty ? ' ($cat)' : ''} عبر قريب.'
-        : 'Hi${name != null && name.isNotEmpty ? ' $name' : ''}, I would like to request${cat.isNotEmpty ? ' $cat' : ' a service'} via Qareeb.';
+        ? 'مرحباً${name != null && name.isNotEmpty ? ' $name' : ''}، أريد طلب خدمة${cat.isNotEmpty ? ' ($cat)' : ''} عبر زيشو.'
+        : 'Hi${name != null && name.isNotEmpty ? ' $name' : ''}, I would like to request${cat.isNotEmpty ? ' $cat' : ' a service'} via Zesho.';
     return whatsApp(phone, message: message);
   }
 }

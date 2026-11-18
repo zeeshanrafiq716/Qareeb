@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
@@ -142,8 +143,8 @@ class _LocationPermissionScreenState
   }
 
   /// Handles the "Allow Location" CTA.
-  /// If location is already ON, seamlessly lands directly on map with NO popup.
-  /// If location is OFF, prompts user to turn ON location in Mobile Settings.
+  /// If location is already ON, proceeds IMMEDIATELY to the map with zero waiting/spinning.
+  /// Shows "Turn On Mobile Location" ONLY when the device GPS switch is genuinely OFF.
   Future<void> _handleAllowLocation() async {
     if (_isLocating) return;
 
@@ -152,13 +153,13 @@ class _LocationPermissionScreenState
 
     setState(() {
       _isLocating = true;
-      _statusMessage = tr.isArabic ? 'جارٍ تحديد الموقع...' : 'Detecting location...';
+      _statusMessage = tr.isArabic ? 'جارٍ التحقق من الموقع...' : 'Checking location...';
     });
 
     HapticFeedback.lightImpact();
 
     try {
-      // 1. Check if location is turned ON on the device
+      // 1. Check if mobile location (GPS) is turned ON on the device
       final bool isServiceEnabled = await locationService.isLocationServiceEnabled();
       if (!isServiceEnabled) {
         if (mounted) {
@@ -171,13 +172,45 @@ class _LocationPermissionScreenState
         return;
       }
 
-      // 2. Location is ON -> Acquire coordinates directly
-      await locationService.acquireDeviceLocation();
+      // 2. Check / request app location permission (fast OS prompt if needed)
+      var permission = await locationService.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await locationService.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage = null;
+          });
+          _waitingForLocationSettings = true;
+          await locationService.openAppSettings();
+        }
+        return;
+      }
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage = null;
+          });
+        }
+        return;
+      }
+
+      // 3. Location is ON & permission granted -> warm up fast cached/live GPS in background
+      //    so the button NEVER spins/blocks for 25s indoors!
+      try {
+        await locationService
+            .getFastLastKnownLocation()
+            .timeout(const Duration(milliseconds: 500));
+      } catch (_) {}
+      unawaited(locationService.getCurrentLocation());
 
       // Persist flag so user is never prompted on this screen again
       await LocationPermissionScreen.markLocationAllowed();
 
-      // Refresh global providers so map starts immediately with real GPS
+      // Refresh global providers so map starts immediately with live GPS stream
       ref.invalidate(userLocationProvider);
       ref.invalidate(nearbyProvidersProvider);
 
@@ -187,7 +220,7 @@ class _LocationPermissionScreenState
           _statusMessage = null;
         });
 
-        // 3. Immediately land on map! (NO POPUP)
+        // 4. Immediately land on map!
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (_) => PickupDeliveryScreen(
@@ -210,7 +243,12 @@ class _LocationPermissionScreenState
           _isLocating = false;
           _statusMessage = null;
         });
-        _showMobileLocationSettingsDialog();
+        // Only show "Turn On Mobile Location" if location service is actually OFF
+        final enabled = await locationService.isLocationServiceEnabled();
+        if (!mounted) return;
+        if (!enabled) {
+          _showMobileLocationSettingsDialog();
+        }
       }
     }
   }

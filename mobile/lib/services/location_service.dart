@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'google_maps_service.dart';
 import 'dart:math' as math;
@@ -63,13 +62,16 @@ class UserLocation {
     isGpsDetected: false,
   );
 
-  /// A locked phone GPS fix is typically well under 50m.
-  /// Network, Wi-Fi, and IP estimates are coarser and are rejected.
+  /// Safe land fallback coordinates for initial map viewport only (never plot 0,0 ocean).
+  static const double fallbackMapLat = 24.7136;
+  static const double fallbackMapLng = 46.6753;
+
+  /// Accept accurate GPS and indoor fused fixes while rejecting coarse IP-level estimates.
   static bool isPreciseGpsFix(double? accuracyMeters) {
     if (accuracyMeters == null || accuracyMeters.isNaN || accuracyMeters <= 0) {
       return false;
     }
-    return accuracyMeters <= 50;
+    return accuracyMeters <= 250;
   }
 
   bool get hasValidDeviceGps =>
@@ -79,8 +81,9 @@ class UserLocation {
 class LocationService {
   final GoogleMapsService _googleMaps;
 
-  static const MethodChannel _androidGps = MethodChannel('com.qareeb.mobile/gps');
-  static const EventChannel _androidGpsStream = EventChannel('com.qareeb.mobile/gps_stream');
+  /// In-memory cache of the most recent valid device location from this session,
+  /// so map screens never flash ocean (0, 0) while streams resubscribe or invalidate.
+  static UserLocation? lastKnownValidLocation;
 
   LocationService([dynamic dio, GoogleMapsService? googleMaps])
       : _googleMaps = googleMaps ?? GoogleMapsService();
@@ -90,11 +93,7 @@ class LocationService {
 
   bool get _isIosNative => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
-  /// Mobile browsers can expose the phone GPS. Desktop browsers only have IP/Wi-Fi.
-  bool get _isMobileWeb =>
-      kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.android ||
-          defaultTargetPlatform == TargetPlatform.iOS);
+  bool get _isWebBrowser => kIsWeb;
 
   Future<bool> isLocationServiceEnabled() async {
     try {
@@ -136,82 +135,114 @@ class LocationService {
     }
   }
 
-  /// Reads one fresh satellite GPS fix.
-  /// Network, Wi-Fi, IP, cached, and mock locations are not used.
+  /// Fast device location lookup using Android Fused Location / iOS CoreLocation.
+  /// Works immediately both indoors and outdoors when device Location is ON.
   Future<UserLocation> acquireDeviceLocation({
-    Duration timeout = const Duration(seconds: 25),
+    Duration timeout = const Duration(seconds: 8),
   }) async {
     if (_isAndroidNative || _isIosNative) {
       final serviceEnabled = await isLocationServiceEnabled();
       if (!serviceEnabled) {
         throw const LocationServiceDisabledException();
       }
-    } else if (!_isMobileWeb) {
-      throw const LocationServiceDisabledException();
+      var permission = await checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        throw const PermissionDeniedException('Location permission denied');
+      }
     }
 
-    try {
-      final permission = await checkPermission();
-      if (permission == LocationPermission.denied) {
-        await requestPermission();
-      }
-    } catch (_) {}
-
-    final UserLocation userLoc;
     if (_isAndroidNative) {
-      userLoc = await _acquireAndroidGps(timeout);
+      return await _acquireAndroidGps(timeout);
     } else if (_isIosNative) {
-      userLoc = await _acquireIosGps(timeout);
-    } else if (_isMobileWeb) {
-      userLoc = await _acquireWebGps(timeout);
+      return await _acquireIosGps(timeout);
+    } else if (_isWebBrowser) {
+      return await _acquireWebGps(timeout);
     } else {
       throw const LocationServiceDisabledException();
     }
+  }
 
-    return userLoc;
+  /// Instant non-blocking lookup of last known non-mocked device position (takes <50ms).
+  Future<UserLocation?> getFastLastKnownLocation() async {
+    if (lastKnownValidLocation != null && lastKnownValidLocation!.hasValidDeviceGps) {
+      return lastKnownValidLocation;
+    }
+    if (!_isAndroidNative && !_isIosNative) return null;
+    try {
+      final pos = await Geolocator.getLastKnownPosition();
+      if (pos != null && _isValidDevicePosition(pos)) {
+        return await _userLocationFromCoords(
+          pos.latitude,
+          pos.longitude,
+          pos.accuracy,
+        );
+      }
+    } catch (_) {}
+    return null;
   }
 
   Future<UserLocation> _acquireAndroidGps(Duration timeout) async {
     try {
-      final raw = await _androidGps.invokeMethod<dynamic>('getGpsFix', {
-        'timeoutMs': timeout.inMilliseconds,
-      });
-      final loc = await _userLocationFromRaw(raw);
-      if (loc == null) {
-        throw const LocationServiceDisabledException();
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: AndroidSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: timeout,
+        ),
+      );
+      if (_isValidDevicePosition(position)) {
+        return await _userLocationFromCoords(
+          position.latitude,
+          position.longitude,
+          position.accuracy,
+        );
       }
-      return loc;
     } on LocationServiceDisabledException {
       rethrow;
-    } catch (_) {
-      throw const LocationServiceDisabledException();
+    } on PermissionDeniedException {
+      rethrow;
+    } catch (_) {}
+
+    // Indoor fallback: use OS last known position if valid & non-mocked
+    final fallback = await getFastLastKnownLocation();
+    if (fallback != null && fallback.hasValidDeviceGps) {
+      return fallback;
     }
+    throw TimeoutException('Unable to get GPS fix within ${timeout.inSeconds}s');
   }
 
   Future<UserLocation> _acquireIosGps(Duration timeout) async {
     try {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: AppleSettings(
-          accuracy: LocationAccuracy.bestForNavigation,
+          accuracy: LocationAccuracy.high,
           activityType: ActivityType.otherNavigation,
           pauseLocationUpdatesAutomatically: false,
           allowBackgroundLocationUpdates: false,
           timeLimit: timeout,
         ),
       );
-      if (!_isLiveGpsPosition(position)) {
-        throw const LocationServiceDisabledException();
+      if (_isValidDevicePosition(position)) {
+        return await _userLocationFromCoords(
+          position.latitude,
+          position.longitude,
+          position.accuracy,
+        );
       }
-      return await _userLocationFromCoords(
-        position.latitude,
-        position.longitude,
-        position.accuracy,
-      );
     } on LocationServiceDisabledException {
       rethrow;
-    } catch (_) {
-      throw const LocationServiceDisabledException();
+    } on PermissionDeniedException {
+      rethrow;
+    } catch (_) {}
+
+    final fallback = await getFastLastKnownLocation();
+    if (fallback != null && fallback.hasValidDeviceGps) {
+      return fallback;
     }
+    throw TimeoutException('Unable to get GPS fix within ${timeout.inSeconds}s');
   }
 
   Future<UserLocation> _acquireWebGps(Duration timeout) async {
@@ -223,42 +254,102 @@ class LocationService {
     return loc;
   }
 
-  bool _isLiveGpsPosition(Position position) {
+  bool _isValidDevicePosition(Position position) {
     if (position.isMocked) return false;
-    if (!UserLocation.isPreciseGpsFix(position.accuracy)) return false;
+    if (position.latitude.isNaN || position.longitude.isNaN) return false;
     if (position.latitude == 0 && position.longitude == 0) return false;
-    final age = DateTime.now().toUtc().difference(position.timestamp.toUtc()).abs();
-    return age <= const Duration(seconds: 20);
+    // Reject coarse cell-tower / network jumps (> 150m accuracy) that produce fake locations & distances
+    if (position.accuracy.isNaN || position.accuracy <= 0 || position.accuracy > 150.0) {
+      return false;
+    }
+    // Anti-teleport guard: if we already have a sharp GPS lock (<= 40m), ignore sudden coarse jumps
+    final prev = lastKnownValidLocation;
+    if (prev != null &&
+        prev.hasValidDeviceGps &&
+        (prev.accuracy ?? 999.0) <= 40.0 &&
+        position.accuracy > 75.0) {
+      final jumpKm = calculateDistanceKm(
+        prev.latitude,
+        prev.longitude,
+        position.latitude,
+        position.longitude,
+      );
+      if (jumpKm > 0.3) return false;
+    }
+    return true;
   }
 
-  /// Emits satellite GPS updates only. The off sentinel is used when no fix arrives.
+  /// Emits fast initial fix followed by self-healing live GPS updates.
+  /// Automatically reconnects if Android/iOS drops the location stream after some time.
   Stream<UserLocation> watchLocation() async* {
-    final iterator = StreamIterator<UserLocation>(_liveGpsFixes());
+    // Deliver instant last-known fix if available so UI/map never stalls
     var deliveredGps = false;
-    try {
-      final pending = iterator.moveNext();
-      bool firstArrived;
-      try {
-        firstArrived = await pending.timeout(const Duration(seconds: 25));
-      } on TimeoutException {
-        yield UserLocation.defaultLocation;
-        firstArrived = await pending;
-      }
-      if (!firstArrived) {
-        yield UserLocation.defaultLocation;
-        return;
-      }
+    final fast = await getFastLastKnownLocation();
+    if (fast != null && fast.hasValidDeviceGps) {
       deliveredGps = true;
-      yield iterator.current;
-      while (await iterator.moveNext()) {
-        yield iterator.current;
+      yield fast;
+    }
+
+    while (true) {
+      if (_isAndroidNative || _isIosNative) {
+        final enabled = await isLocationServiceEnabled();
+        if (!enabled) {
+          yield UserLocation.defaultLocation;
+          await Future<void>.delayed(const Duration(seconds: 3));
+          continue;
+        }
+        final perm = await checkPermission();
+        if (perm == LocationPermission.denied ||
+            perm == LocationPermission.deniedForever) {
+          yield UserLocation.defaultLocation;
+          await Future<void>.delayed(const Duration(seconds: 3));
+          continue;
+        }
       }
-    } catch (_) {
-      if (!deliveredGps) {
-        yield UserLocation.defaultLocation;
+
+      final iterator = StreamIterator<UserLocation>(_liveGpsFixes());
+      try {
+        final pending = iterator.moveNext();
+        bool firstArrived;
+        try {
+          firstArrived = await pending.timeout(const Duration(seconds: 10));
+        } on TimeoutException {
+          if (!deliveredGps) {
+            final fallback = await getFastLastKnownLocation();
+            if (fallback != null && fallback.hasValidDeviceGps) {
+              deliveredGps = true;
+              yield fallback;
+            } else {
+              yield UserLocation.defaultLocation;
+            }
+          }
+          firstArrived = await pending;
+        }
+        if (firstArrived) {
+          deliveredGps = true;
+          yield iterator.current;
+          while (await iterator.moveNext()) {
+            deliveredGps = true;
+            yield iterator.current;
+          }
+        }
+      } catch (_) {
+        // Stream error or OS hiccup -> keep last valid GPS and reconnect cleanly below
+        if (!deliveredGps) {
+          final fallback = await getFastLastKnownLocation();
+          if (fallback != null && fallback.hasValidDeviceGps) {
+            deliveredGps = true;
+            yield fallback;
+          }
+        }
+      } finally {
+        try {
+          await iterator.cancel();
+        } catch (_) {}
       }
-    } finally {
-      await iterator.cancel();
+
+      // Brief backoff before auto-reconnecting the OS location stream
+      await Future<void>.delayed(const Duration(seconds: 3));
     }
   }
 
@@ -271,28 +362,39 @@ class LocationService {
       yield* _iosGpsFixes();
       return;
     }
-    if (_isMobileWeb) {
+    if (_isWebBrowser) {
       yield* _webGpsFixes();
     }
   }
 
   Stream<UserLocation> _androidGpsFixes() async* {
-    await for (final event in _androidGpsStream.receiveBroadcastStream()) {
-      final loc = await _userLocationFromRaw(event);
-      if (loc != null) yield loc;
+    await for (final position in Geolocator.getPositionStream(
+      locationSettings: AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+        intervalDuration: const Duration(seconds: 3),
+      ),
+    )) {
+      if (!_isValidDevicePosition(position)) continue;
+      yield await _userLocationFromCoords(
+        position.latitude,
+        position.longitude,
+        position.accuracy,
+      );
     }
   }
 
   Stream<UserLocation> _iosGpsFixes() async* {
     await for (final position in Geolocator.getPositionStream(
       locationSettings: AppleSettings(
-        accuracy: LocationAccuracy.bestForNavigation,
+        accuracy: LocationAccuracy.high,
         activityType: ActivityType.otherNavigation,
+        distanceFilter: 5,
         pauseLocationUpdatesAutomatically: false,
         allowBackgroundLocationUpdates: false,
       ),
     )) {
-      if (!_isLiveGpsPosition(position)) continue;
+      if (!_isValidDevicePosition(position)) continue;
       yield await _userLocationFromCoords(
         position.latitude,
         position.longitude,
@@ -319,6 +421,14 @@ class LocationService {
     }
   }
 
+  bool _isAcceptableBrowserAccuracy(double? accuracyMeters) {
+    if (accuracyMeters == null || accuracyMeters.isNaN || accuracyMeters <= 0) {
+      return true;
+    }
+    // Desktop/laptop browsers often report Wi-Fi fixes above 250 m.
+    return accuracyMeters <= 10000;
+  }
+
   Future<UserLocation?> _userLocationFromRaw(dynamic raw) async {
     if (raw is! Map) return null;
     if (raw['isIp'] == true) return null;
@@ -326,9 +436,14 @@ class LocationService {
     final lng = (raw['longitude'] as num?)?.toDouble();
     final accuracy = (raw['accuracy'] as num?)?.toDouble();
     if (lat == null || lng == null) return null;
-    if (!UserLocation.isPreciseGpsFix(accuracy)) return null;
+    final acceptable = kIsWeb
+        ? _isAcceptableBrowserAccuracy(accuracy)
+        : UserLocation.isPreciseGpsFix(accuracy);
+    if (!acceptable) return null;
     if (lat == 0 && lng == 0) return null;
-    return _userLocationFromCoords(lat, lng, accuracy!);
+    final double resolvedAccuracy =
+        (accuracy == null || accuracy.isNaN || accuracy <= 0) ? 65.0 : accuracy;
+    return _userLocationFromCoords(lat, lng, resolvedAccuracy);
   }
 
   Future<UserLocation> _userLocationFromCoords(
@@ -337,18 +452,33 @@ class LocationService {
     double accuracy,
   ) async {
     Map<String, String> geoInfo;
-    try {
-      geoInfo = await _reverseGeocode(lat, lng).timeout(const Duration(seconds: 4));
-    } catch (_) {
-      final coords = '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
+    final prev = lastKnownValidLocation;
+    final bool reusePrevGeo = prev != null &&
+        prev.hasValidDeviceGps &&
+        prev.cityName.isNotEmpty &&
+        prev.cityName != 'Location is OFF' &&
+        !prev.address.startsWith('GPS:') &&
+        calculateDistanceKm(prev.latitude, prev.longitude, lat, lng) < 0.15;
+
+    if (reusePrevGeo) {
       geoInfo = {
-        'city': coords,
-        'address': 'GPS: $coords',
+        'city': prev.cityName,
+        'address': prev.address,
       };
+    } else {
+      try {
+        geoInfo = await _reverseGeocode(lat, lng).timeout(const Duration(seconds: 4));
+      } catch (_) {
+        final coords = '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
+        geoInfo = {
+          'city': prev?.cityName ?? coords,
+          'address': prev?.address ?? 'GPS: $coords',
+        };
+      }
     }
 
     final coords = '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
-    return UserLocation(
+    final resolved = UserLocation(
       latitude: lat,
       longitude: lng,
       cityName: geoInfo['city'] ?? coords,
@@ -356,6 +486,10 @@ class LocationService {
       isGpsDetected: true,
       accuracy: accuracy,
     );
+    if (resolved.hasValidDeviceGps) {
+      lastKnownValidLocation = resolved;
+    }
+    return resolved;
   }
 
   Future<Map<String, String>> _reverseGeocode(double lat, double lng) async {

@@ -599,16 +599,24 @@ class _PremiumSpeechBubbleBadge extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 2.5),
-                    Text(
-                      tr.isArabic
-                          ? '${distanceKm!.toStringAsFixed(1)} كم'
-                          : '${distanceKm!.toStringAsFixed(1)} km',
-                      style: tr.font(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF8B53FE),
-                        height: 1.15,
-                      ),
+                    Builder(
+                      builder: (context) {
+                        final double meters = (distanceKm! * 1000.0).clamp(0.0, 999999.0);
+                        final String distText = meters < 1000.0
+                            ? (tr.isArabic ? '${meters.round()} م' : '${meters.round()} m')
+                            : (tr.isArabic
+                                ? '${distanceKm!.toStringAsFixed(1)} كم'
+                                : '${distanceKm!.toStringAsFixed(1)} km');
+                        return Text(
+                          distText,
+                          style: tr.font(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF8B53FE),
+                            height: 1.15,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

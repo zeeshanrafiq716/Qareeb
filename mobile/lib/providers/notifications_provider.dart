@@ -228,10 +228,14 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
     );
   }
 
-  void setProviderNotification(AppNotificationItem? notif) {
+  void setProviderNotification(
+    AppNotificationItem? notif, {
+    bool showCard = false,
+  }) {
     state = state.copyWith(
       providerNotification: notif,
       hasProviderUnread: notif != null,
+      isProviderCardVisible: showCard && notif != null ? true : state.isProviderCardVisible,
     );
   }
 

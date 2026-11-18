@@ -29,6 +29,7 @@ class AppModeSelectionScreen extends ConsumerStatefulWidget {
 class _AppModeSelectionScreenState extends ConsumerState<AppModeSelectionScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _routeAnimController;
+  bool _isNavigating = false;
 
   @override
   void initState() {
@@ -46,9 +47,16 @@ class _AppModeSelectionScreenState extends ConsumerState<AppModeSelectionScreen>
   }
 
   Future<void> _goCustomer() async {
+    if (_isNavigating) return;
+    _isNavigating = true;
     HapticFeedback.mediumImpact();
-    await ProviderRegistrationStore.instance.setActiveAppMode('customer');
-    if (!mounted) return;
+    try {
+      await ProviderRegistrationStore.instance.setActiveAppMode('customer');
+    } catch (_) {}
+    if (!mounted) {
+      _isNavigating = false;
+      return;
+    }
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const SplashScreen()),
       (route) => false,
@@ -56,9 +64,16 @@ class _AppModeSelectionScreenState extends ConsumerState<AppModeSelectionScreen>
   }
 
   Future<void> _goProvider() async {
+    if (_isNavigating) return;
+    _isNavigating = true;
     HapticFeedback.mediumImpact();
-    await ProviderRegistrationStore.instance.setActiveAppMode('provider');
-    if (!mounted) return;
+    try {
+      await ProviderRegistrationStore.instance.setActiveAppMode('provider');
+    } catch (_) {}
+    if (!mounted) {
+      _isNavigating = false;
+      return;
+    }
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const ProviderSplashScreen()),
       (route) => false,

@@ -236,10 +236,10 @@ class NearbyDriverRoute {
     roadPath = RoadPath(waypoints);
   }
 
-  /// Calculates dynamic live distance in km from user position using Haversine
+  /// Calculates exact real live distance in km from user position using Haversine (unclamped so metres are accurate)
   double liveDistanceKm(MapLatLng carPos, MapLatLng userPos) {
     final dMeters = RoadPath.haversineDistance(carPos, userPos);
-    return double.parse((dMeters / 1000.0).clamp(0.1, 99.0).toStringAsFixed(1));
+    return (dMeters / 1000.0).clamp(0.0, 999.0);
   }
 }
 
@@ -283,6 +283,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
   double _zoom = 13.0; // Natural view framing nearest 5 providers
   double? _centerPixelX;
   double? _centerPixelY;
+  bool _hasCenteredOnRealGps = false;
   double _mapScaleBase = 1.0;
 
   List<NearbyDriverRoute>? _driverRoutes;
@@ -405,10 +406,10 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
       }
       _lastKnownPositions[provId] = newPos;
 
-      // Real distance calculated directly between provider GPS and customer GPS
+      // Real distance calculated directly between provider GPS and customer GPS (exact, unclamped)
       final double realDistMeters = RoadPath.haversineDistance(newPos, userPos);
-      final double distKm = realDistMeters > 0
-          ? double.parse((realDistMeters / 1000.0).toStringAsFixed(1))
+      final double distKm = realDistMeters >= 0
+          ? (realDistMeters / 1000.0)
           : (p.distanceKm > 0 ? p.distanceKm : 0.0);
 
       return NearbyDriverRoute(
@@ -549,6 +550,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
         _calculateZoomForCount(_selectedProviderCount).clamp(10.0, 18.0);
     setState(() {
       _exactTracedLocation = resolved;
+      _hasCenteredOnRealGps = true;
       if (_zoom < targetZoom - 0.25) {
         _zoom = targetZoom;
       }
@@ -739,14 +741,19 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                   : 16.0;
 
               final userLocAsync = ref.watch(userLocationProvider);
+              final UserLocation? streamLoc = userLocAsync.value;
               final UserLocation? rawUserLoc =
-                  _exactTracedLocation ?? userLocAsync.value;
+                  (_exactTracedLocation != null && _exactTracedLocation!.hasValidDeviceGps)
+                      ? _exactTracedLocation
+                      : (streamLoc != null && streamLoc.hasValidDeviceGps)
+                          ? streamLoc
+                          : LocationService.lastKnownValidLocation;
               final userLoc = (rawUserLoc != null && rawUserLoc.hasValidDeviceGps)
                   ? rawUserLoc
                   : UserLocation.defaultLocation;
               final userPos = userLoc.hasValidDeviceGps
                   ? MapLatLng(userLoc.latitude, userLoc.longitude)
-                  : const MapLatLng(0, 0);
+                  : const MapLatLng(UserLocation.fallbackMapLat, UserLocation.fallbackMapLng);
               final double targetCircleRadiusMeters = _calculateRadiusForCount(_selectedProviderCount, userPos);
 
               // Build routes strictly from real live providers
@@ -770,16 +777,30 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                 _driverRoutes = <NearbyDriverRoute>[];
               }
 
-              // Initialize map center only from real GPS (not placeholder 0,0)
+              // Snap map center to real GPS as soon as it arrives; while waiting, never plot (0, 0) ocean!
               if (userLoc.hasValidDeviceGps) {
-                _centerPixelX ??= MercatorProjection.lngToX(userLoc.longitude, _zoom);
-                _centerPixelY ??= MercatorProjection.latToY(userLoc.latitude, _zoom);
+                if (!_hasCenteredOnRealGps || _centerPixelX == null || _centerPixelY == null) {
+                  _centerPixelX = MercatorProjection.lngToX(userLoc.longitude, _zoom);
+                  _centerPixelY = MercatorProjection.latToY(userLoc.latitude, _zoom);
+                  _hasCenteredOnRealGps = true;
+                }
               } else {
-                _centerPixelX ??= MercatorProjection.lngToX(0, _zoom);
-                _centerPixelY ??= MercatorProjection.latToY(0, _zoom);
+                final validProv = liveProviders.where(
+                  (p) => p.latitude != 0.0 || p.longitude != 0.0,
+                );
+                final double fallbackLat = validProv.isNotEmpty
+                    ? validProv.first.latitude
+                    : UserLocation.fallbackMapLat;
+                final double fallbackLng = validProv.isNotEmpty
+                    ? validProv.first.longitude
+                    : UserLocation.fallbackMapLng;
+                _centerPixelX ??= MercatorProjection.lngToX(fallbackLng, _zoom);
+                _centerPixelY ??= MercatorProjection.latToY(fallbackLat, _zoom);
               }
 
-              final double mapLat = userLoc.hasValidDeviceGps ? userLoc.latitude : 0;
+              final double mapLat = userLoc.hasValidDeviceGps
+                  ? userLoc.latitude
+                  : UserLocation.fallbackMapLat;
               final double metersPerPixel = (156543.03392 * math.cos(mapLat * math.pi / 180.0)) / (1 << _zoom.toInt());
 
               final double leftPx = _centerPixelX! - (effectiveBeaconWidth / 2.0);
@@ -1074,8 +1095,12 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                                               TopDownCarWidget.isClicked(driver.id) ||
                                               (driver.publicId != null && TopDownCarWidget.isClicked(driver.publicId!)) ||
                                               TopDownCarWidget.isClicked(driver.name);
-                                          final double realDistKm = driver.liveDistanceKm(currentGps, userPos);
-                                          final bool isInsideRadius = (realDistKm * 1000.0) <= targetCircleRadiusMeters;
+                                          final double? realDistKm = userLoc.hasValidDeviceGps
+                                              ? driver.liveDistanceKm(currentGps, userPos)
+                                              : null;
+                                          final bool isInsideRadius = realDistKm == null
+                                              ? true
+                                              : (realDistKm * 1000.0) <= targetCircleRadiusMeters;
 
                                           // Render luxury executive car with Compact Speech Bubble Badge!
                                           return Positioned(

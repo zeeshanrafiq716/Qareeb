@@ -1285,7 +1285,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
             icon: Icons.description_outlined,
             title: isArabic ? 'ميثاق خصوصية المزودين' : 'Provider Data Agreement',
             subtitle: isArabic
-                ? 'التزام قريب بحماية سجلاتك التشغيلية وتراخيص السطحة'
+                ? 'التزام زيشو بحماية سجلاتك التشغيلية وتراخيص السطحة'
                 : 'Terms of data protection, GPS logs, and driver rights',
             onTap: () => _showPrivacyPolicyDialog(context, isArabic),
             isArabic: isArabic,
@@ -3726,8 +3726,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     HapticFeedback.mediumImpact();
     final digitsOnly = phone.replaceAll(RegExp(r'[^0-9]'), '');
     final defaultMessage = isArabic
-        ? Uri.encodeComponent('مرحباً، أحتاج مساعدة بخصوص تطبيق قريب')
-        : Uri.encodeComponent('Hello, I need assistance with Qareeb app');
+        ? Uri.encodeComponent('مرحباً، أحتاج مساعدة بخصوص تطبيق زيشو')
+        : Uri.encodeComponent('Hello, I need assistance with Zesho app');
 
     final Uri nativeWhatsAppUri = Uri.parse('whatsapp://send?phone=$digitsOnly&text=$defaultMessage');
     final Uri webWhatsAppUri = Uri.parse('https://wa.me/$digitsOnly?text=$defaultMessage');
@@ -3787,7 +3787,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     } else if (number.contains('911')) {
       serviceName = isArabic ? 'الطوارئ الموحد (911)' : 'Unified Emergency (911)';
     } else {
-      serviceName = isArabic ? 'عمليات دعم قريب 24/7' : 'Qareeb 24/7 Support Ops';
+      serviceName = isArabic ? 'عمليات دعم زيشو 24/7' : 'Zesho 24/7 Support Ops';
     }
 
     showDialog(
@@ -5502,8 +5502,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
         ),
         content: Text(
           isArabic
-              ? 'يلتزم تطبيق قريب بحماية خصوصية وأمان بياناتك وفق نظام حماية البيانات الشخصية السعودي (PDPL). لا يتم مشاركة موقعك أو أرقام الاتصال إلا مع الطرف المقابل أثناء سير الطلب النشط لضمان جودة وأمان تقديم الخدمة.'
-              : 'Qareeb is fully committed to safeguarding user and partner privacy in compliance with Saudi national data privacy guidelines (Saudi PDPL). Live GPS telemetry and telephone relays are only engaged during active dispatch windows.',
+              ? 'يلتزم تطبيق زيشو بحماية خصوصية وأمان بياناتك وفق نظام حماية البيانات الشخصية السعودي (PDPL). لا يتم مشاركة موقعك أو أرقام الاتصال إلا مع الطرف المقابل أثناء سير الطلب النشط لضمان جودة وأمان تقديم الخدمة.'
+              : 'Zesho is fully committed to safeguarding user and partner privacy in compliance with Saudi national data privacy guidelines (Saudi PDPL). Live GPS telemetry and telephone relays are only engaged during active dispatch windows.',
           style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
             fontSize: 13.0,
             height: 1.5,

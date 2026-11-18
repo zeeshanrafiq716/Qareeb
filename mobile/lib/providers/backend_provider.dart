@@ -129,7 +129,10 @@ final vehicleTypesProvider =
 
 /// Real nearby providers based on real user GPS coordinates
 final nearbyProvidersProvider = FutureProvider<List<ProviderMarkerModel>>((ref) async {
-  final userLoc = ref.watch(userLocationProvider).value;
+  final rawLoc = ref.watch(userLocationProvider).value;
+  final userLoc = (rawLoc != null && rawLoc.hasValidDeviceGps)
+      ? rawLoc
+      : LocationService.lastKnownValidLocation;
   if (userLoc == null || !userLoc.hasValidDeviceGps) {
     return const [];
   }
@@ -145,7 +148,10 @@ final nearbyProvidersProvider = FutureProvider<List<ProviderMarkerModel>>((ref) 
 /// Filtered nearby providers by category slug
 final categoryNearbyProvidersProvider =
     FutureProvider.family<List<ProviderMarkerModel>, String?>((ref, categorySlug) async {
-  final userLoc = ref.watch(userLocationProvider).value;
+  final rawLoc = ref.watch(userLocationProvider).value;
+  final userLoc = (rawLoc != null && rawLoc.hasValidDeviceGps)
+      ? rawLoc
+      : LocationService.lastKnownValidLocation;
   if (userLoc == null || !userLoc.hasValidDeviceGps) {
     return const [];
   }

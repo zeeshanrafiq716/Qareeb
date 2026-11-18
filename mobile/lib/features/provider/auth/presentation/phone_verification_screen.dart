@@ -108,10 +108,14 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
 
             // Card layout geometry:
             // width: 390, height: 534, top: 310px (in 390x844 frame, 310 + 534 = 844)
+            final double minCardTop = topSafeArea + 80.0;
+            final double maxCardTop = containerHeight - 200.0 > minCardTop
+                ? containerHeight - 200.0
+                : minCardTop;
             final double cardTop = isDesktopWeb
                 ? ProviderAuthCard.designTop
                 : (containerHeight - ProviderAuthCard.designHeight)
-                    .clamp(topSafeArea + 80.0, containerHeight - 200.0);
+                    .clamp(minCardTop, maxCardTop);
             final double cardHeight = isDesktopWeb
                 ? ProviderAuthCard.designHeight
                 : (containerHeight - cardTop);

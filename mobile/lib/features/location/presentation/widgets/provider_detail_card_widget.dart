@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_locale.dart';
 import '../../../../core/utils/contact_launcher.dart';
 import '../../../../providers/backend_provider.dart';
+import '../../../../services/location_service.dart';
 import '../send_location_screen.dart';
 import '../send_request_screen.dart';
 
@@ -107,14 +108,27 @@ class ProviderDetailCardWidget extends ConsumerStatefulWidget {
 }
 
 String _formatDistanceMeters(double distanceM, bool isArabic) {
-  final km = (distanceM / 1000.0).clamp(0.0, 99.0);
-  final text = km.toStringAsFixed(1);
-  return isArabic ? '$text كم' : '$text km';
+  final safeM = distanceM.clamp(0.0, 999000.0);
+  if (safeM < 1000.0) {
+    final m = safeM.round();
+    return isArabic ? '$m م' : '$m m';
+  }
+  final km = (safeM / 1000.0).toStringAsFixed(1);
+  return isArabic ? '$km كم' : '$km km';
 }
 
-String _formatEtaMinutes(int minutes, bool isArabic) {
+String _formatEtaMinutes(int minutes, bool isArabic, {double? distanceM}) {
+  if (distanceM != null && distanceM < 80.0) {
+    return isArabic ? 'أقل من د' : '< 1 min';
+  }
   final mins = minutes.clamp(1, 999);
   return isArabic ? '$mins د' : '$mins min';
+}
+
+int _estimateMinutesFromMeters(double distanceM) {
+  if (distanceM < 80.0) return 1;
+  // Realistic urban driving speed ~30 km/h (500 m/min)
+  return (distanceM / 500.0).ceil().clamp(1, 999);
 }
 
 class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWidget> {
@@ -190,7 +204,7 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
 
     String? nextDistance;
     final distanceM = (profile['distanceMeters'] as num?)?.toDouble();
-    if (distanceM != null && distanceM > 0) {
+    if (distanceM != null && distanceM >= 0) {
       nextDistance = _formatDistanceMeters(distanceM, isArabic);
     }
 
@@ -226,7 +240,14 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
         );
     if (!mounted || route.isFallback) return;
     setState(() {
-      _liveEta = _formatEtaMinutes(route.durationMinutes, tr.isArabic);
+      if (route.distanceMeters >= 0) {
+        _liveDistance = _formatDistanceMeters(route.distanceMeters.toDouble(), tr.isArabic);
+      }
+      _liveEta = _formatEtaMinutes(
+        route.durationMinutes,
+        tr.isArabic,
+        distanceM: route.distanceMeters.toDouble(),
+      );
     });
   }
 
@@ -236,21 +257,78 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
 
   Future<void> _refreshLiveMetrics({bool contactOnly = false}) async {
     final tr = ref.read(translationsProvider);
-    final loc = ref.read(userLocationProvider).value;
+    final rawLoc = ref.read(userLocationProvider).value;
+    final loc = (rawLoc != null && rawLoc.hasValidDeviceGps)
+        ? rawLoc
+        : LocationService.lastKnownValidLocation;
     final publicId = widget.providerPublicId?.trim() ?? '';
+
+    // Compute immediate real Haversine distance (in metres/km) & real ETA when both GPS coords exist
+    if (loc != null &&
+        loc.hasValidDeviceGps &&
+        _providerLat != null &&
+        _providerLng != null &&
+        !(_providerLat == 0 && _providerLng == 0)) {
+      final km = ref.read(locationServiceProvider).calculateDistanceKm(
+            loc.latitude,
+            loc.longitude,
+            _providerLat!,
+            _providerLng!,
+          );
+      final distanceM = km * 1000.0;
+      final formattedDist = _formatDistanceMeters(distanceM, tr.isArabic);
+      final estEta = _formatEtaMinutes(
+        _estimateMinutesFromMeters(distanceM),
+        tr.isArabic,
+        distanceM: distanceM,
+      );
+      if (mounted && (_liveDistance != formattedDist || _liveEta.isEmpty)) {
+        setState(() {
+          _liveDistance = formattedDist;
+          if (_liveEta.isEmpty) _liveEta = estEta;
+        });
+      }
+    }
 
     if (publicId.isEmpty) return;
 
     final profile = await ref.read(backendServiceProvider).getPublicProviderProfile(
           publicId,
-          latitude: loc?.latitude,
-          longitude: loc?.longitude,
+          latitude: (loc != null && loc.hasValidDeviceGps) ? loc.latitude : null,
+          longitude: (loc != null && loc.hasValidDeviceGps) ? loc.longitude : null,
         );
     if (!mounted || profile == null) return;
 
     _applyProfileMap(profile, isArabic: tr.isArabic);
 
-    if (contactOnly || loc == null) return;
+    // Re-sync immediate ETA from fresh provider coordinates if ETA not yet set
+    if (loc != null &&
+        loc.hasValidDeviceGps &&
+        _providerLat != null &&
+        _providerLng != null &&
+        !(_providerLat == 0 && _providerLng == 0)) {
+      final km = ref.read(locationServiceProvider).calculateDistanceKm(
+            loc.latitude,
+            loc.longitude,
+            _providerLat!,
+            _providerLng!,
+          );
+      final distanceM = km * 1000.0;
+      final formattedDist = _formatDistanceMeters(distanceM, tr.isArabic);
+      final estEta = _formatEtaMinutes(
+        _estimateMinutesFromMeters(distanceM),
+        tr.isArabic,
+        distanceM: distanceM,
+      );
+      if (mounted) {
+        setState(() {
+          _liveDistance = formattedDist;
+          if (_liveEta.isEmpty) _liveEta = estEta;
+        });
+      }
+    }
+
+    if (contactOnly || loc == null || !loc.hasValidDeviceGps) return;
 
     final destLat = _providerLat;
     final destLng = _providerLng;
@@ -271,19 +349,21 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
     return _cleanOptional(_phone);
   }
 
-  void _track(String event) {
+  Future<void> _track(String event) async {
     final id = widget.providerPublicId;
     if (id == null || id.isEmpty) return;
-    final loc = ref.read(userLocationProvider).value;
-    ref
-        .read(backendServiceProvider)
-        .trackCustomerEvent(
-          event: event,
-          providerPublicId: id,
-          latitude: loc?.latitude,
-          longitude: loc?.longitude,
-        )
-        .catchError((_) => false);
+    final rawLoc = ref.read(userLocationProvider).value;
+    final loc = (rawLoc != null && rawLoc.hasValidDeviceGps)
+        ? rawLoc
+        : LocationService.lastKnownValidLocation;
+    try {
+      await ref.read(backendServiceProvider).trackCustomerEvent(
+            event: event,
+            providerPublicId: id,
+            latitude: (loc != null && loc.hasValidDeviceGps) ? loc.latitude : null,
+            longitude: (loc != null && loc.hasValidDeviceGps) ? loc.longitude : null,
+          );
+    } catch (_) {}
   }
 
   void _toast(String message, {bool error = false}) {
@@ -307,7 +387,11 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
       _toast(tr.isArabic ? 'رقم واتساب غير متوفر' : 'WhatsApp number is not available', error: true);
       return;
     }
-    _track('whatsapp_click');
+    // Ensure backend receives whatsapp_click and triggers provider notification BEFORE switching apps
+    await _track('whatsapp_click').timeout(
+      const Duration(milliseconds: 900),
+      onTimeout: () {},
+    );
     final ok = await ContactLauncher.whatsApp(phone);
     if (!ok) {
       _toast(tr.isArabic ? 'تعذر فتح واتساب' : 'Could not open WhatsApp', error: true);
@@ -324,7 +408,11 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
       _toast(tr.isArabic ? 'رقم الهاتف غير متوفر' : 'Phone number is not available', error: true);
       return;
     }
-    _track('call_click');
+    // Ensure backend receives call_click and triggers provider notification BEFORE opening dialer
+    await _track('call_click').timeout(
+      const Duration(milliseconds: 900),
+      onTimeout: () {},
+    );
     final ok = await ContactLauncher.call(phone);
     if (!ok) {
       _toast(tr.isArabic ? 'تعذر بدء الاتصال' : 'Could not start the call', error: true);
@@ -601,54 +689,52 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      displayName,
-                                      style: tr.font(
-                                        fontSize: 16.0,
-                                        fontWeight: FontWeight.w700,
-                                        color: _ink,
-                                        height: 1.2,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  if (widget.isAvailable) ...[
-                                    const SizedBox(width: 8.0),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
-                                      decoration: BoxDecoration(
-                                        color: _brandSoft,
-                                        borderRadius: BorderRadius.circular(60.0),
-                                        border: Border.all(color: _brandBorder),
-                                      ),
-                                      child: Text(
-                                        tr.isArabic ? 'متاح' : 'Available',
+                              Text(
+                                displayName,
+                                style: tr.font(
+                                  fontSize: 16.0,
+                                  fontWeight: FontWeight.w700,
+                                  color: _ink,
+                                  height: 1.2,
+                                ),
+                                maxLines: 2,
+                                softWrap: true,
+                              ),
+                              if (category.isNotEmpty || widget.isAvailable) ...[
+                                const SizedBox(height: 4.0),
+                                Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 8.0,
+                                  runSpacing: 4.0,
+                                  children: [
+                                    if (category.isNotEmpty)
+                                      Text(
+                                        category,
                                         style: tr.font(
-                                          fontSize: 10.0,
-                                          fontWeight: FontWeight.w600,
-                                          color: _brand,
-                                          height: 1.0,
+                                          fontSize: 12.0,
+                                          fontWeight: FontWeight.w500,
+                                          color: _muted,
                                         ),
                                       ),
-                                    ),
+                                    if (widget.isAvailable)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+                                        decoration: BoxDecoration(
+                                          color: _brandSoft,
+                                          borderRadius: BorderRadius.circular(60.0),
+                                          border: Border.all(color: _brandBorder),
+                                        ),
+                                        child: Text(
+                                          tr.isArabic ? 'متاح' : 'Available',
+                                          style: tr.font(
+                                            fontSize: 10.0,
+                                            fontWeight: FontWeight.w600,
+                                            color: _brand,
+                                            height: 1.0,
+                                          ),
+                                        ),
+                                      ),
                                   ],
-                                ],
-                              ),
-                              if (category.isNotEmpty) ...[
-                                const SizedBox(height: 4.0),
-                                Text(
-                                  category,
-                                  style: tr.font(
-                                    fontSize: 12.0,
-                                    fontWeight: FontWeight.w500,
-                                    color: _muted,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                               if (showRating) ...[
@@ -728,7 +814,7 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
                             title: _verified
                                 ? (tr.isArabic ? 'موثّق' : 'Verified')
                                 : (tr.isArabic ? 'مزود' : 'Provider'),
-                            subtitle: tr.isArabic ? 'قريب' : 'Qareeb',
+                            subtitle: tr.isArabic ? 'زيشو' : 'Zesho',
                           ),
                           Container(
                             margin: const EdgeInsets.symmetric(horizontal: 8.0),

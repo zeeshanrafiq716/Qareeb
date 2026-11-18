@@ -196,8 +196,8 @@ class _ProviderHelpSupportScreenState
     HapticFeedback.mediumImpact();
     final digitsOnly = phone.replaceAll(RegExp(r'[^0-9]'), '');
     final defaultMessage = isArabic
-        ? Uri.encodeComponent('مرحباً، أحتاج مساعدة بخصوص حساب المزود في تطبيق قريب')
-        : Uri.encodeComponent('Hello, I need assistance with my Qareeb provider account');
+        ? Uri.encodeComponent('مرحباً، أحتاج مساعدة بخصوص حساب المزود في تطبيق زيشو')
+        : Uri.encodeComponent('Hello, I need assistance with my Zesho provider account');
 
     final Uri nativeWhatsAppUri = Uri.parse('whatsapp://send?phone=$digitsOnly&text=$defaultMessage');
     final Uri webWhatsAppUri = Uri.parse('https://wa.me/$digitsOnly?text=$defaultMessage');
@@ -240,7 +240,7 @@ class _ProviderHelpSupportScreenState
 
   Future<void> _launchEmail(BuildContext context, String email, bool isArabic, {String? subject, String? body}) async {
     HapticFeedback.mediumImpact();
-    final String encodedSubject = Uri.encodeComponent(subject ?? (isArabic ? 'استفسار ودعم شركاء قريب' : 'Qareeb Partner Support Inquiry'));
+    final String encodedSubject = Uri.encodeComponent(subject ?? (isArabic ? 'استفسار ودعم شركاء زيشو' : 'Zesho Partner Support Inquiry'));
     final String encodedBody = body != null ? Uri.encodeComponent(body) : '';
     final Uri emailUri = Uri.parse('mailto:$email?subject=$encodedSubject&body=$encodedBody');
 
@@ -315,7 +315,7 @@ class _ProviderHelpSupportScreenState
     }
 
     // 2. Prepare & open email report to zeshoapp@gmail.com
-    final String emailSubject = Uri.encodeComponent('[Qareeb Partner Support $ticketNumber] $_selectedCategory');
+    final String emailSubject = Uri.encodeComponent('[Zesho Partner Support $ticketNumber] $_selectedCategory');
     final String emailBody = Uri.encodeComponent(
       'Ticket Number: $ticketNumber\n'
       'Category: $_selectedCategory\n'
@@ -639,7 +639,7 @@ class _ProviderHelpSupportScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isArabic ? 'دعم شركاء قريب على مدار 24/7' : '24/7 Dedicated Partner Care',
+                  isArabic ? 'دعم شركاء زيشو على مدار 24/7' : '24/7 Dedicated Partner Care',
                   style: GoogleFonts.inter(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w700,

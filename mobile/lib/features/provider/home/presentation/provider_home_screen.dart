@@ -66,6 +66,7 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
   Timer? _statsRefreshTimer;
   Timer? _notificationsPollTimer;
   String? _lastProviderNotificationId;
+  bool _hasCompletedInitialNotifPoll = false;
   StreamSubscription<UserLocation>? _locationSubscription;
   bool _isUpdatingLocation = false;
   bool _isNavigatingAway = false;
@@ -127,39 +128,71 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
         return 'https://maps.google.com/?q=$la,$lo';
       }
     }
-    return 'Customer via Qareeb';
+    return 'Customer via Zesho';
   }
 
   Future<void> _pollProviderNotifications() async {
     if (!mounted || _isNavigatingAway) return;
     try {
       final items = await ref.read(backendServiceProvider).fetchProviderNotifications(limit: 5);
-      if (!mounted || items.isEmpty) return;
+      if (!mounted) return;
+      final isFirstPoll = !_hasCompletedInitialNotifPoll;
+      _hasCompletedInitialNotifPoll = true;
+      if (items.isEmpty) return;
+
       final latest = items.first;
       final id = latest['id']?.toString() ?? '';
       if (id.isEmpty || id == _lastProviderNotificationId) return;
       _lastProviderNotificationId = id;
 
+      final isUnread = latest['isRead'] != true;
+      final createdAtRaw = latest['createdAt']?.toString();
+      final createdAt = createdAtRaw != null ? DateTime.tryParse(createdAtRaw) : null;
+      final isRecent = createdAt == null ||
+          DateTime.now().toUtc().difference(createdAt.toUtc()).abs() <= const Duration(minutes: 2);
+      final shouldPopup = isUnread && (!isFirstPoll || isRecent);
+
       final tr = ref.read(translationsProvider);
       final eventType = latest['eventType']?.toString() ?? '';
       String badgeEn = 'New activity';
       String badgeAr = 'نشاط جديد';
+      String fallbackTitleEn = 'Customer activity';
+      String fallbackTitleAr = 'نشاط عميل';
+      String fallbackBodyEn = 'A customer contacted you via Zesho';
+      String fallbackBodyAr = 'تواصل معك عميل عبر زيشو';
+
       switch (eventType) {
         case 'call_click':
           badgeEn = 'Incoming call';
           badgeAr = 'مكالمة واردة';
+          fallbackTitleEn = 'Customer tapped Call';
+          fallbackTitleAr = 'عميل ضغط على اتصال';
+          fallbackBodyEn = 'A customer tapped Call on your Zesho profile';
+          fallbackBodyAr = 'ضغط عميل على اتصال في ملفك على زيشو';
           break;
         case 'whatsapp_click':
           badgeEn = 'WhatsApp';
           badgeAr = 'واتساب';
+          fallbackTitleEn = 'Customer tapped WhatsApp';
+          fallbackTitleAr = 'عميل تواصل عبر واتساب';
+          fallbackBodyEn = 'A customer opened WhatsApp to reach you';
+          fallbackBodyAr = 'فتح عميل واتساب للتواصل معك';
           break;
         case 'share_location_click':
           badgeEn = 'Location shared';
           badgeAr = 'موقع مشترك';
+          fallbackTitleEn = 'Customer shared location';
+          fallbackTitleAr = 'شارك العميل موقعه';
+          fallbackBodyEn = 'A customer shared their live location with you';
+          fallbackBodyAr = 'شارك عميل موقعه المباشر معك';
           break;
         case 'send_request_click':
           badgeEn = 'New Request';
           badgeAr = 'طلب جديد';
+          fallbackTitleEn = 'New service request';
+          fallbackTitleAr = 'طلب خدمة جديد';
+          fallbackBodyEn = 'A customer sent you a service request';
+          fallbackBodyAr = 'أرسل لك عميل طلب خدمة';
           await TaskService.instance.upsertIncomingRequestFromProviderNotification(
             notificationId: id,
             serviceCategory: tr.isArabic ? 'طلب خدمة' : 'Service request',
@@ -170,21 +203,32 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
           break;
       }
 
-      final title = latest['title']?.toString() ?? badgeEn;
+      final serverTitle = latest['title']?.toString().trim() ?? '';
+      final serverBody = latest['body']?.toString().trim() ?? '';
+      final titleEn = serverTitle.isNotEmpty ? serverTitle : fallbackTitleEn;
+      final titleAr = fallbackTitleAr;
+      final bodyEn = serverBody.isNotEmpty ? serverBody : fallbackBodyEn;
+      final bodyAr = fallbackBodyAr;
+
+      if (shouldPopup) {
+        HapticFeedback.heavyImpact();
+      }
+
       ref.read(notificationsProvider.notifier).setProviderNotification(
             AppNotificationItem(
               id: id,
               badgeTextEn: badgeEn,
               badgeTextAr: badgeAr,
-              titleEn: title,
-              titleAr: title,
-              locationEn: tr.isArabic ? 'عميل عبر قريب' : 'Customer via Qareeb',
-              locationAr: 'عميل عبر قريب',
+              titleEn: titleEn,
+              titleAr: titleAr,
+              locationEn: bodyEn,
+              locationAr: bodyAr,
               distanceEn: '',
               distanceAr: '',
               timeEn: 'Just now',
               timeAr: 'الآن',
             ),
+            showCard: shouldPopup,
           );
     } catch (_) {}
   }

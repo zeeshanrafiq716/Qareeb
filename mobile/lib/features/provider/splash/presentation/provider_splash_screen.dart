@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile/core/api/api_client.dart';
@@ -181,9 +182,11 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
                 : (toggleTop + 36.0 + 16.0).clamp(90.0, 140.0);
 
             // Bottom content layout: starts below the truck fade around 560px in 844h frame
+            final double minBottomTop = headerTop + 260.0;
+            final double maxBottomTop = math.max(minBottomTop, containerHeight - 215.0);
             final double bottomContentTop = isDesktopWeb
                 ? 560.0
-                : (containerHeight * (560.0 / designHeight)).clamp(headerTop + 320.0, containerHeight - 215.0);
+                : (containerHeight * (560.0 / designHeight)).clamp(minBottomTop, maxBottomTop);
 
             final Widget screenContent = GestureDetector(
               behavior: HitTestBehavior.opaque,

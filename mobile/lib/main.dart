@@ -34,8 +34,71 @@ import 'features/splash/presentation/app_mode_selection_screen.dart';
 import 'features/splash/presentation/splash_screen.dart';
 import 'services/task_service.dart';
 
+final GlobalKey<NavigatorState> appRootNavigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Never leave users on Flutter's blank gray RenderErrorBox in release mode.
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    final message = details.exceptionAsString();
+    debugPrint('Widget build error caught by ErrorWidget.builder: $message');
+    return Material(
+      color: Colors.white,
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.refresh_rounded,
+                  size: 44.0,
+                  color: Color(0xFF8B53FE),
+                ),
+                const SizedBox(height: 12.0),
+                const Text(
+                  'Something went wrong',
+                  style: TextStyle(
+                    fontSize: 18.0,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1C2926),
+                  ),
+                ),
+                const SizedBox(height: 8.0),
+                Text(
+                  message.length > 180 ? '${message.substring(0, 180)}...' : message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 12.0,
+                    color: Color(0xFF566663),
+                  ),
+                ),
+                const SizedBox(height: 18.0),
+                ElevatedButton(
+                  onPressed: () {
+                    appRootNavigatorKey.currentState?.pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const AppModeSelectionScreen()),
+                      (route) => false,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B53FE),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                  child: const Text('Reload'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  };
 
   // Gracefully handle font loading & hero transition errors so offline/CORS/HotRestart issues never crash the app
   PlatformDispatcher.instance.onError = (error, stack) {
@@ -79,6 +142,8 @@ void main() {
   );
 }
 
+final ValueNotifier<bool> _appBootstrapReady = ValueNotifier<bool>(false);
+
 /// Boots persisted state after the first frame so cold starts never sit on a gray native window.
 class QareebAppRoot extends StatefulWidget {
   const QareebAppRoot({super.key});
@@ -88,8 +153,6 @@ class QareebAppRoot extends StatefulWidget {
 }
 
 class _QareebAppRootState extends State<QareebAppRoot> {
-  bool _ready = false;
-
   @override
   void initState() {
     super.initState();
@@ -101,24 +164,36 @@ class _QareebAppRootState extends State<QareebAppRoot> {
       await TaskService.instance.init();
       await ProviderRegistrationStore.instance.loadFromPrefs();
       await CustomerAuthStore.instance.loadFromPrefs();
-      if (!mounted) return;
-      setState(() => _ready = true);
     } catch (e) {
       debugPrint('Bootstrap error: $e');
-      if (!mounted) return;
-      setState(() => _ready = true);
+    } finally {
+      _appBootstrapReady.value = true;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_ready) {
-      return const MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: _BootstrapPlaceholder(),
-      );
+    return const QareebApp(waitForBootstrap: true);
+  }
+}
+
+class _BootstrapGate extends StatelessWidget {
+  final bool waitForBootstrap;
+
+  const _BootstrapGate({this.waitForBootstrap = false});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!waitForBootstrap) {
+      return const AppModeSelectionScreen();
     }
-    return const QareebApp();
+    return ValueListenableBuilder<bool>(
+      valueListenable: _appBootstrapReady,
+      builder: (context, ready, _) {
+        if (!ready) return const _BootstrapPlaceholder();
+        return const AppModeSelectionScreen();
+      },
+    );
   }
 }
 
@@ -156,7 +231,12 @@ class AppScrollBehavior extends MaterialScrollBehavior {
 }
 
 class QareebApp extends ConsumerWidget {
-  const QareebApp({super.key});
+  final bool waitForBootstrap;
+
+  const QareebApp({
+    super.key,
+    this.waitForBootstrap = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -165,6 +245,7 @@ class QareebApp extends ConsumerWidget {
     ProviderTextStyles.isArabic = isArabic;
 
     return MaterialApp(
+      navigatorKey: appRootNavigatorKey,
       title: 'ZESHO',
       onGenerateTitle: (context) => context.l10n.appTitle,
       debugShowCheckedModeBanner: false,
@@ -179,7 +260,7 @@ class QareebApp extends ConsumerWidget {
           child: child ?? const SizedBox(),
         );
       },
-      home: const AppModeSelectionScreen(),
+      home: _BootstrapGate(waitForBootstrap: waitForBootstrap),
       routes: {
         '/splash': (context) => const SplashScreen(),
         '/app-mode': (context) => const AppModeSelectionScreen(),
