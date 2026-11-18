@@ -190,26 +190,31 @@ class _ProviderPhoneInputWidgetState extends State<ProviderPhoneInputWidget> {
           ApiClient.setGlobalToken(result.token);
         }
 
-        final providerStatus = result.provider?['status']?.toString();
-        final isAlreadyApproved = providerStatus == 'APPROVED';
-        final isPendingVerification = providerStatus == 'PENDING_VERIFICATION';
+        final rawStatus = result.provider?['status']?.toString().trim();
+        final providerStatus =
+            (rawStatus != null && rawStatus.isNotEmpty) ? rawStatus.toUpperCase() : null;
+        final isBlocked = providerStatus == 'BLOCKED';
+        final isSuspended = providerStatus == 'SUSPENDED' ||
+            providerStatus == 'REJECTED' ||
+            providerStatus == 'DECLINED';
 
         if (result.provider != null) {
           ProviderRegistrationStore.instance.updateFromBackendProfile(result.provider!);
         }
 
+        // Existing provider logging in enters directly and can perform actions without re-onboarding.
         ProviderRegistrationStore.instance.update(
           (data) => data.copyWith(
             phone: displayPhone,
             authToken: result.token ?? data.authToken,
             status: providerStatus ?? data.status,
-            isOnboardingCompleted: isAlreadyApproved || isPendingVerification || data.isOnboardingCompleted,
+            isOnboardingCompleted: !isBlocked && !isSuspended,
           ),
         );
 
-        if (isAlreadyApproved) {
-          Navigator.of(context).pushNamedAndRemoveUntil('/provider/home', (route) => false);
-        } else if (isPendingVerification) {
+        if (isBlocked) {
+          Navigator.of(context).pushNamedAndRemoveUntil('/provider/blocked', (route) => false);
+        } else if (isSuspended) {
           Navigator.of(context).pushNamedAndRemoveUntil('/provider/admin-approval', (route) => false);
         } else {
           Navigator.of(context).pushNamedAndRemoveUntil('/provider/home', (route) => false);

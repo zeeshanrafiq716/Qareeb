@@ -176,7 +176,10 @@ class _ProviderOtpInnerContentLayoutState extends State<ProviderOtpInnerContentL
         ApiClient.setGlobalToken(result.token);
       }
 
-      final providerStatus = result.provider?['status']?.toString();
+      final rawStatus = result.provider?['status']?.toString().trim();
+      final providerStatus =
+          (rawStatus != null && rawStatus.isNotEmpty) ? rawStatus.toUpperCase() : null;
+      final isBlocked = providerStatus == 'BLOCKED';
       final isAlreadyApproved = providerStatus == 'APPROVED';
       final isPendingVerification = providerStatus == 'PENDING_VERIFICATION';
 
@@ -189,16 +192,17 @@ class _ProviderOtpInnerContentLayoutState extends State<ProviderOtpInnerContentL
           phone: phone,
           authToken: result.token ?? data.authToken,
           status: providerStatus ?? data.status,
-          isOnboardingCompleted: isAlreadyApproved || isPendingVerification || data.isOnboardingCompleted,
+          isOnboardingCompleted:
+              isAlreadyApproved || isPendingVerification || data.isOnboardingCompleted,
         ),
       );
 
       if (widget.onVerified != null) {
         widget.onVerified!();
-      } else if (isAlreadyApproved) {
+      } else if (isBlocked) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/provider/blocked', (route) => false);
+      } else if (isAlreadyApproved || isPendingVerification) {
         Navigator.of(context).pushNamedAndRemoveUntil('/provider/home', (route) => false);
-      } else if (isPendingVerification) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/provider/admin-approval', (route) => false);
       } else {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(

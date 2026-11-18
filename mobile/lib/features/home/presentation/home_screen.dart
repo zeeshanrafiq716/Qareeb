@@ -277,6 +277,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         time: tr.isArabic
                             ? (notifState.customerNotification?.timeAr ?? '')
                             : (notifState.customerNotification?.timeEn ?? ''),
+                        createdAt: notifState.customerNotification?.createdAt,
                         imageAsset: notifState.customerNotification?.imageAsset,
                         onTap: () {
                           ref.read(notificationsProvider.notifier).hideCustomerCard();

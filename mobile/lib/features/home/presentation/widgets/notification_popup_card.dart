@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 /// Notification Popup Card
@@ -36,7 +37,7 @@ import 'package:flutter/material.dart';
 ///   justify-content: space-between;
 ///   - badge branding: width: 80; height: 23; gap: 10px; border-radius: 20px; padding: 8px; bg: #F3F2F5;
 ///     - New Request: 10px, 400, #8B53FE
-///   - Just now: 10px, 400, #616166
+///   - Just now / live relative timer: 10px, 400, #616166
 ///
 /// row 2,3 layout:
 ///   width: 238;
@@ -49,12 +50,13 @@ import 'package:flutter/material.dart';
 ///       - ellipse branding: 4x4 circle #616166
 ///       - 4.1 km  away: 10px, 400, #616166
 ///   - > branding: width: 6.06; height: 12.87; border: 1px solid #616166;
-class NotificationPopupCard extends StatelessWidget {
+class NotificationPopupCard extends StatefulWidget {
   final String badgeText;
   final String title;
   final String location;
   final String distance;
   final String time;
+  final DateTime? createdAt;
   final String? imageAsset;
   final double? width;
   final VoidCallback? onTap;
@@ -67,6 +69,7 @@ class NotificationPopupCard extends StatelessWidget {
     this.location = 'King Abdullah Rd, Riyadh',
     this.distance = '4.1 km  away',
     this.time = 'Just now',
+    this.createdAt,
     this.imageAsset,
     this.width,
     this.onTap,
@@ -85,18 +88,77 @@ class NotificationPopupCard extends StatelessWidget {
   static const double contentGap = 12.0;
 
   @override
+  State<NotificationPopupCard> createState() => _NotificationPopupCardState();
+}
+
+class _NotificationPopupCardState extends State<NotificationPopupCard> {
+  Timer? _tickTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTickerIfNeeded();
+  }
+
+  @override
+  void didUpdateWidget(covariant NotificationPopupCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.createdAt != widget.createdAt) {
+      _tickTimer?.cancel();
+      _tickTimer = null;
+      _startTickerIfNeeded();
+    }
+  }
+
+  void _startTickerIfNeeded() {
+    if (widget.createdAt == null) return;
+    _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tickTimer?.cancel();
+    super.dispose();
+  }
+
+  String _resolveLiveTimeText(bool isRtl) {
+    final ts = widget.createdAt;
+    if (ts == null) return widget.time;
+    final rawDiff = DateTime.now().toUtc().difference(ts.toUtc());
+    final diff = rawDiff.isNegative ? Duration.zero : rawDiff;
+    if (diff.inSeconds < 5) {
+      return isRtl ? 'الآن' : 'Just now';
+    }
+    if (diff.inSeconds < 60) {
+      return isRtl ? 'منذ ${diff.inSeconds} ث' : '${diff.inSeconds}s ago';
+    }
+    if (diff.inMinutes < 60) {
+      return isRtl ? 'منذ ${diff.inMinutes} د' : '${diff.inMinutes}m ago';
+    }
+    if (diff.inHours < 24) {
+      return isRtl ? 'منذ ${diff.inHours} س' : '${diff.inHours}h ago';
+    }
+    return isRtl ? 'منذ ${diff.inDays} ي' : '${diff.inDays}d ago';
+  }
+
+  @override
   Widget build(BuildContext context) {
     final bool isRtl = Directionality.of(context) == TextDirection.rtl ||
         Localizations.maybeLocaleOf(context)?.languageCode == 'ar';
-    final String trimmedImage = imageAsset?.trim() ?? '';
+    final String trimmedImage = widget.imageAsset?.trim() ?? '';
     final bool hasImage = trimmedImage.isNotEmpty;
     final bool isNetworkImage = trimmedImage.startsWith('http://') ||
         trimmedImage.startsWith('https://');
-    final String trimmedLocation = location.trim();
-    final String trimmedDistance = distance.trim();
+    final String trimmedLocation = widget.location.trim();
+    final String trimmedDistance = widget.distance.trim();
+    final String liveTime = _resolveLiveTimeText(isRtl);
 
     return Container(
-      width: width,
+      width: widget.width,
       constraints: const BoxConstraints(minHeight: 82.0),
       padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 13.0),
       decoration: BoxDecoration(
@@ -114,7 +176,7 @@ class NotificationPopupCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap ?? onDismiss,
+          onTap: widget.onTap ?? widget.onDismiss,
           borderRadius: BorderRadius.circular(14.0),
           splashColor: const Color(0xFF8B53FE).withValues(alpha: 0.08),
           highlightColor: const Color(0xFF8B53FE).withValues(alpha: 0.04),
@@ -154,7 +216,7 @@ class NotificationPopupCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Row 1: Badge + Time
+                    // Row 1: Badge + Live Updating Time
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -169,7 +231,7 @@ class NotificationPopupCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20.0),
                           ),
                           child: Text(
-                            badgeText,
+                            widget.badgeText,
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               fontWeight: FontWeight.w500,
@@ -182,13 +244,14 @@ class NotificationPopupCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 8.0),
                         Text(
-                          time,
+                          liveTime,
                           style: const TextStyle(
                             fontFamily: 'Inter',
-                            fontWeight: FontWeight.w400,
+                            fontWeight: FontWeight.w500,
                             fontSize: 10.5,
                             color: Color(0xFF616166),
                             height: 1.1,
+                            fontFeatures: [FontFeature.tabularFigures()],
                           ),
                           maxLines: 1,
                         ),
@@ -208,7 +271,7 @@ class NotificationPopupCard extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                title,
+                                widget.title,
                                 style: const TextStyle(
                                   fontFamily: 'Inter',
                                   fontWeight: FontWeight.w600,

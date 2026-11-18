@@ -19,10 +19,12 @@ import 'package:mobile/features/provider/theme/provider_colors.dart';
 ///   subtitle: "Select a service category and enter\nyour vehicle details.";
 class VehicleServiceDetailsScreen extends StatelessWidget {
   final Widget? body;
+  final bool fromHomeResume;
 
   const VehicleServiceDetailsScreen({
     super.key,
     this.body,
+    this.fromHomeResume = false,
   });
 
   static const double designWidth = 390.0;
@@ -92,7 +94,10 @@ class VehicleServiceDetailsScreen extends StatelessWidget {
                               top: 12.0,
                               bottom: 24.0,
                             ),
-                            child: body ?? const VehicleServiceDetailsFormLayout(),
+                            child: body ??
+                                VehicleServiceDetailsFormLayout(
+                                  fromHomeResume: fromHomeResume,
+                                ),
                           ),
                         ),
                       ),

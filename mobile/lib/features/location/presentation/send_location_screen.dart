@@ -18,14 +18,22 @@ class SendLocationScreen extends ConsumerStatefulWidget {
   final String? providerPublicId;
   final String? providerPhone;
   final String distance;
+  final String? eta;
+  final String? vehicleName;
+  final double? providerLatitude;
+  final double? providerLongitude;
 
   const SendLocationScreen({
     super.key,
-    this.serviceCategory = 'Pickup & Delivery',
-    this.providerName = 'Ahamd Transport',
+    this.serviceCategory = 'Service',
+    this.providerName = 'Provider',
     this.providerPublicId,
     this.providerPhone,
-    this.distance = '1.8 km',
+    this.distance = '--',
+    this.eta,
+    this.vehicleName,
+    this.providerLatitude,
+    this.providerLongitude,
   });
 
   @override
@@ -36,6 +44,8 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
   int? _selectedShareIndex;
   bool _isCardExpanded = true;
   String? _resolvedPhone;
+  double? _providerLat;
+  double? _providerLng;
 
   AppTranslations get tr => ref.read(translationsProvider);
 
@@ -51,7 +61,9 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
   void initState() {
     super.initState();
     _resolvedPhone = _cleanPhone(widget.providerPhone);
-    if (_resolvedPhone == null) {
+    _providerLat = widget.providerLatitude;
+    _providerLng = widget.providerLongitude;
+    if (_resolvedPhone == null || _providerLat == null || _providerLng == null) {
       _hydrateProviderPhone();
     }
   }
@@ -71,17 +83,23 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
           latitude: loc?.latitude,
           longitude: loc?.longitude,
         );
-    if (!mounted) return;
-    final contact = profile?['contact'];
+    if (!mounted || profile == null) return;
+    final contact = profile['contact'];
     String? phone;
     if (contact is Map && contact['phone'] != null) {
       phone = contact['phone'].toString();
     }
-    phone ??= profile?['phone']?.toString();
+    phone ??= profile['phone']?.toString();
     final cleaned = _cleanPhone(phone);
-    if (cleaned != null) {
-      setState(() => _resolvedPhone = cleaned);
-    }
+    final double? lat = (profile['latitude'] as num?)?.toDouble();
+    final double? lng = (profile['longitude'] as num?)?.toDouble();
+    setState(() {
+      if (cleaned != null) _resolvedPhone = cleaned;
+      if (lat != null && lng != null && (lat.abs() > 0.001 || lng.abs() > 0.001)) {
+        _providerLat = lat;
+        _providerLng = lng;
+      }
+    });
   }
 
   String? _mapsShareUrl() {
@@ -250,17 +268,19 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
                         child: Stack(
                           clipBehavior: Clip.none,
                           children: [
-                      // 1. Live Real Slippy Map Layer
+                      // 1. Live Real Slippy Map Layer showing real user GPS + real provider location
                       Positioned.fill(
                         child: RealMapBackgroundWidget(
                           enableDrag: true,
                           zoom: 15.0,
+                          providerLatitude: _providerLat,
+                          providerLongitude: _providerLng,
                           trackingStep: MapTrackingStep.none,
                           blurSigma: 0.0,
                           driverName: widget.providerName,
                           serviceCategory: widget.serviceCategory,
-                          vehicleName: 'Toyota Hilux',
-                          etaText: tr.isArabic ? '6 د' : '6 min',
+                          vehicleName: widget.vehicleName ?? widget.serviceCategory,
+                          etaText: widget.eta ?? '',
                           distanceText: widget.distance,
                           showControls: false,
                         ),

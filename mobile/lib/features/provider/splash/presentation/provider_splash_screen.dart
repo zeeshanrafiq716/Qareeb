@@ -116,17 +116,19 @@ class _ProviderSplashScreenState extends State<ProviderSplashScreen> {
     _timer?.cancel();
 
     final data = ProviderRegistrationStore.instance.data;
+    final status = data.status.trim().toUpperCase();
+    final hasToken = data.authToken != null && data.authToken!.isNotEmpty;
     final Widget destination;
 
-    // Check account status and route appropriately
-    if (data.isBlocked || data.status == 'BLOCKED') {
+    // Check account status and route appropriately (case-insensitive)
+    if (data.isBlocked || status == 'BLOCKED') {
       destination = const ProviderBlockedScreen();
-    } else if (data.status == 'APPROVED') {
-      destination = const ProviderHomeScreen();
-    } else if (data.status == 'SUSPENDED') {
+    } else if (data.isSuspended || status == 'SUSPENDED' || status == 'REJECTED' || status == 'DECLINED') {
       destination = const AdminApprovalScreen(isSuspended: true);
-    } else if (data.isOnboardingCompleted || data.status == 'PENDING_VERIFICATION') {
-      destination = const AdminApprovalScreen();
+    } else if (status == 'APPROVED' || (hasToken && data.isOnboardingCompleted)) {
+      destination = const ProviderHomeScreen();
+    } else if (status == 'PENDING_VERIFICATION') {
+      destination = const ProviderHomeScreen();
     } else {
       final hasKnownAccount = data.phone.isNotEmpty;
       destination = PhoneVerificationScreen(initialIsLogin: hasKnownAccount);

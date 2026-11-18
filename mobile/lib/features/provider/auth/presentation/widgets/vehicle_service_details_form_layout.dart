@@ -24,10 +24,12 @@ import 'package:mobile/services/backend_service.dart';
 /// 6. Save Changes Button (Purple #8B53FE, 52px height, "Save Changes ->")
 class VehicleServiceDetailsFormLayout extends StatefulWidget {
   final VoidCallback? onContinue;
+  final bool fromHomeResume;
 
   const VehicleServiceDetailsFormLayout({
     super.key,
     this.onContinue,
+    this.fromHomeResume = false,
   });
 
   static const double designWidth = 350.0;
@@ -227,10 +229,10 @@ class _VehicleServiceDetailsFormLayoutState
     final vehicleType = _vehicleTypeCtrl.text.trim();
     final serviceCategory = _serviceCategoryCtrl.text.trim();
 
-    if (plate.isEmpty) {
+    if (vehicleType.isEmpty) {
       _showFeedback(
         context,
-        isArabic ? 'يرجى إدخال رقم اللوحة' : 'Please enter vehicle plate number',
+        isArabic ? 'يرجى اختيار نوع المركبة' : 'Please select vehicle type',
       );
       return;
     }
@@ -239,6 +241,22 @@ class _VehicleServiceDetailsFormLayoutState
       _showFeedback(
         context,
         isArabic ? 'يرجى إدخال لون المركبة' : 'Please enter vehicle color',
+      );
+      return;
+    }
+
+    if (plate.isEmpty) {
+      _showFeedback(
+        context,
+        isArabic ? 'يرجى إدخال رقم اللوحة' : 'Please enter vehicle plate number',
+      );
+      return;
+    }
+
+    if (serviceCategory.isEmpty) {
+      _showFeedback(
+        context,
+        isArabic ? 'يرجى اختيار فئة الخدمة' : 'Please select a service category',
       );
       return;
     }
@@ -255,11 +273,16 @@ class _VehicleServiceDetailsFormLayoutState
       ),
     );
 
-    // 2. Call backend service update
+    // 2. Call backend service update with all 4 vehicle & category fields
     try {
+      final currentName = ProviderRegistrationStore.instance.data.fullName.trim();
       await _backendService.updateProviderProfile(
-        name: ProviderRegistrationStore.instance.data.fullName,
+        name: currentName.isNotEmpty ? currentName : 'Provider',
         categoryId: serviceCategory,
+        categoryName: serviceCategory,
+        vehicleType: vehicleType,
+        plateNumber: plate,
+        vehicleColor: color,
         address: '',
         city: '',
       );
@@ -284,10 +307,12 @@ class _VehicleServiceDetailsFormLayoutState
     }
 
     final onboarding = ProviderRegistrationStore.instance.data;
-    if (!onboarding.isOnboardingCompleted) {
+    if (widget.fromHomeResume || !onboarding.isOnboardingCompleted) {
       Navigator.of(context).push(
         PageRouteBuilder(
-          pageBuilder: (_, _, _) => const UploadDocumentsScreen(),
+          pageBuilder: (_, _, _) => UploadDocumentsScreen(
+            fromHomeResume: widget.fromHomeResume,
+          ),
           transitionsBuilder: (_, animation, _, child) => FadeTransition(
             opacity: CurvedAnimation(
               parent: animation,
@@ -689,11 +714,14 @@ class _VehicleServiceDetailsFormLayoutState
 
           const SizedBox(height: 24.0),
 
-          // 6. Save Changes Button (Animated, does not hide content)
+          // 6. Continue / Save Changes Button (Animated, does not hide content)
           ProviderAnimatedButton(
             onTap: _handleSaveChanges,
             isLoading: _isLoading,
-            text: isArabic ? 'حفظ التغييرات' : 'Save Changes',
+            text: (widget.fromHomeResume ||
+                    !ProviderRegistrationStore.instance.data.isOnboardingCompleted)
+                ? (isArabic ? 'متابعة' : 'Continue')
+                : (isArabic ? 'حفظ التغييرات' : 'Save Changes'),
             textStyle: isArabic
                 ? GoogleFonts.cairo(
                     fontSize: 15.0,

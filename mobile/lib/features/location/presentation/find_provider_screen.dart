@@ -3,10 +3,14 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../../../core/localization/app_locale.dart';
+import '../../../core/utils/contact_launcher.dart';
+import '../../../models/category_model.dart';
 import '../../../models/provider_model.dart';
 import '../../../providers/backend_provider.dart';
+import '../../../services/location_service.dart';
 import 'provider_detail_screen.dart';
 
 /// Custom scroll behavior enabling smooth mouse dragging, trackpad gestures, and touch on all devices:
@@ -85,16 +89,36 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
 
             final tr = ref.watch(translationsProvider);
             final nearbyProvidersAsync = ref.watch(nearbyProvidersProvider);
+            final liveCategories = ref.watch(categoriesProvider).value ?? const <CategoryModel>[];
+            final streamLoc = ref.watch(userLocationProvider).value;
+            final UserLocation? activeUserLoc =
+                (streamLoc != null && streamLoc.hasValidDeviceGps)
+                    ? streamLoc
+                    : LocationService.lastKnownValidLocation;
             final List<ProviderMarkerModel> liveProviders = nearbyProvidersAsync.value ?? [];
 
             final String searchQuery = _searchController.text.trim().toLowerCase();
             final List<ProviderMarkerModel> searchedProviders = searchQuery.isEmpty
-                ? liveProviders
+                ? List<ProviderMarkerModel>.from(liveProviders)
                 : liveProviders.where((p) {
+                    final meters = _computeRealDistanceMeters(p, activeUserLoc);
+                    final distText = meters != null
+                        ? _formatRealDistance(meters, tr.isArabic).toLowerCase()
+                        : '';
                     return p.name.toLowerCase().contains(searchQuery) ||
                         p.categoryName.toLowerCase().contains(searchQuery) ||
-                        '${p.distanceKm} km'.contains(searchQuery);
+                        p.categoryNameAr.toLowerCase().contains(searchQuery) ||
+                        p.vehicleType.toLowerCase().contains(searchQuery) ||
+                        p.plateNumber.toLowerCase().contains(searchQuery) ||
+                        distText.contains(searchQuery);
                   }).toList();
+
+            // Sort by real live distance ascending (nearest real provider first)
+            searchedProviders.sort((a, b) {
+              final distA = _computeRealDistanceMeters(a, activeUserLoc) ?? double.infinity;
+              final distB = _computeRealDistanceMeters(b, activeUserLoc) ?? double.infinity;
+              return distA.compareTo(distB);
+            });
 
             final List<ProviderMarkerModel> activeProviders = searchedProviders
                 .take(_selectedProviderCount)
@@ -274,6 +298,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                               child: TextField(
                                 controller: _searchController,
                                 focusNode: _searchFocusNode,
+                                onChanged: (_) => setState(() {}),
                                 style: tr.font(
                                   fontSize: 14.0,
                                   fontWeight: FontWeight.w400,
@@ -296,6 +321,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                               onTap: () {
                                 if (_searchController.text.isNotEmpty) {
                                   _searchController.clear();
+                                  setState(() {});
                                 } else {
                                   setState(() {
                                     _isSearchOpen = false;
@@ -320,95 +346,119 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
 
                   const SizedBox(height: 16.0),
 
-                  // 3. Provider List with smooth scrolling:
+                  // 3. Provider List with smooth scrolling & live pull-to-refresh:
                   Expanded(
-                    child: ScrollConfiguration(
-                      behavior: const _EasyScrollBehavior(),
-                      child: ListView(
-                        padding: EdgeInsets.only(
-                          top: 4.0,
-                          left: horizontalPadding,
-                          right: horizontalPadding,
-                          bottom: 40.0,
-                        ),
-                        physics: const ClampingScrollPhysics(),
-                        children: [
-                          Center(child: _buildProvidersInnerCard(cardWidth)),
+                    child: RefreshIndicator(
+                      color: const Color(0xFF8B53FE),
+                      onRefresh: () async {
+                        ref.invalidate(nearbyProvidersProvider);
+                        await ref.read(nearbyProvidersProvider.future).catchError((_) => const <ProviderMarkerModel>[]);
+                      },
+                      child: ScrollConfiguration(
+                        behavior: const _EasyScrollBehavior(),
+                        child: ListView(
+                          padding: EdgeInsets.only(
+                            top: 4.0,
+                            left: horizontalPadding,
+                            right: horizontalPadding,
+                            bottom: 40.0,
+                          ),
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: ClampingScrollPhysics(),
+                          ),
+                          children: [
+                            Center(child: _buildProvidersInnerCard(cardWidth)),
 
-                          const SizedBox(height: 16.0),
+                            const SizedBox(height: 16.0),
 
-                          if (activeProviders.isEmpty)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 36.0),
-                              child: Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 56.0,
-                                      height: 56.0,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFF0EAFE),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Center(
-                                        child: Icon(
-                                          Icons.person_search_rounded,
-                                          size: 28.0,
-                                          color: Color(0xFF8B53FE),
+                            if (nearbyProvidersAsync.isLoading && activeProviders.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 40.0),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFF8B53FE),
+                                    strokeWidth: 2.5,
+                                  ),
+                                ),
+                              )
+                            else if (activeProviders.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 36.0),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 56.0,
+                                        height: 56.0,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFF0EAFE),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.person_search_rounded,
+                                            size: 28.0,
+                                            color: Color(0xFF8B53FE),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 16.0),
-                                    Text(
-                                      tr.isArabic ? 'لا يوجد مزودين متاحين حالياً' : 'No providers available nearby',
-                                      style: tr.font(
-                                        fontSize: 15.0,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF1C2926),
+                                      const SizedBox(height: 16.0),
+                                      Text(
+                                        tr.isArabic ? 'لا يوجد مزودين متاحين حالياً' : 'No providers available nearby',
+                                        style: tr.font(
+                                          fontSize: 15.0,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF1C2926),
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 6.0),
-                                    Text(
-                                      tr.isArabic
-                                          ? 'سيظهر المزودون المعتمدون هنا عند تواجدهم بالقرب منك.'
-                                          : 'Approved providers will appear here when active nearby.',
-                                      style: tr.font(
-                                        fontSize: 12.0,
-                                        fontWeight: FontWeight.w400,
-                                        color: const Color(0xFF718096),
+                                      const SizedBox(height: 6.0),
+                                      Text(
+                                        tr.isArabic
+                                            ? 'سيظهر المزودون المعتمدون هنا عند تواجدهم بالقرب منك.'
+                                            : 'Approved providers will appear here when active nearby.',
+                                        style: tr.font(
+                                          fontSize: 12.0,
+                                          fontWeight: FontWeight.w400,
+                                          color: const Color(0xFF718096),
+                                        ),
+                                        textAlign: TextAlign.center,
                                       ),
-                                      textAlign: TextAlign.center,
+                                    ],
+                                  ),
+                                ),
+                              )
+                            else
+                              ...activeProviders.map(
+                                (item) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12.0),
+                                  child: Center(
+                                    child: _buildServiceCard(
+                                      cardWidth,
+                                      item,
+                                      activeUserLoc: activeUserLoc,
+                                      liveCategories: liveCategories,
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
-                            )
-                          else
-                            ...activeProviders.map(
-                              (item) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12.0),
-                                child: Center(
-                                  child: _buildServiceCard(cardWidth, item),
+
+                            const SizedBox(height: 16.0),
+
+                            Center(
+                              child: Container(
+                                key: const Key('bottom_bar_indicator'),
+                                width: 134.0,
+                                height: 4.0,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1C2926),
+                                  borderRadius: BorderRadius.circular(100.0),
                                 ),
                               ),
                             ),
-
-                          const SizedBox(height: 16.0),
-
-                          Center(
-                            child: Container(
-                              key: const Key('bottom_bar_indicator'),
-                              width: 134.0,
-                              height: 4.0,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1C2926),
-                                borderRadius: BorderRadius.circular(100.0),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24.0),
-                        ],
+                            const SizedBox(height: 24.0),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -556,28 +606,208 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
     );
   }
 
-  /// Card branding matching exact Figma specifications:
-  Widget _buildServiceCard(double cardWidth, ProviderMarkerModel item) {
-    final String providerName = tr.formatProviderName(item.name);
+  /// Computes exact live distance in metres between customer GPS and provider GPS.
+  /// Never substitutes fake fallback numbers.
+  double? _computeRealDistanceMeters(ProviderMarkerModel item, UserLocation? userLoc) {
+    final bool hasProviderGps =
+        item.latitude.isFinite &&
+        item.longitude.isFinite &&
+        (item.latitude.abs() > 0.001 || item.longitude.abs() > 0.001);
+    if (userLoc != null && userLoc.hasValidDeviceGps && hasProviderGps) {
+      final m = Geolocator.distanceBetween(
+        userLoc.latitude,
+        userLoc.longitude,
+        item.latitude,
+        item.longitude,
+      );
+      if (m.isFinite && m >= 0) return m;
+    }
+    if (item.distanceMeters.isFinite && item.distanceMeters >= 0 && (item.distanceMeters > 0 || hasProviderGps)) {
+      return item.distanceMeters;
+    }
+    if (item.distanceKm.isFinite && item.distanceKm > 0) {
+      return item.distanceKm * 1000.0;
+    }
+    return null;
+  }
 
-    final String imagePath = (item.categorySlug.contains('pickup'))
-        ? 'assets/images/pickup.png'
-        : 'assets/images/car_ride.png';
+  String _formatRealDistance(double meters, bool isArabic) {
+    if (meters < 1000.0) {
+      final rounded = meters.round();
+      return isArabic ? '$rounded م' : '$rounded m';
+    }
+    final km = meters / 1000.0;
+    return isArabic ? '${km.toStringAsFixed(1)} كم' : '${km.toStringAsFixed(1)} km';
+  }
 
-    final String vehicleType = item.categorySlug.contains('pickup')
-        ? (tr.isArabic ? 'بيك أب • مكيف' : 'Pickup • AC')
-        : (tr.isArabic ? 'سيدان • مكيف' : 'Sedan • AC');
+  String _formatRealEta(double meters, bool isArabic) {
+    if (meters < 100.0) {
+      return isArabic ? 'أقل من دقيقة' : '< 1 min';
+    }
+    final mins = ((meters / 1000.0) / 30.0 * 60.0).ceil().clamp(1, 180);
+    return isArabic ? '$mins د' : '$mins min';
+  }
 
-    final double distanceKm = item.distanceKm > 0 ? item.distanceKm : 1.0;
-    final String etaStr = tr.isArabic
-        ? '${(distanceKm * 3.5).round().clamp(1, 99)} د'
-        : '${(distanceKm * 3.5).round().clamp(1, 99)} min away';
-    final String distanceStr = tr.isArabic
-        ? '${distanceKm.toStringAsFixed(1)} كم'
-        : '${distanceKm.toStringAsFixed(1)} km';
+  /// Resolves the provider's real service image from backend category iconUrl,
+  /// matched live category asset, or provider's own uploaded photo (never a fake Sedan).
+  Widget _buildRealServiceImage(
+    ProviderMarkerModel item,
+    List<CategoryModel> liveCategories,
+  ) {
+    String? networkUrl;
+    String? localAsset;
 
-    final double rating = item.ratingAvg > 0 ? item.ratingAvg : 5.0;
-    final int reviews = item.ratingCount > 0 ? item.ratingCount : 1;
+    // 1. Direct category iconUrl from backend discovery payload
+    final directIcon = item.categoryIconUrl?.trim() ?? '';
+    if (directIcon.startsWith('http://') || directIcon.startsWith('https://')) {
+      networkUrl = directIcon;
+    } else if (directIcon.startsWith('assets/')) {
+      localAsset = directIcon;
+    } else if (directIcon.startsWith('/assets/')) {
+      localAsset = directIcon.substring(1);
+    }
+
+    // 2. Match against live categories synced from backend admin panel
+    if (networkUrl == null && localAsset == null && liveCategories.isNotEmpty) {
+      final slugLower = item.categorySlug.trim().toLowerCase();
+      final nameLower = item.categoryName.trim().toLowerCase();
+      for (final cat in liveCategories) {
+        if ((slugLower.isNotEmpty && cat.slug.toLowerCase() == slugLower) ||
+            (nameLower.isNotEmpty && cat.name.toLowerCase() == nameLower)) {
+          final catIcon = cat.iconUrl?.trim() ?? '';
+          if (catIcon.startsWith('http://') || catIcon.startsWith('https://')) {
+            networkUrl = catIcon;
+          } else if (cat.displayAssetImage != null && cat.displayAssetImage!.isNotEmpty) {
+            localAsset = cat.displayAssetImage;
+          }
+          break;
+        }
+      }
+    }
+
+    // 3. Map from provider's real category slug/name to official service image
+    if (networkUrl == null &&
+        localAsset == null &&
+        (item.categorySlug.isNotEmpty || item.categoryName.isNotEmpty)) {
+      final resolved = CategoryModel(
+        id: 0,
+        name: item.categoryName,
+        slug: item.categorySlug,
+      ).displayAssetImage;
+      if (resolved != null && resolved.isNotEmpty) {
+        localAsset = resolved;
+      }
+    }
+
+    // 4. Provider's own uploaded photo if no category image exists
+    if (networkUrl == null && localAsset == null) {
+      final photo = item.photoUrl?.trim() ?? '';
+      if (photo.startsWith('http://') || photo.startsWith('https://')) {
+        networkUrl = photo;
+      }
+    }
+
+    Widget placeholder() => Container(
+          width: 52.0,
+          height: 44.0,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3EEFF),
+            borderRadius: BorderRadius.circular(10.0),
+          ),
+          child: const Icon(
+            Icons.handyman_rounded,
+            size: 22.0,
+            color: Color(0xFF8B53FE),
+          ),
+        );
+
+    if (networkUrl != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10.0),
+        child: Container(
+          width: 52.0,
+          height: 44.0,
+          color: const Color(0xFFF8F6FF),
+          child: Image.network(
+            networkUrl,
+            width: 52.0,
+            height: 44.0,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => localAsset != null
+                ? Image.asset(
+                    localAsset,
+                    width: 52.0,
+                    height: 44.0,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => placeholder(),
+                  )
+                : placeholder(),
+          ),
+        ),
+      );
+    }
+
+    if (localAsset != null) {
+      return SizedBox(
+        width: 52.0,
+        height: 44.0,
+        child: Image.asset(
+          localAsset,
+          width: 52.0,
+          height: 44.0,
+          fit: BoxFit.contain,
+          errorBuilder: (_, _, _) => placeholder(),
+        ),
+      );
+    }
+
+    return placeholder();
+  }
+
+  /// Provider list card displaying 100% real data: service image, vehicle/category,
+  /// real rating & reviews, real order counter, live distance, live ETA, and real call action.
+  Widget _buildServiceCard(
+    double cardWidth,
+    ProviderMarkerModel item, {
+    required UserLocation? activeUserLoc,
+    required List<CategoryModel> liveCategories,
+  }) {
+    final String providerName = item.name.trim().isNotEmpty
+        ? tr.formatProviderName(item.name)
+        : (tr.isArabic ? 'مزود خدمة' : 'Service Provider');
+
+    final String realCategoryLabel = item.categoryName.isNotEmpty
+        ? (tr.isArabic && item.categoryNameAr.isNotEmpty
+            ? item.categoryNameAr
+            : tr.categoryName(item.categoryName))
+        : '';
+    final String realVehicleLabel = item.vehicleType.trim();
+    final String subtitleText;
+    if (realVehicleLabel.isNotEmpty &&
+        realCategoryLabel.isNotEmpty &&
+        realVehicleLabel.toLowerCase() != realCategoryLabel.toLowerCase()) {
+      subtitleText = '$realVehicleLabel • $realCategoryLabel';
+    } else if (realVehicleLabel.isNotEmpty) {
+      subtitleText = realVehicleLabel;
+    } else {
+      subtitleText = realCategoryLabel;
+    }
+
+    final double? liveMeters = _computeRealDistanceMeters(item, activeUserLoc);
+    final String distanceStr = liveMeters != null
+        ? _formatRealDistance(liveMeters, tr.isArabic)
+        : '--';
+    final String etaStr = liveMeters != null
+        ? _formatRealEta(liveMeters, tr.isArabic)
+        : '--';
+
+    // Real rating, real review count, and real order counter (zero fake fallbacks)
+    final double rating = item.ratingAvg;
+    final int reviews = item.ratingCount;
+    final int orders = item.ordersCount;
+    final String ordersLabel = tr.isArabic
+        ? '$orders طلب'
+        : '$orders ${orders == 1 ? 'order' : 'orders'}';
 
     final double effectiveWidth = cardWidth;
 
@@ -590,23 +820,28 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
           ref.read(backendServiceProvider).trackCustomerEvent(
             event: 'profile_view',
             providerPublicId: effectivePublicId,
-            latitude: item.latitude,
-            longitude: item.longitude,
+            latitude: activeUserLoc?.latitude ?? item.latitude,
+            longitude: activeUserLoc?.longitude ?? item.longitude,
           );
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => ProviderDetailScreen(
-                serviceCategory: tr.categoryName(item.categoryName.isNotEmpty ? item.categoryName : widget.serviceCategory),
+                serviceCategory: realCategoryLabel.isNotEmpty
+                    ? realCategoryLabel
+                    : tr.categoryName(widget.serviceCategory),
                 providerName: providerName,
                 providerPublicId: effectivePublicId,
                 phoneNumber: item.phone,
                 photoUrl: item.photoUrl,
-                vehicleName: item.categoryName.isNotEmpty ? item.categoryName : null,
+                vehicleName: realVehicleLabel.isNotEmpty ? realVehicleLabel : realCategoryLabel,
                 distance: distanceStr,
                 estimatedTime: etaStr,
-                rating: item.ratingAvg,
-                reviews: item.ratingCount,
+                rating: rating,
+                reviews: reviews,
+                ordersCount: orders,
                 verified: item.verificationStatus == 'approved' || item.verificationStatus == 'verified',
+                providerLatitude: item.latitude,
+                providerLongitude: item.longitude,
               ),
             ),
           );
@@ -614,13 +849,13 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
         behavior: HitTestBehavior.opaque,
         child: Container(
           width: effectiveWidth,
-          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 11.0),
           decoration: BoxDecoration(
             color: const Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(12.0),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x1A000000), // 0px 1px 12px 0px #0000001A
+                color: Color(0x1A000000),
                 blurRadius: 12.0,
                 offset: Offset(0, 1),
                 spreadRadius: 0.0,
@@ -631,39 +866,13 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Left side content: Image + Details
+              // Left side content: Real Service Image + Real Provider Details
               Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Provider vehicle image (optimized size for mobile screens)
-                    SizedBox(
-                      width: 48.0,
-                      height: 34.0,
-                      child: Transform.flip(
-                        flipX: true,
-                        child: Image.asset(
-                          imagePath,
-                          width: 48.0,
-                          height: 34.0,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            width: 48.0,
-                            height: 34.0,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF0EAFE),
-                              borderRadius: BorderRadius.circular(6.0),
-                            ),
-                            child: const Icon(
-                              Icons.directions_car_filled,
-                              size: 18,
-                              color: Color(0xFF8B53FE),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8.0), // gap: 8px;
+                    _buildRealServiceImage(item, liveCategories),
+                    const SizedBox(width: 10.0),
 
                     // Content details column
                     Expanded(
@@ -671,7 +880,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Provider Name
+                          // Provider Full Name (wraps cleanly without awkward dots)
                           Text(
                             providerName,
                             textHeightBehavior: const TextHeightBehavior(
@@ -679,98 +888,136 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                               applyHeightToLastDescent: false,
                             ),
                             style: tr.font(
-                              fontSize: 12.0,
+                              fontSize: 13.0,
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF1C2926),
-                              height: 1.15,
+                              height: 1.2,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                            softWrap: true,
                           ),
-                          const SizedBox(height: 2.0),
+                          const SizedBox(height: 3.0),
 
-                          // Vehicle Type and Available badge row (Maintains exact original branding)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                          // Real Vehicle / Category + Online/Available badge
+                          Wrap(
+                            spacing: 6.0,
+                            runSpacing: 3.0,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
-                              Text(
-                                vehicleType,
-                                textHeightBehavior: const TextHeightBehavior(
-                                  applyHeightToFirstAscent: false,
-                                  applyHeightToLastDescent: false,
-                                ),
-                                style: tr.font(
-                                  fontSize: 10.0,
-                                  fontWeight: FontWeight.w400,
-                                  color: const Color(0xFF566663),
-                                  height: 1.15,
-                                ),
-                                maxLines: 1,
-                              ),
-                              const SizedBox(width: 6.0),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF0EAFE),
-                                  borderRadius: BorderRadius.circular(60.0),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  tr.isArabic ? 'متاح' : 'Available',
+                              if (subtitleText.isNotEmpty)
+                                Text(
+                                  subtitleText,
                                   textHeightBehavior: const TextHeightBehavior(
                                     applyHeightToFirstAscent: false,
                                     applyHeightToLastDescent: false,
                                   ),
                                   style: tr.font(
-                                    fontSize: 8.0,
-                                    fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF8B53FE),
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w400,
+                                    color: const Color(0xFF566663),
                                     height: 1.15,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                                decoration: BoxDecoration(
+                                  color: item.isOnline
+                                      ? const Color(0xFFF0EAFE)
+                                      : const Color(0xFFF3F4F6),
+                                  borderRadius: BorderRadius.circular(60.0),
+                                ),
+                                child: Text(
+                                  item.isOnline
+                                      ? (tr.isArabic ? 'متاح' : 'Available')
+                                      : (tr.isArabic ? 'غير متصل' : 'Offline'),
+                                  textHeightBehavior: const TextHeightBehavior(
+                                    applyHeightToFirstAscent: false,
+                                    applyHeightToLastDescent: false,
+                                  ),
+                                  style: tr.font(
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: item.isOnline
+                                        ? const Color(0xFF8B53FE)
+                                        : const Color(0xFF6B7280),
+                                    height: 1.1,
                                   ),
                                   maxLines: 1,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 2.0),
+                          const SizedBox(height: 4.0),
 
-                          // Rating and Reviews
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                          // Real Reviews & Real Order Counter
+                          Wrap(
+                            spacing: 8.0,
+                            runSpacing: 2.0,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
-                              const Icon(
-                                Icons.star_rounded,
-                                size: 11.0,
-                                color: Color(0xFF8B53FE),
-                              ),
-                              const SizedBox(width: 3.0),
-                              RichText(
-                                textHeightBehavior: const TextHeightBehavior(
-                                  applyHeightToFirstAscent: false,
-                                  applyHeightToLastDescent: false,
-                                ),
-                                text: TextSpan(
-                                  text: '${rating.toStringAsFixed(1)} ',
-                                  style: tr.font(
-                                    fontSize: 10.0,
-                                    fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF1C2926),
-                                    height: 1.15,
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.star_rounded,
+                                    size: 12.0,
+                                    color: Color(0xFF8B53FE),
                                   ),
-                                  children: [
-                                    TextSpan(
-                                      text: '($reviews)',
+                                  const SizedBox(width: 2.5),
+                                  RichText(
+                                    textHeightBehavior: const TextHeightBehavior(
+                                      applyHeightToFirstAscent: false,
+                                      applyHeightToLastDescent: false,
+                                    ),
+                                    text: TextSpan(
+                                      text: '${rating.toStringAsFixed(1)} ',
                                       style: tr.font(
-                                        fontSize: 10.0,
-                                        fontWeight: FontWeight.w400,
-                                        color: const Color(0xFF566663),
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF1C2926),
                                         height: 1.15,
                                       ),
+                                      children: [
+                                        TextSpan(
+                                          text: '($reviews)',
+                                          style: tr.font(
+                                            fontSize: 10.0,
+                                            fontWeight: FontWeight.w400,
+                                            color: const Color(0xFF566663),
+                                            height: 1.15,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.receipt_long_rounded,
+                                    size: 11.0,
+                                    color: Color(0xFF8B53FE),
+                                  ),
+                                  const SizedBox(width: 2.5),
+                                  Text(
+                                    ordersLabel,
+                                    textHeightBehavior: const TextHeightBehavior(
+                                      applyHeightToFirstAscent: false,
+                                      applyHeightToLastDescent: false,
+                                    ),
+                                    style: tr.font(
+                                      fontSize: 10.0,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF566663),
+                                      height: 1.15,
+                                    ),
+                                    maxLines: 1,
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -782,7 +1029,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
               ),
               const SizedBox(width: 8.0),
 
-              // Right side content: Distance, Timer & Call Icon
+              // Right side content: Real Live Distance, Real Live ETA & Real Call Button
               Row(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -791,7 +1038,6 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Distance row with clean navigation arrow icon
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -812,63 +1058,92 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                               applyHeightToLastDescent: false,
                             ),
                             style: tr.font(
-                              fontSize: 11.0,
+                              fontSize: 11.5,
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF1C2926),
-                              height: 1.0,
+                              height: 1.1,
                             ),
                             maxLines: 1,
                           ),
                         ],
                       ),
-                      SizedBox(height: tr.isArabic ? 0.0 : 1.0),
-
-                      // ETA Timer (gap decreased)
-                      Transform.translate(
-                        offset: Offset(0, tr.isArabic ? -3.0 : -1.0),
-                        child: Text(
-                          etaStr,
-                          textHeightBehavior: const TextHeightBehavior(
-                            applyHeightToFirstAscent: false,
-                            applyHeightToLastDescent: false,
-                          ),
-                          style: tr.font(
-                            fontSize: 10.0,
-                            fontWeight: FontWeight.w400,
-                            color: const Color(0xFF566663),
-                            height: 1.0,
-                          ),
-                          maxLines: 1,
+                      const SizedBox(height: 3.0),
+                      Text(
+                        etaStr,
+                        textHeightBehavior: const TextHeightBehavior(
+                          applyHeightToFirstAscent: false,
+                          applyHeightToLastDescent: false,
                         ),
+                        style: tr.font(
+                          fontSize: 10.0,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF566663),
+                          height: 1.1,
+                        ),
+                        maxLines: 1,
                       ),
                     ],
                   ),
                   const SizedBox(width: 8.0),
 
-                  // Call icon
+                  // Functional Call Button: sends call_click notification to provider & launches real dialer
                   GestureDetector(
-                    onTap: () {
+                    onTap: () async {
                       HapticFeedback.lightImpact();
-                      final effectivePublicId = item.publicId.isNotEmpty ? item.publicId : 'QRB-${item.id}';
-                      ref.read(backendServiceProvider).trackCustomerEvent(
-                        event: 'call_click',
-                        providerPublicId: effectivePublicId,
-                        latitude: item.latitude,
-                        longitude: item.longitude,
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            tr.isArabic
-                                ? 'جارٍ الاتصال بـ $providerName...'
-                                : 'Calling $providerName (GPS: ${item.coordinatesDisplay})...',
-                            style: tr.font(fontSize: 12.0, color: Colors.white),
+                      final effectivePublicId =
+                          item.publicId.isNotEmpty ? item.publicId : 'QRB-${item.id}';
+                      String? phone = item.phone?.trim();
+                      try {
+                        await ref.read(backendServiceProvider).trackCustomerEvent(
+                          event: 'call_click',
+                          providerPublicId: effectivePublicId,
+                          latitude: activeUserLoc?.latitude ?? item.latitude,
+                          longitude: activeUserLoc?.longitude ?? item.longitude,
+                        );
+                      } catch (_) {}
+                      if ((phone == null || phone.isEmpty) && effectivePublicId.isNotEmpty) {
+                        try {
+                          final profile = await ref
+                              .read(backendServiceProvider)
+                              .getPublicProviderProfile(effectivePublicId);
+                          final contact = profile?['contact'];
+                          if (contact is Map) {
+                            phone = contact['phone']?.toString().trim();
+                          }
+                          phone ??= profile?['phone']?.toString().trim();
+                        } catch (_) {}
+                      }
+                      if (!mounted) return;
+                      if (phone != null && phone.isNotEmpty) {
+                        final launched = await ContactLauncher.call(phone);
+                        if (!launched && mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                tr.isArabic
+                                    ? 'تعذر فتح تطبيق الاتصال'
+                                    : 'Unable to open phone dialer',
+                                style: tr.font(fontSize: 12.0, color: Colors.white),
+                              ),
+                              backgroundColor: Colors.redAccent,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              tr.isArabic
+                                  ? 'رقم هاتف مزود الخدمة غير متوفر'
+                                  : 'Provider phone number is not available',
+                              style: tr.font(fontSize: 12.0, color: Colors.white),
+                            ),
+                            backgroundColor: const Color(0xFF1C2926),
+                            behavior: SnackBarBehavior.floating,
                           ),
-                          backgroundColor: const Color(0xFF8B53FE),
-                          duration: const Duration(seconds: 2),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                        );
+                      }
                     },
                     behavior: HitTestBehavior.opaque,
                     child: Container(
@@ -885,7 +1160,7 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                       alignment: Alignment.center,
                       child: const Icon(
                         Icons.phone,
-                        size: 13.0,
+                        size: 14.0,
                         color: Color(0xFF1C2926),
                       ),
                     ),

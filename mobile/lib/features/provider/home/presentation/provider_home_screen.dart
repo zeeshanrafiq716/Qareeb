@@ -66,7 +66,6 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
   Timer? _gpsTrackingTimer;
   Timer? _statsRefreshTimer;
   Timer? _notificationsPollTimer;
-  Timer? _notificationBannerTimer;
   String? _lastProviderNotificationId;
   bool _hasCompletedInitialNotifPoll = false;
   StreamSubscription<UserLocation>? _locationSubscription;
@@ -282,27 +281,24 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
               distanceAr: '',
               timeEn: timeEn,
               timeAr: timeAr,
+              createdAt: createdAt ?? DateTime.now().toUtc(),
               imageAsset: profilePhotoUrl,
+              isRead: !isUnread,
             ),
             showCard: shouldPopup,
+            autoHideDuration: const Duration(seconds: 4),
           );
-
-      // Auto-hide incoming notification banner after 4 seconds (stays accessible via bell icon for 24h)
-      if (shouldPopup) {
-        _notificationBannerTimer?.cancel();
-        _notificationBannerTimer = Timer(const Duration(seconds: 4), () {
-          if (mounted) {
-            ref.read(notificationsProvider.notifier).hideProviderCard();
-          }
-        });
-      }
     } catch (_) {}
   }
 
   String _formatRelativeTime(DateTime? createdAt, {required bool isArabic}) {
     if (createdAt == null) return isArabic ? 'الآن' : 'Just now';
-    final diff = DateTime.now().toUtc().difference(createdAt.toUtc());
-    if (diff.inSeconds < 60) return isArabic ? 'الآن' : 'Just now';
+    final rawDiff = DateTime.now().toUtc().difference(createdAt.toUtc());
+    final diff = rawDiff.isNegative ? Duration.zero : rawDiff;
+    if (diff.inSeconds < 5) return isArabic ? 'الآن' : 'Just now';
+    if (diff.inSeconds < 60) {
+      return isArabic ? 'منذ ${diff.inSeconds} ث' : '${diff.inSeconds}s ago';
+    }
     if (diff.inMinutes < 60) {
       return isArabic ? 'منذ ${diff.inMinutes} د' : '${diff.inMinutes}m ago';
     }
@@ -390,7 +386,6 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
   @override
   void dispose() {
     ProviderPhoneChangeWatcher.stop();
-    _notificationBannerTimer?.cancel();
     _notificationsPollTimer?.cancel();
     _statsRefreshTimer?.cancel();
     _stopGpsTrackingAndPresence(callBackend: false);
@@ -706,9 +701,9 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
                             time: context.isArabic
                                 ? (notifState.providerNotification?.timeAr ?? '')
                                 : (notifState.providerNotification?.timeEn ?? ''),
+                            createdAt: notifState.providerNotification?.createdAt,
                             imageAsset: notifState.providerNotification?.imageAsset,
                             onTap: () {
-                              _notificationBannerTimer?.cancel();
                               ref
                                   .read(notificationsProvider.notifier)
                                   .hideProviderCard();
@@ -719,7 +714,6 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
                               );
                             },
                             onDismiss: () {
-                              _notificationBannerTimer?.cancel();
                               ref
                                   .read(notificationsProvider.notifier)
                                   .hideProviderCard();

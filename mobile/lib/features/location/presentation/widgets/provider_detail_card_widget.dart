@@ -438,13 +438,17 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
         builder: (_) => SendLocationScreen(
           serviceCategory: widget.serviceCategory.isNotEmpty
               ? widget.serviceCategory
-              : 'Pickup & Delivery',
+              : 'Service',
           providerName: widget.providerName.isNotEmpty
               ? widget.providerName
-              : 'Ahmad Transport',
+              : 'Provider',
           providerPublicId: widget.providerPublicId,
           providerPhone: _phone ?? widget.phoneNumber,
-          distance: _liveDistance.isNotEmpty ? _liveDistance : '—',
+          distance: _liveDistance.isNotEmpty ? _liveDistance : '--',
+          eta: _liveEta.isNotEmpty ? _liveEta : null,
+          vehicleName: widget.vehicleName,
+          providerLatitude: _providerLat,
+          providerLongitude: _providerLng,
         ),
       ),
     );
@@ -461,14 +465,19 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
         builder: (_) => SendRequestScreen(
           serviceCategory: widget.serviceCategory.isNotEmpty
               ? widget.serviceCategory
-              : 'Pickup & Delivery',
+              : 'Service',
           providerName: widget.providerName.isNotEmpty
               ? widget.providerName
-              : 'Ahmad Transport',
+              : 'Provider',
           providerPublicId: widget.providerPublicId,
           providerPhone: _phone ?? widget.phoneNumber,
-          distance: _liveDistance.isNotEmpty ? _liveDistance : '—',
+          photoUrl: _photoUrl,
+          vehicleName: widget.vehicleName,
+          distance: _liveDistance.isNotEmpty ? _liveDistance : '--',
           eta: _liveEta.isNotEmpty ? _liveEta : null,
+          verified: _verified,
+          providerLatitude: _providerLat,
+          providerLongitude: _providerLng,
         ),
       ),
     );

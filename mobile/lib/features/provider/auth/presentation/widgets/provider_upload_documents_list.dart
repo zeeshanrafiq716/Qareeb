@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:mobile/core/api/api_client.dart';
@@ -10,8 +11,10 @@ import 'package:mobile/features/provider/auth/presentation/widgets/provider_cont
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_document_upload_card.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_image_picker_modal.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_vehicle_photos_section.dart';
+import 'package:mobile/features/provider/home/presentation/provider_home_screen.dart';
 import 'package:mobile/features/provider/theme/provider_colors.dart';
 import 'package:mobile/services/backend_service.dart';
+import 'package:mobile/services/location_service.dart';
 
 /// Provider Upload Documents List Widget
 /// Implements all 3 document cards with real document photo uploads and 4 vehicle photos:
@@ -29,12 +32,14 @@ class ProviderUploadDocumentsList extends StatefulWidget {
   final VoidCallback? onContinue;
   final double cardGap;
   final bool showContinueButton;
+  final bool fromHomeResume;
 
   const ProviderUploadDocumentsList({
     super.key,
     this.onContinue,
     this.cardGap = 16.0,
     this.showContinueButton = true,
+    this.fromHomeResume = false,
   });
 
   static const double designWidth = 350.0;
@@ -63,6 +68,7 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
   String? _iqamaFileName;
   String? _registrationFileName;
   String? _licenceFileName;
+  bool _isSubmitting = false;
 
   late final BackendService _backendService;
 
@@ -353,7 +359,8 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
     );
   }
 
-  void _defaultOnContinue(BuildContext context) {
+  Future<void> _defaultOnContinue(BuildContext context) async {
+    if (_isSubmitting) return;
     final isArabic = context.isArabic;
 
     // Documents + front/rear vehicle photos are required; side photos are optional.
@@ -407,45 +414,114 @@ class _ProviderUploadDocumentsListState extends State<ProviderUploadDocumentsLis
       return;
     }
 
-    // Verify all compulsory documents and complete onboarding on backend
-    _backendService.verifyAllCompulsoryDocuments();
-    _backendService.completeOnboarding();
+    _isSubmitting = true;
+    try {
+      // Verify all compulsory documents and complete onboarding on backend
+      await Future.wait([
+        _backendService.verifyAllCompulsoryDocuments().catchError((_) => false),
+        _backendService.completeOnboarding().catchError((_) => false),
+      ]);
 
-    ProviderRegistrationStore.instance.update(
-      (data) => data.copyWith(
-        iqamaUploaded: _iqamaUploaded,
-        registrationUploaded: _registrationUploaded,
-        licenceUploaded: _licenceUploaded,
-        vehicleFrontUploaded: _frontUploaded,
-        vehicleRearUploaded: _rearUploaded,
-        vehicleLeftUploaded: _leftSideUploaded,
-        vehicleRightUploaded: _rightSideUploaded,
-        status: 'PENDING_VERIFICATION',
-      ),
-    );
+      final existingStatus =
+          ProviderRegistrationStore.instance.data.status.trim().toUpperCase();
+      final nextStatus =
+          existingStatus == 'APPROVED' ? 'APPROVED' : 'PENDING_VERIFICATION';
 
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const ProviderLocationPermissionScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final curved = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeInOutCubic,
-          );
-          return FadeTransition(
-            opacity: curved,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.04, 0),
-                end: Offset.zero,
-              ).animate(curved),
-              child: child,
+      ProviderRegistrationStore.instance.update(
+        (data) => data.copyWith(
+          iqamaUploaded: _iqamaUploaded,
+          registrationUploaded: _registrationUploaded,
+          licenceUploaded: _licenceUploaded,
+          vehicleFrontUploaded: _frontUploaded,
+          vehicleRearUploaded: _rearUploaded,
+          vehicleLeftUploaded: _leftSideUploaded,
+          vehicleRightUploaded: _rightSideUploaded,
+          status: nextStatus,
+          isOnboardingCompleted:
+              widget.fromHomeResume ? true : data.isOnboardingCompleted,
+        ),
+      );
+
+      if (!context.mounted) return;
+
+      // Streamlined 2-screen resume flow from Home:
+      // Screen 1 (Vehicle & Category) -> Screen 2 (Documents) -> Direct return to Home (no 3rd screen).
+      if (widget.fromHomeResume) {
+        unawaited(_syncLocationSilently());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            backgroundColor: ProviderColors.primaryButton,
+            content: Text(
+              isArabic
+                  ? 'تم إرسال المستندات بنجاح! يمكنك الآن الاتصال.'
+                  : 'Documents submitted successfully! You can now go online.',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13.0,
+              ),
             ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const ProviderHomeScreen()),
+          (_) => false,
+        );
+        return;
+      }
+
+      Navigator.of(context).push(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const ProviderLocationPermissionScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final curved = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeInOutCubic,
+            );
+            return FadeTransition(
+              opacity: curved,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.04, 0),
+                  end: Offset.zero,
+                ).animate(curved),
+                child: child,
+              ),
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 350),
+        ),
+      );
+    } finally {
+      _isSubmitting = false;
+    }
+  }
+
+  Future<void> _syncLocationSilently() async {
+    try {
+      final locationService = LocationService();
+      final loc = await locationService.getFastLastKnownLocation() ??
+          await locationService.acquireDeviceLocation(
+            timeout: const Duration(seconds: 4),
           );
-        },
-        transitionDuration: const Duration(milliseconds: 350),
-      ),
-    );
+      if (loc.hasValidDeviceGps) {
+        ProviderRegistrationStore.instance.update(
+          (data) => data.copyWith(
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+          ),
+        );
+        await _backendService.updateProviderLocation(
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          address: loc.address,
+          city: loc.cityName,
+        );
+      }
+    } catch (_) {}
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/task_service.dart';
@@ -15,6 +16,7 @@ class AppNotificationItem {
   final String distanceAr;
   final String timeEn;
   final String timeAr;
+  final DateTime? createdAt;
   final String? imageAsset;
   final bool isRead;
 
@@ -30,9 +32,17 @@ class AppNotificationItem {
     required this.distanceAr,
     required this.timeEn,
     required this.timeAr,
+    this.createdAt,
     this.imageAsset,
     this.isRead = false,
   });
+
+  bool get isExpired {
+    final ts = createdAt;
+    if (ts == null) return false;
+    final diff = DateTime.now().toUtc().difference(ts.toUtc());
+    return !diff.isNegative && diff > const Duration(hours: 24);
+  }
 
   AppNotificationItem copyWith({
     String? id,
@@ -46,6 +56,7 @@ class AppNotificationItem {
     String? distanceAr,
     String? timeEn,
     String? timeAr,
+    DateTime? createdAt,
     String? imageAsset,
     bool? isRead,
   }) {
@@ -61,6 +72,7 @@ class AppNotificationItem {
       distanceAr: distanceAr ?? this.distanceAr,
       timeEn: timeEn ?? this.timeEn,
       timeAr: timeAr ?? this.timeAr,
+      createdAt: createdAt ?? this.createdAt,
       imageAsset: imageAsset ?? this.imageAsset,
       isRead: isRead ?? this.isRead,
     );
@@ -91,15 +103,21 @@ class NotificationsState {
     bool? isCustomerCardVisible,
     bool? isProviderCardVisible,
     AppNotificationItem? customerNotification,
+    bool clearCustomerNotification = false,
     AppNotificationItem? providerNotification,
+    bool clearProviderNotification = false,
   }) {
     return NotificationsState(
       hasCustomerUnread: hasCustomerUnread ?? this.hasCustomerUnread,
       hasProviderUnread: hasProviderUnread ?? this.hasProviderUnread,
       isCustomerCardVisible: isCustomerCardVisible ?? this.isCustomerCardVisible,
       isProviderCardVisible: isProviderCardVisible ?? this.isProviderCardVisible,
-      customerNotification: customerNotification ?? this.customerNotification,
-      providerNotification: providerNotification ?? this.providerNotification,
+      customerNotification: clearCustomerNotification
+          ? null
+          : (customerNotification ?? this.customerNotification),
+      providerNotification: clearProviderNotification
+          ? null
+          : (providerNotification ?? this.providerNotification),
     );
   }
 }
@@ -107,17 +125,36 @@ class NotificationsState {
 /// Reactive Notifier managing notifications state for Customer and Provider
 class NotificationsNotifier extends Notifier<NotificationsState> {
   VoidCallback? _taskListener;
+  Timer? _providerAutoHideTimer;
+  Timer? _customerAutoHideTimer;
+  bool _isInitialized = false;
 
   @override
   NotificationsState build() {
+    _isInitialized = false;
     _initTaskSync();
-    return _buildStateFromTask(TaskService.instance.activeTask);
+    ref.onDispose(() {
+      _isInitialized = false;
+      _providerAutoHideTimer?.cancel();
+      _customerAutoHideTimer?.cancel();
+    });
+    final initial = _buildStateFromTask(
+      TaskService.instance.activeTask,
+      previousState: const NotificationsState(),
+    );
+    _isInitialized = true;
+    return initial;
   }
 
   void _initTaskSync() {
     _taskListener = () {
+      if (!_isInitialized) return;
       final task = TaskService.instance.activeTask;
-      final updatedState = _buildStateFromTask(task, markUnread: true);
+      final updatedState = _buildStateFromTask(
+        task,
+        previousState: state,
+        markUnread: true,
+      );
       state = updatedState;
     };
     TaskService.instance.activeTaskNotifier.addListener(_taskListener!);
@@ -128,15 +165,21 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
     });
   }
 
-  NotificationsState _buildStateFromTask(ServiceTask? task, {bool markUnread = false}) {
+  NotificationsState _buildStateFromTask(
+    ServiceTask? task, {
+    required NotificationsState previousState,
+    bool markUnread = false,
+  }) {
     if (task == null) {
+      final keepProviderNotif = previousState.providerNotification != null &&
+          !previousState.providerNotification!.isExpired;
       return NotificationsState(
         hasCustomerUnread: false,
-        hasProviderUnread: false,
+        hasProviderUnread: keepProviderNotif ? previousState.hasProviderUnread : false,
         isCustomerCardVisible: false,
-        isProviderCardVisible: false,
+        isProviderCardVisible: keepProviderNotif ? previousState.isProviderCardVisible : false,
         customerNotification: null,
-        providerNotification: null,
+        providerNotification: keepProviderNotif ? previousState.providerNotification : null,
       );
     }
 
@@ -193,7 +236,8 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
       distanceAr: '${task.distance} على بعد',
       timeEn: task.eta.isNotEmpty ? 'ETA ${task.eta}' : 'Just now',
       timeAr: task.eta.isNotEmpty ? 'الوصول ${task.eta}' : 'الآن',
-      imageAsset: task.providerAvatar ?? 'assets/images/driver_avatar.png',
+      createdAt: task.createdAt,
+      imageAsset: task.providerAvatar,
     );
 
     final provNotif = AppNotificationItem(
@@ -208,38 +252,87 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
       distanceAr: '${task.distance} على بعد',
       timeEn: 'Just now',
       timeAr: 'الآن',
-      imageAsset: 'assets/images/driver_avatar.png',
+      createdAt: task.createdAt,
+      imageAsset: null,
     );
 
     return NotificationsState(
-      hasCustomerUnread: markUnread ? true : state.hasCustomerUnread,
-      hasProviderUnread: markUnread ? true : state.hasProviderUnread,
-      isCustomerCardVisible: state.isCustomerCardVisible,
-      isProviderCardVisible: state.isProviderCardVisible,
+      hasCustomerUnread: markUnread ? true : previousState.hasCustomerUnread,
+      hasProviderUnread: markUnread ? true : previousState.hasProviderUnread,
+      isCustomerCardVisible: previousState.isCustomerCardVisible,
+      isProviderCardVisible: previousState.isProviderCardVisible,
       customerNotification: custNotif,
       providerNotification: provNotif,
     );
   }
 
-  void setCustomerNotification(AppNotificationItem? notif) {
+  void setCustomerNotification(
+    AppNotificationItem? notif, {
+    bool showCard = false,
+    Duration autoHideDuration = const Duration(seconds: 4),
+  }) {
+    _customerAutoHideTimer?.cancel();
+    if (notif == null || notif.isExpired) {
+      state = state.copyWith(
+        clearCustomerNotification: true,
+        hasCustomerUnread: false,
+        isCustomerCardVisible: false,
+      );
+      return;
+    }
     state = state.copyWith(
       customerNotification: notif,
-      hasCustomerUnread: notif != null,
+      hasCustomerUnread: true,
+      isCustomerCardVisible: showCard ? true : state.isCustomerCardVisible,
     );
+    if (showCard) {
+      _customerAutoHideTimer = Timer(autoHideDuration, () {
+        if (state.isCustomerCardVisible) {
+          state = state.copyWith(isCustomerCardVisible: false);
+        }
+      });
+    }
   }
 
   void setProviderNotification(
     AppNotificationItem? notif, {
     bool showCard = false,
+    Duration autoHideDuration = const Duration(seconds: 4),
   }) {
+    if (notif == null || notif.isExpired) {
+      _providerAutoHideTimer?.cancel();
+      state = state.copyWith(
+        clearProviderNotification: true,
+        hasProviderUnread: false,
+        isProviderCardVisible: false,
+      );
+      return;
+    }
     state = state.copyWith(
       providerNotification: notif,
-      hasProviderUnread: notif != null,
-      isProviderCardVisible: showCard && notif != null ? true : state.isProviderCardVisible,
+      hasProviderUnread: !notif.isRead,
+      isProviderCardVisible: showCard ? true : state.isProviderCardVisible,
     );
+    if (showCard) {
+      _providerAutoHideTimer?.cancel();
+      _providerAutoHideTimer = Timer(autoHideDuration, () {
+        if (state.isProviderCardVisible) {
+          state = state.copyWith(isProviderCardVisible: false);
+        }
+      });
+    }
   }
 
   void toggleCustomerCard() {
+    _customerAutoHideTimer?.cancel();
+    if (state.customerNotification?.isExpired == true) {
+      state = state.copyWith(
+        clearCustomerNotification: true,
+        isCustomerCardVisible: false,
+        hasCustomerUnread: false,
+      );
+      return;
+    }
     final nextVisible = !state.isCustomerCardVisible;
     state = state.copyWith(
       isCustomerCardVisible: nextVisible,
@@ -248,12 +341,22 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
   }
 
   void hideCustomerCard() {
+    _customerAutoHideTimer?.cancel();
     if (state.isCustomerCardVisible) {
       state = state.copyWith(isCustomerCardVisible: false);
     }
   }
 
   void toggleProviderCard() {
+    _providerAutoHideTimer?.cancel();
+    if (state.providerNotification?.isExpired == true) {
+      state = state.copyWith(
+        clearProviderNotification: true,
+        isProviderCardVisible: false,
+        hasProviderUnread: false,
+      );
+      return;
+    }
     final nextVisible = !state.isProviderCardVisible;
     state = state.copyWith(
       isProviderCardVisible: nextVisible,
@@ -262,12 +365,14 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
   }
 
   void hideProviderCard() {
+    _providerAutoHideTimer?.cancel();
     if (state.isProviderCardVisible) {
       state = state.copyWith(isProviderCardVisible: false);
     }
   }
 
   void dismissCustomerNotification() {
+    _customerAutoHideTimer?.cancel();
     state = state.copyWith(
       isCustomerCardVisible: false,
       hasCustomerUnread: false,
@@ -275,6 +380,7 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
   }
 
   void dismissProviderNotification() {
+    _providerAutoHideTimer?.cancel();
     state = state.copyWith(
       isProviderCardVisible: false,
       hasProviderUnread: false,

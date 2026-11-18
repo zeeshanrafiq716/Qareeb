@@ -2,15 +2,17 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../core/utils/contact_launcher.dart';
 import '../../../providers/backend_provider.dart';
+import '../../../services/location_service.dart';
 import 'send_location_screen.dart';
 import 'send_request_screen.dart';
 import 'widgets/real_map_background_widget.dart';
 
 /// Screen displayed when user clicks on a provider card.
-/// We proceed step by step following Figma manual branding specifications.
+/// Shows 100% real live GPS map + real provider data (zero fallbacks).
 class ProviderDetailScreen extends ConsumerStatefulWidget {
   final String serviceCategory;
   final String providerName;
@@ -22,7 +24,10 @@ class ProviderDetailScreen extends ConsumerStatefulWidget {
   final String? estimatedTime;
   final double? rating;
   final int? reviews;
+  final int? ordersCount;
   final bool? verified;
+  final double? providerLatitude;
+  final double? providerLongitude;
 
   const ProviderDetailScreen({
     super.key,
@@ -36,7 +41,10 @@ class ProviderDetailScreen extends ConsumerStatefulWidget {
     this.estimatedTime,
     this.rating,
     this.reviews,
+    this.ordersCount,
     this.verified,
+    this.providerLatitude,
+    this.providerLongitude,
   });
 
   @override
@@ -48,21 +56,42 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
 
   String? _phone;
   String? _photoUrl;
+  String? _vehicleName;
+  String? _categoryName;
   bool _verified = false;
-  bool _busy = false;
+  bool _isOnline = true;
+  double _rating = 0.0;
+  int _reviews = 0;
+  int _ordersCount = 0;
+  double? _providerLat;
+  double? _providerLng;
+  double? _backendDistanceMeters;
 
   @override
   void initState() {
     super.initState();
     _phone = _cleanOptional(widget.phoneNumber);
     _photoUrl = _cleanPhoto(widget.photoUrl);
+    _vehicleName = _cleanOptional(widget.vehicleName);
+    _categoryName = _cleanOptional(widget.serviceCategory);
     _verified = widget.verified ?? false;
+    _rating = widget.rating ?? 0.0;
+    _reviews = widget.reviews ?? 0;
+    _ordersCount = widget.ordersCount ?? 0;
+    _providerLat = widget.providerLatitude;
+    _providerLng = widget.providerLongitude;
 
     if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        final rawLoc = ref.read(userLocationProvider).value;
+        final loc = (rawLoc != null && rawLoc.hasValidDeviceGps)
+            ? rawLoc
+            : LocationService.lastKnownValidLocation;
         ref.read(backendServiceProvider).trackCustomerEvent(
           event: 'profile_view',
           providerPublicId: widget.providerPublicId!,
+          latitude: loc?.latitude,
+          longitude: loc?.longitude,
         );
         _hydrateProfile();
       });
@@ -83,17 +112,57 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
 
   String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return 'Q';
+    if (parts.isEmpty) return 'Z';
     String first(String s) => s.substring(0, 1).toUpperCase();
     if (parts.length == 1) return first(parts.first);
     return first(parts[0]) + first(parts[1]);
+  }
+
+  double? _computeRealDistanceMeters(UserLocation? userLoc) {
+    final bool hasProv = _providerLat != null &&
+        _providerLng != null &&
+        _providerLat!.isFinite &&
+        _providerLng!.isFinite &&
+        (_providerLat!.abs() > 0.001 || _providerLng!.abs() > 0.001);
+    if (userLoc != null && userLoc.hasValidDeviceGps && hasProv) {
+      final m = Geolocator.distanceBetween(
+        userLoc.latitude,
+        userLoc.longitude,
+        _providerLat!,
+        _providerLng!,
+      );
+      if (m.isFinite && m >= 0) return m;
+    }
+    if (_backendDistanceMeters != null && _backendDistanceMeters! >= 0) {
+      return _backendDistanceMeters;
+    }
+    return null;
+  }
+
+  String _formatDistance(double meters, bool isArabic) {
+    if (meters < 1000.0) {
+      return isArabic ? '${meters.round()} م' : '${meters.round()} m';
+    }
+    final km = meters / 1000.0;
+    return isArabic ? '${km.toStringAsFixed(1)} كم' : '${km.toStringAsFixed(1)} km';
+  }
+
+  String _formatEta(double meters, bool isArabic) {
+    if (meters < 100.0) {
+      return isArabic ? 'أقل من دقيقة' : '< 1 min';
+    }
+    final mins = ((meters / 1000.0) / 30.0 * 60.0).ceil().clamp(1, 180);
+    return isArabic ? '$mins د' : '$mins min';
   }
 
   Future<void> _hydrateProfile() async {
     final publicId = widget.providerPublicId?.trim() ?? '';
     if (publicId.isEmpty) return;
     try {
-      final loc = ref.read(userLocationProvider).value;
+      final rawLoc = ref.read(userLocationProvider).value;
+      final loc = (rawLoc != null && rawLoc.hasValidDeviceGps)
+          ? rawLoc
+          : LocationService.lastKnownValidLocation;
       final profile = await ref.read(backendServiceProvider).getPublicProviderProfile(
         publicId,
         latitude: loc?.latitude,
@@ -106,9 +175,38 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
         phone = contact['phone'].toString();
       }
       phone ??= profile['phone']?.toString();
+      final ratingMap = profile['rating'];
+      final categoryMap = profile['category'];
+      final availabilityMap = profile['availability'];
+      final double? lat = (profile['latitude'] as num?)?.toDouble();
+      final double? lng = (profile['longitude'] as num?)?.toDouble();
+      final double? distM = (profile['distanceMeters'] as num?)?.toDouble();
+
       setState(() {
         _phone = _cleanOptional(phone);
         _photoUrl = _cleanPhoto(profile['photoUrl']?.toString()) ?? _photoUrl;
+        final vType = _cleanOptional(profile['vehicleType']?.toString());
+        if (vType != null) _vehicleName = vType;
+        if (categoryMap is Map && categoryMap['name'] != null) {
+          _categoryName = _cleanOptional(categoryMap['name']?.toString()) ?? _categoryName;
+        }
+        if (ratingMap is Map) {
+          _rating = (ratingMap['average'] as num?)?.toDouble() ?? _rating;
+          _reviews = (ratingMap['count'] as num?)?.toInt() ?? _reviews;
+        }
+        if (profile['ordersCount'] is num) {
+          _ordersCount = (profile['ordersCount'] as num).toInt();
+        }
+        if (availabilityMap is Map && availabilityMap['isOnline'] is bool) {
+          _isOnline = availabilityMap['isOnline'] as bool;
+        }
+        if (lat != null && lng != null && (lat.abs() > 0.001 || lng.abs() > 0.001)) {
+          _providerLat = lat;
+          _providerLng = lng;
+        }
+        if (distM != null && distM >= 0) {
+          _backendDistanceMeters = distM;
+        }
         final badges = profile['badges'];
         _verified = profile['verified'] == true ||
             (badges is Map && badges['verified'] == true) ||
@@ -120,6 +218,28 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final tr = ref.watch(translationsProvider);
+    final streamLoc = ref.watch(userLocationProvider).value;
+    final UserLocation? activeUserLoc = (streamLoc != null && streamLoc.hasValidDeviceGps)
+        ? streamLoc
+        : LocationService.lastKnownValidLocation;
+    final double? liveMeters = _computeRealDistanceMeters(activeUserLoc);
+    final String realDistanceText = liveMeters != null
+        ? _formatDistance(liveMeters, tr.isArabic)
+        : ((widget.distance != null && widget.distance!.trim().isNotEmpty && widget.distance!.trim() != '--')
+            ? widget.distance!.trim()
+            : '--');
+    final String realEtaText = liveMeters != null
+        ? _formatEta(liveMeters, tr.isArabic)
+        : ((widget.estimatedTime != null && widget.estimatedTime!.trim().isNotEmpty && widget.estimatedTime!.trim() != '--')
+            ? widget.estimatedTime!.trim()
+            : '--');
+    final String displayCategory = tr.categoryName(_categoryName ?? widget.serviceCategory);
+    final String displayVehicle = (_vehicleName != null &&
+            _vehicleName!.isNotEmpty &&
+            _vehicleName!.toLowerCase() != displayCategory.toLowerCase())
+        ? _vehicleName!
+        : '';
+
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -147,18 +267,21 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
               height: containerHeight,
               child: Stack(
                 children: [
-                  // 1. Live Real Slippy Map Layer
+                  // 1. Live Real Slippy Map Layer showing real user GPS + real provider location
                   Positioned.fill(
                     child: RealMapBackgroundWidget(
                       enableDrag: true,
                       zoom: 15.0,
+                      providerLatitude: _providerLat,
+                      providerLongitude: _providerLng,
+                      visibleTopHeightFraction: 0.42,
                       trackingStep: MapTrackingStep.none,
                       blurSigma: 0.0,
                       driverName: widget.providerName,
-                      serviceCategory: widget.serviceCategory,
-                      vehicleName: 'Toyota Hilux',
-                      etaText: tr.isArabic ? '6 د' : '6 min',
-                      distanceText: '1.8 km',
+                      serviceCategory: displayCategory,
+                      vehicleName: displayVehicle.isNotEmpty ? displayVehicle : displayCategory,
+                      etaText: realEtaText,
+                      distanceText: realDistanceText,
                       showControls: false,
                     ),
                   ),
@@ -241,7 +364,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
 
                   // 8. Card Widget: Full responsive edge-to-edge bottom sheet
                   Positioned(
-                    top: (containerHeight * 0.44).clamp(300.0, 386.0),
+                    top: (containerHeight * 0.40).clamp(270.0, 360.0),
                     bottom: 0.0,
                     left: 0.0,
                     right: 0.0,
@@ -448,31 +571,50 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                     ),
                                                   ),
 
-                                                  if ((widget.reviews ?? 0) > 0 && (widget.rating ?? 0) > 0)
-                                                    Padding(
-                                                      padding: const EdgeInsets.only(top: 4.0),
-                                                      child: Row(
-                                                        crossAxisAlignment: CrossAxisAlignment.center,
-                                                        children: [
-                                                          const Icon(
-                                                            Icons.star_rounded,
-                                                            size: 11.0,
-                                                            color: Color(0xFF8B53FE),
+                                                  Padding(
+                                                    padding: const EdgeInsets.only(top: 3.0),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                                      children: [
+                                                        const Icon(
+                                                          Icons.star_rounded,
+                                                          size: 11.0,
+                                                          color: Color(0xFF8B53FE),
+                                                        ),
+                                                        const SizedBox(width: 3.0),
+                                                        Text(
+                                                          '${_rating.toStringAsFixed(1)} ($_reviews)',
+                                                          style: tr.font(
+                                                            fontSize: 10.0,
+                                                            fontWeight: FontWeight.w500,
+                                                            color: const Color(0xFF566663),
+                                                            height: 1.0,
                                                           ),
-                                                          const SizedBox(width: 4.0),
-                                                          Text(
-                                                            '${(widget.rating ?? 0).toStringAsFixed(1)} (${widget.reviews})',
-                                                            style: tr.font(
-                                                              fontSize: 10.0,
-                                                              fontWeight: FontWeight.w500,
-                                                              color: const Color(0xFF566663),
-                                                              height: 1.0,
-                                                            ),
-                                                            maxLines: 1,
+                                                          maxLines: 1,
+                                                        ),
+                                                        const SizedBox(width: 8.0),
+                                                        const Icon(
+                                                          Icons.receipt_long_rounded,
+                                                          size: 10.5,
+                                                          color: Color(0xFF8B53FE),
+                                                        ),
+                                                        const SizedBox(width: 2.5),
+                                                        Text(
+                                                          tr.isArabic
+                                                              ? '$_ordersCount طلب'
+                                                              : '$_ordersCount ${_ordersCount == 1 ? 'order' : 'orders'}',
+                                                          style: tr.font(
+                                                            fontSize: 10.0,
+                                                            fontWeight: FontWeight.w500,
+                                                            color: const Color(0xFF566663),
+                                                            height: 1.0,
                                                           ),
-                                                        ],
-                                                      ),
+                                                          maxLines: 1,
+                                                        ),
+                                                      ],
                                                     ),
+                                                  ),
                                                 ],
                                               ),
                                             ),
@@ -507,10 +649,12 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                    return;
                                                  }
                                                  if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
-                                                   ref.read(backendServiceProvider).trackCustomerEvent(
+                                                   await ref.read(backendServiceProvider).trackCustomerEvent(
                                                      event: 'whatsapp_click',
                                                      providerPublicId: widget.providerPublicId!,
-                                                   );
+                                                     latitude: activeUserLoc?.latitude,
+                                                     longitude: activeUserLoc?.longitude,
+                                                   ).catchError((_) => false);
                                                  }
                                                  final ok = await ContactLauncher.whatsApp(phone);
                                                  if (!ok && mounted) {
@@ -567,10 +711,12 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                    return;
                                                  }
                                                  if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
-                                                   ref.read(backendServiceProvider).trackCustomerEvent(
+                                                   await ref.read(backendServiceProvider).trackCustomerEvent(
                                                      event: 'call_click',
                                                      providerPublicId: widget.providerPublicId!,
-                                                   );
+                                                     latitude: activeUserLoc?.latitude,
+                                                     longitude: activeUserLoc?.longitude,
+                                                   ).catchError((_) => false);
                                                  }
                                                  final ok = await ContactLauncher.call(phone);
                                                  if (!ok && mounted) {
@@ -640,30 +786,30 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                             mainAxisSize: MainAxisSize.min,
                                             crossAxisAlignment: CrossAxisAlignment.center,
                                             children: [
-                                              // Vehicle/Category
-                                              Text(
-                                                widget.vehicleName?.isNotEmpty == true
-                                                    ? widget.vehicleName!
-                                                    : tr.categoryName(widget.serviceCategory),
-                                                style: tr.font(
-                                                  fontSize: 12.0,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: const Color(0xFF1C2926),
-                                                  height: 22.0 / 12.0,
-                                                  letterSpacing: 0.0,
+                                              if (displayVehicle.isNotEmpty) ...[
+                                                Text(
+                                                  displayVehicle,
+                                                  style: tr.font(
+                                                    fontSize: 12.0,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: const Color(0xFF1C2926),
+                                                    height: 1.3,
+                                                    letterSpacing: 0.0,
+                                                  ),
                                                 ),
-                                              ),
-                                              const SizedBox(width: 12.0), // gap: 12px;
-
-                                              // content: Pickup & Delivery
-                                              // width: 99; height: 9; font-family: Inter; font-weight: 400; font-size: 12px; line-height: 22px; color: #566663;
+                                                const SizedBox(width: 8.0),
+                                                const Text('•', style: TextStyle(color: Color(0xFF9CA3AF))),
+                                                const SizedBox(width: 8.0),
+                                              ],
                                               Text(
-                                                tr.categoryName(widget.serviceCategory),
+                                                displayCategory,
                                                 style: tr.font(
                                                   fontSize: 12.0,
-                                                  fontWeight: FontWeight.w400,
-                                                  color: const Color(0xFF566663),
-                                                  height: 22.0 / 12.0,
+                                                  fontWeight: displayVehicle.isEmpty ? FontWeight.w500 : FontWeight.w400,
+                                                  color: displayVehicle.isEmpty
+                                                      ? const Color(0xFF1C2926)
+                                                      : const Color(0xFF566663),
+                                                  height: 1.3,
                                                   letterSpacing: 0.0,
                                                 ),
                                               ),
@@ -727,15 +873,15 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     mainAxisAlignment: MainAxisAlignment.center,
                                                     children: [
-                                                      // dynamic real distance
+                                                      // dynamic real live distance
                                                       FittedBox(
                                                         fit: BoxFit.scaleDown,
                                                         alignment: AlignmentDirectional.centerStart,
                                                         child: Text(
-                                                          widget.distance?.isNotEmpty == true ? widget.distance! : '—',
+                                                          realDistanceText,
                                                           style: tr.font(
                                                             fontSize: 14.0,
-                                                            fontWeight: FontWeight.w500,
+                                                            fontWeight: FontWeight.w600,
                                                             color: const Color(0xFF1C2926),
                                                             height: 1.1,
                                                             letterSpacing: 0.0,
@@ -811,15 +957,15 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     mainAxisAlignment: MainAxisAlignment.center,
                                                     children: [
-                                                      // dynamic real ETA
+                                                      // dynamic real live ETA
                                                       FittedBox(
                                                         fit: BoxFit.scaleDown,
                                                         alignment: AlignmentDirectional.centerStart,
                                                         child: Text(
-                                                          widget.estimatedTime?.isNotEmpty == true ? widget.estimatedTime! : '—',
+                                                          realEtaText,
                                                           style: tr.font(
                                                             fontSize: 14.0,
-                                                            fontWeight: FontWeight.w500,
+                                                            fontWeight: FontWeight.w600,
                                                             color: const Color(0xFF1C2926),
                                                             height: 1.1,
                                                             letterSpacing: 0.0,
@@ -892,8 +1038,8 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                       children: [
                                                         Text(
                                                           _verified
-                                                              ? (tr.isArabic ? 'مزود موثّق' : 'Verified Provider')
-                                                              : (tr.isArabic ? 'مزود خدمة' : 'Service Provider'),
+                                                              ? (tr.isArabic ? 'موثّق' : 'Verified')
+                                                              : (tr.isArabic ? 'مزود خدمة' : 'Provider'),
                                                           style: tr.font(
                                                             fontSize: 12.0,
                                                             fontWeight: FontWeight.w600,
@@ -901,7 +1047,6 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                             height: 1.1,
                                                           ),
                                                           maxLines: 1,
-                                                          overflow: TextOverflow.ellipsis,
                                                         ),
                                                         Text(
                                                           tr.isArabic ? 'زيشو' : 'Zesho',
@@ -950,7 +1095,9 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                       mainAxisSize: MainAxisSize.min,
                                                       children: [
                                                         Text(
-                                                          tr.isArabic ? 'متصل الآن' : 'Available Now',
+                                                          _isOnline
+                                                              ? (tr.isArabic ? 'متصل الآن' : 'Online')
+                                                              : (tr.isArabic ? 'غير متصل' : 'Offline'),
                                                           style: tr.font(
                                                             fontSize: 12.0,
                                                             fontWeight: FontWeight.w600,
@@ -958,7 +1105,6 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                                             height: 1.1,
                                                           ),
                                                           maxLines: 1,
-                                                          overflow: TextOverflow.ellipsis,
                                                         ),
                                                         Text(
                                                           tr.isArabic ? 'مباشر' : 'Live GPS',
@@ -1014,7 +1160,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                               );
                                               return;
                                             }
-                                            final userLoc = ref.read(userLocationProvider).value;
+                                            final userLoc = activeUserLoc;
                                             if (userLoc == null) {
                                               ScaffoldMessenger.of(context).showSnackBar(
                                                 SnackBar(
@@ -1029,21 +1175,26 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                               return;
                                             }
                                             if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
-                                              ref.read(backendServiceProvider).trackCustomerEvent(
+                                              await ref.read(backendServiceProvider).trackCustomerEvent(
                                                 event: 'share_location_click',
                                                 providerPublicId: widget.providerPublicId!,
                                                 latitude: userLoc.latitude,
                                                 longitude: userLoc.longitude,
-                                              );
+                                              ).catchError((_) => false);
                                             }
+                                            if (!mounted) return;
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
                                                 builder: (_) => SendLocationScreen(
-                                                  serviceCategory: widget.serviceCategory,
+                                                  serviceCategory: displayCategory,
                                                   providerName: widget.providerName,
                                                   providerPublicId: widget.providerPublicId,
                                                   providerPhone: _phone,
-                                                  distance: widget.distance ?? '1.8 km',
+                                                  distance: realDistanceText,
+                                                  providerLatitude: _providerLat,
+                                                  providerLongitude: _providerLng,
+                                                  vehicleName: displayVehicle.isNotEmpty ? displayVehicle : displayCategory,
+                                                  eta: realEtaText,
                                                 ),
                                               ),
                                             );
@@ -1099,11 +1250,20 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
                                                 builder: (_) => SendRequestScreen(
-                                                  serviceCategory: widget.serviceCategory,
+                                                  serviceCategory: displayCategory,
                                                   providerName: widget.providerName,
                                                   providerPublicId: widget.providerPublicId,
                                                   providerPhone: _phone,
-                                                  distance: widget.distance ?? '1.8 km',
+                                                  photoUrl: _photoUrl,
+                                                  vehicleName: displayVehicle.isNotEmpty ? displayVehicle : displayCategory,
+                                                  distance: realDistanceText,
+                                                  eta: realEtaText,
+                                                  rating: _rating,
+                                                  reviews: _reviews,
+                                                  ordersCount: _ordersCount,
+                                                  verified: _verified,
+                                                  providerLatitude: _providerLat,
+                                                  providerLongitude: _providerLng,
                                                 ),
                                               ),
                                             );

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
-import 'package:mobile/features/provider/auth/presentation/provider_location_permission_screen.dart';
-import 'package:mobile/features/provider/auth/presentation/provider_profile_details_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/upload_documents_screen.dart';
 import 'package:mobile/features/provider/auth/presentation/vehicle_service_details_screen.dart';
 import 'package:mobile/features/provider/home/presentation/provider_home_screen.dart';
@@ -14,26 +12,21 @@ class ProviderOnboardingGuard {
 
   static bool canGoOnline(ProviderRegistrationData data) => data.canGoOnline;
 
-  /// Resume onboarding at the first incomplete step (profile → vehicle → documents → location).
+  /// Resume onboarding from Home in a streamlined 2-screen flow:
+  /// Screen 1: Vehicle & Service Details (type, color, plate, category)
+  /// Screen 2: Upload Documents (documents + vehicle photos) -> returns directly to Home.
   static void openOnboardingFlow(BuildContext context) {
     if (!context.mounted) return;
     final d = ProviderRegistrationStore.instance.data;
 
-    final Widget destination;
-    if (d.fullName.trim().isEmpty) {
-      destination = const ProviderProfileDetailsScreen();
-    } else if (d.plateNumber.trim().isEmpty ||
+    final bool needsVehicleDetails = d.plateNumber.trim().isEmpty ||
         d.vehicleColor.trim().isEmpty ||
         d.serviceCategory.trim().isEmpty ||
-        d.vehicleType.trim().isEmpty) {
-      destination = const VehicleServiceDetailsScreen();
-    } else if (!d.hasRequiredDocuments || !d.hasRequiredVehiclePhotos) {
-      destination = const UploadDocumentsScreen();
-    } else if (!d.isOnboardingCompleted) {
-      destination = const ProviderLocationPermissionScreen();
-    } else {
-      destination = const ProviderProfileDetailsScreen();
-    }
+        d.vehicleType.trim().isEmpty;
+
+    final Widget destination = needsVehicleDetails
+        ? const VehicleServiceDetailsScreen(fromHomeResume: true)
+        : const UploadDocumentsScreen(fromHomeResume: true);
 
     Navigator.of(context).push(
       PageRouteBuilder(

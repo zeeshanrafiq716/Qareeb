@@ -71,9 +71,12 @@ class ProviderRegistrationData {
   /// Provider may use the app after skip, but cannot go online until setup is finished.
   bool get canGoOnline =>
       isOnboardingCompleted && !isSuspended && !isBlocked;
-  bool get isSuspended =>
-      _status == 'SUSPENDED' || _status == 'REJECTED' || _status == 'DECLINED';
-  bool get isBlocked => _status == 'BLOCKED' || _status == 'blocked';
+  bool get isSuspended {
+    final upper = (_status ?? '').trim().toUpperCase();
+    return upper == 'SUSPENDED' || upper == 'REJECTED' || upper == 'DECLINED';
+  }
+
+  bool get isBlocked => (_status ?? '').trim().toUpperCase() == 'BLOCKED';
 
   const ProviderRegistrationData({
     String? phone,
@@ -389,8 +392,10 @@ class ProviderRegistrationStore {
           profile['iqama_number']?.toString();
       final iqamaExpiry = profile['iqamaExpiry']?.toString() ??
           profile['iqama_expiry']?.toString();
-      final status = profile['status']?.toString() ??
-          profile['status_code']?.toString();
+      final status = (profile['status']?.toString() ??
+              profile['status_code']?.toString())
+          ?.trim()
+          .toUpperCase();
       final publicId = profile['providerId']?.toString() ??
           profile['public_id']?.toString() ??
           profile['publicId']?.toString();
@@ -420,8 +425,16 @@ class ProviderRegistrationStore {
         }
       }
 
-      // Collect real uploaded vehicle photos
+      // Collect real uploaded vehicle photos and restore uploaded document flags
       final List<String> photos = List<String>.from(data.vehiclePhotos);
+      bool iqamaDocUploaded = data.iqamaUploaded;
+      bool registrationDocUploaded = data.registrationUploaded;
+      bool licenceDocUploaded = data.licenceUploaded;
+      bool frontDocUploaded = data.vehicleFrontUploaded;
+      bool rearDocUploaded = data.vehicleRearUploaded;
+      bool leftDocUploaded = data.vehicleLeftUploaded;
+      bool rightDocUploaded = data.vehicleRightUploaded;
+
       if (profile['vehiclePhotos'] is List) {
         for (final p in profile['vehiclePhotos']) {
           if (p != null && p.toString().isNotEmpty && !photos.contains(p.toString())) {
@@ -432,9 +445,29 @@ class ProviderRegistrationStore {
       if (profile['documents'] is List) {
         for (final d in profile['documents']) {
           if (d is Map) {
-            final type = d['documentType']?.toString() ?? d['document_type']?.toString() ?? '';
-            final url = d['documentUrl']?.toString() ?? d['document_url']?.toString() ?? '';
-            if (type.toLowerCase().contains('vehicle') && url.isNotEmpty && !photos.contains(url)) {
+            final type = (d['documentType']?.toString() ??
+                    d['document_type']?.toString() ??
+                    '')
+                .toLowerCase();
+            final url = d['documentUrl']?.toString() ??
+                d['document_url']?.toString() ??
+                '';
+            if (type.contains('iqama') || type.contains('cnic') || type.contains('passport')) {
+              iqamaDocUploaded = true;
+            } else if (type.contains('registration')) {
+              registrationDocUploaded = true;
+            } else if (type.contains('licen')) {
+              licenceDocUploaded = true;
+            } else if (type.contains('vehicle_front')) {
+              frontDocUploaded = true;
+            } else if (type.contains('vehicle_rear')) {
+              rearDocUploaded = true;
+            } else if (type.contains('vehicle_left')) {
+              leftDocUploaded = true;
+            } else if (type.contains('vehicle_right')) {
+              rightDocUploaded = true;
+            }
+            if (type.contains('vehicle') && url.isNotEmpty && !photos.contains(url)) {
               photos.add(url);
             }
           }
@@ -453,6 +486,9 @@ class ProviderRegistrationStore {
         lng = (profile['location']['longitude'] as num?)?.toDouble();
       }
 
+      final bool backendCompletedOnboarding =
+          status == 'APPROVED' || status == 'PENDING_VERIFICATION';
+
       update((current) => current.copyWith(
         fullName: (name != null && name.isNotEmpty) ? name : current.fullName,
         phone: (phone != null && phone.isNotEmpty) ? phone : current.phone,
@@ -464,11 +500,19 @@ class ProviderRegistrationStore {
         vehicleColor: (vehicleColor != null && vehicleColor.isNotEmpty) ? vehicleColor : current.vehicleColor,
         iqamaNumber: (iqama != null && iqama.isNotEmpty) ? iqama : current.iqamaNumber,
         iqamaExpiry: (iqamaExpiry != null && iqamaExpiry.isNotEmpty) ? iqamaExpiry : current.iqamaExpiry,
+        iqamaUploaded: iqamaDocUploaded || current.iqamaUploaded,
+        registrationUploaded: registrationDocUploaded || current.registrationUploaded,
+        licenceUploaded: licenceDocUploaded || current.licenceUploaded,
+        vehicleFrontUploaded: frontDocUploaded || current.vehicleFrontUploaded,
+        vehicleRearUploaded: rearDocUploaded || current.vehicleRearUploaded,
+        vehicleLeftUploaded: leftDocUploaded || current.vehicleLeftUploaded,
+        vehicleRightUploaded: rightDocUploaded || current.vehicleRightUploaded,
         status: (status != null && status.isNotEmpty) ? status : current.status,
         publicId: (publicId != null && publicId.isNotEmpty) ? publicId : current.publicId,
         vehiclePhotos: photos.isNotEmpty ? photos : current.vehiclePhotos,
         latitude: lat ?? current.latitude,
         longitude: lng ?? current.longitude,
+        isOnboardingCompleted: backendCompletedOnboarding || current.isOnboardingCompleted,
       ));
     } catch (e) {
       debugPrint('Error updating ProviderRegistrationStore from backend profile: $e');

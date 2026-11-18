@@ -12,15 +12,23 @@ import 'widgets/real_map_background_widget.dart';
 class LiveTrackingScreen extends ConsumerStatefulWidget {
   final String serviceCategory;
   final String providerName;
+  final String? vehicleName;
+  final String? photoUrl;
+  final double? providerLatitude;
+  final double? providerLongitude;
   final String distance;
   final String duration;
 
   const LiveTrackingScreen({
     super.key,
-    this.serviceCategory = 'Pickup & Delivery',
-    this.providerName = 'Ahmad Transport',
-    this.distance = '1.8 km',
-    this.duration = '8 min',
+    this.serviceCategory = 'Service',
+    this.providerName = 'Provider',
+    this.vehicleName,
+    this.photoUrl,
+    this.providerLatitude,
+    this.providerLongitude,
+    this.distance = '--',
+    this.duration = '--',
   });
 
   @override
@@ -104,10 +112,12 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                       child: RealMapBackgroundWidget(
                         enableDrag: true,
                         zoom: 15.0,
+                        providerLatitude: widget.providerLatitude,
+                        providerLongitude: widget.providerLongitude,
                         trackingStep: MapTrackingStep.onTheWay,
                         driverName: widget.providerName,
                         serviceCategory: widget.serviceCategory,
-                        vehicleName: 'Toyota Hilux',
+                        vehicleName: widget.vehicleName ?? widget.serviceCategory,
                         etaText: widget.duration,
                         distanceText: widget.distance,
                         showControls: true,

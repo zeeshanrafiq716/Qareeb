@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../core/utils/contact_launcher.dart';
 import '../../../providers/backend_provider.dart';
@@ -14,23 +15,39 @@ import '../../../services/profile_stats_service.dart';
 import '../../../services/task_service.dart';
 
 /// Screen displayed when user clicks 'Send Request' in ProviderDetailScreen.
-/// Implements the exact header and map layer of Pickup & Delivery screens as requested.
+/// Displays 100% real provider data & live GPS map (zero fallbacks).
 class SendRequestScreen extends ConsumerStatefulWidget {
   final String serviceCategory;
   final String providerName;
   final String? providerPublicId;
   final String? providerPhone;
+  final String? photoUrl;
+  final String? vehicleName;
   final String distance;
   final String? eta;
+  final double? rating;
+  final int? reviews;
+  final int? ordersCount;
+  final bool? verified;
+  final double? providerLatitude;
+  final double? providerLongitude;
 
   const SendRequestScreen({
     super.key,
-    this.serviceCategory = 'Pickup & Delivery',
-    this.providerName = 'Ahmad Transport',
+    this.serviceCategory = 'Service',
+    this.providerName = 'Provider',
     this.providerPublicId,
     this.providerPhone,
-    this.distance = '1.8 km',
+    this.photoUrl,
+    this.vehicleName,
+    this.distance = '--',
     this.eta,
+    this.rating,
+    this.reviews,
+    this.ordersCount,
+    this.verified,
+    this.providerLatitude,
+    this.providerLongitude,
   });
 
   @override
@@ -41,6 +58,15 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
   bool _isAccepted = false;
   bool _navigatedToLive = false;
   String? _resolvedPhone;
+  String? _photoUrl;
+  String? _vehicleName;
+  double _rating = 0.0;
+  int _reviews = 0;
+  int _ordersCount = 0;
+  bool _verified = false;
+  double? _providerLat;
+  double? _providerLng;
+  double? _backendDistanceMeters;
 
   AppTranslations get tr => ref.read(translationsProvider);
 
@@ -48,12 +74,19 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
   void initState() {
     super.initState();
     _resolvedPhone = _cleanPhone(widget.providerPhone);
+    _photoUrl = _cleanPhoto(widget.photoUrl);
+    _vehicleName = _cleanPhone(widget.vehicleName);
+    _rating = widget.rating ?? 0.0;
+    _reviews = widget.reviews ?? 0;
+    _ordersCount = widget.ordersCount ?? 0;
+    _verified = widget.verified ?? false;
+    _providerLat = widget.providerLatitude;
+    _providerLng = widget.providerLongitude;
+
     ProfileStatsService.instance.recordNewRequest(isProvider: false);
     TaskService.instance.activeTaskNotifier.addListener(_onTaskChanged);
     _bootstrapRequest();
-    if (_resolvedPhone == null) {
-      _hydrateProviderPhone();
-    }
+    _hydrateProviderPhone();
   }
 
   String? _cleanPhone(String? raw) {
@@ -62,26 +95,104 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
     return p;
   }
 
+  String? _cleanPhoto(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return null;
+    if (text.contains('unsplash.com') || text.contains('placeholder')) return null;
+    return text;
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return 'Z';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return parts[0].substring(0, 1).toUpperCase() + parts[1].substring(0, 1).toUpperCase();
+  }
+
+  double? _computeRealDistanceMeters(UserLocation? userLoc) {
+    final bool hasProv = _providerLat != null &&
+        _providerLng != null &&
+        _providerLat!.isFinite &&
+        _providerLng!.isFinite &&
+        (_providerLat!.abs() > 0.001 || _providerLng!.abs() > 0.001);
+    if (userLoc != null && userLoc.hasValidDeviceGps && hasProv) {
+      final m = Geolocator.distanceBetween(
+        userLoc.latitude,
+        userLoc.longitude,
+        _providerLat!,
+        _providerLng!,
+      );
+      if (m.isFinite && m >= 0) return m;
+    }
+    if (_backendDistanceMeters != null && _backendDistanceMeters! >= 0) {
+      return _backendDistanceMeters;
+    }
+    return null;
+  }
+
+  String _formatDistance(double meters, bool isArabic) {
+    if (meters < 1000.0) {
+      return isArabic ? '${meters.round()} م' : '${meters.round()} m';
+    }
+    return isArabic
+        ? '${(meters / 1000.0).toStringAsFixed(1)} كم'
+        : '${(meters / 1000.0).toStringAsFixed(1)} km';
+  }
+
+  String _formatEta(double meters, bool isArabic) {
+    if (meters < 100.0) return isArabic ? 'أقل من دقيقة' : '< 1 min';
+    final mins = ((meters / 1000.0) / 30.0 * 60.0).ceil().clamp(1, 180);
+    return isArabic ? '$mins د' : '$mins min';
+  }
+
   Future<void> _hydrateProviderPhone() async {
     final id = widget.providerPublicId;
     if (id == null || id.isEmpty) return;
-    final loc = ref.read(userLocationProvider).value;
+    final rawLoc = ref.read(userLocationProvider).value;
+    final loc = (rawLoc != null && rawLoc.hasValidDeviceGps)
+        ? rawLoc
+        : LocationService.lastKnownValidLocation;
     final profile = await ref.read(backendServiceProvider).getPublicProviderProfile(
           id,
           latitude: loc?.latitude,
           longitude: loc?.longitude,
         );
-    if (!mounted) return;
-    final contact = profile?['contact'];
+    if (!mounted || profile == null) return;
+    final contact = profile['contact'];
     String? phone;
     if (contact is Map && contact['phone'] != null) {
       phone = contact['phone'].toString();
     }
-    phone ??= profile?['phone']?.toString();
+    phone ??= profile['phone']?.toString();
     final cleaned = _cleanPhone(phone);
-    if (cleaned != null) {
-      setState(() => _resolvedPhone = cleaned);
-    }
+    final ratingMap = profile['rating'];
+    final badges = profile['badges'];
+    final double? lat = (profile['latitude'] as num?)?.toDouble();
+    final double? lng = (profile['longitude'] as num?)?.toDouble();
+    final double? distM = (profile['distanceMeters'] as num?)?.toDouble();
+
+    setState(() {
+      if (cleaned != null) _resolvedPhone = cleaned;
+      _photoUrl = _cleanPhoto(profile['photoUrl']?.toString()) ?? _photoUrl;
+      _vehicleName = _cleanPhone(profile['vehicleType']?.toString()) ?? _vehicleName;
+      if (ratingMap is Map) {
+        _rating = (ratingMap['average'] as num?)?.toDouble() ?? _rating;
+        _reviews = (ratingMap['count'] as num?)?.toInt() ?? _reviews;
+      }
+      if (profile['ordersCount'] is num) {
+        _ordersCount = (profile['ordersCount'] as num).toInt();
+      }
+      _verified = profile['verified'] == true ||
+          (badges is Map && badges['verified'] == true) ||
+          _verified;
+      if (lat != null && lng != null && (lat.abs() > 0.001 || lng.abs() > 0.001)) {
+        _providerLat = lat;
+        _providerLng = lng;
+      }
+      if (distM != null && distM >= 0) {
+        _backendDistanceMeters = distM;
+      }
+    });
   }
 
   Future<void> _bootstrapRequest() async {
@@ -158,6 +269,10 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
         builder: (_) => LiveTrackingScreen(
           serviceCategory: widget.serviceCategory,
           providerName: widget.providerName,
+          vehicleName: _vehicleName ?? widget.serviceCategory,
+          photoUrl: _photoUrl,
+          providerLatitude: _providerLat,
+          providerLongitude: _providerLng,
           distance: task?.distance ?? widget.distance,
           duration: task?.eta ?? widget.eta ?? '',
         ),
@@ -298,23 +413,40 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                         child: Stack(
                           clipBehavior: Clip.none,
                           children: [
-                  // 1. Live Real Slippy Map Layer
+                  // 1. Live Real Slippy Map Layer with real customer GPS radar & real provider car
                   Positioned(
                     top: 0.0,
                     left: 0.0,
                     width: containerWidth,
                     height: mapSectionHeight,
-                    child: RealMapBackgroundWidget(
-                      enableDrag: true,
-                      zoom: 15.0,
-                      trackingStep: MapTrackingStep.none,
-                      blurSigma: 0.0,
-                      driverName: widget.providerName,
-                      serviceCategory: widget.serviceCategory,
-                      vehicleName: 'Toyota Hilux',
-                      etaText: tr.isArabic ? 'جاري الإرسال...' : 'Broadcasting...',
-                      distanceText: widget.distance,
-                      showControls: false,
+                    child: Builder(
+                      builder: (context) {
+                        final streamLoc = ref.watch(userLocationProvider).value;
+                        final activeLoc = (streamLoc != null && streamLoc.hasValidDeviceGps)
+                            ? streamLoc
+                            : LocationService.lastKnownValidLocation;
+                        final meters = _computeRealDistanceMeters(activeLoc);
+                        final liveDist = meters != null
+                            ? _formatDistance(meters, tr.isArabic)
+                            : widget.distance;
+                        final liveEta = meters != null
+                            ? _formatEta(meters, tr.isArabic)
+                            : (widget.eta ?? '--');
+                        return RealMapBackgroundWidget(
+                          enableDrag: true,
+                          zoom: 15.0,
+                          providerLatitude: _providerLat,
+                          providerLongitude: _providerLng,
+                          trackingStep: MapTrackingStep.requestSent,
+                          blurSigma: 0.0,
+                          driverName: widget.providerName,
+                          serviceCategory: widget.serviceCategory,
+                          vehicleName: _vehicleName ?? widget.serviceCategory,
+                          etaText: liveEta,
+                          distanceText: liveDist,
+                          showControls: false,
+                        );
+                      },
                     ),
                   ),
 
@@ -467,31 +599,42 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                 child: Row(
                                                   crossAxisAlignment: CrossAxisAlignment.center,
                                                   children: [
-                                                    // Left side img layout: width: 36; height: 36;
+                                                    // Left side real avatar or purple initials
                                                     Container(
                                                       width: 36.0,
                                                       height: 36.0,
                                                       decoration: const BoxDecoration(
                                                         shape: BoxShape.circle,
-                                                        color: Color(0xFFFFAAA6),
+                                                        color: Color(0xFF8B53FE),
                                                       ),
                                                       clipBehavior: Clip.antiAlias,
-                                                      child: Image.network(
-                                                        '',
-                                                        width: 36.0,
-                                                        height: 36.0,
-                                                        fit: BoxFit.cover,
-                                                        errorBuilder: (context, error, stackTrace) => Container(
-                                                          color: const Color(0xFFFFAAA6),
-                                                          child: const Center(
-                                                            child: Icon(
-                                                              Icons.person,
-                                                              size: 22.0,
-                                                              color: Colors.white,
+                                                      child: _photoUrl != null
+                                                          ? Image.network(
+                                                              _photoUrl!,
+                                                              width: 36.0,
+                                                              height: 36.0,
+                                                              fit: BoxFit.cover,
+                                                              errorBuilder: (_, _, _) => Center(
+                                                                child: Text(
+                                                                  _initials(widget.providerName),
+                                                                  style: const TextStyle(
+                                                                    color: Colors.white,
+                                                                    fontWeight: FontWeight.w700,
+                                                                    fontSize: 13.0,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            )
+                                                          : Center(
+                                                              child: Text(
+                                                                _initials(widget.providerName),
+                                                                style: const TextStyle(
+                                                                  color: Colors.white,
+                                                                  fontWeight: FontWeight.w700,
+                                                                  fontSize: 13.0,
+                                                                ),
+                                                              ),
                                                             ),
-                                                          ),
-                                                        ),
-                                                      ),
                                                     ),
                                                     const SizedBox(width: 16.0), // gap: 16px;
 
@@ -583,10 +726,10 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                         color: Color(0xFF8B53FE),
                                                                       ),
                                                                       const SizedBox(width: 4.0), // gap: 4px;
-                                                                      // content: 4.9 (120)
+                                                                      // Real provider rating & review count
                                                                       Text.rich(
                                                                         TextSpan(
-                                                                          text: '4.9',
+                                                                          text: _rating.toStringAsFixed(1),
                                                                           style: tr.font(
                                                                             fontSize: 10.0,
                                                                             fontWeight: FontWeight.w500,
@@ -596,7 +739,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                           ),
                                                                           children: [
                                                                             TextSpan(
-                                                                              text: ' (120)',
+                                                                              text: ' ($_reviews)',
                                                                               style: tr.font(
                                                                                 fontSize: 10.0,
                                                                                 fontWeight: FontWeight.w400,
@@ -763,24 +906,28 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                     mainAxisSize: MainAxisSize.min,
                                                     crossAxisAlignment: CrossAxisAlignment.center,
                                                     children: [
-                                                      // content: Toyota Hilux
-                                                      Text(
-                                                        tr.formatVehicleName('Toyota Hilux'),
-                                                        textHeightBehavior: const TextHeightBehavior(
-                                                          applyHeightToFirstAscent: false,
-                                                          applyHeightToLastDescent: false,
+                                                      if (_vehicleName != null &&
+                                                          _vehicleName!.isNotEmpty &&
+                                                          _vehicleName!.toLowerCase() !=
+                                                              tr.categoryName(widget.serviceCategory).toLowerCase()) ...[
+                                                        Text(
+                                                          _vehicleName!,
+                                                          textHeightBehavior: const TextHeightBehavior(
+                                                            applyHeightToFirstAscent: false,
+                                                            applyHeightToLastDescent: false,
+                                                          ),
+                                                          style: tr.font(
+                                                            fontSize: 12.0,
+                                                            fontWeight: FontWeight.w500,
+                                                            color: const Color(0xFF1C2926),
+                                                            height: 22.0 / 12.0,
+                                                            letterSpacing: 0.0,
+                                                          ),
                                                         ),
-                                                        style: tr.font(
-                                                          fontSize: 12.0,
-                                                          fontWeight: FontWeight.w500,
-                                                          color: const Color(0xFF1C2926),
-                                                          height: 22.0 / 12.0,
-                                                          letterSpacing: 0.0,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 12.0), // gap: 12px;
-
-                                                      // content: Pickup & Delivery
+                                                        const SizedBox(width: 8.0),
+                                                        const Text('•', style: TextStyle(color: Color(0xFF9CA3AF))),
+                                                        const SizedBox(width: 8.0),
+                                                      ],
                                                       Text(
                                                         tr.categoryName(widget.serviceCategory),
                                                         textHeightBehavior: const TextHeightBehavior(
@@ -789,8 +936,8 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                         ),
                                                         style: tr.font(
                                                           fontSize: 12.0,
-                                                          fontWeight: FontWeight.w400,
-                                                          color: const Color(0xFF566663),
+                                                          fontWeight: FontWeight.w500,
+                                                          color: const Color(0xFF1C2926),
                                                           height: 22.0 / 12.0,
                                                           letterSpacing: 0.0,
                                                         ),
@@ -857,24 +1004,36 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                               mainAxisAlignment: MainAxisAlignment.center,
                                                               children: [
                                                                 // content: 1.8 km
-                                                                // width: 43; height: 10; font-family: Inter; font-weight: 500; font-size: 14px; line-height: 22px; color: #1C2926;
-                                                                FittedBox(
-                                                                  fit: BoxFit.scaleDown,
-                                                                  alignment: Alignment.centerLeft,
-                                                                  child: Text(
-                                                                    tr.onePointEightKm,
-                                                                    textHeightBehavior: const TextHeightBehavior(
-                                                                      applyHeightToFirstAscent: false,
-                                                                      applyHeightToLastDescent: false,
-                                                                    ),
-                                                                    style: tr.font(
-                                                                      fontSize: 14.0,
-                                                                      fontWeight: FontWeight.w500,
-                                                                      color: const Color(0xFF1C2926),
-                                                                      height: 1.1,
-                                                                      letterSpacing: 0.0,
-                                                                    ),
-                                                                  ),
+                                                                // Real live distance
+                                                                Builder(
+                                                                  builder: (context) {
+                                                                    final streamLoc = ref.watch(userLocationProvider).value;
+                                                                    final activeLoc = (streamLoc != null && streamLoc.hasValidDeviceGps)
+                                                                        ? streamLoc
+                                                                        : LocationService.lastKnownValidLocation;
+                                                                    final meters = _computeRealDistanceMeters(activeLoc);
+                                                                    final distText = meters != null
+                                                                        ? _formatDistance(meters, tr.isArabic)
+                                                                        : (widget.distance.trim().isNotEmpty ? widget.distance.trim() : '--');
+                                                                    return FittedBox(
+                                                                      fit: BoxFit.scaleDown,
+                                                                      alignment: Alignment.centerLeft,
+                                                                      child: Text(
+                                                                        distText,
+                                                                        textHeightBehavior: const TextHeightBehavior(
+                                                                          applyHeightToFirstAscent: false,
+                                                                          applyHeightToLastDescent: false,
+                                                                        ),
+                                                                        style: tr.font(
+                                                                          fontSize: 14.0,
+                                                                          fontWeight: FontWeight.w600,
+                                                                          color: const Color(0xFF1C2926),
+                                                                          height: 1.1,
+                                                                          letterSpacing: 0.0,
+                                                                        ),
+                                                                      ),
+                                                                    );
+                                                                  },
                                                                 ),
                                                                 const SizedBox(height: 2.0),
 
@@ -949,25 +1108,38 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                               crossAxisAlignment: CrossAxisAlignment.start,
                                                               mainAxisAlignment: MainAxisAlignment.center,
                                                               children: [
-                                                                // content: 6 min
-                                                                // width: 37; height: 10; font-family: Inter; font-weight: 500; font-size: 14px; line-height: 22px; color: #1C2926;
-                                                                FittedBox(
-                                                                  fit: BoxFit.scaleDown,
-                                                                  alignment: Alignment.centerLeft,
-                                                                  child: Text(
-                                                                    tr.sixMin,
-                                                                    textHeightBehavior: const TextHeightBehavior(
-                                                                      applyHeightToFirstAscent: false,
-                                                                      applyHeightToLastDescent: false,
-                                                                    ),
-                                                                    style: tr.font(
-                                                                      fontSize: 14.0,
-                                                                      fontWeight: FontWeight.w500,
-                                                                      color: const Color(0xFF1C2926),
-                                                                      height: 1.1,
-                                                                      letterSpacing: 0.0,
-                                                                    ),
-                                                                  ),
+                                                                // Real live ETA
+                                                                Builder(
+                                                                  builder: (context) {
+                                                                    final streamLoc = ref.watch(userLocationProvider).value;
+                                                                    final activeLoc = (streamLoc != null && streamLoc.hasValidDeviceGps)
+                                                                        ? streamLoc
+                                                                        : LocationService.lastKnownValidLocation;
+                                                                    final meters = _computeRealDistanceMeters(activeLoc);
+                                                                    final etaText = meters != null
+                                                                        ? _formatEta(meters, tr.isArabic)
+                                                                        : ((widget.eta != null && widget.eta!.trim().isNotEmpty)
+                                                                            ? widget.eta!.trim()
+                                                                            : '--');
+                                                                    return FittedBox(
+                                                                      fit: BoxFit.scaleDown,
+                                                                      alignment: Alignment.centerLeft,
+                                                                      child: Text(
+                                                                        etaText,
+                                                                        textHeightBehavior: const TextHeightBehavior(
+                                                                          applyHeightToFirstAscent: false,
+                                                                          applyHeightToLastDescent: false,
+                                                                        ),
+                                                                        style: tr.font(
+                                                                          fontSize: 14.0,
+                                                                          fontWeight: FontWeight.w600,
+                                                                          color: const Color(0xFF1C2926),
+                                                                          height: 1.1,
+                                                                          letterSpacing: 0.0,
+                                                                        ),
+                                                                      ),
+                                                                    );
+                                                                  },
                                                                 ),
                                                                 const SizedBox(height: 2.0),
 
@@ -1138,7 +1310,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                   fit: BoxFit.scaleDown,
                                                                   alignment: AlignmentDirectional.centerStart,
                                                                   child: Text(
-                                                                    '500+',
+                                                                    '$_ordersCount',
                                                                     maxLines: 1,
                                                                     textHeightBehavior: const TextHeightBehavior(
                                                                       applyHeightToFirstAscent: false,
@@ -1224,7 +1396,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                                                                   fit: BoxFit.scaleDown,
                                                                   alignment: AlignmentDirectional.centerStart,
                                                                   child: Text(
-                                                                    '98%',
+                                                                    tr.isArabic ? 'مباشر' : 'Live',
                                                                     maxLines: 1,
                                                                     textHeightBehavior: const TextHeightBehavior(
                                                                       applyHeightToFirstAscent: false,

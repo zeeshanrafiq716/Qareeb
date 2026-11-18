@@ -105,9 +105,10 @@ class _ProviderAdminApprovalContentLayoutState
     super.initState();
     _backendService = BackendService(ApiClient());
     final currentData = ProviderRegistrationStore.instance.data;
-    _isApproved = currentData.status == 'APPROVED';
-    _isRejected = currentData.status == 'REJECTED';
-    _isSuspended = currentData.status == 'SUSPENDED';
+    final statusUpper = currentData.status.trim().toUpperCase();
+    _isApproved = statusUpper == 'APPROVED';
+    _isRejected = statusUpper == 'REJECTED' || statusUpper == 'DECLINED';
+    _isSuspended = statusUpper == 'SUSPENDED';
 
     if (_isApproved) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

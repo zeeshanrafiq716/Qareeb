@@ -1436,6 +1436,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                         time: tr.isArabic
                             ? (notifState.customerNotification?.timeAr ?? '')
                             : (notifState.customerNotification?.timeEn ?? ''),
+                        createdAt: notifState.customerNotification?.createdAt,
                         imageAsset: notifState.customerNotification?.imageAsset,
                         onTap: () {
                           ref.read(notificationsProvider.notifier).hideCustomerCard();

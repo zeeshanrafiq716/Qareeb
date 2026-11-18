@@ -13,11 +13,13 @@ import { FUNNEL_EVENT, recordFunnelEvent, recordListImpressions } from "./funnel
 import { buildCustomerEmptyState } from "../utils/discoveryEmptyState.js";
 
 const PROVIDER_DISCOVERY_SELECT = `
-  p.id, p.public_id, p.name, p.phone, p.photo_url, p.is_online, p.last_seen_at,
+  p.id, p.public_id, p.name, p.phone, p.whatsapp_number, p.photo_url, p.is_online, p.last_seen_at,
   p.rating_avg, p.rating_count,
-  c.id AS category_id, c.name AS category_name, c.slug AS category_slug,
+  p.vehicle_type_name, p.vehicle_model, p.plate_number, p.vehicle_color,
+  c.id AS category_id, c.name AS category_name, c.name_ar AS category_name_ar, c.slug AS category_slug, c.icon_url AS category_icon_url,
   l.latitude, l.longitude, l.location_updated_at, l.city,
-  ver.verification_status
+  ver.verification_status,
+  COALESCE(ord.orders_count, 0) AS orders_count
 `;
 
 const VERIFICATION_LATERAL = `
@@ -29,6 +31,12 @@ const VERIFICATION_LATERAL = `
     ORDER BY v.created_at DESC
     LIMIT 1
   ) ver ON true
+  LEFT JOIN LATERAL (
+    SELECT COUNT(*)::int AS orders_count
+    FROM provider_notifications pn
+    WHERE pn.provider_id = p.id
+      AND pn.event_type = 'send_request_click'
+  ) ord ON true
 `;
 
 export async function resolveCategoryFilter({ categoryId, categorySlug }) {
@@ -76,25 +84,43 @@ export function buildCustomerDiscoveryCard(row, distanceM, redisOnline) {
   const verified = row.verification_status === VERIFICATION_STATUS.APPROVED;
   const ratingAvg = Number(row.rating_avg ?? 0);
   const ratingCount = Number(row.rating_count ?? 0);
+  const ordersCount = Number(row.orders_count ?? 0);
+  const safeDistanceM = Number.isFinite(Number(distanceM)) ? Math.max(0, Number(distanceM)) : 0;
+  const estimatedMinutes =
+    safeDistanceM < 100 ? 1 : Math.max(1, Math.ceil(((safeDistanceM / 1000) / 30) * 60));
 
   return {
     id: row.id,
     providerId: row.public_id,
     publicId: row.public_id,
     name: row.name,
+    phone: row.phone ?? null,
+    whatsappNumber: row.whatsapp_number || row.phone || null,
     photoUrl: row.photo_url,
+    vehicleType: row.vehicle_type_name || null,
+    vehicleModel: row.vehicle_model || null,
+    plateNumber: row.plate_number || null,
+    vehicleColor: row.vehicle_color || null,
     category: row.category_id
-      ? { id: row.category_id, name: row.category_name, slug: row.category_slug }
+      ? {
+          id: row.category_id,
+          name: row.category_name,
+          nameAr: row.category_name_ar ?? null,
+          slug: row.category_slug,
+          iconUrl: row.category_icon_url ?? null,
+        }
       : null,
-    distanceMeters: Math.round(distanceM),
-    distanceKm: Number((distanceM / 1000).toFixed(1)),
+    distanceMeters: Math.round(safeDistanceM),
+    distanceKm: Number((safeDistanceM / 1000).toFixed(3)),
+    estimatedMinutes,
+    ordersCount,
     latitude: lat,
     longitude: lng,
     approximateLocation: approx,
     rating: {
       average: ratingAvg,
       count: ratingCount,
-      display: ratingCount > 0 ? ratingAvg.toFixed(1) : "New",
+      display: ratingCount > 0 ? ratingAvg.toFixed(1) : "0.0",
     },
     verified,
     badges: {
