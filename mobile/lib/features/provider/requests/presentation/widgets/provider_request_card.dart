@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile/core/config/app_config.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 
 /// Provider Request Card Widget
@@ -63,6 +64,107 @@ import 'package:mobile/core/localization/app_locale.dart';
 ///   King Abdullah Rd, Riyadh: font-family: Inter; font-weight: 400; font-size: 10px; color: #616166;
 ///   ellipse branding: width: 4; height: 4; background: #616166;
 ///   4.1km: font-family: Inter; font-weight: 400; font-size: 10px; color: #616166;
+String _shortLocationLabel(String raw, bool isArabic) {
+  if (raw.isEmpty) return isArabic ? 'موقع العميل' : 'Customer location';
+  if (raw.startsWith('http') && raw.contains('maps.google')) {
+    return isArabic ? 'موقع مشترك' : 'Shared location';
+  }
+  if (raw.startsWith('http')) return isArabic ? 'موقع العميل' : 'Customer location';
+  return raw;
+}
+
+String? _cleanDistanceLabel(String? raw) {
+  if (raw == null || raw.isEmpty || raw == '--' || raw == '—') return null;
+  return raw
+      .replaceAll(RegExp(r'\s*away\s*', caseSensitive: false), '')
+      .replaceAll('على بعد ', '')
+      .trim();
+}
+
+String? _resolveCustomerPhoto(String? raw) {
+  final v = raw?.trim() ?? '';
+  if (v.isEmpty) return null;
+  if (v.contains('ahmed_khan') || v.endsWith('img.png') || v.contains('unsplash.com')) {
+    return null;
+  }
+  if (v.startsWith('http')) return v;
+  if (v.startsWith('/')) return '${AppConfig.baseUrl}$v';
+  return null;
+}
+
+String _customerInitials(String name) {
+  final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+  if (parts.isEmpty) return 'C';
+  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+  return '${parts.first.substring(0, 1)}${parts[1].substring(0, 1)}'.toUpperCase();
+}
+
+Widget _categoryImageFallback(double size) {
+  return Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      color: const Color(0xFFF3F2F5),
+      borderRadius: BorderRadius.circular(10.0),
+    ),
+    child: const Center(
+      child: Icon(Icons.build_rounded, color: Color(0xFF8B53FE), size: 36.0),
+    ),
+  );
+}
+
+Widget _buildCategoryImage(String path, double size) {
+  if (path.isEmpty) return _categoryImageFallback(size);
+  if (path.startsWith('http')) {
+    return Image.network(
+      path,
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      errorBuilder: (_, _, _) => _categoryImageFallback(size),
+    );
+  }
+  return Image.asset(
+    path,
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+    errorBuilder: (_, _, _) => _categoryImageFallback(size),
+  );
+}
+
+Widget _buildCustomerAvatar(String? photoUrl, String name, bool isArabic) {
+  final initials = _customerInitials(name);
+  final fallback = Container(
+    width: 20.0,
+    height: 20.0,
+    decoration: const BoxDecoration(
+      color: Color(0xFF8B53FE),
+      shape: BoxShape.circle,
+    ),
+    alignment: Alignment.center,
+    child: Text(
+      initials,
+      style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+        fontSize: 8.5,
+        fontWeight: FontWeight.w700,
+        color: Colors.white,
+        height: 1.0,
+      ),
+    ),
+  );
+  if (photoUrl == null || photoUrl.isEmpty) return fallback;
+  return ClipOval(
+    child: Image.network(
+      photoUrl,
+      width: 20.0,
+      height: 20.0,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => fallback,
+    ),
+  );
+}
+
 class ProviderRequestCard extends StatelessWidget {
   final String? title;
   final String? location;
@@ -88,10 +190,10 @@ class ProviderRequestCard extends StatelessWidget {
     this.title,
     this.location,
     this.distance,
-    this.timeText = '10:24 PM',
-    this.badgeText = 'Completed',
-    this.imageAsset = 'assets/images/img.png',
-    this.customerName = 'Ahmed Khan',
+    this.timeText,
+    this.badgeText,
+    this.imageAsset,
+    this.customerName,
     this.customerAvatarAsset,
     this.isSelected = false,
     this.backgroundColor,
@@ -111,10 +213,10 @@ class ProviderRequestCard extends StatelessWidget {
     this.title,
     this.location,
     this.distance,
-    this.timeText = '10:24 PM',
-    this.badgeText = 'Completed',
-    this.imageAsset = 'assets/images/img.png',
-    this.customerName = 'Ahmed Khan',
+    this.timeText,
+    this.badgeText,
+    this.imageAsset,
+    this.customerName,
     this.customerAvatarAsset,
     this.isSelected = true,
     this.backgroundColor = const Color(0xFFF4EFFE),
@@ -135,33 +237,27 @@ class ProviderRequestCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isArabic = context.isArabic;
 
-    // Safe fallbacks to prevent any null string runtime errors
-    final String effectiveTitle = (title != null && title!.isNotEmpty)
-        ? title!
-        : (isArabic ? 'شحن وتبديل بطارية' : 'Battery Jump Start');
-    final String effectiveLocation = (location != null && location!.isNotEmpty)
-        ? location!
-        : (isArabic ? 'طريق الملك عبدالله، الرياض' : 'King Abdullah Rd, Riyadh');
-    final String effectiveDistance = (distance != null && distance!.isNotEmpty)
-        ? distance!
-        : (isArabic ? '٤.١ كم' : '4.1km');
-    final String effectiveTime = (timeText != null && timeText!.isNotEmpty)
-        ? timeText!
-        : '10:24 PM';
-    final String effectiveBadge = (badgeText != null && badgeText!.isNotEmpty)
-        ? badgeText!
-        : (isArabic ? 'مكتمل' : 'Completed');
-    final String effectiveImage = (imageAsset != null && imageAsset!.isNotEmpty)
-        ? imageAsset!
-        : 'assets/images/img.png';
-    final String effectiveCustomer =
-        (customerName != null && customerName!.isNotEmpty)
-            ? customerName!
-            : (isArabic ? 'أحمد خان' : 'Ahmed Khan');
-    final String effectiveAvatar =
-        (customerAvatarAsset != null && customerAvatarAsset!.isNotEmpty)
-            ? customerAvatarAsset!
-            : 'assets/images/ahmed_khan.jpg';
+    final String effectiveTitle = (title != null && title!.trim().isNotEmpty)
+        ? title!.trim()
+        : (isArabic ? 'خدمة' : 'Service');
+    final String effectiveLocation = _shortLocationLabel(
+      location?.trim() ?? '',
+      isArabic,
+    );
+    final String? effectiveDistance = _cleanDistanceLabel(distance?.trim());
+    final String effectiveTime = (timeText != null && timeText!.trim().isNotEmpty && timeText!.trim() != '--')
+        ? timeText!.trim()
+        : '';
+    final String effectiveBadge = (badgeText != null && badgeText!.trim().isNotEmpty)
+        ? badgeText!.trim()
+        : (isArabic ? 'طلب' : 'Request');
+    final String effectiveImage = (imageAsset != null && imageAsset!.trim().isNotEmpty)
+        ? imageAsset!.trim()
+        : '';
+    final String effectiveCustomer = (customerName != null && customerName!.trim().isNotEmpty)
+        ? customerName!.trim()
+        : (isArabic ? 'عميل' : 'Customer');
+    final String? effectiveAvatarUrl = _resolveCustomerPhoto(customerAvatarAsset);
 
     // Card branding:
     // width: 350; height: 124; gap: 16px; border-radius: 12px; padding: 16px;
@@ -225,29 +321,7 @@ class ProviderRequestCard extends StatelessWidget {
                     // 1. img layout: 88 x 88; border-radius: 10px;
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10.0),
-                      child: Image.asset(
-                        effectiveImage,
-                        width: 88.0,
-                        height: 88.0,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 88.0,
-                            height: 88.0,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3F2F5),
-                              borderRadius: BorderRadius.circular(10.0),
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.build_rounded,
-                                color: Color(0xFF8B53FE),
-                                size: 36.0,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                      child: _buildCategoryImage(effectiveImage, 88.0),
                     ),
 
                     // equal gap: 14px
@@ -300,18 +374,18 @@ class ProviderRequestCard extends StatelessWidget {
                                         ),
                                       ),
 
-                                      // Time Text (e.g. Just now / 5 min ago):
-                                      Text(
-                                        effectiveTime,
-                                        style: (isArabic
-                                            ? GoogleFonts.cairo
-                                            : GoogleFonts.inter)(
-                                          fontSize: 11.0,
-                                          fontWeight: FontWeight.w400,
-                                          color: const Color(0xFF616166),
-                                          height: 1.0,
+                                      if (effectiveTime.isNotEmpty)
+                                        Text(
+                                          effectiveTime,
+                                          style: (isArabic
+                                              ? GoogleFonts.cairo
+                                              : GoogleFonts.inter)(
+                                            fontSize: 11.0,
+                                            fontWeight: FontWeight.w400,
+                                            color: const Color(0xFF616166),
+                                            height: 1.0,
+                                          ),
                                         ),
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -345,29 +419,10 @@ class ProviderRequestCard extends StatelessWidget {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.center,
                                     children: [
-                                      ClipOval(
-                                        child: Image.asset(
-                                          effectiveAvatar,
-                                          width: 20.0,
-                                          height: 20.0,
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) {
-                                            return Container(
-                                              width: 20.0,
-                                              height: 20.0,
-                                              decoration: const BoxDecoration(
-                                                color: Color(0xFFE5E7EB),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: const Icon(
-                                                Icons.person_rounded,
-                                                size: 13.0,
-                                                color: Color(0xFF616166),
-                                              ),
-                                            );
-                                          },
-                                        ),
+                                      _buildCustomerAvatar(
+                                        effectiveAvatarUrl,
+                                        effectiveCustomer,
+                                        isArabic,
                                       ),
 
                                       const SizedBox(width: 8.0),
@@ -436,32 +491,29 @@ class ProviderRequestCard extends StatelessWidget {
                                         ),
                                       ),
 
-                                      const SizedBox(width: 6.0),
-
-                                      // bullet point
-                                      Container(
-                                        width: 3.5,
-                                        height: 3.5,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFF616166),
-                                          shape: BoxShape.circle,
+                                      if (effectiveDistance != null) ...[
+                                        const SizedBox(width: 6.0),
+                                        Container(
+                                          width: 3.5,
+                                          height: 3.5,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF616166),
+                                            shape: BoxShape.circle,
+                                          ),
                                         ),
-                                      ),
-
-                                      const SizedBox(width: 6.0),
-
-                                      // Distance text
-                                      Text(
-                                        effectiveDistance,
-                                        style: (isArabic
-                                            ? GoogleFonts.cairo
-                                            : GoogleFonts.inter)(
-                                          fontSize: 10.5,
-                                          fontWeight: FontWeight.w400,
-                                          color: const Color(0xFF616166),
-                                          height: 1.0,
+                                        const SizedBox(width: 6.0),
+                                        Text(
+                                          effectiveDistance,
+                                          style: (isArabic
+                                              ? GoogleFonts.cairo
+                                              : GoogleFonts.inter)(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w400,
+                                            color: const Color(0xFF616166),
+                                            height: 1.0,
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ],
                                   ),
                                 ),

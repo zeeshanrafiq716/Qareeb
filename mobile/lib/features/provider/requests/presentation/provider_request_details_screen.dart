@@ -98,6 +98,11 @@ class _ProviderRequestDetailsScreenState
     super.dispose();
   }
 
+  bool get _showAcceptDeclineActions {
+    final status = widget.status.toLowerCase().trim();
+    return status != 'completed' && status != 'cancelled';
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isArabic = context.isArabic;
@@ -1018,155 +1023,158 @@ class _ProviderRequestDetailsScreenState
                                       ),
                                     ),
 
-                                    const SizedBox(height: 16.0),
+                                    if (_showAcceptDeclineActions) ...[
+                                      const SizedBox(height: 16.0),
 
-                                    // 3f. Action Buttons: Decline & Accept Request
-                                    Row(
-                                      children: [
-                                        // Decline button
-                                        Expanded(
-                                          child: GestureDetector(
-                                            onTap: () async {
-                                              HapticFeedback.lightImpact();
-                                              await ref
-                                                  .read(backendServiceProvider)
-                                                  .updateProviderRequestStatus(
-                                                    requestId: widget.requestId,
-                                                    status: 'cancelled',
-                                                    step: 0,
-                                                  )
-                                                  .catchError((_) => false);
-                                              await TaskService.instance
-                                                  .cancelRequestById(widget.requestId);
-                                              if (context.mounted) {
-                                                Navigator.of(context).maybePop(false);
-                                              }
-                                            },
-                                            child: Container(
-                                              height: 52.0,
-                                              padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFFFEBEB),
-                                                borderRadius: BorderRadius.circular(12.0),
-                                              ),
-                                              alignment: Alignment.center,
-                                              child: Text(
-                                                isArabic ? 'رفض' : 'Decline',
-                                                style: isArabic
-                                                    ? GoogleFonts.cairo(
-                                                        fontSize: 14.0,
-                                                        fontWeight: FontWeight.w500,
-                                                        color: const Color(0xFFFF383C),
-                                                        height: 1.2,
-                                                        letterSpacing: 0.0,
-                                                      )
-                                                    : GoogleFonts.inter(
-                                                        fontSize: 14.0,
-                                                        fontWeight: FontWeight.w500,
-                                                        color: const Color(0xFFFF383C),
-                                                        height: 1.2,
-                                                        letterSpacing: 0.0,
-                                                      ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
+                                      // 3f. Action Buttons: Decline & Accept Request (not for completed/cancelled)
+                                      Row(
+                                        children: [
+                                          // Decline button
+                                          Expanded(
+                                            child: GestureDetector(
+                                              onTap: () async {
+                                                HapticFeedback.lightImpact();
+                                                await ref
+                                                    .read(backendServiceProvider)
+                                                    .updateProviderRequestStatus(
+                                                      requestId: widget.requestId,
+                                                      status: 'cancelled',
+                                                      step: 0,
+                                                    )
+                                                    .catchError((_) => false);
+                                                await TaskService.instance
+                                                    .cancelRequestById(widget.requestId);
+                                                if (context.mounted) {
+                                                  Navigator.of(context).maybePop(false);
+                                                }
+                                              },
+                                              child: Container(
+                                                height: 52.0,
+                                                padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFFFEBEB),
+                                                  borderRadius: BorderRadius.circular(12.0),
+                                                ),
+                                                alignment: Alignment.center,
+                                                child: Text(
+                                                  isArabic ? 'رفض' : 'Decline',
+                                                  style: isArabic
+                                                      ? GoogleFonts.cairo(
+                                                          fontSize: 14.0,
+                                                          fontWeight: FontWeight.w500,
+                                                          color: const Color(0xFFFF383C),
+                                                          height: 1.2,
+                                                          letterSpacing: 0.0,
+                                                        )
+                                                      : GoogleFonts.inter(
+                                                          fontSize: 14.0,
+                                                          fontWeight: FontWeight.w500,
+                                                          color: const Color(0xFFFF383C),
+                                                          height: 1.2,
+                                                          letterSpacing: 0.0,
+                                                        ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
                                               ),
                                             ),
                                           ),
-                                        ),
 
-                                        const SizedBox(width: 12.0),
+                                          const SizedBox(width: 12.0),
 
-                                        // Accept button -> syncs 'active' status to backend so customer updates live AND moves task to Active tab
-                                        Expanded(
-                                          child: GestureDetector(
-                                            onTap: () async {
-                                              HapticFeedback.mediumImpact();
-                                              await ref
-                                                  .read(backendServiceProvider)
-                                                  .updateProviderRequestStatus(
-                                                    requestId: widget.requestId,
-                                                    status: 'active',
-                                                    step: 1,
-                                                  )
-                                                  .catchError((_) => false);
-                                              await TaskService.instance
-                                                  .acceptRequestById(widget.requestId);
-                                              if (!context.mounted) return;
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(
-                                                  backgroundColor: const Color(0xFF8B53FE),
-                                                  content: Text(
-                                                    isArabic
-                                                        ? 'تم قبول الطلب بنجاح!'
-                                                        : 'Request Accepted Successfully!',
-                                                    style: GoogleFonts.inter(color: Colors.white),
+                                          // Accept button -> syncs 'active' status to backend so customer updates live AND moves task to Active tab
+                                          Expanded(
+                                            child: GestureDetector(
+                                              onTap: () async {
+                                                HapticFeedback.mediumImpact();
+                                                await ref
+                                                    .read(backendServiceProvider)
+                                                    .updateProviderRequestStatus(
+                                                      requestId: widget.requestId,
+                                                      status: 'active',
+                                                      step: 1,
+                                                    )
+                                                    .catchError((_) => false);
+                                                await TaskService.instance
+                                                    .acceptRequestById(widget.requestId);
+                                                if (!context.mounted) return;
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    backgroundColor: const Color(0xFF8B53FE),
+                                                    content: Text(
+                                                      isArabic
+                                                          ? 'تم قبول الطلب بنجاح!'
+                                                          : 'Request Accepted Successfully!',
+                                                      style: GoogleFonts.inter(color: Colors.white),
+                                                    ),
+                                                    duration: const Duration(seconds: 2),
                                                   ),
-                                                  duration: const Duration(seconds: 2),
+                                                );
+                                                final custName = widget.customerName.trim().isNotEmpty
+                                                    ? widget.customerName.trim()
+                                                    : (TaskService.instance.activeTask?.customerName ?? 'Customer');
+                                                Navigator.of(context).pushReplacement(
+                                                  MaterialPageRoute(
+                                                    builder: (_) => ProviderActiveRequestScreen(
+                                                      requestId: widget.requestId,
+                                                      serviceTypeEn: widget.serviceTypeEn,
+                                                      serviceTypeAr: widget.serviceTypeAr,
+                                                      locationEn: widget.locationEn,
+                                                      locationAr: widget.locationAr,
+                                                      distanceEn: widget.distanceEn,
+                                                      distanceAr: widget.distanceAr,
+                                                      timeEn: widget.timeEn,
+                                                      timeAr: widget.timeAr,
+                                                      customerNameEn: custName,
+                                                      customerNameAr: custName,
+                                                      imageAsset: widget.imageAsset,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                              child: Container(
+                                                height: 52.0,
+                                                padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFF8B53FE),
+                                                  borderRadius: BorderRadius.circular(12.0),
+                                                  boxShadow: const [
+                                                    BoxShadow(
+                                                      color: Color(0x338B53FE),
+                                                      blurRadius: 10.0,
+                                                      offset: Offset(0, 4),
+                                                    ),
+                                                  ],
                                                 ),
-                                              );
-                                              final custName = widget.customerName.trim().isNotEmpty
-                                                  ? widget.customerName.trim()
-                                                  : (TaskService.instance.activeTask?.customerName ?? 'Customer');
-                                              Navigator.of(context).pushReplacement(
-                                                MaterialPageRoute(
-                                                  builder: (_) => ProviderActiveRequestScreen(
-                                                    requestId: widget.requestId,
-                                                    serviceTypeEn: widget.serviceTypeEn,
-                                                    serviceTypeAr: widget.serviceTypeAr,
-                                                    locationEn: widget.locationEn,
-                                                    locationAr: widget.locationAr,
-                                                    distanceEn: widget.distanceEn,
-                                                    distanceAr: widget.distanceAr,
-                                                    timeEn: widget.timeEn,
-                                                    timeAr: widget.timeAr,
-                                                    customerNameEn: custName,
-                                                    customerNameAr: custName,
-                                                  ),
+                                                alignment: Alignment.center,
+                                                child: Text(
+                                                  isArabic ? 'قبول الطلب' : 'Accept Request',
+                                                  style: isArabic
+                                                      ? GoogleFonts.cairo(
+                                                          fontSize: 14.0,
+                                                          fontWeight: FontWeight.w500,
+                                                          color: Colors.white,
+                                                          height: 1.2,
+                                                          letterSpacing: 0.0,
+                                                        )
+                                                      : GoogleFonts.inter(
+                                                          fontSize: 14.0,
+                                                          fontWeight: FontWeight.w500,
+                                                          color: Colors.white,
+                                                          height: 1.2,
+                                                          letterSpacing: 0.0,
+                                                        ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
                                                 ),
-                                              );
-                                            },
-                                            child: Container(
-                                              height: 52.0,
-                                              padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF8B53FE),
-                                                borderRadius: BorderRadius.circular(12.0),
-                                                boxShadow: const [
-                                                  BoxShadow(
-                                                    color: Color(0x338B53FE),
-                                                    blurRadius: 10.0,
-                                                    offset: Offset(0, 4),
-                                                  ),
-                                                ],
-                                              ),
-                                              alignment: Alignment.center,
-                                              child: Text(
-                                                isArabic ? 'قبول الطلب' : 'Accept Request',
-                                                style: isArabic
-                                                    ? GoogleFonts.cairo(
-                                                        fontSize: 14.0,
-                                                        fontWeight: FontWeight.w500,
-                                                        color: Colors.white,
-                                                        height: 1.2,
-                                                        letterSpacing: 0.0,
-                                                      )
-                                                    : GoogleFonts.inter(
-                                                        fontSize: 14.0,
-                                                        fontWeight: FontWeight.w500,
-                                                        color: Colors.white,
-                                                        height: 1.2,
-                                                        letterSpacing: 0.0,
-                                                      ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
+                                        ],
+                                      ),
 
-                                    const SizedBox(height: 16.0),
+                                      const SizedBox(height: 16.0),
+                                    ],
 
                                     // 3g. Bottom Home Indicator Bar (with dynamic safe-area)
                                     Center(

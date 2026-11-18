@@ -174,11 +174,18 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
         final custName = meta['customerName']?.toString().trim() ?? '';
         final custAddr = meta['customerAddress']?.toString().trim() ?? '';
         final dist = meta['distance']?.toString().trim() ?? '';
+        final eta = meta['eta']?.toString().trim() ?? '';
+        final note = meta['customerNote']?.toString().trim() ??
+            meta['note']?.toString().trim() ??
+            '';
+        final photo = meta['customerPhotoUrl']?.toString().trim() ?? '';
         final reqStatus = meta['requestStatus']?.toString().trim() ?? 'new';
         final reqStep = (meta['step'] is num)
             ? (meta['step'] as num).toInt()
             : int.tryParse(meta['step']?.toString() ?? '') ?? 0;
         final tsRaw = item['createdAt']?.toString();
+        final lat = (item['customerLatitude'] as num?)?.toDouble();
+        final lng = (item['customerLongitude'] as num?)?.toDouble();
         await TaskService.instance.upsertIncomingRequestFromProviderNotification(
           notificationId: itemId,
           serviceCategory: cat.isNotEmpty
@@ -188,9 +195,14 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
               ? custAddr
               : _formatCustomerLocationFromNotification(item),
           distance: dist,
+          eta: eta,
           customerName: custName.isNotEmpty
               ? custName
               : (tr.isArabic ? 'عميل' : 'Customer'),
+          customerPhotoUrl: photo.isNotEmpty ? photo : null,
+          customerNote: note,
+          customerLatitude: lat,
+          customerLongitude: lng,
           status: reqStatus,
           step: reqStep,
           createdAt: tsRaw != null ? DateTime.tryParse(tsRaw) : null,

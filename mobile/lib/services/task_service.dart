@@ -20,6 +20,10 @@ class ServiceTask {
   final String eta;
   final String customerName;
   final String customerLocation;
+  final String? customerPhotoUrl;
+  final String customerNote;
+  final double? customerLatitude;
+  final double? customerLongitude;
   final String status; // 'new', 'active', 'arrived', 'in_progress', 'completed', 'cancelled'
   final int step; // 0: Accepted, 1: On The Way, 2: Arrived, 3: In Progress, 4: Completed
   final String dateTime;
@@ -42,6 +46,10 @@ class ServiceTask {
     this.eta = '--',
     this.customerName = 'Customer',
     this.customerLocation = '',
+    this.customerPhotoUrl,
+    this.customerNote = '',
+    this.customerLatitude,
+    this.customerLongitude,
     this.status = 'active',
     this.step = 1,
     required this.dateTime,
@@ -65,6 +73,10 @@ class ServiceTask {
     String? eta,
     String? customerName,
     String? customerLocation,
+    String? customerPhotoUrl,
+    String? customerNote,
+    double? customerLatitude,
+    double? customerLongitude,
     String? status,
     int? step,
     String? dateTime,
@@ -87,6 +99,10 @@ class ServiceTask {
       eta: eta ?? this.eta,
       customerName: customerName ?? this.customerName,
       customerLocation: customerLocation ?? this.customerLocation,
+      customerPhotoUrl: customerPhotoUrl ?? this.customerPhotoUrl,
+      customerNote: customerNote ?? this.customerNote,
+      customerLatitude: customerLatitude ?? this.customerLatitude,
+      customerLongitude: customerLongitude ?? this.customerLongitude,
       status: status ?? this.status,
       step: step ?? this.step,
       dateTime: dateTime ?? this.dateTime,
@@ -111,6 +127,10 @@ class ServiceTask {
         'eta': eta,
         'customerName': customerName,
         'customerLocation': customerLocation,
+        'customerPhotoUrl': customerPhotoUrl,
+        'customerNote': customerNote,
+        'customerLatitude': customerLatitude,
+        'customerLongitude': customerLongitude,
         'status': status,
         'step': step,
         'dateTime': dateTime,
@@ -135,6 +155,10 @@ class ServiceTask {
       eta: json['eta'] as String? ?? '--',
       customerName: json['customerName'] as String? ?? 'Customer',
       customerLocation: json['customerLocation'] as String? ?? '',
+      customerPhotoUrl: json['customerPhotoUrl'] as String?,
+      customerNote: json['customerNote'] as String? ?? '',
+      customerLatitude: (json['customerLatitude'] as num?)?.toDouble(),
+      customerLongitude: (json['customerLongitude'] as num?)?.toDouble(),
       status: json['status'] as String? ?? 'active',
       step: json['step'] as int? ?? 1,
       dateTime: json['dateTime'] as String? ?? 'Today',
@@ -359,6 +383,11 @@ class TaskService {
     String? customerLocation,
     String? distance,
     String? customerName,
+    String? eta,
+    String? customerPhotoUrl,
+    String? customerNote,
+    double? customerLatitude,
+    double? customerLongitude,
     String status = 'new',
     int step = 0,
     DateTime? createdAt,
@@ -389,9 +418,13 @@ class TaskService {
             providerName: 'Zesho',
             serviceCategory: serviceCategory.trim().isNotEmpty ? serviceCategory.trim() : 'Roadside Assistance',
             distance: distance?.trim().isNotEmpty == true ? distance!.trim() : '--',
-            eta: '--',
+            eta: eta?.trim().isNotEmpty == true ? eta!.trim() : '--',
             customerName: customerName?.trim().isNotEmpty == true ? customerName!.trim() : 'Customer',
             customerLocation: customerLocation?.trim().isNotEmpty == true ? customerLocation!.trim() : 'Shared via Zesho',
+            customerPhotoUrl: customerPhotoUrl?.trim().isNotEmpty == true ? customerPhotoUrl!.trim() : null,
+            customerNote: customerNote?.trim().isNotEmpty == true ? customerNote!.trim() : '',
+            customerLatitude: customerLatitude,
+            customerLongitude: customerLongitude,
             status: normalizedStatus,
             step: normalizedStatus == 'completed' ? 4 : step,
             dateTime: formattedTime,
@@ -412,26 +445,52 @@ class TaskService {
     final existingIdx = _incomingRequests.indexWhere((t) => t.id == taskId);
     if (existingIdx != -1) {
       final existing = _incomingRequests[existingIdx];
-      if (existing.status == 'new' && normalizedStatus != 'new') {
-        final updated = existing.copyWith(status: normalizedStatus, step: step);
-        _incomingRequests[existingIdx] = updated;
-        if (_activeTask?.id == taskId) {
-          _activeTask = updated;
-          activeTaskNotifier.value = _activeTask;
-          await _saveActiveTask();
-        }
-        providerRequestsNotifier.value = providerRequests;
+      final updated = existing.copyWith(
+        status: normalizedStatus,
+        step: step,
+        distance: distance?.trim().isNotEmpty == true ? distance!.trim() : existing.distance,
+        eta: eta?.trim().isNotEmpty == true ? eta!.trim() : existing.eta,
+        customerName: customerName?.trim().isNotEmpty == true ? customerName!.trim() : existing.customerName,
+        customerLocation:
+            customerLocation?.trim().isNotEmpty == true ? customerLocation!.trim() : existing.customerLocation,
+        customerPhotoUrl:
+            customerPhotoUrl?.trim().isNotEmpty == true ? customerPhotoUrl!.trim() : existing.customerPhotoUrl,
+        customerNote: customerNote?.trim().isNotEmpty == true ? customerNote!.trim() : existing.customerNote,
+        customerLatitude: customerLatitude ?? existing.customerLatitude,
+        customerLongitude: customerLongitude ?? existing.customerLongitude,
+      );
+      _incomingRequests[existingIdx] = updated;
+      if (_activeTask?.id == taskId) {
+        _activeTask = updated;
+        activeTaskNotifier.value = _activeTask;
+        await _saveActiveTask();
       }
+      providerRequestsNotifier.value = providerRequests;
       return;
     }
 
     if (_activeTask?.id == taskId) {
-      if (_activeTask!.status == 'new' && normalizedStatus != 'new') {
-        _activeTask = _activeTask!.copyWith(status: normalizedStatus, step: step);
-        activeTaskNotifier.value = _activeTask;
-        providerRequestsNotifier.value = providerRequests;
-        await _saveActiveTask();
-      }
+      _activeTask = _activeTask!.copyWith(
+        status: normalizedStatus,
+        step: step,
+        distance: distance?.trim().isNotEmpty == true ? distance!.trim() : _activeTask!.distance,
+        eta: eta?.trim().isNotEmpty == true ? eta!.trim() : _activeTask!.eta,
+        customerName:
+            customerName?.trim().isNotEmpty == true ? customerName!.trim() : _activeTask!.customerName,
+        customerLocation: customerLocation?.trim().isNotEmpty == true
+            ? customerLocation!.trim()
+            : _activeTask!.customerLocation,
+        customerPhotoUrl: customerPhotoUrl?.trim().isNotEmpty == true
+            ? customerPhotoUrl!.trim()
+            : _activeTask!.customerPhotoUrl,
+        customerNote:
+            customerNote?.trim().isNotEmpty == true ? customerNote!.trim() : _activeTask!.customerNote,
+        customerLatitude: customerLatitude ?? _activeTask!.customerLatitude,
+        customerLongitude: customerLongitude ?? _activeTask!.customerLongitude,
+      );
+      activeTaskNotifier.value = _activeTask;
+      providerRequestsNotifier.value = providerRequests;
+      await _saveActiveTask();
       return;
     }
 
@@ -440,9 +499,13 @@ class TaskService {
       providerName: 'Zesho',
       serviceCategory: serviceCategory.trim().isNotEmpty ? serviceCategory.trim() : 'Roadside Assistance',
       distance: distance?.trim().isNotEmpty == true ? distance!.trim() : '--',
-      eta: '--',
+      eta: eta?.trim().isNotEmpty == true ? eta!.trim() : '--',
       customerName: customerName?.trim().isNotEmpty == true ? customerName!.trim() : 'Customer',
       customerLocation: customerLocation?.trim().isNotEmpty == true ? customerLocation!.trim() : 'Shared via Zesho',
+      customerPhotoUrl: customerPhotoUrl?.trim().isNotEmpty == true ? customerPhotoUrl!.trim() : null,
+      customerNote: customerNote?.trim().isNotEmpty == true ? customerNote!.trim() : '',
+      customerLatitude: customerLatitude,
+      customerLongitude: customerLongitude,
       status: normalizedStatus,
       step: step,
       dateTime: formattedTime,

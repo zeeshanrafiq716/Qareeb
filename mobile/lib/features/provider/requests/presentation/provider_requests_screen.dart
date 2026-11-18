@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/providers/backend_provider.dart';
 import 'package:mobile/services/task_service.dart';
+import 'package:mobile/models/category_model.dart';
 import 'package:mobile/features/home/presentation/widgets/bottom_nav_bar_widget.dart';
 import 'package:mobile/features/provider/requests/presentation/provider_active_request_screen.dart';
 import 'package:mobile/features/provider/requests/presentation/provider_request_details_screen.dart';
@@ -30,7 +32,8 @@ class _ProviderRequestItem {
   final String status; // 'new', 'active', 'completed', 'cancelled'
   final String customerNameEn;
   final String customerNameAr;
-  final String customerAvatarAsset;
+  final String? customerPhotoUrl;
+  final String customerNote;
 
   const _ProviderRequestItem({
     required this.id,
@@ -46,10 +49,57 @@ class _ProviderRequestItem {
     required this.badgeAr,
     required this.imageAsset,
     required this.status,
-    this.customerNameEn = 'Ahmed Khan',
-    this.customerNameAr = 'أحمد خان',
-    this.customerAvatarAsset = 'assets/images/ahmed_khan.jpg',
+    this.customerNameEn = 'Customer',
+    this.customerNameAr = 'عميل',
+    this.customerPhotoUrl,
+    this.customerNote = '',
   });
+}
+
+String _categoryAssetFor(String category) {
+  final slug = category.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+  final model = CategoryModel(
+    id: slug,
+    name: category.trim().isNotEmpty ? category.trim() : 'Service',
+    slug: slug,
+  );
+  return model.displayAssetImage ?? 'assets/images/tow_truck.png';
+}
+
+String _shortLocationForList(String raw, bool isArabic) {
+  final t = raw.trim();
+  if (t.isEmpty) return isArabic ? 'موقع العميل' : 'Customer location';
+  if (t == 'Shared via Zesho') return isArabic ? 'موقع مشترك' : 'Shared location';
+  if (t.startsWith('http') && t.contains('maps.google')) {
+    return isArabic ? 'موقع مشترك' : 'Shared location';
+  }
+  if (t.startsWith('http')) return isArabic ? 'موقع العميل' : 'Customer location';
+  return t;
+}
+
+String _listTimeForTask(ServiceTask task) {
+  final dt = task.dateTime.trim();
+  if (dt.isNotEmpty && dt != 'Today' && dt != '--') {
+    return dt;
+  }
+  final local = task.createdAt.toLocal();
+  return DateFormat('d MMM yyyy, HH:mm').format(local);
+}
+
+String _listDistanceForTask(ServiceTask task) {
+  final d = task.distance.trim();
+  if (d.isEmpty || d == '--' || d == '—') return '';
+  return d;
+}
+
+String? _listPhotoUrl(String? raw) {
+  final v = raw?.trim() ?? '';
+  if (v.isEmpty) return null;
+  if (v.contains('ahmed_khan') || v.endsWith('img.png') || v.contains('unsplash.com')) {
+    return null;
+  }
+  if (v.startsWith('http') || v.startsWith('/')) return v;
+  return null;
 }
 
 /// Provider Requests Screen
@@ -148,12 +198,17 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
         final custName = meta['customerName']?.toString().trim() ?? '';
         final custAddr = meta['customerAddress']?.toString().trim() ?? '';
         final dist = meta['distance']?.toString().trim() ?? '';
+        final eta = meta['eta']?.toString().trim() ?? '';
+        final note = meta['customerNote']?.toString().trim() ??
+            meta['note']?.toString().trim() ??
+            '';
+        final photo = meta['customerPhotoUrl']?.toString().trim() ?? '';
         final reqStatus = meta['requestStatus']?.toString().trim() ?? 'new';
         final reqStep = (meta['step'] is num)
             ? (meta['step'] as num).toInt()
             : int.tryParse(meta['step']?.toString() ?? '') ?? 0;
-        final lat = item['customerLatitude'];
-        final lng = item['customerLongitude'];
+        final lat = (item['customerLatitude'] as num?)?.toDouble();
+        final lng = (item['customerLongitude'] as num?)?.toDouble();
         final fallbackLoc = (lat != null && lng != null)
             ? 'https://maps.google.com/?q=$lat,$lng'
             : 'Shared via Zesho';
@@ -163,7 +218,12 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
           serviceCategory: cat.isNotEmpty ? cat : 'Service request',
           customerLocation: custAddr.isNotEmpty ? custAddr : fallbackLoc,
           distance: dist,
+          eta: eta,
           customerName: custName.isNotEmpty ? custName : 'Customer',
+          customerPhotoUrl: photo.isNotEmpty ? photo : null,
+          customerNote: note,
+          customerLatitude: lat,
+          customerLongitude: lng,
           status: reqStatus,
           step: reqStep,
           createdAt: ts,
@@ -200,49 +260,54 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
     final List<_ProviderRequestItem> list = [];
     for (final req in TaskService.instance.providerRequests) {
       final bool isNew = req.status == 'new' || req.status == 'pending';
-      final hasDist = req.distance.trim().isNotEmpty && req.distance.trim() != '—';
+      final dist = _listDistanceForTask(req);
+      final time = _listTimeForTask(req);
       list.add(
         _ProviderRequestItem(
           id: req.id,
           serviceTypeEn: req.serviceCategory,
           serviceTypeAr: req.serviceCategory,
-          locationEn: req.customerLocation,
-          locationAr: req.customerLocation,
-          distanceEn: hasDist ? '${req.distance} away' : '',
-          distanceAr: hasDist ? 'على بعد ${req.distance}' : '',
-          timeEn: req.dateTime,
-          timeAr: req.dateTime,
+          locationEn: _shortLocationForList(req.customerLocation, false),
+          locationAr: _shortLocationForList(req.customerLocation, true),
+          distanceEn: dist,
+          distanceAr: dist,
+          timeEn: time,
+          timeAr: time,
           badgeEn: isNew ? 'New Request' : (req.status == 'arrived' ? 'Arrived' : 'Active'),
           badgeAr: isNew ? 'طلب جديد' : (req.status == 'arrived' ? 'تم الوصول' : 'نشط'),
-          imageAsset: 'assets/images/img.png',
+          imageAsset: _categoryAssetFor(req.serviceCategory),
           status: req.status,
           customerNameEn: req.customerName,
           customerNameAr: req.customerName,
-          customerAvatarAsset: 'assets/images/ahmed_khan.jpg',
+          customerPhotoUrl: _listPhotoUrl(req.customerPhotoUrl),
+          customerNote: req.customerNote,
         ),
       );
     }
 
     for (final h in TaskService.instance.historyTasks) {
       final bool isCancelled = h.status == 'cancelled';
+      final dist = _listDistanceForTask(h);
+      final time = _listTimeForTask(h);
       list.add(
         _ProviderRequestItem(
           id: h.id,
           serviceTypeEn: h.serviceCategory,
           serviceTypeAr: h.serviceCategory,
-          locationEn: h.customerLocation,
-          locationAr: h.customerLocation,
-          distanceEn: h.distance,
-          distanceAr: h.distance,
-          timeEn: h.dateTime,
-          timeAr: h.dateTime,
+          locationEn: _shortLocationForList(h.customerLocation, false),
+          locationAr: _shortLocationForList(h.customerLocation, true),
+          distanceEn: dist,
+          distanceAr: dist,
+          timeEn: time,
+          timeAr: time,
           badgeEn: isCancelled ? 'Cancelled' : 'Completed',
           badgeAr: isCancelled ? 'ملغي' : 'مكتمل',
-          imageAsset: 'assets/images/img.png',
+          imageAsset: _categoryAssetFor(h.serviceCategory),
           status: h.status,
           customerNameEn: h.customerName,
           customerNameAr: h.customerName,
-          customerAvatarAsset: 'assets/images/ahmed_khan.jpg',
+          customerPhotoUrl: _listPhotoUrl(h.customerPhotoUrl),
+          customerNote: h.customerNote,
         ),
       );
     }
@@ -438,7 +503,7 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                                         customerName: isArabic
                                             ? item.customerNameAr
                                             : item.customerNameEn,
-                                        customerAvatarAsset: item.customerAvatarAsset,
+                                        customerAvatarAsset: item.customerPhotoUrl,
                                         location: isArabic
                                             ? item.locationAr
                                             : item.locationEn,
@@ -475,6 +540,10 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                                                   timeAr: item.timeAr,
                                                   customerNameEn: item.customerNameEn,
                                                   customerNameAr: item.customerNameAr,
+                                                  imageAsset: item.imageAsset,
+                                                  customerPhotoUrl: item.customerPhotoUrl,
+                                                  customerNoteEn: item.customerNote,
+                                                  customerNoteAr: item.customerNote,
                                                 ),
                                               ),
                                             );

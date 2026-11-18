@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../core/utils/contact_launcher.dart';
 import '../../../providers/backend_provider.dart';
@@ -145,6 +146,16 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
     if (text.isEmpty) return null;
     if (text.contains('unsplash.com') || text.contains('placeholder')) return null;
     return text;
+  }
+
+  Map<String, String> _customerPhotoMetadata() {
+    final raw = CustomerAuthStore.instance.data.photoPath?.trim() ?? '';
+    if (raw.isEmpty) return const {};
+    if (raw.startsWith('http')) return {'customerPhotoUrl': raw};
+    if (raw.startsWith('/')) {
+      return {'customerPhotoUrl': '${AppConfig.baseUrl}$raw'};
+    }
+    return const {};
   }
 
   String _initials(String name) {
@@ -293,6 +304,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                 'serviceCategory': widget.serviceCategory,
                 'customerName': customerName,
                 'customerAddress': addressLabel,
+                ..._customerPhotoMetadata(),
                 if (widget.distance.trim().isNotEmpty &&
                     widget.distance.trim() != '—' &&
                     widget.distance.trim() != '--')
@@ -334,6 +346,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
         'serviceCategory': widget.serviceCategory,
         'customerName': customerName,
         'customerAddress': addressLabel,
+        ..._customerPhotoMetadata(),
         if (widget.distance.trim().isNotEmpty &&
             widget.distance.trim() != '—' &&
             widget.distance.trim() != '--')

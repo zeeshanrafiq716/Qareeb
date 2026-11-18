@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile/core/config/app_config.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/models/category_model.dart';
 import 'package:mobile/providers/backend_provider.dart';
+import 'package:mobile/services/location_service.dart';
 import 'package:mobile/providers/notifications_provider.dart';
 import 'package:mobile/services/task_service.dart';
 import 'package:mobile/features/home/presentation/widgets/notification_popup_card.dart';
@@ -43,27 +47,29 @@ class ProviderActiveRequestScreen extends ConsumerStatefulWidget {
   final String plateNumber;
   final String customerNoteEn;
   final String customerNoteAr;
+  final String? imageAsset;
+  final String? customerPhotoUrl;
 
   const ProviderActiveRequestScreen({
     super.key,
-    this.requestId = 'REQ-101',
-    this.serviceTypeEn = 'Battery Jump Start',
-    this.serviceTypeAr = 'شحن البطارية بالكيبل',
-    this.locationEn = 'King Abdullah Rd, Riyadh',
-    this.locationAr = 'طريق الملك عبدالله، الرياض',
-    this.distanceEn = '2.4 km',
-    this.distanceAr = '٢.٤ كم',
-    this.timeEn = '8 min',
-    this.timeAr = '٨ دقائق',
-    this.customerNameEn = 'Ahmed Khan',
-    this.customerNameAr = 'أحمد خان',
-    this.vehicleModelEn = 'Toyota Corolla',
-    this.vehicleModelAr = 'تويوتا كورولا',
-    this.plateNumber = 'KSA 1234',
-    this.customerNoteEn =
-        'Battery is dead and the car won’t start. Need a jump start.',
-    this.customerNoteAr =
-        'البطارية فارغة والسيارة لا تعمل. أحتاج إلى شحن بطارية.',
+    required this.requestId,
+    this.serviceTypeEn = 'Service',
+    this.serviceTypeAr = 'خدمة',
+    this.locationEn = '',
+    this.locationAr = '',
+    this.distanceEn = '',
+    this.distanceAr = '',
+    this.timeEn = '--',
+    this.timeAr = '--',
+    this.customerNameEn = 'Customer',
+    this.customerNameAr = 'عميل',
+    this.vehicleModelEn = '',
+    this.vehicleModelAr = '',
+    this.plateNumber = '',
+    this.customerNoteEn = '',
+    this.customerNoteAr = '',
+    this.imageAsset,
+    this.customerPhotoUrl,
   });
 
   @override
@@ -83,17 +89,126 @@ class _ProviderActiveRequestScreenState
 
   final ScrollController _scrollController = ScrollController();
 
+  void _onTaskChanged() {
+    if (!mounted) return;
+  final task = _resolveTask();
+    if (task != null) {
+      setState(() => _currentStep = task.step.clamp(0, 4));
+    }
+  }
+
+  ServiceTask? _resolveTask() {
+    for (final t in TaskService.instance.providerRequests) {
+      if (t.id == widget.requestId) return t;
+    }
+    final active = TaskService.instance.activeTask;
+    if (active?.id == widget.requestId) return active;
+    return null;
+  }
+
+  String _categoryAsset(String category) {
+    final slug = category.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    final model = CategoryModel(
+      id: slug,
+      name: category.trim().isNotEmpty ? category.trim() : 'Service',
+      slug: slug,
+    );
+    return model.displayAssetImage ?? 'assets/images/tow_truck.png';
+  }
+
+  String _resolvePhotoUrl(String? raw) {
+    final v = raw?.trim() ?? '';
+    if (v.isEmpty) return '';
+    if (v.startsWith('http')) return v;
+    if (v.startsWith('/')) return '${AppConfig.baseUrl}$v';
+    return v;
+  }
+
+  String _customerInitials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return 'C';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return '${parts.first.substring(0, 1)}${parts[1].substring(0, 1)}'.toUpperCase();
+  }
+
+  String _liveDistanceText(ServiceTask? task, bool isArabic) {
+    final providerLoc = ref.read(userLocationProvider).value ?? LocationService.lastKnownValidLocation;
+    if (task != null &&
+        task.customerLatitude != null &&
+        task.customerLongitude != null &&
+        providerLoc != null &&
+        providerLoc.hasValidDeviceGps) {
+      final meters = Geolocator.distanceBetween(
+        providerLoc.latitude,
+        providerLoc.longitude,
+        task.customerLatitude!,
+        task.customerLongitude!,
+      );
+      if (meters.isFinite && meters >= 0) {
+        if (meters < 1000) {
+          return isArabic ? '${meters.round()} م' : '${meters.round()} m';
+        }
+        final km = meters / 1000.0;
+        return isArabic ? '${km.toStringAsFixed(1)} كم' : '${km.toStringAsFixed(1)} km';
+      }
+    }
+    final fallback = isArabic ? widget.distanceAr : widget.distanceEn;
+    final cleaned = fallback
+        .replaceAll(RegExp(r'\s*away\s*', caseSensitive: false), '')
+        .replaceAll('على بعد ', '')
+        .trim();
+    if (cleaned.isNotEmpty && cleaned != '--') return cleaned;
+    return isArabic ? '—' : '—';
+  }
+
+  String _etaText(ServiceTask? task, bool isArabic) {
+    final eta = task?.eta.trim() ?? '';
+    if (eta.isNotEmpty && eta != '--') return eta;
+    final fromWidget = (isArabic ? widget.timeAr : widget.timeEn).trim();
+    if (fromWidget.isNotEmpty && fromWidget != '--' && !RegExp(r'\d{4}').hasMatch(fromWidget)) {
+      return fromWidget;
+    }
+    final meters = _distanceMeters(task);
+    if (meters != null && meters > 0) {
+      final mins = (meters < 100)
+          ? 1
+          : ((meters / 1000.0) / 30.0 * 60.0).ceil().clamp(1, 180);
+      return isArabic ? '$mins د' : '$mins min';
+    }
+    return '--';
+  }
+
+  double? _distanceMeters(ServiceTask? task) {
+    final providerLoc = ref.read(userLocationProvider).value ?? LocationService.lastKnownValidLocation;
+    if (task?.customerLatitude != null &&
+        task?.customerLongitude != null &&
+        providerLoc != null &&
+        providerLoc.hasValidDeviceGps) {
+      return Geolocator.distanceBetween(
+        providerLoc.latitude,
+        providerLoc.longitude,
+        task!.customerLatitude!,
+        task.customerLongitude!,
+      );
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
-    final task = TaskService.instance.activeTask;
+    final task = _resolveTask() ?? TaskService.instance.activeTask;
     if (task != null) {
       _currentStep = task.step.clamp(0, 4);
     }
+    TaskService.instance.activeTaskNotifier.addListener(_onTaskChanged);
+    TaskService.instance.providerRequestsNotifier.addListener(_onTaskChanged);
   }
 
   @override
   void dispose() {
+    TaskService.instance.activeTaskNotifier.removeListener(_onTaskChanged);
+    TaskService.instance.providerRequestsNotifier.removeListener(_onTaskChanged);
     _scrollController.dispose();
     super.dispose();
   }
@@ -112,10 +227,45 @@ class _ProviderActiveRequestScreenState
       ),
     );
 
-    final cleanDistance = (isArabic ? widget.distanceAr : widget.distanceEn)
-        .replaceAll(' away', '')
-        .replaceAll('على بعد ', '')
-        .trim();
+    ref.watch(userLocationProvider);
+    final task = _resolveTask();
+    final int activeStep = (task?.step ?? _currentStep).clamp(0, 4);
+    final cleanDistance = _liveDistanceText(task, isArabic);
+    final etaLabel = activeStep >= 2
+        ? (isArabic ? 'وصلت' : 'Arrived')
+        : _etaText(task, isArabic);
+    final categoryImage = widget.imageAsset ?? _categoryAsset(isArabic ? widget.serviceTypeAr : widget.serviceTypeEn);
+    final customerName = (task?.customerName.trim().isNotEmpty == true)
+        ? task!.customerName.trim()
+        : (isArabic ? widget.customerNameAr : widget.customerNameEn).trim();
+    final rawPhoto = task?.customerPhotoUrl ?? widget.customerPhotoUrl;
+    final customerPhoto = (rawPhoto != null &&
+            (rawPhoto.contains('ahmed_khan') || rawPhoto.contains('img.png')))
+        ? ''
+        : _resolvePhotoUrl(rawPhoto);
+    final noteFromTask = task?.customerNote.trim() ?? '';
+    final noteFromWidget =
+        (isArabic ? widget.customerNoteAr : widget.customerNoteEn).trim();
+    final customerNote = noteFromTask.isNotEmpty ? noteFromTask : noteFromWidget;
+    final bool isLegacySeedNote = customerNote.toLowerCase().contains('battery is dead') ||
+        customerNote.toLowerCase().contains('jump start');
+    final showCustomerNote = customerNote.isNotEmpty && !isLegacySeedNote;
+    final showVehicle = false;
+
+    String statusPillSubtitle(bool ar) {
+      if (activeStep >= 2) {
+        if (cleanDistance.isNotEmpty && cleanDistance != '—') {
+          return ar ? 'عند موقع العميل • $cleanDistance' : 'At customer site • $cleanDistance';
+        }
+        return ar ? 'أنت عند موقع العميل' : 'You are at the customer location';
+      }
+      if (cleanDistance.isNotEmpty && cleanDistance != '—' && etaLabel != '--') {
+        return ar
+            ? 'الوصول خلال $etaLabel • $cleanDistance'
+            : 'Arriving in $etaLabel • $cleanDistance away';
+      }
+      return ar ? 'جارٍ حساب المسافة...' : 'Calculating distance...';
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -159,9 +309,11 @@ class _ProviderActiveRequestScreenState
                           child: RealMapBackgroundWidget(
                             enableDrag: true,
                             zoom: 15.0,
-                            trackingStep: MapTrackingStep.onTheWay,
-                            driverName: isArabic ? 'أنت' : 'You',
-                            etaText: cleanDistance,
+                            trackingStep: MapTrackingStep.none,
+                            driverName: customerName.split(' ').first,
+                            providerLatitude: task?.customerLatitude,
+                            providerLongitude: task?.customerLongitude,
+                            etaText: etaLabel,
                             distanceText: cleanDistance,
                             showControls: true,
                           ),
@@ -185,57 +337,6 @@ class _ProviderActiveRequestScreenState
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-
-                        // 1i. Landmark Indicator: Al Nakheel Mall
-                        Positioned(
-                          top: 210.0,
-                          left: 75.0 + ((containerWidth - 390.0) / 2.0),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 22.0,
-                                height: 22.0,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: const Color(0xFF566663)
-                                      .withValues(alpha: 0.15),
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.shopping_bag_outlined,
-                                    size: 13.0,
-                                    color: Color(0xFF566663),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 5.0),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'النخيل مول',
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 10.0,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF566663),
-                                      height: 1.1,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Al Nakheel Mall',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 8.5,
-                                      fontWeight: FontWeight.w500,
-                                      color: const Color(0xFF6B7280),
-                                      height: 1.1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
                           ),
                         ),
 
@@ -375,7 +476,7 @@ class _ProviderActiveRequestScreenState
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    _getStepStatusText(isArabic),
+                                    _getStepStatusText(isArabic, activeStep),
                                     style: isArabic
                                         ? GoogleFonts.cairo(
                                             fontSize: 10.5,
@@ -392,9 +493,7 @@ class _ProviderActiveRequestScreenState
                                   ),
                                   const SizedBox(height: 1.0),
                                   Text(
-                                    isArabic
-                                        ? 'الوصول خلال ٨ دقائق • ٣.٢ كم'
-                                        : 'Arriving in 8 min • 3.2 km away',
+                                    statusPillSubtitle(isArabic),
                                     style: isArabic
                                         ? GoogleFonts.cairo(
                                             fontSize: 8.5,
@@ -511,10 +610,10 @@ class _ProviderActiveRequestScreenState
                                         borderRadius:
                                             BorderRadius.circular(12.0),
                                         child: Image.asset(
-                                          'assets/images/img.png',
+                                          categoryImage,
                                           width: 52.0,
                                           height: 52.0,
-                                          fit: BoxFit.cover,
+                                          fit: BoxFit.contain,
                                           errorBuilder:
                                               (context, error, stackTrace) =>
                                                   Container(
@@ -566,27 +665,29 @@ class _ProviderActiveRequestScreenState
                                             const SizedBox(height: 5.0),
                                             Row(
                                               children: [
-                                                Text(
-                                                  isArabic
-                                                      ? 'من فيصل الحربي'
-                                                      : 'From Faisal Al-Harbi',
-                                                  style: isArabic
-                                                      ? GoogleFonts.cairo(
-                                                          fontSize: 10.0,
-                                                          fontWeight:
-                                                              FontWeight.w400,
-                                                          color: const Color(
-                                                              0xFF616166),
-                                                          height: 1.0,
-                                                        )
-                                                      : GoogleFonts.inter(
-                                                          fontSize: 10.0,
-                                                          fontWeight:
-                                                              FontWeight.w400,
-                                                          color: const Color(
-                                                              0xFF616166),
-                                                          height: 1.0,
-                                                        ),
+                                                Flexible(
+                                                  child: Text(
+                                                    customerName,
+                                                    style: isArabic
+                                                        ? GoogleFonts.cairo(
+                                                            fontSize: 10.0,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                            color: const Color(
+                                                                0xFF616166),
+                                                            height: 1.0,
+                                                          )
+                                                        : GoogleFonts.inter(
+                                                            fontSize: 10.0,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                            color: const Color(
+                                                                0xFF616166),
+                                                            height: 1.0,
+                                                          ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
                                                 ),
                                                 const SizedBox(width: 6.0),
                                                 Container(
@@ -878,9 +979,7 @@ class _ProviderActiveRequestScreenState
                                                             .start,
                                                     children: [
                                                       Text(
-                                                        isArabic
-                                                            ? widget.timeAr
-                                                            : widget.timeEn,
+                                                        etaLabel,
                                                         style:
                                                             GoogleFonts.inter(
                                                           fontSize: 13.5,
@@ -892,7 +991,7 @@ class _ProviderActiveRequestScreenState
                                                         ),
                                                         maxLines: 1,
                                                         overflow: TextOverflow
-                                                            .ellipsis,
+                                                            .visible,
                                                       ),
                                                       const SizedBox(
                                                           height: 2.0),
@@ -957,21 +1056,41 @@ class _ProviderActiveRequestScreenState
                                             Row(
                                               children: [
                                                 ClipOval(
-                                                  child: Image.asset(
-                                                    'assets/images/ahmed_khan.jpg',
-                                                    width: 44.0,
-                                                    height: 44.0,
-                                                    fit: BoxFit.cover,
-                                                    errorBuilder: (context,
-                                                            error,
-                                                            stackTrace) =>
-                                                        Image.asset(
-                                                      'assets/images/img.png',
-                                                      width: 44.0,
-                                                      height: 44.0,
-                                                      fit: BoxFit.cover,
-                                                    ),
-                                                  ),
+                                                  child: customerPhoto.isNotEmpty
+                                                      ? Image.network(
+                                                          customerPhoto,
+                                                          width: 44.0,
+                                                          height: 44.0,
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder: (_, _, _) => Container(
+                                                            width: 44.0,
+                                                            height: 44.0,
+                                                            color: const Color(0xFF8B53FE),
+                                                            alignment: Alignment.center,
+                                                            child: Text(
+                                                              _customerInitials(customerName),
+                                                              style: GoogleFonts.inter(
+                                                                fontSize: 15.0,
+                                                                fontWeight: FontWeight.w700,
+                                                                color: Colors.white,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        )
+                                                      : Container(
+                                                          width: 44.0,
+                                                          height: 44.0,
+                                                          color: const Color(0xFF8B53FE),
+                                                          alignment: Alignment.center,
+                                                          child: Text(
+                                                            _customerInitials(customerName),
+                                                            style: GoogleFonts.inter(
+                                                              fontSize: 15.0,
+                                                              fontWeight: FontWeight.w700,
+                                                              color: Colors.white,
+                                                            ),
+                                                          ),
+                                                        ),
                                                 ),
                                                 const SizedBox(width: 12.0),
                                                 Column(
@@ -1002,11 +1121,7 @@ class _ProviderActiveRequestScreenState
                                                     ),
                                                     const SizedBox(height: 2.0),
                                                     Text(
-                                                      isArabic
-                                                          ? widget
-                                                              .customerNameAr
-                                                          : widget
-                                                              .customerNameEn,
+                                                      customerName,
                                                       style: isArabic
                                                           ? GoogleFonts.cairo(
                                                               fontSize: 15.0,
@@ -1124,9 +1239,10 @@ class _ProviderActiveRequestScreenState
                                           ],
                                         ),
 
+                                        if (showVehicle) ...[
                                         const SizedBox(height: 12.0),
 
-                                        // Vehicle Row
+                                        // Vehicle Row (only when real data exists)
                                         Row(
                                           children: [
                                             const Icon(
@@ -1211,6 +1327,7 @@ class _ProviderActiveRequestScreenState
                                             ),
                                           ],
                                         ),
+                                        ],
                                       ],
                                     ),
                                   ),
@@ -1220,10 +1337,10 @@ class _ProviderActiveRequestScreenState
                                   // 3e. Service Status Stepper (5 Steps: Accepted -> On the way -> Arrived -> In Progress -> Completed)
                                   _buildStatusStepper(isArabic),
 
+                                  if (showCustomerNote) ...[
                                   const SizedBox(height: 12.0),
 
-                                  // 3f. Customer Note Card
-                                  // 3f. Customer Note Card (Exact previous screen branding)
+                                  // 3f. Customer Note Card (only when customer left a note)
                                   Container(
                                     width: 350.0,
                                     padding: const EdgeInsets.symmetric(
@@ -1276,9 +1393,7 @@ class _ProviderActiveRequestScreenState
                                                 ),
                                                 const SizedBox(height: 6.0),
                                                 Text(
-                                                  isArabic
-                                                      ? widget.customerNoteAr
-                                                      : widget.customerNoteEn,
+                                                  customerNote,
                                                   style: isArabic
                                                       ? GoogleFonts.cairo(
                                                           fontSize: 10.0,
@@ -1298,9 +1413,9 @@ class _ProviderActiveRequestScreenState
                                                           height: 1.1,
                                                           letterSpacing: 0.0,
                                                         ),
-                                                  maxLines: 1,
+                                                  maxLines: 4,
                                                   overflow:
-                                                      TextOverflow.ellipsis,
+                                                      TextOverflow.visible,
                                                 ),
                                               ],
                                             ),
@@ -1309,6 +1424,7 @@ class _ProviderActiveRequestScreenState
                                       ],
                                     ),
                                   ),
+                                  ],
                                   const SizedBox(height: 16.0),
 
                                   // 3g. Primary Action Button: "I've Arrived ->" (Exact previous button branding)
@@ -1436,7 +1552,7 @@ class _ProviderActiveRequestScreenState
                             ),
 
                             // 3g-2. Cancel Request Button (Branding: #FFEBEB bg, #FF383C text, 52h, 12r)
-                            if (_currentStep < 4) ...[
+                            if (activeStep < 2) ...[
                               const SizedBox(height: 12.0),
                               GestureDetector(
                                 onTap: () {
@@ -1578,8 +1694,8 @@ class _ProviderActiveRequestScreenState
     );
   }
 
-  String _getStepStatusText(bool isArabic) {
-    switch (_currentStep) {
+  String _getStepStatusText(bool isArabic, int step) {
+    switch (step) {
       case 0:
         return isArabic ? 'تم القبول' : 'Accepted';
       case 1:
