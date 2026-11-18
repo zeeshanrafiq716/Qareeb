@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
+import '../../../core/utils/app_snackbar.dart';
+import '../../../core/utils/contact_launcher.dart';
 import '../../../services/task_service.dart';
 import 'service_in_progress_screen.dart';
 import 'widgets/top_down_car_widget.dart';
@@ -37,6 +39,47 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
   late Animation<double> _pulseAnimation;
   Timer? _completeTimer;
 
+  String get _providerContactPhone =>
+      TaskService.instance.activeTask?.providerPhone.trim() ?? '';
+
+  Future<void> _contactProviderWhatsApp() async {
+    final phone = _providerContactPhone;
+    if (phone.isEmpty) {
+      showAppSnackBar(
+        context,
+        tr.isArabic ? 'رقم مقدم الخدمة غير متوفر' : 'Provider phone not available',
+      );
+      return;
+    }
+    HapticFeedback.lightImpact();
+    final ok = await ContactLauncher.whatsApp(phone);
+    if (!ok && mounted) {
+      showAppSnackBar(
+        context,
+        tr.isArabic ? 'تعذر فتح واتساب' : 'Could not open WhatsApp',
+      );
+    }
+  }
+
+  Future<void> _contactProviderCall() async {
+    final phone = _providerContactPhone;
+    if (phone.isEmpty) {
+      showAppSnackBar(
+        context,
+        tr.isArabic ? 'رقم مقدم الخدمة غير متوفر' : 'Provider phone not available',
+      );
+      return;
+    }
+    HapticFeedback.lightImpact();
+    final ok = await ContactLauncher.call(phone);
+    if (!ok && mounted) {
+      showAppSnackBar(
+        context,
+        tr.isArabic ? 'تعذر بدء الاتصال' : 'Could not start call',
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +108,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
           serviceCategory: widget.serviceCategory,
           providerName: widget.providerName,
           headerHeading: 'Service Complete',
+          task: TaskService.instance.activeTask,
         ),
       ),
     );
@@ -203,43 +247,49 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                       ),
                                     ),
 
-                                    // Arrived status badge
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10.0,
-                                        vertical: 5.0,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFE8F5E9),
-                                        borderRadius:
-                                            BorderRadius.circular(20.0),
-                                        border: Border.all(
-                                          color: const Color(0xFF81C784),
-                                          width: 0.8,
+                                    Flexible(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: AlignmentDirectional.centerEnd,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10.0,
+                                            vertical: 5.0,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFE8F5E9),
+                                            borderRadius:
+                                                BorderRadius.circular(20.0),
+                                            border: Border.all(
+                                              color: const Color(0xFF81C784),
+                                              width: 0.8,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Container(
+                                                width: 7.0,
+                                                height: 7.0,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFF2E7D32),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 5.0),
+                                              Text(
+                                                tr.arrivedBadge,
+                                                style: tr.font(
+                                                  fontSize: 10.0,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: const Color(0xFF2E7D32),
+                                                  letterSpacing: 0.6,
+                                                ),
+                                                maxLines: 1,
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            width: 7.0,
-                                            height: 7.0,
-                                            decoration: const BoxDecoration(
-                                              color: Color(0xFF2E7D32),
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 5.0),
-                                          Text(
-                                            tr.arrivedBadge,
-                                            style: tr.font(
-                                              fontSize: 10.0,
-                                              fontWeight: FontWeight.w700,
-                                              color: const Color(0xFF2E7D32),
-                                              letterSpacing: 0.6,
-                                            ),
-                                          ),
-                                        ],
                                       ),
                                     ),
                                   ],
@@ -504,19 +554,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                       child: GestureDetector(
                                                         key: const Key(
                                                             'provider_arrived_whatsapp_button'),
-                                                        onTap: () {
-                                                          HapticFeedback
-                                                              .lightImpact();
-                                                          ScaffoldMessenger.of(
-                                                                  context)
-                                                              .showSnackBar(
-                                                            SnackBar(
-                                                              content: Text(tr.openingWhatsApp, style: tr.font(color: Colors.white)),
-                                                              duration: const Duration(
-                                                                  seconds: 1),
-                                                            ),
-                                                          );
-                                                        },
+                                                        onTap: _contactProviderWhatsApp,
                                                         behavior:
                                                             HitTestBehavior
                                                                 .opaque,
@@ -550,21 +588,7 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                                       child: GestureDetector(
                                                         key: const Key(
                                                             'provider_arrived_call_button'),
-                                                        onTap: () {
-                                                          HapticFeedback
-                                                              .lightImpact();
-                                                          ScaffoldMessenger.of(
-                                                                  context)
-                                                              .showSnackBar(
-                                                            SnackBar(
-                                                              content: Text(tr.callingProvider(tr.formatProviderName(widget.providerName)), style: tr.font(color: Colors.white)),
-                                                              duration:
-                                                                  const Duration(
-                                                                      seconds:
-                                                                          1),
-                                                            ),
-                                                          );
-                                                        },
+                                                        onTap: _contactProviderCall,
                                                         behavior:
                                                             HitTestBehavior
                                                                 .opaque,
@@ -611,57 +635,42 @@ class _ProviderArrivedScreenState extends ConsumerState<ProviderArrivedScreen>
                                         SizedBox(
                                           width: double.infinity,
                                           child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.center,
                                             children: [
-                                              Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.center,
-                                                children: [
-                                                  const Icon(
-                                                    Icons.directions_car_filled_rounded,
-                                                    size: 14.0,
-                                                    color: Color(0xFF1C2926),
+                                              const Icon(
+                                                Icons.directions_car_filled_rounded,
+                                                size: 14.0,
+                                                color: Color(0xFF1C2926),
+                                              ),
+                                              const SizedBox(width: 8.0),
+                                              Expanded(
+                                                child: Text(
+                                                  tr.formatVehicleName('Toyota Hilux'),
+                                                  style: tr.font(
+                                                    fontSize: 12.0,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: const Color(0xFF1C2926),
+                                                    height: 22.0 / 12.0,
                                                   ),
-                                                  const SizedBox(width: 12.0),
-
-                                                  Row(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment.center,
-                                                    children: [
-                                                      Text(
-                                                        tr.formatVehicleName('Toyota Hilux'),
-                                                        style: tr.font(
-                                                          fontSize: 12.0,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                          color: const Color(
-                                                              0xFF1C2926),
-                                                          height: 22.0 / 12.0,
-                                                          letterSpacing: 0.0,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 12.0),
-
-                                                      Text(
-                                                        tr.categoryName(widget.serviceCategory),
-                                                        style: tr.font(
-                                                          fontSize: 12.0,
-                                                          fontWeight:
-                                                              FontWeight.w400,
-                                                          color: const Color(
-                                                              0xFF566663),
-                                                          height: 22.0 / 12.0,
-                                                          letterSpacing: 0.0,
-                                                        ),
-                                                      ),
-                                                    ],
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8.0),
+                                              Flexible(
+                                                child: Text(
+                                                  tr.categoryName(widget.serviceCategory),
+                                                  style: tr.font(
+                                                    fontSize: 12.0,
+                                                    fontWeight: FontWeight.w400,
+                                                    color: const Color(0xFF566663),
+                                                    height: 22.0 / 12.0,
                                                   ),
-                                                ],
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  textAlign: TextAlign.end,
+                                                ),
                                               ),
                                             ],
                                           ),

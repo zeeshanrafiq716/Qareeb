@@ -65,6 +65,22 @@ void main() {
     expect(TaskService.instance.historyTasks.first.providerName, 'kinza');
   });
 
+  test('Customer history hides provider-ingested rows', () async {
+    await TaskService.instance.upsertIncomingRequestFromProviderNotification(
+      notificationId: '00000000-0000-0000-0000-000000000099',
+      status: 'completed',
+    );
+    await TaskService.instance.createCustomerRequest(
+      providerName: 'kinza',
+      serviceCategory: 'Fuel Delivery',
+    );
+    await TaskService.instance.completeTask();
+
+    expect(TaskService.instance.historyTasks.length, 2);
+    expect(TaskService.instance.customerHistoryTasks.length, 1);
+    expect(TaskService.instance.customerHistoryTasks.first.providerName, 'kinza');
+  });
+
   test('TaskService cancellation moves task to cancelled history', () async {
     await TaskService.instance.createCustomerRequest(
       providerName: 'kinza',

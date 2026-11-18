@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/api/api_client.dart';
+import '../../../provider/auth/data/provider_registration_state.dart';
 
 /// Customer Auth Data Model
 class CustomerAuthData {
@@ -100,12 +101,19 @@ class CustomerAuthStore {
           isSignedUp: legacySignedUp,
         );
       }
+      final directSignedUp = prefs.getBool(_isSignedUpKey);
+      if (directSignedUp == true && !data.isSignedUp) {
+        data = data.copyWith(isSignedUp: true);
+      }
       final token = prefs.getString('auth_token') ?? prefs.getString('customer_token');
       if (token != null && token.isNotEmpty) {
         ApiClient.setGlobalToken(token);
       }
       if (data.phone.isNotEmpty) {
         ApiClient.setGlobalCustomerSession('customer_${data.phone.replaceAll(RegExp(r'\D'), '')}');
+      }
+      if (data.isSignedUp) {
+        await ProviderRegistrationStore.instance.setActiveAppMode('customer');
       }
       isLoaded = true;
     } catch (e) {
@@ -120,6 +128,9 @@ class CustomerAuthStore {
       await prefs.setBool(_isSignedUpKey, data.isSignedUp);
       await prefs.setString(_nameKey, data.fullName);
       await prefs.setString(_phoneKey, data.phone);
+      if (data.isSignedUp) {
+        await prefs.setString(ProviderRegistrationStore.activeAppModeKey, 'customer');
+      }
     } catch (e) {
       debugPrint('Error saving customer auth data: $e');
     }
@@ -137,6 +148,7 @@ class CustomerAuthStore {
       isSignedUp: true,
     );
     await saveToPrefs();
+    await ProviderRegistrationStore.instance.setActiveAppMode('customer');
     if (phone.trim().isNotEmpty) {
       ApiClient.setGlobalCustomerSession('customer_${phone.trim().replaceAll(RegExp(r'\D'), '')}');
     }
@@ -156,6 +168,7 @@ class CustomerAuthStore {
       isSignedUp: true,
     );
     await saveToPrefs();
+    await ProviderRegistrationStore.instance.setActiveAppMode('customer');
     if (phone.trim().isNotEmpty) {
       ApiClient.setGlobalCustomerSession('customer_${phone.trim().replaceAll(RegExp(r'\D'), '')}');
     }
@@ -185,6 +198,7 @@ class CustomerAuthStore {
       await prefs.remove('customer_token');
       await prefs.remove('auth_token');
       await prefs.setString('last_phone', rememberedPhone);
+      await prefs.remove(ProviderRegistrationStore.activeAppModeKey);
     } catch (_) {}
     ApiClient.setGlobalToken(null);
     ApiClient.setGlobalCustomerSession(null);

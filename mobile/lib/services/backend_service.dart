@@ -885,6 +885,43 @@ class BackendService {
     }
   }
 
+  /// Provider tapped Call or WhatsApp on a live request — customer sees an in-app alert on next poll.
+  Future<bool> recordProviderContactCustomer({
+    required String requestId,
+    required String channel,
+  }) async {
+    final cleanId = requestId.replaceFirst(RegExp(r'^REQ-', caseSensitive: false), '').trim();
+    if (cleanId.isEmpty) return false;
+    final normalized = channel.trim().toLowerCase() == 'whatsapp' ? 'whatsapp' : 'call';
+    try {
+      final response = await _client.post(
+        '/api/v1/provider/me/requests/$cleanId/contact',
+        data: {'channel': normalized},
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Customer rates provider after service completion (1–5 stars).
+  Future<bool> submitCustomerRequestRating({
+    required String requestId,
+    required int rating,
+  }) async {
+    final cleanId = requestId.replaceFirst(RegExp(r'^REQ-', caseSensitive: false), '').trim();
+    if (cleanId.isEmpty || rating < 1 || rating > 5) return false;
+    try {
+      final response = await _client.post(
+        '/api/v1/discovery/requests/$cleanId/rating',
+        data: {'rating': rating},
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Customer polls the live status of their sent service request from backend.
   Future<Map<String, dynamic>?> getCustomerRequestStatus(String requestId) async {
     final cleanId = requestId.replaceFirst(RegExp(r'^REQ-', caseSensitive: false), '').trim();

@@ -79,7 +79,9 @@ void main() {
                 ElevatedButton(
                   onPressed: () {
                     appRootNavigatorKey.currentState?.pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const AppModeSelectionScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const _BootstrapGate(waitForBootstrap: true),
+                      ),
                       (route) => false,
                     );
                   },
@@ -185,15 +187,47 @@ class _BootstrapGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!waitForBootstrap) {
-      return const AppModeSelectionScreen();
+      return _decideInitialScreen();
     }
     return ValueListenableBuilder<bool>(
       valueListenable: _appBootstrapReady,
       builder: (context, ready, _) {
         if (!ready) return const _BootstrapPlaceholder();
-        return const AppModeSelectionScreen();
+        return _decideInitialScreen();
       },
     );
+  }
+
+  Widget _decideInitialScreen() {
+    final providerData = ProviderRegistrationStore.instance.data;
+    final bool isProviderLoggedIn = (providerData.authToken != null && providerData.authToken!.isNotEmpty) ||
+        providerData.isOnboardingCompleted ||
+        providerData.status == 'APPROVED' ||
+        providerData.status == 'PENDING_VERIFICATION';
+
+    final bool isCustomerSignedUp = CustomerAuthStore.instance.hasCompletedSignup ||
+        CustomerAuthStore.instance.data.isSignedUp;
+
+    final String? activeMode = ProviderRegistrationStore.instance.cachedActiveAppMode;
+
+    // 1. If provider is logged in or actively registered in provider mode
+    if (isProviderLoggedIn || (activeMode == 'provider' && providerData.phone.isNotEmpty)) {
+      return const ProviderSplashScreen();
+    }
+
+    // 2. If customer has signed up or active mode is explicitly customer:
+    // Directly face splash screen, which smoothly transitions to HomeScreen
+    if (isCustomerSignedUp || activeMode == 'customer') {
+      return const SplashScreen();
+    }
+
+    // 3. Fallback for provider mode if explicitly selected
+    if (activeMode == 'provider') {
+      return const ProviderSplashScreen();
+    }
+
+    // 4. First run / uninitialized state: show role selection screen
+    return const AppModeSelectionScreen();
   }
 }
 

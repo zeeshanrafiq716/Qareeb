@@ -267,31 +267,41 @@ class ProviderRegistrationStore {
   ProviderRegistrationData data = const ProviderRegistrationData();
   bool isLoaded = false;
   VoidCallback? onDataChanged;
+  String? _cachedActiveAppMode;
+
+  /// Synchronously accessible cached active app mode ('customer', 'provider', or null).
+  String? get cachedActiveAppMode => _cachedActiveAppMode;
 
   /// Returns 'provider' if provider mode is active, otherwise 'customer'.
   Future<String> getActiveAppMode() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final mode = prefs.getString(activeAppModeKey);
-      if (mode != null && mode.isNotEmpty) return mode;
+      if (mode != null && mode.isNotEmpty) {
+        _cachedActiveAppMode = mode;
+        return mode;
+      }
 
       // If no mode is explicitly set, check if provider onboarding or session exists
       if (data.authToken != null && data.authToken!.isNotEmpty) {
+        _cachedActiveAppMode = 'provider';
         return 'provider';
       }
       if (data.isOnboardingCompleted ||
           data.status == 'APPROVED' ||
           data.status == 'PENDING_VERIFICATION') {
+        _cachedActiveAppMode = 'provider';
         return 'provider';
       }
     } catch (e) {
       debugPrint('Error getting active app mode: $e');
     }
-    return 'customer';
+    return _cachedActiveAppMode ?? 'customer';
   }
 
   /// Sets active app mode ('provider' or 'customer')
   Future<void> setActiveAppMode(String mode) async {
+    _cachedActiveAppMode = mode;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(activeAppModeKey, mode);
@@ -304,6 +314,7 @@ class ProviderRegistrationStore {
   Future<void> loadFromPrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      _cachedActiveAppMode = prefs.getString(activeAppModeKey);
       final raw = prefs.getString(_storageKey);
       if (raw != null && raw.isNotEmpty) {
         final decoded = jsonDecode(raw);
@@ -523,6 +534,7 @@ class ProviderRegistrationStore {
   Future<void> logout() async {
     final lastPhone = data.phone;
     data = const ProviderRegistrationData().copyWith(phone: lastPhone);
+    _cachedActiveAppMode = 'provider';
     ApiClient.setGlobalToken(null);
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -538,11 +550,12 @@ class ProviderRegistrationStore {
   /// Clear session and onboarding data on logout or reset
   Future<void> clear() async {
     data = const ProviderRegistrationData();
+    _cachedActiveAppMode = null;
     ApiClient.setGlobalToken(null);
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_storageKey);
-      await prefs.setString(activeAppModeKey, 'customer');
+      await prefs.remove(activeAppModeKey);
     } catch (e) {
       debugPrint('Error clearing provider registration data: $e');
     }

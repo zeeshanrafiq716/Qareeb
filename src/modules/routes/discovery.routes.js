@@ -15,7 +15,11 @@ import {
   searchDiscovery,
 } from "../discovery.service.js";
 import { trackCustomerDiscoveryEvent } from "../funnel.service.js";
-import { cancelCustomerRequest, getCustomerRequestStatus } from "../notifications.service.js";
+import {
+  cancelCustomerRequest,
+  getCustomerRequestStatus,
+  submitCustomerRequestRating,
+} from "../notifications.service.js";
 
 function customerSessionId(req, querySessionId) {
   const header = req.get("X-Customer-Session")?.trim();
@@ -105,6 +109,18 @@ discoveryRoutes.post(
       res,
       await cancelCustomerRequest(req.params.requestId, {
         customerName: req.body?.customerName,
+      }),
+    );
+  }),
+);
+
+discoveryRoutes.post(
+  "/requests/:requestId/rating",
+  asyncHandler(async (req, res) => {
+    ok(
+      res,
+      await submitCustomerRequestRating(req.params.requestId, {
+        rating: req.body?.rating,
       }),
     );
   }),

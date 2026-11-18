@@ -4,10 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
+import '../../../core/utils/app_snackbar.dart';
+import '../../../core/utils/contact_launcher.dart';
+import '../../../core/utils/geo_distance.dart';
 import '../../../providers/backend_provider.dart';
 import '../../../providers/notifications_provider.dart';
+import '../../../services/location_service.dart';
 import '../../../services/task_service.dart';
 import '../../home/presentation/widgets/notification_popup_card.dart';
+import 'service_in_progress_screen.dart';
 import 'widgets/real_map_background_widget.dart';
 
 /// Screen displayed automatically when provider accepts the request.
@@ -49,6 +54,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
   double? _liveProviderLng;
   String _liveStatus = 'new';
   int _liveStep = 0;
+  bool _navigatedToReview = false;
 
   @override
   void initState() {
@@ -64,8 +70,20 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
     )..repeat(reverse: true);
 
     TaskService.instance.activeTaskNotifier.addListener(_onActiveTaskChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _pollStatus());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pollStatus();
+      final task = TaskService.instance.activeTask;
+      if (task != null &&
+          _isServiceCompleted(status: task.status, step: task.step)) {
+        _navigateToReviewScreen();
+      }
+    });
     _statusPollTimer = Timer.periodic(const Duration(seconds: 3), (_) => _pollStatus());
+  }
+
+  void _tickLiveMetrics() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   void _onActiveTaskChanged() {
@@ -74,7 +92,83 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
     setState(() {
       _liveStatus = task.status.toLowerCase();
       _liveStep = task.step;
+      final pLat = task.providerLatitude;
+      final pLng = task.providerLongitude;
+      if (GeoDistance.coordsValid(pLat, pLng)) {
+        _liveProviderLat = pLat;
+        _liveProviderLng = pLng;
+      }
     });
+    if (_isServiceCompleted(status: task.status, step: task.step)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _navigateToReviewScreen();
+      });
+    }
+  }
+
+  bool _isServiceCompleted({String? status, int? step}) {
+    final s = (status ?? _liveStatus).toLowerCase();
+    final st = step ?? _liveStep;
+    return s == 'completed' || st >= 4;
+  }
+
+  void _navigateToReviewScreen() {
+    if (_navigatedToReview || !mounted) return;
+    _navigatedToReview = true;
+    _statusPollTimer?.cancel();
+    _pulseController.stop();
+    final heading = tr.isArabic ? 'اكتملت الخدمة' : 'Service Complete';
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => ServiceInProgressScreen(
+          serviceCategory: widget.serviceCategory,
+          providerName: widget.providerName,
+          headerHeading: heading,
+          task: TaskService.instance.activeTask,
+        ),
+      ),
+    );
+  }
+
+  String get _providerContactPhone =>
+      TaskService.instance.activeTask?.providerPhone.trim() ?? '';
+
+  Future<void> _contactProviderWhatsApp() async {
+    final phone = _providerContactPhone;
+    if (phone.isEmpty) {
+      showAppSnackBar(
+        context,
+        tr.isArabic ? 'رقم مقدم الخدمة غير متوفر' : 'Provider phone not available',
+      );
+      return;
+    }
+    HapticFeedback.lightImpact();
+    final ok = await ContactLauncher.whatsApp(phone);
+    if (!ok && mounted) {
+      showAppSnackBar(
+        context,
+        tr.isArabic ? 'تعذر فتح واتساب' : 'Could not open WhatsApp',
+      );
+    }
+  }
+
+  Future<void> _contactProviderCall() async {
+    final phone = _providerContactPhone;
+    if (phone.isEmpty) {
+      showAppSnackBar(
+        context,
+        tr.isArabic ? 'رقم مقدم الخدمة غير متوفر' : 'Provider phone not available',
+      );
+      return;
+    }
+    HapticFeedback.lightImpact();
+    final ok = await ContactLauncher.call(phone);
+    if (!ok && mounted) {
+      showAppSnackBar(
+        context,
+        tr.isArabic ? 'تعذر بدء الاتصال' : 'Could not start call',
+      );
+    }
   }
 
   bool get _isWaitingForAcceptance {
@@ -153,6 +247,14 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
     final data = await ref.read(backendServiceProvider).getCustomerRequestStatus(reqId);
     if (!mounted || data == null) return;
 
+    ref.read(notificationsProvider.notifier).notifyCustomerProviderContactIfNeeded(
+          requestId: reqId,
+          statusPayload: data,
+          providerName: data['providerName']?.toString() ?? widget.providerName,
+          serviceCategory: data['serviceCategory']?.toString() ?? widget.serviceCategory,
+          photoUrl: widget.photoUrl,
+        );
+
     final status = (data['status']?.toString() ?? _liveStatus).toLowerCase();
     final cancelledBy = data['cancelledBy']?.toString();
     final step = (data['step'] is num)
@@ -187,7 +289,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
           );
     }
 
-    if (status == 'completed') {
+    if (_isServiceCompleted(status: status, step: step)) {
       _statusPollTimer?.cancel();
       final ordersCount = (data['providerOrdersCount'] as num?)?.toInt();
       if (ordersCount != null) {
@@ -196,12 +298,23 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
         );
       }
       await TaskService.instance.updateTaskStatus(status: 'completed', step: 4);
-      await TaskService.instance.completeTask();
+      if (!mounted) return;
+      _navigateToReviewScreen();
     } else if (status == 'cancelled') {
       _statusPollTimer?.cancel();
       await TaskService.instance.cancelTask();
     } else {
-      await TaskService.instance.updateTaskStatus(status: status, step: step);
+      if (GeoDistance.isAtCustomerSite(step: step, status: status)) {
+        final isAr = ref.read(translationsProvider).isArabic;
+        await TaskService.instance.updateTaskStatus(
+          status: status,
+          step: step,
+          distance: GeoDistance.zeroDistanceLabel(isArabic: isAr),
+          eta: isAr ? 'وصل الآن' : 'Arrived now',
+        );
+      } else {
+        await TaskService.instance.updateTaskStatus(status: status, step: step);
+      }
     }
   }
 
@@ -220,9 +333,122 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
     super.dispose();
   }
 
+  (double?, double?) _providerCoords() {
+    final task = TaskService.instance.activeTask;
+    final lat = _liveProviderLat ?? task?.providerLatitude ?? widget.providerLatitude;
+    final lng = _liveProviderLng ?? task?.providerLongitude ?? widget.providerLongitude;
+    if (GeoDistance.coordsValid(lat, lng)) return (lat, lng);
+    return (null, null);
+  }
+
+  (double?, double?) _customerCoords() {
+    final userLoc =
+        ref.read(userLocationProvider).value ?? LocationService.lastKnownValidLocation;
+    final task = TaskService.instance.activeTask;
+    if (userLoc != null && userLoc.hasValidDeviceGps) {
+      return (userLoc.latitude, userLoc.longitude);
+    }
+    final cLat = task?.customerLatitude;
+    final cLng = task?.customerLongitude;
+    if (GeoDistance.coordsValid(cLat, cLng)) return (cLat, cLng);
+    return (null, null);
+  }
+
+  bool get _atCustomerSite =>
+      GeoDistance.isAtCustomerSite(step: _liveStep, status: _liveStatus);
+
+  double? _liveDistanceMeters() {
+    if (_atCustomerSite) return 0;
+    final (cLat, cLng) = _customerCoords();
+    final (pLat, pLng) = _providerCoords();
+    return GeoDistance.metersBetween(cLat, cLng, pLat, pLng);
+  }
+
+  String? _storedDistanceLabel() {
+    final task = TaskService.instance.activeTask;
+    if (task != null &&
+        task.distance.trim().isNotEmpty &&
+        task.distance != '--') {
+      return task.distance.trim();
+    }
+    final d = widget.distance.trim();
+    if (d.isNotEmpty && d != '--') return d;
+    return null;
+  }
+
+  /// Live GPS first, then parse stored distance so ETA always pairs with distance.
+  double? _resolvedDistanceMeters() {
+    final live = _liveDistanceMeters();
+    if (live != null) return live;
+    return GeoDistance.parseMetersFromLabel(_storedDistanceLabel());
+  }
+
+  String _liveDistanceLabel(AppTranslations tr) {
+    if (_atCustomerSite) {
+      return GeoDistance.zeroDistanceLabel(isArabic: tr.isArabic);
+    }
+    final meters = _resolvedDistanceMeters();
+    if (meters != null) {
+      return GeoDistance.formatDistance(meters, isArabic: tr.isArabic);
+    }
+    final fallback = _storedDistanceLabel();
+    if (fallback != null) return fallback;
+    return '--';
+  }
+
+  String _liveEtaLabel(AppTranslations tr) {
+    final status = _liveStatus.toLowerCase();
+
+    if (_isWaitingForAcceptance) {
+      final meters = _resolvedDistanceMeters();
+      if (meters != null) {
+        return GeoDistance.formatEta(meters, isArabic: tr.isArabic);
+      }
+      return tr.isArabic ? 'بانتظار المزود' : 'Awaiting provider';
+    }
+
+    if (_liveStep >= 3 || status == 'in_progress') {
+      return tr.isArabic ? 'جاري التنفيذ' : 'In progress';
+    }
+
+    if (_liveStep >= 2 || status == 'arrived') {
+      return tr.isArabic ? 'وصل الآن' : 'Arrived now';
+    }
+
+    final meters = _resolvedDistanceMeters();
+    if (meters != null) {
+      return GeoDistance.formatEta(meters, isArabic: tr.isArabic);
+    }
+
+    final task = TaskService.instance.activeTask;
+    final storedEta = task?.eta.trim() ?? '';
+    if (storedEta.isNotEmpty && storedEta != '--') {
+      final etaMeters = GeoDistance.parseMetersFromLabel(storedEta);
+      if (etaMeters != null) {
+        return GeoDistance.formatEta(etaMeters, isArabic: tr.isArabic);
+      }
+      return storedEta;
+    }
+
+    final dur = widget.duration.trim();
+    if (dur.isNotEmpty && dur != '--') {
+      final durMeters = GeoDistance.parseMetersFromLabel(dur);
+      if (durMeters != null) {
+        return GeoDistance.formatEta(durMeters, isArabic: tr.isArabic);
+      }
+      return dur;
+    }
+
+    return '--';
+  }
+
   @override
   Widget build(BuildContext context) {
-    ref.watch(translationsProvider);
+    final tr = ref.watch(translationsProvider);
+    ref.watch(userLocationProvider);
+    ref.listen(userLocationProvider, (previous, next) => _tickLiveMetrics());
+    final liveDistanceLabel = _liveDistanceLabel(tr);
+    final liveEtaLabel = _liveEtaLabel(tr);
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -271,9 +497,10 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                         driverName: widget.providerName,
                         serviceCategory: widget.serviceCategory,
                         vehicleName: widget.vehicleName ?? widget.serviceCategory,
-                        etaText: widget.duration,
-                        distanceText: widget.distance,
+                        etaText: liveEtaLabel,
+                        distanceText: liveDistanceLabel,
                         showControls: true,
+                        isProviderPerspective: false,
                       ),
                     ),
                   ),
@@ -495,21 +722,14 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                         // width: 350; height: 38; justify-content: space-between;
                                         SizedBox(
                                           width: double.infinity,
-                                          height: 38.0,
                                           child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
                                             crossAxisAlignment:
-                                                CrossAxisAlignment.center,
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              // left side branding:
-                                              // width: 246; height: 38; gap: 16px;
-                                              SizedBox(
-                                                width: 246.0,
-                                                height: 38.0,
+                                              Expanded(
                                                 child: Row(
                                                   crossAxisAlignment:
-                                                      CrossAxisAlignment.center,
+                                                      CrossAxisAlignment.start,
                                                   children: [
                                                     // img branding: width: 36; height: 36;
                                                     Container(
@@ -556,91 +776,66 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                     ),
                                                     const SizedBox(width: 16.0), // gap: 16px;
 
-                                                    // content layout: Flexible responsive provider details
                                                     Expanded(
                                                       child: Column(
                                                         crossAxisAlignment:
                                                             CrossAxisAlignment
                                                                 .start,
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .spaceBetween,
                                                         children: [
-                                                          // content inner: responsive row
-                                                          Row(
-                                                            crossAxisAlignment:
-                                                                CrossAxisAlignment
-                                                                    .center,
-                                                            children: [
-                                                              // content: Ahmad Transport
-                                                              Flexible(
-                                                                child: Text(
-                                                                  tr.formatProviderName(widget.providerName),
-                                                                  style: tr.font(
-                                                                    fontSize:
-                                                                        14.0,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500,
-                                                                    color: const Color(
-                                                                        0xFF1C2926),
-                                                                    height: 1.2,
-                                                                    letterSpacing:
-                                                                        0.0,
-                                                                  ),
-                                                                  maxLines: 1,
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis,
-                                                                ),
-                                                              ),
-                                                              const SizedBox(
-                                                                  width: 8.0),
-
-                                                              // On the way badge
-                                                              Container(
-                                                                padding:
-                                                                    const EdgeInsets
-                                                                        .symmetric(
-                                                                  horizontal:
-                                                                      8.0,
-                                                                  vertical:
-                                                                      3.0,
-                                                                ),
-                                                                decoration:
-                                                                    BoxDecoration(
-                                                                  color: const Color(
-                                                                      0xFFF0EAFE),
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .circular(
-                                                                              60.0),
-                                                                ),
-                                                                alignment:
-                                                                    Alignment
-                                                                        .center,
-                                                                child: Text(
-                                                                  _statusBadgeLabel(tr),
-                                                                  style: tr.font(
-                                                                    fontSize:
-                                                                        10.0,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500,
-                                                                    color: const Color(
-                                                                        0xFF8B53FE),
-                                                                    height: 1.2,
-                                                                    letterSpacing:
-                                                                        0.0,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            ],
+                                                          Text(
+                                                            tr.formatProviderName(
+                                                                widget.providerName),
+                                                            style: tr.font(
+                                                              fontSize: 14.0,
+                                                              fontWeight:
+                                                                  FontWeight.w500,
+                                                              color: const Color(
+                                                                  0xFF1C2926),
+                                                              height: 1.25,
+                                                              letterSpacing: 0.0,
+                                                            ),
+                                                            maxLines: 2,
+                                                            softWrap: true,
+                                                            overflow: TextOverflow
+                                                                .fade,
                                                           ),
+                                                          const SizedBox(
+                                                              height: 6.0),
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .symmetric(
+                                                              horizontal: 8.0,
+                                                              vertical: 3.0,
+                                                            ),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: const Color(
+                                                                  0xFFF0EAFE),
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          60.0),
+                                                            ),
+                                                            child: Text(
+                                                              _statusBadgeLabel(tr),
+                                                              style: tr.font(
+                                                                fontSize: 10.0,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                                color: const Color(
+                                                                    0xFF8B53FE),
+                                                                height: 1.2,
+                                                                letterSpacing:
+                                                                    0.0,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                              height: 6.0),
 
-                                                          const SizedBox(height: 4.0),
-
-                                                          // 2nd row: EAT 8 min
+                                                          // EAT / ETA line
                                                           Text.rich(
                                                             TextSpan(
                                                               text: tr.eatEta,
@@ -658,9 +853,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                               ),
                                                               children: [
                                                                 TextSpan(
-                                                                  text: tr.isArabic
-                                                                      ? widget.duration.replaceAll('min', 'دقيقة').replaceAll('m', 'د')
-                                                                      : widget.duration,
+                                                                  text: liveEtaLabel,
                                                                   style:
                                                                       tr.font(
                                                                     fontSize:
@@ -684,16 +877,10 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                   ],
                                                 ),
                                               ),
-
-                                              // right side branding:
-                                              // width: 84; height: 36; gap: 12px;
-                                              SizedBox(
-                                                width: 84.0,
-                                                height: 36.0,
-                                                child: Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.end,
-                                                  children: [
+                                              const SizedBox(width: 8.0),
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
                                                     // WhatsApp button
                                                     MouseRegion(
                                                       cursor: SystemMouseCursors
@@ -701,22 +888,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                       child: GestureDetector(
                                                         key: const Key(
                                                             'live_tracking_whatsapp_button'),
-                                                        onTap: () {
-                                                          HapticFeedback
-                                                              .lightImpact();
-                                                          ScaffoldMessenger.of(
-                                                                  context)
-                                                              .showSnackBar(
-                                                            SnackBar(
-                                                              content: Text(
-                                                                tr.openingWhatsApp,
-                                                                style: tr.font(color: Colors.white),
-                                                              ),
-                                                              duration: const Duration(
-                                                                  seconds: 1),
-                                                            ),
-                                                          );
-                                                        },
+                                                        onTap: _contactProviderWhatsApp,
                                                         behavior:
                                                             HitTestBehavior
                                                                 .opaque,
@@ -751,27 +923,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                       child: GestureDetector(
                                                         key: const Key(
                                                             'live_tracking_call_button'),
-                                                        onTap: () {
-                                                          HapticFeedback
-                                                              .lightImpact();
-                                                          ScaffoldMessenger.of(
-                                                                  context)
-                                                              .showSnackBar(
-                                                            SnackBar(
-                                                              content: Text(
-                                                                tr.callingProvider(
-                                                                    tr.formatProviderName(
-                                                                        widget.providerName)),
-                                                                style: tr.font(
-                                                                    color: Colors.white),
-                                                              ),
-                                                              duration:
-                                                                  const Duration(
-                                                                      seconds:
-                                                                          1),
-                                                            ),
-                                                          );
-                                                        },
+                                                        onTap: _contactProviderCall,
                                                         behavior:
                                                             HitTestBehavior
                                                                 .opaque,
@@ -796,8 +948,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                         ),
                                                       ),
                                                     ),
-                                                  ],
-                                                ),
+                                                ],
                                               ),
                                             ],
                                           ),
@@ -948,7 +1099,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                               alignment: AlignmentDirectional
                                                                   .centerStart,
                                                               child: Text(
-                                                                tr.threePointEightKm,
+                                                                liveDistanceLabel,
                                                                 style:
                                                                     tr.font(
                                                                   fontSize:
@@ -1063,7 +1214,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                               alignment: AlignmentDirectional
                                                                   .centerStart,
                                                               child: Text(
-                                                                tr.sixMin,
+                                                                liveEtaLabel,
                                                                 style:
                                                                     tr.font(
                                                                   fontSize:

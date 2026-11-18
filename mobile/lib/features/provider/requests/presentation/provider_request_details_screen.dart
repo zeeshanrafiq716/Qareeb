@@ -3,16 +3,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/core/utils/contact_launcher.dart';
+import 'package:mobile/core/utils/geo_distance.dart';
 import 'package:mobile/providers/backend_provider.dart';
+import 'package:mobile/services/location_service.dart';
 import 'package:mobile/providers/notifications_provider.dart';
 import 'package:mobile/services/task_service.dart';
 import 'package:mobile/features/home/presentation/widgets/notification_popup_card.dart';
 import 'package:mobile/features/provider/requests/presentation/provider_active_request_screen.dart';
-import 'package:mobile/features/location/presentation/widgets/top_down_car_widget.dart';
 import 'package:mobile/features/location/presentation/widgets/real_map_background_widget.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_animated_language_toggle.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_card_scroll_behavior.dart';
 import 'package:mobile/features/provider/auth/presentation/widgets/provider_header_back_button.dart';
+import 'package:mobile/features/provider/requests/presentation/widgets/provider_request_metric_cards_row.dart';
+import 'package:mobile/features/provider/requests/presentation/widgets/provider_request_sheet_typography.dart';
 
 /// Provider Request Details Screen
 /// Exact Figma specification matching user screenshot:
@@ -50,6 +54,8 @@ class ProviderRequestDetailsScreen extends ConsumerStatefulWidget {
   final String locationAr;
   final String distanceEn;
   final String distanceAr;
+  final String etaEn;
+  final String etaAr;
   final String timeEn;
   final String timeAr;
   final String badgeEn;
@@ -57,23 +63,39 @@ class ProviderRequestDetailsScreen extends ConsumerStatefulWidget {
   final String imageAsset;
   final String status;
   final String customerName;
+  final String? customerPhotoUrl;
+  final String? customerPhone;
+  final String vehicleModelEn;
+  final String vehicleModelAr;
+  final String plateNumber;
+  final String customerNoteEn;
+  final String customerNoteAr;
 
   const ProviderRequestDetailsScreen({
     super.key,
-    this.requestId = 'REQ-101',
+    this.requestId = '',
     this.serviceTypeEn = 'Service Request',
     this.serviceTypeAr = 'طلب خدمة',
-    this.locationEn = 'Shared via Zesho',
-    this.locationAr = 'تمت المشاركة عبر زيشو',
+    this.locationEn = '',
+    this.locationAr = '',
     this.distanceEn = '--',
     this.distanceAr = '--',
-    this.timeEn = 'Just now',
-    this.timeAr = 'الآن',
+    this.etaEn = '',
+    this.etaAr = '',
+    this.timeEn = '',
+    this.timeAr = '',
     this.badgeEn = 'New Request',
     this.badgeAr = 'طلب جديد',
-    this.imageAsset = 'assets/images/img.png',
+    this.imageAsset = 'assets/images/tow_truck.png',
     this.status = 'new',
     this.customerName = 'Customer',
+    this.customerPhotoUrl,
+    this.customerPhone,
+    this.vehicleModelEn = '',
+    this.vehicleModelAr = '',
+    this.plateNumber = '',
+    this.customerNoteEn = '',
+    this.customerNoteAr = '',
   });
 
   static const double designWidth = 390.0;
@@ -103,13 +125,124 @@ class _ProviderRequestDetailsScreenState
     return status != 'completed' && status != 'cancelled';
   }
 
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return 'C';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return parts[0].substring(0, 1).toUpperCase() + parts[1].substring(0, 1).toUpperCase();
+  }
+
+  String? _cleanPhoto(String? raw) {
+    final v = raw?.trim() ?? '';
+    if (v.isEmpty) return null;
+    if (v.contains('ahmed_khan') || v.endsWith('img.png') || v.contains('unsplash.com')) {
+      return null;
+    }
+    return v;
+  }
+
+  Future<void> _trackProviderContact(String channel) async {
+    final reqId = TaskService.extractBackendUuid(widget.requestId);
+    if (reqId == null) return;
+    await ref.read(backendServiceProvider).recordProviderContactCustomer(
+          requestId: reqId,
+          channel: channel,
+        );
+  }
+
+  String _resolveEtaText(String cleanDistance, bool isArabic) {
+    final rawEta = (isArabic ? widget.etaAr : widget.etaEn).trim();
+    if (rawEta.isNotEmpty && rawEta != '--' && rawEta != '—') {
+      return rawEta;
+    }
+    final mMatch = RegExp(r'^(\d+(?:\.\d+)?)\s*(m|م)$', caseSensitive: false).firstMatch(cleanDistance);
+    if (mMatch != null) {
+      final meters = double.tryParse(mMatch.group(1) ?? '') ?? 0;
+      if (meters < 100) return isArabic ? 'أقل من دقيقة' : '< 1 min';
+      final mins = ((meters / 1000.0) / 30.0 * 60.0).ceil().clamp(1, 180);
+      return isArabic ? '$mins د' : '$mins min';
+    }
+    final kmMatch = RegExp(r'^(\d+(?:\.\d+)?)\s*(km|كم)$', caseSensitive: false).firstMatch(cleanDistance);
+    if (kmMatch != null) {
+      final km = double.tryParse(kmMatch.group(1) ?? '') ?? 0;
+      if (km < 0.1) return isArabic ? 'أقل من دقيقة' : '< 1 min';
+      final mins = (km / 30.0 * 60.0).ceil().clamp(1, 180);
+      return isArabic ? '$mins د' : '$mins min';
+    }
+    return '--';
+  }
+
+  bool _isSeedVehicle(String v) {
+    final low = v.trim().toLowerCase();
+    return low.isEmpty || low == 'toyota corolla' || low == 'service vehicle' || low == 'تويوتا كورولا';
+  }
+
+  bool _isSeedPlate(String p) {
+    final low = p.trim().toLowerCase();
+    return low.isEmpty || low == 'ksa 1234' || low == '1122';
+  }
+
+  bool _isSeedNote(String n) {
+    final low = n.trim().toLowerCase();
+    return low.isEmpty || low.contains('battery is dead') || low.contains('البطارية فارغة');
+  }
+
+  String _customerLocationLabel(bool isArabic) {
+    final task = _resolveTask();
+    final fromWidget = (isArabic ? widget.locationAr : widget.locationEn).trim();
+    return GeoDistance.customerLocationLabel(
+      fromWidget.isNotEmpty ? fromWidget : task?.customerLocation,
+      isArabic: isArabic,
+      alternate: task?.customerLocation,
+    );
+  }
+
+  ServiceTask? _resolveTask() {
+    final id = widget.requestId.trim();
+    if (id.isEmpty) return null;
+    for (final t in TaskService.instance.providerRequests) {
+      if (t.id == id) return t;
+    }
+    for (final t in TaskService.instance.historyTasks) {
+      if (t.id == id) return t;
+    }
+    if (TaskService.instance.activeTask?.id == id) {
+      return TaskService.instance.activeTask;
+    }
+    return null;
+  }
+
+  double? _liveDistanceMeters(ServiceTask? task, UserLocation? providerLoc) {
+    if (providerLoc == null || !providerLoc.hasValidDeviceGps || task == null) {
+      return null;
+    }
+    return GeoDistance.metersBetween(
+      providerLoc.latitude,
+      providerLoc.longitude,
+      task.customerLatitude,
+      task.customerLongitude,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isArabic = context.isArabic;
-    final cleanDistance = (isArabic ? widget.distanceAr : widget.distanceEn)
-        .replaceAll(' away', '')
-        .replaceAll('على بعد ', '')
-        .trim();
+    final task = _resolveTask();
+    final userLoc = ref.watch(userLocationProvider).value ?? LocationService.lastKnownValidLocation;
+    final providerGpsValid = userLoc != null && userLoc.hasValidDeviceGps;
+    final distanceDisplay = GeoDistance.resolveProviderToCustomerLabel(
+      providerLat: providerGpsValid ? userLoc.latitude : null,
+      providerLng: providerGpsValid ? userLoc.longitude : null,
+      providerGpsValid: providerGpsValid,
+      customerLat: task?.customerLatitude,
+      customerLng: task?.customerLongitude,
+      isArabic: isArabic,
+      fallbackLabel: isArabic ? widget.distanceAr : widget.distanceEn,
+    );
+    final liveMeters = _liveDistanceMeters(task, userLoc);
+    final etaDisplay = liveMeters != null
+        ? GeoDistance.formatEta(liveMeters, isArabic: isArabic)
+        : _resolveEtaText(distanceDisplay, isArabic);
 
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -163,11 +296,8 @@ class _ProviderRequestDetailsScreenState
                           child: RealMapBackgroundWidget(
                             enableDrag: true,
                             zoom: 15.0,
-                            trackingStep: MapTrackingStep.onTheWay,
-                            driverName: isArabic ? 'أنت' : 'You',
-                            etaText: cleanDistance,
-                            distanceText: cleanDistance,
-                            showControls: true,
+                            trackingStep: MapTrackingStep.none,
+                            showControls: false,
                           ),
                         ),
 
@@ -193,56 +323,6 @@ class _ProviderRequestDetailsScreenState
                           ),
                         ),
 
-
-                        // 1h. Landmark Indicator: "Al Nakheel Mall / النخيل مول"
-                        Positioned(
-                          top: 210.0,
-                          left: 75.0 + ((containerWidth - 390.0) / 2.0),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 22.0,
-                                height: 22.0,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: const Color(0xFF566663).withValues(alpha: 0.15),
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.shopping_bag_outlined,
-                                    size: 13.0,
-                                    color: Color(0xFF566663),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 5.0),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'النخيل مول',
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 10.0,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF566663),
-                                      height: 1.1,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Al Nakheel Mall',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 8.5,
-                                      fontWeight: FontWeight.w500,
-                                      color: const Color(0xFF6B7280),
-                                      height: 1.1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
 
                         // 1i. Floating Location / GPS Re-Center Target Button:
                         Positioned(
@@ -406,7 +486,12 @@ class _ProviderRequestDetailsScreenState
                               child: SingleChildScrollView(
                                 controller: _scrollController,
                                 physics: const ClampingScrollPhysics(),
-                                padding: EdgeInsets.fromLTRB(20.0, 6.0, 20.0, bottomSafeArea > 0 ? (bottomSafeArea + 24.0) : 24.0),
+                                padding: EdgeInsets.fromLTRB(
+                                  20.0,
+                                  6.0,
+                                  20.0,
+                                  bottomSafeArea > 0 ? (bottomSafeArea + 40.0) : 36.0,
+                                ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -414,34 +499,28 @@ class _ProviderRequestDetailsScreenState
                                     Row(
                                       crossAxisAlignment: CrossAxisAlignment.center,
                                       children: [
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(12.0),
-                                          child: Image.asset(
-                                            widget.imageAsset.isNotEmpty
-                                                ? widget.imageAsset
-                                                : 'assets/images/img.png',
-                                            width: 52.0,
-                                            height: 52.0,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) {
-                                              return Container(
-                                                width: 52.0,
-                                                height: 52.0,
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFFF3F2F5),
-                                                  borderRadius: BorderRadius.circular(12.0),
-                                                ),
-                                                child: const Icon(
-                                                  Icons.car_repair_rounded,
-                                                  color: Color(0xFF8B53FE),
-                                                  size: 26.0,
-                                                ),
-                                              );
-                                            },
-                                          ),
+                                        Image.asset(
+                                          widget.imageAsset.isNotEmpty
+                                              ? widget.imageAsset
+                                              : 'assets/images/tow_truck.png',
+                                          width: ProviderRequestSheetTypography.serviceThumb,
+                                          height: ProviderRequestSheetTypography.serviceThumb,
+                                          fit: BoxFit.contain,
+                                          filterQuality: FilterQuality.high,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return SizedBox(
+                                              width: ProviderRequestSheetTypography.serviceThumb,
+                                              height: ProviderRequestSheetTypography.serviceThumb,
+                                              child: Icon(
+                                                Icons.car_repair_rounded,
+                                                color: const Color(0xFF8B53FE).withValues(alpha: 0.85),
+                                                size: 30.0,
+                                              ),
+                                            );
+                                          },
                                         ),
 
-                                        const SizedBox(width: 16.0),
+                                        const SizedBox(width: 14.0),
 
                                         Expanded(
                                           child: Column(
@@ -450,42 +529,25 @@ class _ProviderRequestDetailsScreenState
                                             children: [
                                               Text(
                                                 isArabic ? widget.serviceTypeAr : widget.serviceTypeEn,
-                                                style: isArabic
-                                                    ? GoogleFonts.cairo(
-                                                        fontSize: 14.0,
-                                                        fontWeight: FontWeight.w500,
-                                                        color: const Color(0xFF252527),
-                                                        height: 1.2,
-                                                      )
-                                                    : GoogleFonts.inter(
-                                                        fontSize: 14.0,
-                                                        fontWeight: FontWeight.w500,
-                                                        color: const Color(0xFF252527),
-                                                        height: 1.2,
-                                                      ),
+                                                style: ProviderRequestSheetTypography.title(isArabic),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
-                                              const SizedBox(height: 4.0),
+                                              const SizedBox(height: ProviderRequestSheetTypography.labelGap),
                                               Row(
-                                                mainAxisSize: MainAxisSize.min,
                                                 crossAxisAlignment: CrossAxisAlignment.center,
                                                 children: [
-                                                  Text(
-                                                    isArabic ? 'من فيصل الحربي' : 'From Faisal Al-Harbi',
-                                                    style: isArabic
-                                                        ? GoogleFonts.cairo(
-                                                            fontSize: 10.0,
-                                                            fontWeight: FontWeight.w400,
-                                                            color: const Color(0xFF616166),
-                                                            height: 1.0,
-                                                          )
-                                                        : GoogleFonts.inter(
-                                                            fontSize: 10.0,
-                                                            fontWeight: FontWeight.w400,
-                                                            color: const Color(0xFF616166),
-                                                            height: 1.0,
-                                                          ),
+                                                  Flexible(
+                                                    child: Text(
+                                                      widget.customerName.trim().isNotEmpty
+                                                          ? (isArabic
+                                                              ? 'من ${widget.customerName.trim()}'
+                                                              : 'From ${widget.customerName.trim()}')
+                                                          : (isArabic ? 'عميل' : 'Customer'),
+                                                      style: ProviderRequestSheetTypography.subtext(isArabic),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
                                                   ),
                                                   const SizedBox(width: 8.0),
                                                   Container(
@@ -499,21 +561,11 @@ class _ProviderRequestDetailsScreenState
                                                   const SizedBox(width: 8.0),
                                                   Flexible(
                                                     child: Text(
-                                                      isArabic ? widget.locationAr : widget.locationEn,
-                                                      style: isArabic
-                                                          ? GoogleFonts.cairo(
-                                                              fontSize: 10.0,
-                                                              fontWeight: FontWeight.w400,
-                                                              color: const Color(0xFF616166),
-                                                              height: 1.0,
-                                                            )
-                                                          : GoogleFonts.inter(
-                                                              fontSize: 10.0,
-                                                              fontWeight: FontWeight.w400,
-                                                              color: const Color(0xFF616166),
-                                                              height: 1.0,
-                                                            ),
-                                                      overflow: TextOverflow.ellipsis,
+                                                      _customerLocationLabel(isArabic),
+                                                      style: ProviderRequestSheetTypography.subtext(isArabic),
+                                                      maxLines: 2,
+                                                      softWrap: true,
+                                                      overflow: TextOverflow.clip,
                                                     ),
                                                   ),
                                                 ],
@@ -524,12 +576,12 @@ class _ProviderRequestDetailsScreenState
                                       ],
                                     ),
 
-                                    const SizedBox(height: 14.0),
+                                    const SizedBox(height: ProviderRequestSheetTypography.sectionGap),
 
                                     // 3b. Customer Location Card
                                     Container(
                                       width: double.infinity,
-                                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 15.0),
+                                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFF3F2F5),
                                         borderRadius: BorderRadius.circular(12.0),
@@ -538,17 +590,17 @@ class _ProviderRequestDetailsScreenState
                                         crossAxisAlignment: CrossAxisAlignment.center,
                                         children: [
                                           Container(
-                                            width: 36.0,
-                                            height: 36.0,
+                                            width: ProviderRequestSheetTypography.iconBox,
+                                            height: ProviderRequestSheetTypography.iconBox,
                                             decoration: BoxDecoration(
                                               color: const Color(0xFFE7E6EB),
                                               borderRadius: BorderRadius.circular(8.0),
                                             ),
-                                            child: const Center(
+                                            child: Center(
                                               child: Icon(
                                                 Icons.location_on_rounded,
-                                                size: 18.0,
-                                                color: Color(0xFF252527),
+                                                size: ProviderRequestSheetTypography.iconGlyph,
+                                                color: const Color(0xFF252527),
                                               ),
                                             ),
                                           ),
@@ -560,40 +612,18 @@ class _ProviderRequestDetailsScreenState
                                               children: [
                                                 Text(
                                                   isArabic ? 'موقع العميل' : 'Customer Location',
-                                                  style: isArabic
-                                                      ? GoogleFonts.cairo(
-                                                          fontSize: 10.0,
-                                                          fontWeight: FontWeight.w400,
-                                                          color: const Color(0xFF616166),
-                                                          height: 1.0,
-                                                        )
-                                                      : GoogleFonts.inter(
-                                                          fontSize: 10.0,
-                                                          fontWeight: FontWeight.w400,
-                                                          color: const Color(0xFF616166),
-                                                          height: 1.0,
-                                                        ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
+                                                  style: ProviderRequestSheetTypography.label(isArabic),
+                                                  maxLines: 2,
+                                                  softWrap: true,
+                                                  overflow: TextOverflow.clip,
                                                 ),
-                                                const SizedBox(height: 4.0),
+                                                const SizedBox(height: ProviderRequestSheetTypography.labelGap),
                                                 Text(
-                                                  isArabic ? widget.locationAr : widget.locationEn,
-                                                  style: isArabic
-                                                      ? GoogleFonts.cairo(
-                                                          fontSize: 12.0,
-                                                          fontWeight: FontWeight.w500,
-                                                          color: const Color(0xFF252527),
-                                                          height: 1.1,
-                                                        )
-                                                      : GoogleFonts.inter(
-                                                          fontSize: 12.0,
-                                                          fontWeight: FontWeight.w500,
-                                                          color: const Color(0xFF252527),
-                                                          height: 1.1,
-                                                        ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
+                                                  _customerLocationLabel(isArabic),
+                                                  style: ProviderRequestSheetTypography.body(isArabic),
+                                                  maxLines: 2,
+                                                  softWrap: true,
+                                                  overflow: TextOverflow.clip,
                                                 ),
                                               ],
                                             ),
@@ -602,425 +632,304 @@ class _ProviderRequestDetailsScreenState
                                       ),
                                     ),
 
-                                    const SizedBox(height: 12.0),
+                                    const SizedBox(height: ProviderRequestSheetTypography.sectionGap),
 
-                                    // 3c. Distance Away & Estimated Time Twin Cards
-                                    Row(
-                                      children: [
-                                        // 1st Card: Distance Away
-                                        Expanded(
-                                          child: Container(
-                                            height: 64.0,
-                                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF3F2F5),
-                                              borderRadius: BorderRadius.circular(12.0),
-                                            ),
-                                            child: Row(
-                                              crossAxisAlignment: CrossAxisAlignment.center,
-                                              children: [
-                                                Container(
-                                                  width: 36.0,
-                                                  height: 36.0,
-                                                  decoration: const BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: Color(0xFFE7E6EB),
-                                                  ),
-                                                  child: const Center(
-                                                    child: Icon(
-                                                      Icons.location_on_rounded,
-                                                      size: 18.0,
-                                                      color: Color(0xFF252527),
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 12.0),
-                                                Expanded(
-                                                  child: Column(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Text(
-                                                        isArabic ? widget.distanceAr : widget.distanceEn,
-                                                        style: GoogleFonts.inter(
-                                                          fontSize: 13.5,
-                                                          fontWeight: FontWeight.w600,
-                                                          color: const Color(0xFF252527),
-                                                          height: 1.1,
-                                                        ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                      const SizedBox(height: 2.0),
-                                                      Text(
-                                                        isArabic ? 'المسافة' : 'Distance Away',
-                                                        style: isArabic
-                                                            ? GoogleFonts.cairo(
-                                                                fontSize: 10.0,
-                                                                fontWeight: FontWeight.w400,
-                                                                color: const Color(0xFF616166),
-                                                                height: 1.1,
-                                                              )
-                                                            : GoogleFonts.inter(
-                                                                fontSize: 10.0,
-                                                                fontWeight: FontWeight.w400,
-                                                                color: const Color(0xFF616166),
-                                                                height: 1.1,
-                                                              ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-
-                                        const SizedBox(width: 12.0),
-
-                                        // 2nd Card: Estimated Time
-                                        Expanded(
-                                          child: Container(
-                                            height: 64.0,
-                                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF3F2F5),
-                                              borderRadius: BorderRadius.circular(12.0),
-                                            ),
-                                            child: Row(
-                                              crossAxisAlignment: CrossAxisAlignment.center,
-                                              children: [
-                                                Container(
-                                                  width: 36.0,
-                                                  height: 36.0,
-                                                  decoration: const BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: Color(0xFFE7E6EB),
-                                                  ),
-                                                  child: const Center(
-                                                    child: Icon(
-                                                      Icons.access_time_filled_rounded,
-                                                      size: 18.0,
-                                                      color: Color(0xFF252527),
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 12.0),
-                                                Expanded(
-                                                  child: Column(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Text(
-                                                        isArabic ? '٨ دقائق' : '8 min',
-                                                        style: isArabic
-                                                            ? GoogleFonts.cairo(
-                                                                fontSize: 13.5,
-                                                                fontWeight: FontWeight.w600,
-                                                                color: const Color(0xFF252527),
-                                                                height: 1.1,
-                                                              )
-                                                            : GoogleFonts.inter(
-                                                                fontSize: 13.5,
-                                                                fontWeight: FontWeight.w600,
-                                                                color: const Color(0xFF252527),
-                                                                height: 1.1,
-                                                              ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                      const SizedBox(height: 2.0),
-                                                      Text(
-                                                        isArabic ? 'الوقت المتوقع' : 'Estimated time',
-                                                        style: isArabic
-                                                            ? GoogleFonts.cairo(
-                                                                fontSize: 10.0,
-                                                                fontWeight: FontWeight.w400,
-                                                                color: const Color(0xFF616166),
-                                                                height: 1.1,
-                                                              )
-                                                            : GoogleFonts.inter(
-                                                                fontSize: 10.0,
-                                                                fontWeight: FontWeight.w400,
-                                                                color: const Color(0xFF616166),
-                                                                height: 1.1,
-                                                              ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                    ProviderRequestMetricCardsRow(
+                                      isArabic: isArabic,
+                                      distanceValue: distanceDisplay,
+                                      etaValue: etaDisplay,
                                     ),
 
-                                    const SizedBox(height: 12.0),
+                                    const SizedBox(height: ProviderRequestSheetTypography.sectionGap),
 
-                                    // 3d. Customer Card (Avatar, Name, WhatsApp, Call, Vehicle, Plate)
-                                    Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.all(16.0),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF3F2F5),
-                                        borderRadius: BorderRadius.circular(16.0),
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            crossAxisAlignment: CrossAxisAlignment.center,
+                                    // 3d. Customer Card (100% Real Data — Zero Seed Fallbacks)
+                                    Builder(
+                                      builder: (context) {
+                                        final realCustomerName = widget.customerName.trim().isNotEmpty
+                                            ? widget.customerName.trim()
+                                            : (isArabic ? 'عميل' : 'Customer');
+                                        final realPhoto = _cleanPhoto(widget.customerPhotoUrl);
+                                        final taskPhone = TaskService.instance
+                                                .getTaskById(widget.requestId)
+                                                ?.customerPhone
+                                                .trim() ??
+                                            '';
+                                        final realPhone = (widget.customerPhone?.trim().isNotEmpty == true)
+                                            ? widget.customerPhone!.trim()
+                                            : taskPhone;
+                                        final realVehicle = (isArabic ? widget.vehicleModelAr : widget.vehicleModelEn).trim();
+                                        final showVehicle = !_isSeedVehicle(realVehicle);
+                                        final realPlate = widget.plateNumber.trim();
+                                        final showPlate = !_isSeedPlate(realPlate);
+
+                                        return Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.all(16.0),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF3F2F5),
+                                            borderRadius: BorderRadius.circular(16.0),
+                                          ),
+                                          child: Column(
                                             children: [
-                                              // Avatar + Customer info
                                               Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                crossAxisAlignment: CrossAxisAlignment.center,
                                                 children: [
-                                                  ClipOval(
-                                                    child: Image.asset(
-                                                      'assets/images/ahmed_khan.jpg',
-                                                      width: 44.0,
-                                                      height: 44.0,
-                                                      fit: BoxFit.cover,
-                                                      errorBuilder: (context, error, stackTrace) => Image.asset(
-                                                        'assets/images/img.png',
-                                                        width: 44.0,
-                                                        height: 44.0,
-                                                        fit: BoxFit.cover,
-                                                      ),
+                                                  // Real Avatar or Purple Initials + Real Customer Name
+                                                  Expanded(
+                                                    child: Row(
+                                                      children: [
+                                                        Container(
+                                                          width: ProviderRequestSheetTypography.avatar,
+                                                          height: ProviderRequestSheetTypography.avatar,
+                                                          decoration: const BoxDecoration(
+                                                            shape: BoxShape.circle,
+                                                            color: Color(0xFF8B53FE),
+                                                          ),
+                                                          clipBehavior: Clip.antiAlias,
+                                                          child: realPhoto != null
+                                                              ? Image.network(
+                                                                  realPhoto,
+                                                                  width: ProviderRequestSheetTypography.avatar,
+                                                                  height: ProviderRequestSheetTypography.avatar,
+                                                                  fit: BoxFit.cover,
+                                                                  errorBuilder: (_, _, _) => Center(
+                                                                    child: Text(
+                                                                      _initials(realCustomerName),
+                                                                      style: GoogleFonts.inter(
+                                                                        fontSize: ProviderRequestSheetTypography.valueMd,
+                                                                        fontWeight: FontWeight.w700,
+                                                                        color: Colors.white,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                )
+                                                              : Center(
+                                                                  child: Text(
+                                                                    _initials(realCustomerName),
+                                                                    style: GoogleFonts.inter(
+                                                                      fontSize: ProviderRequestSheetTypography.valueMd,
+                                                                      fontWeight: FontWeight.w700,
+                                                                      color: Colors.white,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                        ),
+                                                        const SizedBox(width: 12.0),
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                                            children: [
+                                                              Text(
+                                                                isArabic ? 'العميل' : 'Customer',
+                                                                style: ProviderRequestSheetTypography.label(isArabic),
+                                                              ),
+                                                              const SizedBox(
+                                                                  height: ProviderRequestSheetTypography.labelGap),
+                                                              Text(
+                                                                realCustomerName,
+                                                                style: ProviderRequestSheetTypography.body(isArabic),
+                                                                maxLines: 2,
+                                                                overflow: TextOverflow.ellipsis,
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
                                                   ),
-                                                  const SizedBox(width: 12.0),
-                                                  Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Text(
-                                                        isArabic ? 'العميل' : 'Customer',
-                                                        style: isArabic
-                                                            ? GoogleFonts.cairo(
-                                                                fontSize: 11.0,
-                                                                fontWeight: FontWeight.w400,
-                                                                color: const Color(0xFF75757A),
-                                                              )
-                                                            : GoogleFonts.inter(
-                                                                fontSize: 11.0,
-                                                                fontWeight: FontWeight.w400,
-                                                                color: const Color(0xFF75757A),
+
+                                                  if (realPhone.isNotEmpty) ...[
+                                                    const SizedBox(width: 8.0),
+                                                    Row(
+                                                      children: [
+                                                        GestureDetector(
+                                                          onTap: () async {
+                                                            HapticFeedback.lightImpact();
+                                                            await _trackProviderContact('whatsapp');
+                                                            final ok = await ContactLauncher.whatsApp(realPhone);
+                                                            if (!ok && context.mounted) {
+                                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                                SnackBar(
+                                                                  content: Text(
+                                                                    isArabic ? 'تعذر فتح واتساب' : 'Could not open WhatsApp',
+                                                                    style: GoogleFonts.inter(color: Colors.white),
+                                                                  ),
+                                                                  backgroundColor: const Color(0xFF1C2926),
+                                                                  behavior: SnackBarBehavior.floating,
+                                                                ),
+                                                              );
+                                                            }
+                                                          },
+                                                          child: Container(
+                                                            width: 38.0,
+                                                            height: 38.0,
+                                                            decoration: const BoxDecoration(
+                                                              shape: BoxShape.circle,
+                                                              color: Color(0xFF25D366),
+                                                            ),
+                                                            child: const Center(
+                                                              child: SizedBox(
+                                                                width: 20.0,
+                                                                height: 20.0,
+                                                                child: CustomPaint(
+                                                                  painter: _OfficialWhatsAppLogoPainter(),
+                                                                ),
                                                               ),
-                                                      ),
-                                                      const SizedBox(height: 2.0),
-                                                      Text(
-                                                        isArabic ? 'أحمد خان' : 'Ahmed Khan',
-                                                        style: isArabic
-                                                            ? GoogleFonts.cairo(
-                                                                fontSize: 15.0,
-                                                                fontWeight: FontWeight.w600,
-                                                                color: const Color(0xFF1C1C1E),
-                                                              )
-                                                            : GoogleFonts.inter(
-                                                                fontSize: 15.0,
-                                                                fontWeight: FontWeight.w600,
-                                                                color: const Color(0xFF1C1C1E),
-                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(width: 10.0),
+                                                        GestureDetector(
+                                                          onTap: () async {
+                                                            HapticFeedback.lightImpact();
+                                                            await _trackProviderContact('call');
+                                                            final ok = await ContactLauncher.call(realPhone);
+                                                            if (!ok && context.mounted) {
+                                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                                SnackBar(
+                                                                  content: Text(
+                                                                    isArabic ? 'تعذر بدء الاتصال' : 'Could not start call',
+                                                                    style: GoogleFonts.inter(color: Colors.white),
+                                                                  ),
+                                                                  backgroundColor: const Color(0xFF1C2926),
+                                                                  behavior: SnackBarBehavior.floating,
+                                                                ),
+                                                              );
+                                                            }
+                                                          },
+                                                          child: Container(
+                                                            width: 38.0,
+                                                            height: 38.0,
+                                                            decoration: const BoxDecoration(
+                                                              shape: BoxShape.circle,
+                                                              color: Color(0xFF252527),
+                                                            ),
+                                                            child: const Center(
+                                                              child: Icon(Icons.phone_rounded, size: 18.0, color: Colors.white),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+
+                                              if (showVehicle || showPlate) ...[
+                                                const SizedBox(height: 14.0),
+                                                Row(
+                                                  children: [
+                                                    if (showVehicle) ...[
+                                                      const Icon(Icons.directions_car_rounded, size: 18.0, color: Color(0xFF252527)),
+                                                      const SizedBox(width: 8.0),
+                                                      Flexible(
+                                                        child: Text(
+                                                          realVehicle,
+                                                          style: isArabic
+                                                              ? GoogleFonts.cairo(
+                                                                  fontSize: 13.0,
+                                                                  fontWeight: FontWeight.w500,
+                                                                  color: const Color(0xFF252527),
+                                                                )
+                                                              : GoogleFonts.inter(
+                                                                  fontSize: 13.0,
+                                                                  fontWeight: FontWeight.w500,
+                                                                  color: const Color(0xFF252527),
+                                                                ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
                                                       ),
                                                     ],
-                                                  ),
-                                                ],
-                                              ),
-
-                                              // Contact Buttons: WhatsApp green, Call dark #252527
-                                              Row(
-                                                children: [
-                                                  // WhatsApp Button
-                                                  GestureDetector(
-                                                    onTap: () {
-                                                      HapticFeedback.lightImpact();
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        SnackBar(
-                                                          content: Text(
-                                                            isArabic ? 'جاري فتح واتساب...' : 'Opening WhatsApp...',
-                                                            style: GoogleFonts.inter(color: Colors.white),
-                                                          ),
-                                                          duration: const Duration(seconds: 1),
+                                                    if (showVehicle && showPlate) ...[
+                                                      const SizedBox(width: 12.0),
+                                                      Container(width: 1.0, height: 14.0, color: const Color(0xFFE0DFE4)),
+                                                      const SizedBox(width: 12.0),
+                                                    ],
+                                                    if (showPlate) ...[
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 2.0),
+                                                        decoration: BoxDecoration(
+                                                          border: Border.all(color: const Color(0xFF9E9EA4), width: 1.0),
+                                                          borderRadius: BorderRadius.circular(3.5),
                                                         ),
-                                                      );
-                                                    },
-                                                    child: Container(
-                                                      width: 38.0,
-                                                      height: 38.0,
-                                                      decoration: const BoxDecoration(
-                                                        shape: BoxShape.circle,
-                                                        color: Color(0xFF25D366),
-                                                      ),
-                                                      child: const Center(
-                                                        child: SizedBox(
-                                                          width: 20.0,
-                                                          height: 20.0,
-                                                          child: CustomPaint(
-                                                            painter: _OfficialWhatsAppLogoPainter(),
-                                                          ),
+                                                        child: Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            Container(width: 1.0, height: 7.5, color: const Color(0xFF75757A)),
+                                                            const SizedBox(width: 2.0),
+                                                            Container(width: 1.0, height: 7.5, color: const Color(0xFF75757A)),
+                                                            const SizedBox(width: 2.0),
+                                                            Container(width: 1.0, height: 7.5, color: const Color(0xFF75757A)),
+                                                          ],
                                                         ),
                                                       ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 10.0),
-                                                  // Call Button (dark #252527)
-                                                  GestureDetector(
-                                                    onTap: () {
-                                                      HapticFeedback.lightImpact();
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        SnackBar(
-                                                          content: Text(
-                                                            isArabic ? 'جاري الاتصال بالعميل...' : 'Calling client...',
-                                                            style: GoogleFonts.inter(color: Colors.white),
-                                                          ),
-                                                          duration: const Duration(seconds: 1),
+                                                      const SizedBox(width: 6.0),
+                                                      Text(
+                                                        realPlate,
+                                                        style: GoogleFonts.inter(
+                                                          fontSize: 12.0,
+                                                          fontWeight: FontWeight.w500,
+                                                          color: const Color(0xFF5E5E63),
                                                         ),
-                                                      );
-                                                    },
-                                                    child: Container(
-                                                      width: 38.0,
-                                                      height: 38.0,
-                                                      decoration: const BoxDecoration(
-                                                        shape: BoxShape.circle,
-                                                        color: Color(0xFF252527),
                                                       ),
-                                                      child: const Center(
-                                                        child: Icon(Icons.phone_rounded, size: 18.0, color: Colors.white),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-
-                                          const SizedBox(height: 14.0),
-
-                                          // Vehicle row: Toyota Corolla | Plate badge KSA 1234
-                                          Row(
-                                            children: [
-                                              const Icon(Icons.directions_car_rounded, size: 18.0, color: Color(0xFF252527)),
-                                              const SizedBox(width: 8.0),
-                                              Text(
-                                                isArabic ? 'تويوتا كورولا' : 'Toyota Corolla',
-                                                style: isArabic
-                                                    ? GoogleFonts.cairo(
-                                                        fontSize: 13.0,
-                                                        fontWeight: FontWeight.w500,
-                                                        color: const Color(0xFF252527),
-                                                      )
-                                                    : GoogleFonts.inter(
-                                                        fontSize: 13.0,
-                                                        fontWeight: FontWeight.w500,
-                                                        color: const Color(0xFF252527),
-                                                      ),
-                                              ),
-                                              const SizedBox(width: 12.0),
-                                              Container(width: 1.0, height: 14.0, color: const Color(0xFFE0DFE4)),
-                                              const SizedBox(width: 12.0),
-                                              // Plate icon badge matching screenshot
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 2.0),
-                                                decoration: BoxDecoration(
-                                                  border: Border.all(color: const Color(0xFF9E9EA4), width: 1.0),
-                                                  borderRadius: BorderRadius.circular(3.5),
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    Container(width: 1.0, height: 7.5, color: const Color(0xFF75757A)),
-                                                    const SizedBox(width: 2.0),
-                                                    Container(width: 1.0, height: 7.5, color: const Color(0xFF75757A)),
-                                                    const SizedBox(width: 2.0),
-                                                    Container(width: 1.0, height: 7.5, color: const Color(0xFF75757A)),
+                                                    ],
                                                   ],
                                                 ),
-                                              ),
-                                              const SizedBox(width: 6.0),
-                                              Text(
-                                                'KSA 1234',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 12.0,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: const Color(0xFF5E5E63),
-                                                ),
-                                              ),
+                                              ],
                                             ],
                                           ),
-                                        ],
-                                      ),
+                                        );
+                                      },
                                     ),
 
-                                    const SizedBox(height: 12.0),
-
-                                    // 3e. Customer Note Card
-                                    Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 15.0),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF3F2F5),
-                                        borderRadius: BorderRadius.circular(12.0),
-                                      ),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.center,
-                                        children: [
-                                          const _CustomerNoteIcon(),
-                                          const SizedBox(width: 11.0),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              mainAxisSize: MainAxisSize.min,
+                                    // 3e. Customer Note Card (only displayed when a real customer note exists)
+                                    Builder(
+                                      builder: (context) {
+                                        final note = (isArabic ? widget.customerNoteAr : widget.customerNoteEn).trim();
+                                        if (_isSeedNote(note)) return const SizedBox.shrink();
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                              top: ProviderRequestSheetTypography.sectionGap),
+                                          child: Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 15.0),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF3F2F5),
+                                              borderRadius: BorderRadius.circular(12.0),
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment: CrossAxisAlignment.center,
                                               children: [
-                                                Text(
-                                                  isArabic ? 'ملاحظة العميل' : 'Customer Note',
-                                                  style: isArabic
-                                                      ? GoogleFonts.cairo(
-                                                          fontSize: 12.0,
-                                                          fontWeight: FontWeight.w500,
-                                                          color: const Color(0xFF252527),
-                                                          height: 1.0,
-                                                          letterSpacing: 0.0,
-                                                        )
-                                                      : GoogleFonts.inter(
-                                                          fontSize: 12.0,
-                                                          fontWeight: FontWeight.w500,
-                                                          color: const Color(0xFF252527),
-                                                          height: 1.0,
-                                                          letterSpacing: 0.0,
-                                                        ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                                const SizedBox(height: 6.0),
-                                                Text(
-                                                  isArabic
-                                                      ? 'البطارية فارغة والسيارة لا تعمل. أحتاج إلى شحن بطارية.'
-                                                      : 'Battery is dead and the car won’t start. Need a jump start.',
-                                                  style: isArabic
-                                                      ? GoogleFonts.cairo(
-                                                          fontSize: 10.0,
-                                                          fontWeight: FontWeight.w400,
-                                                          color: const Color(0xFF616166),
-                                                          height: 1.2,
-                                                          letterSpacing: 0.0,
-                                                        )
-                                                      : GoogleFonts.inter(
-                                                          fontSize: 10.0,
-                                                          fontWeight: FontWeight.w400,
-                                                          color: const Color(0xFF616166),
-                                                          height: 1.2,
-                                                          letterSpacing: 0.0,
-                                                        ),
+                                                const _CustomerNoteIcon(),
+                                                const SizedBox(width: 11.0),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Text(
+                                                        isArabic ? 'ملاحظة العميل' : 'Customer Note',
+                                                        style: ProviderRequestSheetTypography.label(isArabic),
+                                                        maxLines: 2,
+                                                        softWrap: true,
+                                                        overflow: TextOverflow.clip,
+                                                      ),
+                                                      const SizedBox(
+                                                          height: ProviderRequestSheetTypography.labelGap),
+                                                      Text(
+                                                        note,
+                                                        style: ProviderRequestSheetTypography.subtext(isArabic),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ],
                                             ),
                                           ),
-                                        ],
-                                      ),
+                                        );
+                                      },
                                     ),
 
                                     if (_showAcceptDeclineActions) ...[
@@ -1113,6 +1022,14 @@ class _ProviderRequestDetailsScreenState
                                                 final custName = widget.customerName.trim().isNotEmpty
                                                     ? widget.customerName.trim()
                                                     : (TaskService.instance.activeTask?.customerName ?? 'Customer');
+                                                final taskPhone = TaskService.instance
+                                                        .getTaskById(widget.requestId)
+                                                        ?.customerPhone
+                                                        .trim() ??
+                                                    '';
+                                                final custPhone = (widget.customerPhone?.trim().isNotEmpty == true)
+                                                    ? widget.customerPhone!.trim()
+                                                    : taskPhone;
                                                 Navigator.of(context).pushReplacement(
                                                   MaterialPageRoute(
                                                     builder: (_) => ProviderActiveRequestScreen(
@@ -1127,7 +1044,11 @@ class _ProviderRequestDetailsScreenState
                                                       timeAr: widget.timeAr,
                                                       customerNameEn: custName,
                                                       customerNameAr: custName,
+                                                      customerPhone: custPhone.isNotEmpty ? custPhone : null,
                                                       imageAsset: widget.imageAsset,
+                                                      customerPhotoUrl: widget.customerPhotoUrl,
+                                                      customerNoteEn: widget.customerNoteEn,
+                                                      customerNoteAr: widget.customerNoteAr,
                                                     ),
                                                   ),
                                                 );
@@ -1176,7 +1097,12 @@ class _ProviderRequestDetailsScreenState
                                       const SizedBox(height: 16.0),
                                     ],
 
+                                    if (!_showAcceptDeclineActions)
+                                      const SizedBox(
+                                          height: ProviderRequestSheetTypography.sectionGap),
+
                                     // 3g. Bottom Home Indicator Bar (with dynamic safe-area)
+                                    const SizedBox(height: 12.0),
                                     Center(
                                       child: Container(
                                         width: 134.0,
@@ -1187,6 +1113,7 @@ class _ProviderRequestDetailsScreenState
                                         ),
                                       ),
                                     ),
+                                    SizedBox(height: bottomSafeArea > 0 ? 8.0 : 12.0),
                                   ],
                                 ),
                               ),

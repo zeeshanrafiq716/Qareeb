@@ -67,6 +67,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final data = await ref.read(backendServiceProvider).getCustomerRequestStatus(reqId);
     if (!mounted || data == null) return;
 
+    ref.read(notificationsProvider.notifier).notifyCustomerProviderContactIfNeeded(
+          requestId: reqId,
+          statusPayload: data,
+          providerName: data['providerName']?.toString() ?? task.providerName,
+          serviceCategory: data['serviceCategory']?.toString() ?? task.serviceCategory,
+          photoUrl: task.providerAvatar,
+        );
+
     final status = (data['status']?.toString() ?? task.status).toLowerCase();
     final cancelledBy = data['cancelledBy']?.toString();
     final step = (data['step'] is num)

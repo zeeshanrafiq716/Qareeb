@@ -277,6 +277,112 @@ export async function getCustomerRequestStatus(rawRequestId) {
     customerAddress: meta.customerAddress || "",
     distance: meta.distance || "",
     updatedAt: meta.statusUpdatedAt || row.created_at,
+    providerContactSeq: Number(meta.providerContactSeq ?? 0),
+    lastProviderContact: meta.lastProviderContact ?? null,
+  };
+}
+
+/** Provider tapped Call / WhatsApp on an active request — customer app polls this via getCustomerRequestStatus. */
+export async function recordProviderContactAttempt(providerId, rawRequestId, { channel } = {}) {
+  const cleanId = String(rawRequestId || "").replace(/^REQ-/i, "").trim();
+  if (!UUID_REGEX.test(cleanId)) {
+    throw new AppError(400, "Invalid request ID", "INVALID_REQUEST_ID");
+  }
+  const normalizedChannel =
+    String(channel || "call").trim().toLowerCase() === "whatsapp" ? "whatsapp" : "call";
+  const updatedAt = new Date().toISOString();
+  const contactPayload = { channel: normalizedChannel, at: updatedAt, by: "provider" };
+
+  const { rows } = await query(
+    `UPDATE provider_notifications
+     SET metadata = jsonb_set(
+       jsonb_set(
+         COALESCE(metadata, '{}'::jsonb),
+         '{providerContactSeq}',
+         to_jsonb(COALESCE((metadata->>'providerContactSeq')::int, 0) + 1),
+         true
+       ),
+       '{lastProviderContact}',
+       $3::jsonb,
+       true
+     )
+     WHERE id = $1::uuid AND provider_id = $2 AND event_type = 'send_request_click'
+     RETURNING id, metadata`,
+    [cleanId, providerId, JSON.stringify(contactPayload)],
+  );
+
+  if (!rows[0]) {
+    throw new NotFoundError("Service request not found");
+  }
+
+  const meta = rows[0].metadata && typeof rows[0].metadata === "object" ? rows[0].metadata : {};
+  return {
+    requestId: rows[0].id,
+    providerContactSeq: Number(meta.providerContactSeq ?? 0),
+    lastProviderContact: meta.lastProviderContact ?? contactPayload,
+  };
+}
+
+export async function submitCustomerRequestRating(rawRequestId, { rating } = {}) {
+  const cleanId = String(rawRequestId || "").replace(/^REQ-/i, "").trim();
+  if (!UUID_REGEX.test(cleanId)) {
+    throw new AppError(400, "Invalid request ID", "INVALID_REQUEST_ID");
+  }
+  const stars = Number(rating);
+  if (!Number.isFinite(stars) || stars < 1 || stars > 5) {
+    throw new AppError(400, "Rating must be between 1 and 5", "INVALID_RATING");
+  }
+
+  const { rows } = await query(
+    `SELECT id, provider_id, metadata
+     FROM provider_notifications
+     WHERE id = $1::uuid AND event_type = 'send_request_click'`,
+    [cleanId],
+  );
+  const row = rows[0];
+  if (!row) {
+    throw new NotFoundError("Service request not found");
+  }
+
+  const meta = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
+  if (meta.customerRating != null) {
+    return {
+      requestId: row.id,
+      rating: Number(meta.customerRating),
+      alreadySubmitted: true,
+    };
+  }
+
+  const ratedAt = new Date().toISOString();
+  await query(
+    `UPDATE provider_notifications
+     SET metadata = COALESCE(metadata, '{}'::jsonb) || $2::jsonb
+     WHERE id = $1::uuid`,
+    [
+      cleanId,
+      JSON.stringify({
+        customerRating: stars,
+        customerRatedAt: ratedAt,
+      }),
+    ],
+  );
+
+  await query(
+    `UPDATE providers
+     SET rating_count = rating_count + 1,
+         rating_avg = CASE
+           WHEN rating_count <= 0 THEN $2::numeric
+           ELSE ROUND(((rating_avg * rating_count) + $2::numeric) / (rating_count + 1), 2)
+         END
+     WHERE id = $1`,
+    [row.provider_id, stars],
+  );
+
+  return {
+    requestId: row.id,
+    rating: stars,
+    ratedAt,
+    alreadySubmitted: false,
   };
 }
 

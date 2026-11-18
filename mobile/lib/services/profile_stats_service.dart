@@ -148,7 +148,9 @@ class ProfileStatsService {
 
       // Real task counts from TaskService
       final activeTaskCount = TaskService.instance.activeTask != null ? 1 : 0;
-      final historyTasks = TaskService.instance.historyTasks;
+      final historyTasks = isProvider
+          ? TaskService.instance.historyTasks
+          : TaskService.instance.customerHistoryTasks;
       final realCompletedCount = historyTasks.where((t) => t.status == 'completed').length;
 
       if (isProvider) {

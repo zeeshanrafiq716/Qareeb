@@ -1,6 +1,10 @@
 import 'dart:convert';
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../core/utils/geo_distance.dart';
 
 /// Represents a service request / task between a customer and a provider
 class ServiceTask {
@@ -19,6 +23,7 @@ class ServiceTask {
   final String distance;
   final String eta;
   final String customerName;
+  final String customerPhone;
   final String customerLocation;
   final String? customerPhotoUrl;
   final String customerNote;
@@ -45,6 +50,7 @@ class ServiceTask {
     this.distance = '--',
     this.eta = '--',
     this.customerName = 'Customer',
+    this.customerPhone = '',
     this.customerLocation = '',
     this.customerPhotoUrl,
     this.customerNote = '',
@@ -72,6 +78,7 @@ class ServiceTask {
     String? distance,
     String? eta,
     String? customerName,
+    String? customerPhone,
     String? customerLocation,
     String? customerPhotoUrl,
     String? customerNote,
@@ -98,6 +105,7 @@ class ServiceTask {
       distance: distance ?? this.distance,
       eta: eta ?? this.eta,
       customerName: customerName ?? this.customerName,
+      customerPhone: customerPhone ?? this.customerPhone,
       customerLocation: customerLocation ?? this.customerLocation,
       customerPhotoUrl: customerPhotoUrl ?? this.customerPhotoUrl,
       customerNote: customerNote ?? this.customerNote,
@@ -126,6 +134,7 @@ class ServiceTask {
         'distance': distance,
         'eta': eta,
         'customerName': customerName,
+        'customerPhone': customerPhone,
         'customerLocation': customerLocation,
         'customerPhotoUrl': customerPhotoUrl,
         'customerNote': customerNote,
@@ -154,6 +163,7 @@ class ServiceTask {
       distance: json['distance'] as String? ?? '--',
       eta: json['eta'] as String? ?? '--',
       customerName: json['customerName'] as String? ?? 'Customer',
+      customerPhone: json['customerPhone'] as String? ?? '',
       customerLocation: json['customerLocation'] as String? ?? '',
       customerPhotoUrl: json['customerPhotoUrl'] as String?,
       customerNote: json['customerNote'] as String? ?? '',
@@ -167,6 +177,36 @@ class ServiceTask {
           : DateTime.now(),
     );
   }
+}
+
+int _requestStatusRank(String status) {
+  switch (status.trim().toLowerCase()) {
+    case 'new':
+    case 'pending':
+      return 0;
+    case 'active':
+      return 1;
+    case 'arrived':
+      return 2;
+    case 'in_progress':
+      return 3;
+    case 'completed':
+      return 4;
+    case 'cancelled':
+      return 5;
+    default:
+      return 0;
+  }
+}
+
+String _mergeRequestStatus(String existing, String incoming) {
+  final ex = existing.trim().toLowerCase();
+  final inc = incoming.trim().toLowerCase();
+  if (inc == 'cancelled' || ex == 'cancelled') return 'cancelled';
+  if (_requestStatusRank(ex) >= _requestStatusRank(inc)) {
+    return ex.isNotEmpty ? ex : inc;
+  }
+  return inc.isNotEmpty ? inc : ex;
 }
 
 /// Persistent service managing real active requests and history for both customer and provider
@@ -188,6 +228,53 @@ class TaskService {
 
   ServiceTask? get activeTask => _activeTask;
   List<ServiceTask> get historyTasks => List.unmodifiable(_historyTasks);
+
+  /// History rows suitable for the customer Requests tab (excludes provider-ingested rows and demo/seed).
+  List<ServiceTask> get customerHistoryTasks =>
+      _historyTasks.where(shouldShowInCustomerHistory).toList(growable: false);
+
+  /// Provider sync stores completed/cancelled jobs with placeholder [providerName] `Zesho` — not customer history.
+  static bool isProviderIngestedHistoryTask(ServiceTask task) {
+    return task.providerName.trim().toLowerCase() == 'zesho';
+  }
+
+  /// Legacy Figma/demo rows and corrupt persisted JSON placeholders.
+  static bool isDemoSeedHistoryTask(ServiceTask task) {
+    final id = task.id.trim();
+    if (id.isEmpty) return true;
+    final idUpper = id.toUpperCase();
+    if (idUpper == 'REQ-1001') return true;
+
+    final provider = task.providerName.trim().toLowerCase();
+    if (provider == 'provider' && idUpper == 'REQ-1001') return true;
+
+    final hasBackendId = extractBackendUuid(task.id) != null;
+    if (!hasBackendId) {
+      const demoProviders = {'ahmad transport', 'ahmed khan'};
+      if (demoProviders.contains(provider)) return true;
+
+      final vehicle = task.vehicleName.trim().toLowerCase();
+      final plate = task.plateNumber.trim().toUpperCase();
+      if (vehicle == 'toyota corolla' &&
+          (plate == 'KSA 1234' || plate == '1122' || plate == 'KSA1234')) {
+        return true;
+      }
+
+      final loc = task.customerLocation.trim().toLowerCase();
+      if (loc.contains('al malaz')) return true;
+    }
+
+    return false;
+  }
+
+  static bool shouldShowInCustomerHistory(ServiceTask task) {
+    final status = task.status.trim().toLowerCase();
+    if (status != 'completed' && status != 'cancelled') return false;
+    if (isProviderIngestedHistoryTask(task)) return false;
+    if (isDemoSeedHistoryTask(task)) return false;
+    return true;
+  }
+
   List<ServiceTask> get providerRequests {
     final List<ServiceTask> combined = [];
     final Set<String> seenIds = {};
@@ -201,6 +288,21 @@ class TaskService {
       }
     }
     return List.unmodifiable(combined);
+  }
+
+  ServiceTask? getTaskById(String? id) {
+    if (id == null || id.isEmpty) return _activeTask;
+    for (final req in providerRequests) {
+      if (req.id == id || extractBackendUuid(req.id) == extractBackendUuid(id)) {
+        return req;
+      }
+    }
+    for (final h in _historyTasks) {
+      if (h.id == id || extractBackendUuid(h.id) == extractBackendUuid(id)) {
+        return h;
+      }
+    }
+    return _activeTask;
   }
 
   /// Initialize and load persisted real tasks (zero seed data)
@@ -231,9 +333,14 @@ class TaskService {
             }
           })
           .whereType<ServiceTask>()
+          .where((t) => !isDemoSeedHistoryTask(t))
           .toList();
+      final scrubbed = _historyTasks.length != historyListStr.length;
       historyNotifier.value = List.unmodifiable(_historyTasks);
       providerRequestsNotifier.value = providerRequests;
+      if (scrubbed) {
+        await _saveHistory();
+      }
     } catch (_) {
       _activeTask = null;
       _historyTasks = [];
@@ -257,7 +364,10 @@ class TaskService {
     String? plateNumber,
     String? providerPhone,
     String? customerName,
+    String? customerPhone,
     String? customerLocation,
+    double? customerLatitude,
+    double? customerLongitude,
   }) async {
     final now = DateTime.now();
     final formattedTime =
@@ -283,7 +393,10 @@ class TaskService {
       distance: distance ?? '--',
       eta: eta ?? '--',
       customerName: customerName ?? 'Customer',
+      customerPhone: customerPhone?.trim() ?? '',
       customerLocation: customerLocation ?? 'Shared via Zesho',
+      customerLatitude: customerLatitude,
+      customerLongitude: customerLongitude,
       status: 'new',
       step: 0,
       dateTime: formattedTime,
@@ -383,6 +496,7 @@ class TaskService {
     String? customerLocation,
     String? distance,
     String? customerName,
+    String? customerPhone,
     String? eta,
     String? customerPhotoUrl,
     String? customerNote,
@@ -420,6 +534,7 @@ class TaskService {
             distance: distance?.trim().isNotEmpty == true ? distance!.trim() : '--',
             eta: eta?.trim().isNotEmpty == true ? eta!.trim() : '--',
             customerName: customerName?.trim().isNotEmpty == true ? customerName!.trim() : 'Customer',
+            customerPhone: customerPhone?.trim().isNotEmpty == true ? customerPhone!.trim() : '',
             customerLocation: customerLocation?.trim().isNotEmpty == true ? customerLocation!.trim() : 'Shared via Zesho',
             customerPhotoUrl: customerPhotoUrl?.trim().isNotEmpty == true ? customerPhotoUrl!.trim() : null,
             customerNote: customerNote?.trim().isNotEmpty == true ? customerNote!.trim() : '',
@@ -445,12 +560,26 @@ class TaskService {
     final existingIdx = _incomingRequests.indexWhere((t) => t.id == taskId);
     if (existingIdx != -1) {
       final existing = _incomingRequests[existingIdx];
+      final nextStep = math.max(existing.step, step);
+      final atCustomer = GeoDistance.isAtCustomerSite(
+            step: nextStep,
+            status: normalizedStatus,
+          ) ||
+          GeoDistance.isAtCustomerSite(step: existing.step, status: existing.status);
+      final nextDistance = atCustomer
+          ? GeoDistance.zeroDistanceLabel(isArabic: false)
+          : (distance?.trim().isNotEmpty == true ? distance!.trim() : existing.distance);
+      final nextEta = atCustomer
+          ? 'Arrived'
+          : (eta?.trim().isNotEmpty == true ? eta!.trim() : existing.eta);
+      final nextStatus = _mergeRequestStatus(existing.status, normalizedStatus);
       final updated = existing.copyWith(
-        status: normalizedStatus,
-        step: step,
-        distance: distance?.trim().isNotEmpty == true ? distance!.trim() : existing.distance,
-        eta: eta?.trim().isNotEmpty == true ? eta!.trim() : existing.eta,
+        status: nextStatus,
+        step: nextStep,
+        distance: nextDistance,
+        eta: nextEta,
         customerName: customerName?.trim().isNotEmpty == true ? customerName!.trim() : existing.customerName,
+        customerPhone: customerPhone?.trim().isNotEmpty == true ? customerPhone!.trim() : existing.customerPhone,
         customerLocation:
             customerLocation?.trim().isNotEmpty == true ? customerLocation!.trim() : existing.customerLocation,
         customerPhotoUrl:
@@ -470,13 +599,30 @@ class TaskService {
     }
 
     if (_activeTask?.id == taskId) {
-      _activeTask = _activeTask!.copyWith(
-        status: normalizedStatus,
-        step: step,
-        distance: distance?.trim().isNotEmpty == true ? distance!.trim() : _activeTask!.distance,
-        eta: eta?.trim().isNotEmpty == true ? eta!.trim() : _activeTask!.eta,
+      final current = _activeTask!;
+      final nextStep = math.max(current.step, step);
+      final atCustomer = GeoDistance.isAtCustomerSite(
+            step: nextStep,
+            status: normalizedStatus,
+          ) ||
+          GeoDistance.isAtCustomerSite(step: current.step, status: current.status);
+      final nextDistance = atCustomer
+          ? GeoDistance.zeroDistanceLabel(isArabic: false)
+          : (distance?.trim().isNotEmpty == true ? distance!.trim() : current.distance);
+      final nextEta = atCustomer
+          ? 'Arrived'
+          : (eta?.trim().isNotEmpty == true ? eta!.trim() : current.eta);
+      final nextStatus = _mergeRequestStatus(current.status, normalizedStatus);
+      _activeTask = current.copyWith(
+        status: nextStatus,
+        step: nextStep,
+        distance: nextDistance,
+        eta: nextEta,
         customerName:
             customerName?.trim().isNotEmpty == true ? customerName!.trim() : _activeTask!.customerName,
+        customerPhone: customerPhone?.trim().isNotEmpty == true
+            ? customerPhone!.trim()
+            : _activeTask!.customerPhone,
         customerLocation: customerLocation?.trim().isNotEmpty == true
             ? customerLocation!.trim()
             : _activeTask!.customerLocation,
@@ -501,6 +647,7 @@ class TaskService {
       distance: distance?.trim().isNotEmpty == true ? distance!.trim() : '--',
       eta: eta?.trim().isNotEmpty == true ? eta!.trim() : '--',
       customerName: customerName?.trim().isNotEmpty == true ? customerName!.trim() : 'Customer',
+      customerPhone: customerPhone?.trim().isNotEmpty == true ? customerPhone!.trim() : '',
       customerLocation: customerLocation?.trim().isNotEmpty == true ? customerLocation!.trim() : 'Shared via Zesho',
       customerPhotoUrl: customerPhotoUrl?.trim().isNotEmpty == true ? customerPhotoUrl!.trim() : null,
       customerNote: customerNote?.trim().isNotEmpty == true ? customerNote!.trim() : '',
@@ -557,10 +704,17 @@ class TaskService {
     required String taskId,
     required String status,
     required int step,
+    String? distance,
+    String? eta,
   }) async {
     final found = await selectIncomingRequest(taskId);
     if (!found) return;
-    await updateTaskStatus(status: status, step: step);
+    await updateTaskStatus(
+      status: status,
+      step: step,
+      distance: distance,
+      eta: eta,
+    );
   }
 
   /// Provider completes a specific request -> moves to Completed tab!

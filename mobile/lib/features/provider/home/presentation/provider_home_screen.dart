@@ -21,10 +21,11 @@ import 'package:mobile/features/provider/home/provider_online_session.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_stats_cards.dart';
 import 'package:mobile/features/provider/home/presentation/widgets/provider_vehicle_card.dart';
 import 'package:mobile/features/provider/requests/presentation/provider_requests_screen.dart';
+import 'package:mobile/core/utils/geo_distance.dart';
 import 'package:mobile/providers/backend_provider.dart';
 import 'package:mobile/providers/notifications_provider.dart';
-import 'package:mobile/services/backend_service.dart';
 import 'package:mobile/services/location_service.dart';
+import 'package:mobile/services/backend_service.dart';
 import 'package:mobile/services/task_service.dart';
 
 /// Provider Home Screen
@@ -42,11 +43,15 @@ import 'package:mobile/services/task_service.dart';
 class ProviderHomeScreen extends ConsumerStatefulWidget {
   final Widget? body;
   final int initialTabIndex;
+  final int requestsInitialFilterIndex;
+  final bool requestsIsHistoryMode;
 
   const ProviderHomeScreen({
     super.key,
     this.body,
     this.initialTabIndex = 0,
+    this.requestsInitialFilterIndex = 0,
+    this.requestsIsHistoryMode = false,
   });
 
   static const double designWidth = 392.0;
@@ -172,9 +177,34 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
         final meta = item['metadata'] is Map ? item['metadata'] as Map : const {};
         final cat = meta['serviceCategory']?.toString().trim() ?? '';
         final custName = meta['customerName']?.toString().trim() ?? '';
+        final custPhone = meta['customerPhone']?.toString().trim() ??
+            meta['customerMobile']?.toString().trim() ??
+            '';
         final custAddr = meta['customerAddress']?.toString().trim() ?? '';
-        final dist = meta['distance']?.toString().trim() ?? '';
-        final eta = meta['eta']?.toString().trim() ?? '';
+        final providerLoc =
+            ref.read(userLocationProvider).value ?? LocationService.lastKnownValidLocation;
+        final lat = (item['customerLatitude'] as num?)?.toDouble();
+        final lng = (item['customerLongitude'] as num?)?.toDouble();
+        final validProvider = providerLoc != null && providerLoc.hasValidDeviceGps;
+        final dist = GeoDistance.labelForProviderNotification(
+          providerLat: validProvider ? providerLoc.latitude : null,
+          providerLng: validProvider ? providerLoc.longitude : null,
+          providerGpsValid: validProvider,
+          customerLat: lat,
+          customerLng: lng,
+          meta: Map<String, dynamic>.from(meta),
+        );
+        final syncMeters = GeoDistance.metersBetween(
+          validProvider ? providerLoc.latitude : null,
+          validProvider ? providerLoc.longitude : null,
+          lat,
+          lng,
+        );
+        final eta = (syncMeters != null
+                ? GeoDistance.formatEta(syncMeters, isArabic: false)
+                : meta['eta']?.toString().trim())
+            ?.trim() ??
+            '';
         final note = meta['customerNote']?.toString().trim() ??
             meta['note']?.toString().trim() ??
             '';
@@ -184,8 +214,10 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
             ? (meta['step'] as num).toInt()
             : int.tryParse(meta['step']?.toString() ?? '') ?? 0;
         final tsRaw = item['createdAt']?.toString();
-        final lat = (item['customerLatitude'] as num?)?.toDouble();
-        final lng = (item['customerLongitude'] as num?)?.toDouble();
+        final atCustomer = GeoDistance.isAtCustomerSite(step: reqStep, status: reqStatus);
+        final distForUpsert =
+            atCustomer ? GeoDistance.zeroDistanceLabel(isArabic: false) : dist;
+        final etaForUpsert = atCustomer ? 'Arrived' : eta;
         await TaskService.instance.upsertIncomingRequestFromProviderNotification(
           notificationId: itemId,
           serviceCategory: cat.isNotEmpty
@@ -194,11 +226,12 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
           customerLocation: custAddr.isNotEmpty
               ? custAddr
               : _formatCustomerLocationFromNotification(item),
-          distance: dist,
-          eta: eta,
+          distance: distForUpsert,
+          eta: etaForUpsert,
           customerName: custName.isNotEmpty
               ? custName
               : (tr.isArabic ? 'عميل' : 'Customer'),
+          customerPhone: custPhone.isNotEmpty ? custPhone : null,
           customerPhotoUrl: photo.isNotEmpty ? photo : null,
           customerNote: note,
           customerLatitude: lat,
@@ -583,6 +616,8 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
           children: [
             _buildHomeTab(context),
             ProviderRequestsScreen(
+              initialFilterIndex: widget.requestsInitialFilterIndex,
+              isHistoryMode: widget.requestsIsHistoryMode,
               onBackTap: () => _onTabSelected(0),
               onTabSelected: _onTabSelected,
             ),

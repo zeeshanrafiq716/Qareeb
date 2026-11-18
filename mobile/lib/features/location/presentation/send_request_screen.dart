@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../core/utils/contact_launcher.dart';
+import '../../../core/utils/geo_distance.dart';
 import '../../../providers/backend_provider.dart';
 import '../../../providers/notifications_provider.dart';
 import '../../../services/location_service.dart';
@@ -158,6 +159,15 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
     return const {};
   }
 
+  String _customerPhoneForRequest() {
+    final raw = CustomerAuthStore.instance.phone.trim();
+    if (raw.isEmpty) return '';
+    if (raw.startsWith('+')) return raw;
+    final cc = CustomerAuthStore.instance.data.countryCode.trim();
+    final dial = cc.isNotEmpty ? cc : '+966';
+    return '$dial$raw';
+  }
+
   String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     if (parts.isEmpty) return 'Z';
@@ -199,6 +209,23 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
     if (meters < 100.0) return isArabic ? 'أقل من دقيقة' : '< 1 min';
     final mins = ((meters / 1000.0) / 30.0 * 60.0).ceil().clamp(1, 180);
     return isArabic ? '$mins د' : '$mins min';
+  }
+
+  Map<String, dynamic> _liveDistanceMetadata(UserLocation? userLoc) {
+    final meters = _computeRealDistanceMeters(userLoc);
+    if (meters != null) {
+      return GeoDistance.distanceMetadataBundle(meters);
+    }
+    final out = <String, dynamic>{};
+    final label = widget.distance.trim();
+    if (label.isNotEmpty && label != '—' && label != '--') {
+      out['distance'] = label;
+      final parsed = GeoDistance.parseMetersFromLabel(label);
+      if (parsed != null) out['distanceMeters'] = parsed.round();
+    }
+    final eta = widget.eta?.trim() ?? '';
+    if (eta.isNotEmpty && eta != '--') out['eta'] = eta;
+    return out;
   }
 
   Future<void> _hydrateProviderPhone() async {
@@ -275,6 +302,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
     final customerName = CustomerAuthStore.instance.fullName.trim().isNotEmpty
         ? CustomerAuthStore.instance.fullName.trim()
         : 'Customer';
+    final customerPhone = _customerPhoneForRequest();
     final addressLabel = hasGps &&
             loc.address.trim().isNotEmpty &&
             loc.address != 'Device Location is OFF'
@@ -303,14 +331,10 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
               metadata: {
                 'serviceCategory': widget.serviceCategory,
                 'customerName': customerName,
+                if (customerPhone.isNotEmpty) 'customerPhone': customerPhone,
                 'customerAddress': addressLabel,
                 ..._customerPhotoMetadata(),
-                if (widget.distance.trim().isNotEmpty &&
-                    widget.distance.trim() != '—' &&
-                    widget.distance.trim() != '--')
-                  'distance': widget.distance.trim(),
-                if (widget.eta != null && widget.eta!.trim().isNotEmpty && widget.eta!.trim() != '--')
-                  'eta': widget.eta!.trim(),
+                ..._liveDistanceMetadata(hasGps ? loc : null),
               },
             );
         if (serverReqId != null && serverReqId.isNotEmpty) {
@@ -323,6 +347,11 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
       return;
     }
 
+    final liveDistMeta = _liveDistanceMetadata(hasGps ? loc : null);
+    final liveDistanceLabel =
+        liveDistMeta['distance']?.toString() ?? widget.distance.trim();
+    final liveEtaLabel = liveDistMeta['eta']?.toString() ?? (widget.eta ?? '');
+
     await TaskService.instance.createCustomerRequest(
       providerName: widget.providerName,
       providerPublicId: widget.providerPublicId,
@@ -333,11 +362,14 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
       providerLongitude: _providerLng,
       serviceCategory: widget.serviceCategory,
       vehicleName: _vehicleName,
-      distance: widget.distance,
-      eta: widget.eta ?? '',
+      distance: liveDistanceLabel.isNotEmpty ? liveDistanceLabel : widget.distance,
+      eta: liveEtaLabel,
       providerPhone: _resolvedPhone ?? '',
       customerName: customerName,
+      customerPhone: customerPhone,
       customerLocation: addressLabel,
+      customerLatitude: hasGps ? loc.latitude : null,
+      customerLongitude: hasGps ? loc.longitude : null,
     );
 
     final id = widget.providerPublicId;
@@ -345,14 +377,10 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
       final reqMeta = {
         'serviceCategory': widget.serviceCategory,
         'customerName': customerName,
+        if (customerPhone.isNotEmpty) 'customerPhone': customerPhone,
         'customerAddress': addressLabel,
         ..._customerPhotoMetadata(),
-        if (widget.distance.trim().isNotEmpty &&
-            widget.distance.trim() != '—' &&
-            widget.distance.trim() != '--')
-          'distance': widget.distance.trim(),
-        if (widget.eta != null && widget.eta!.trim().isNotEmpty && widget.eta!.trim() != '--')
-          'eta': widget.eta!.trim(),
+        ..._liveDistanceMetadata(hasGps ? loc : null),
       };
       String? serverReqId = await ref.read(backendServiceProvider).sendCustomerServiceRequest(
             providerPublicId: id,
@@ -395,6 +423,14 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
 
     final data = await ref.read(backendServiceProvider).getCustomerRequestStatus(reqId);
     if (!mounted || data == null || _navigatedToLive) return;
+
+    ref.read(notificationsProvider.notifier).notifyCustomerProviderContactIfNeeded(
+          requestId: reqId,
+          statusPayload: data,
+          providerName: data['providerName']?.toString() ?? widget.providerName,
+          serviceCategory: data['serviceCategory']?.toString() ?? widget.serviceCategory,
+          photoUrl: _photoUrl,
+        );
 
     final status = (data['status']?.toString() ?? 'new').toLowerCase();
     final cancelledBy = data['cancelledBy']?.toString();

@@ -6,7 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/core/utils/geo_distance.dart';
 import 'package:mobile/providers/backend_provider.dart';
+import 'package:mobile/services/location_service.dart';
 import 'package:mobile/services/task_service.dart';
 import 'package:mobile/models/category_model.dart';
 import 'package:mobile/features/home/presentation/widgets/bottom_nav_bar_widget.dart';
@@ -14,6 +16,8 @@ import 'package:mobile/features/provider/requests/presentation/provider_active_r
 import 'package:mobile/features/provider/requests/presentation/provider_request_details_screen.dart';
 import 'package:mobile/features/provider/requests/presentation/widgets/provider_request_card.dart';
 import 'package:mobile/features/provider/requests/presentation/widgets/provider_requests_header.dart';
+import 'package:mobile/features/provider/requests/provider_request_sync.dart';
+import 'package:mobile/features/provider/home/presentation/provider_home_screen.dart';
 
 /// Model representing incoming service requests for the provider side
 class _ProviderRequestItem {
@@ -24,6 +28,8 @@ class _ProviderRequestItem {
   final String locationAr;
   final String distanceEn;
   final String distanceAr;
+  final String etaEn;
+  final String etaAr;
   final String timeEn;
   final String timeAr;
   final String badgeEn;
@@ -32,8 +38,11 @@ class _ProviderRequestItem {
   final String status; // 'new', 'active', 'completed', 'cancelled'
   final String customerNameEn;
   final String customerNameAr;
+  final String customerPhone;
   final String? customerPhotoUrl;
   final String customerNote;
+  final String vehicleModel;
+  final String plateNumber;
 
   const _ProviderRequestItem({
     required this.id,
@@ -43,6 +52,8 @@ class _ProviderRequestItem {
     required this.locationAr,
     required this.distanceEn,
     required this.distanceAr,
+    this.etaEn = '',
+    this.etaAr = '',
     required this.timeEn,
     required this.timeAr,
     required this.badgeEn,
@@ -51,8 +62,11 @@ class _ProviderRequestItem {
     required this.status,
     this.customerNameEn = 'Customer',
     this.customerNameAr = 'عميل',
+    this.customerPhone = '',
     this.customerPhotoUrl,
     this.customerNote = '',
+    this.vehicleModel = '',
+    this.plateNumber = '',
   });
 }
 
@@ -66,16 +80,8 @@ String _categoryAssetFor(String category) {
   return model.displayAssetImage ?? 'assets/images/tow_truck.png';
 }
 
-String _shortLocationForList(String raw, bool isArabic) {
-  final t = raw.trim();
-  if (t.isEmpty) return isArabic ? 'موقع العميل' : 'Customer location';
-  if (t == 'Shared via Zesho') return isArabic ? 'موقع مشترك' : 'Shared location';
-  if (t.startsWith('http') && t.contains('maps.google')) {
-    return isArabic ? 'موقع مشترك' : 'Shared location';
-  }
-  if (t.startsWith('http')) return isArabic ? 'موقع العميل' : 'Customer location';
-  return t;
-}
+String _shortLocationForList(String raw, bool isArabic) =>
+    GeoDistance.customerLocationLabel(raw, isArabic: isArabic);
 
 String _listTimeForTask(ServiceTask task) {
   final dt = task.dateTime.trim();
@@ -86,11 +92,22 @@ String _listTimeForTask(ServiceTask task) {
   return DateFormat('d MMM yyyy, HH:mm').format(local);
 }
 
-String _listDistanceForTask(ServiceTask task) {
-  final d = task.distance.trim();
-  if (d.isEmpty || d == '--' || d == '—') return '';
-  return d;
+String _distanceLabelForTask(ServiceTask task, UserLocation? providerLoc, bool isArabic) {
+  if (GeoDistance.isAtCustomerSite(step: task.step, status: task.status)) {
+    return GeoDistance.zeroDistanceLabel(isArabic: isArabic);
+  }
+  final valid = providerLoc != null && providerLoc.hasValidDeviceGps;
+  return GeoDistance.resolveProviderToCustomerLabel(
+    providerLat: valid ? providerLoc.latitude : null,
+    providerLng: valid ? providerLoc.longitude : null,
+    providerGpsValid: valid,
+    customerLat: task.customerLatitude,
+    customerLng: task.customerLongitude,
+    isArabic: isArabic,
+    fallbackLabel: task.distance,
+  );
 }
+
 
 String? _listPhotoUrl(String? raw) {
   final v = raw?.trim() ?? '';
@@ -171,66 +188,9 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
   }
 
   Future<void> _syncRequestsFromBackend() async {
-    try {
-      final items = await ref.read(backendServiceProvider).fetchProviderNotifications(limit: 50);
-      if (!mounted) return;
-      final nowUtc = DateTime.now().toUtc();
-      for (final item in items.reversed) {
-        final ev = item['eventType']?.toString() ?? '';
-        if (ev == 'request_cancelled') {
-          final meta = item['metadata'] is Map ? item['metadata'] as Map : const {};
-          final cancelledReqId = meta['requestId']?.toString().trim() ?? '';
-          if (cancelledReqId.isNotEmpty) {
-            await TaskService.instance.cancelRequestById('REQ-$cancelledReqId');
-          }
-          continue;
-        }
-        if (ev != 'send_request_click') continue;
-        final rawTs = item['createdAt']?.toString();
-        final ts = rawTs != null ? DateTime.tryParse(rawTs) : null;
-        if (ts != null && nowUtc.difference(ts.toUtc()).abs() > const Duration(hours: 24)) {
-          continue;
-        }
-        final itemId = item['id']?.toString() ?? '';
-        if (itemId.isEmpty) continue;
-        final meta = item['metadata'] is Map ? item['metadata'] as Map : const {};
-        final cat = meta['serviceCategory']?.toString().trim() ?? '';
-        final custName = meta['customerName']?.toString().trim() ?? '';
-        final custAddr = meta['customerAddress']?.toString().trim() ?? '';
-        final dist = meta['distance']?.toString().trim() ?? '';
-        final eta = meta['eta']?.toString().trim() ?? '';
-        final note = meta['customerNote']?.toString().trim() ??
-            meta['note']?.toString().trim() ??
-            '';
-        final photo = meta['customerPhotoUrl']?.toString().trim() ?? '';
-        final reqStatus = meta['requestStatus']?.toString().trim() ?? 'new';
-        final reqStep = (meta['step'] is num)
-            ? (meta['step'] as num).toInt()
-            : int.tryParse(meta['step']?.toString() ?? '') ?? 0;
-        final lat = (item['customerLatitude'] as num?)?.toDouble();
-        final lng = (item['customerLongitude'] as num?)?.toDouble();
-        final fallbackLoc = (lat != null && lng != null)
-            ? 'https://maps.google.com/?q=$lat,$lng'
-            : 'Shared via Zesho';
-
-        await TaskService.instance.upsertIncomingRequestFromProviderNotification(
-          notificationId: itemId,
-          serviceCategory: cat.isNotEmpty ? cat : 'Service request',
-          customerLocation: custAddr.isNotEmpty ? custAddr : fallbackLoc,
-          distance: dist,
-          eta: eta,
-          customerName: custName.isNotEmpty ? custName : 'Customer',
-          customerPhotoUrl: photo.isNotEmpty ? photo : null,
-          customerNote: note,
-          customerLatitude: lat,
-          customerLongitude: lng,
-          status: reqStatus,
-          step: reqStep,
-          createdAt: ts,
-        );
-      }
-      if (mounted) setState(() {});
-    } catch (_) {}
+    if (!mounted) return;
+    await syncProviderRequestsFromBackend(ref);
+    if (mounted) setState(() {});
   }
 
   @override
@@ -256,11 +216,33 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
     }
   }
 
+  void _handleBottomNavTab(int index) {
+    if (index == 1) return;
+    if (widget.onTabSelected != null) {
+      widget.onTabSelected!(index);
+      return;
+    }
+    HapticFeedback.lightImpact();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => ProviderHomeScreen(
+          initialTabIndex: index,
+          requestsInitialFilterIndex: widget.initialFilterIndex,
+          requestsIsHistoryMode: widget.isHistoryMode,
+        ),
+      ),
+      (route) => false,
+    );
+  }
+
   List<_ProviderRequestItem> get _allRequests {
+    final providerLoc =
+        ref.read(userLocationProvider).value ?? LocationService.lastKnownValidLocation;
     final List<_ProviderRequestItem> list = [];
     for (final req in TaskService.instance.providerRequests) {
       final bool isNew = req.status == 'new' || req.status == 'pending';
-      final dist = _listDistanceForTask(req);
+      final distEn = _distanceLabelForTask(req, providerLoc, false);
+      final distAr = _distanceLabelForTask(req, providerLoc, true);
       final time = _listTimeForTask(req);
       list.add(
         _ProviderRequestItem(
@@ -269,8 +251,10 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
           serviceTypeAr: req.serviceCategory,
           locationEn: _shortLocationForList(req.customerLocation, false),
           locationAr: _shortLocationForList(req.customerLocation, true),
-          distanceEn: dist,
-          distanceAr: dist,
+          distanceEn: distEn,
+          distanceAr: distAr,
+          etaEn: req.eta,
+          etaAr: req.eta,
           timeEn: time,
           timeAr: time,
           badgeEn: isNew ? 'New Request' : (req.status == 'arrived' ? 'Arrived' : 'Active'),
@@ -279,15 +263,19 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
           status: req.status,
           customerNameEn: req.customerName,
           customerNameAr: req.customerName,
+          customerPhone: req.customerPhone,
           customerPhotoUrl: _listPhotoUrl(req.customerPhotoUrl),
           customerNote: req.customerNote,
+          vehicleModel: req.vehicleName,
+          plateNumber: req.plateNumber,
         ),
       );
     }
 
     for (final h in TaskService.instance.historyTasks) {
       final bool isCancelled = h.status == 'cancelled';
-      final dist = _listDistanceForTask(h);
+      final distEn = _distanceLabelForTask(h, providerLoc, false);
+      final distAr = _distanceLabelForTask(h, providerLoc, true);
       final time = _listTimeForTask(h);
       list.add(
         _ProviderRequestItem(
@@ -296,8 +284,10 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
           serviceTypeAr: h.serviceCategory,
           locationEn: _shortLocationForList(h.customerLocation, false),
           locationAr: _shortLocationForList(h.customerLocation, true),
-          distanceEn: dist,
-          distanceAr: dist,
+          distanceEn: distEn,
+          distanceAr: distAr,
+          etaEn: h.eta,
+          etaAr: h.eta,
           timeEn: time,
           timeAr: time,
           badgeEn: isCancelled ? 'Cancelled' : 'Completed',
@@ -306,8 +296,11 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
           status: h.status,
           customerNameEn: h.customerName,
           customerNameAr: h.customerName,
+          customerPhone: h.customerPhone,
           customerPhotoUrl: _listPhotoUrl(h.customerPhotoUrl),
           customerNote: h.customerNote,
+          vehicleModel: h.vehicleName,
+          plateNumber: h.plateNumber,
         ),
       );
     }
@@ -358,6 +351,7 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
   @override
   Widget build(BuildContext context) {
     final bool isArabic = context.isArabic;
+    ref.watch(userLocationProvider);
 
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -540,6 +534,7 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                                                   timeAr: item.timeAr,
                                                   customerNameEn: item.customerNameEn,
                                                   customerNameAr: item.customerNameAr,
+                                                  customerPhone: item.customerPhone,
                                                   imageAsset: item.imageAsset,
                                                   customerPhotoUrl: item.customerPhotoUrl,
                                                   customerNoteEn: item.customerNote,
@@ -558,6 +553,8 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                                                   locationAr: item.locationAr,
                                                   distanceEn: item.distanceEn,
                                                   distanceAr: item.distanceAr,
+                                                  etaEn: item.etaEn,
+                                                  etaAr: item.etaAr,
                                                   timeEn: item.timeEn,
                                                   timeAr: item.timeAr,
                                                   badgeEn: item.badgeEn,
@@ -565,6 +562,13 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                                                   imageAsset: item.imageAsset,
                                                   status: item.status,
                                                   customerName: item.customerNameEn,
+                                                  customerPhone: item.customerPhone,
+                                                  customerPhotoUrl: item.customerPhotoUrl,
+                                                  vehicleModelEn: item.vehicleModel,
+                                                  vehicleModelAr: item.vehicleModel,
+                                                  plateNumber: item.plateNumber,
+                                                  customerNoteEn: item.customerNote,
+                                                  customerNoteAr: item.customerNote,
                                                 ),
                                               ),
                                             ).then((accepted) {
@@ -593,14 +597,13 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                           bottom: isDesktopWeb
                               ? 20.0
                               : (MediaQuery.of(context).padding.bottom + 12.0),
-                          child: BottomNavBarWidget(
-                            currentIndex: 1,
-                            initialIndex: 1,
-                            onTabSelected: (index) {
-                              if (widget.onTabSelected != null) {
-                                widget.onTabSelected!(index);
-                              }
-                            },
+                          child: Material(
+                            color: Colors.transparent,
+                            child: BottomNavBarWidget(
+                              currentIndex: 1,
+                              initialIndex: 1,
+                              onTabSelected: _handleBottomNavTab,
+                            ),
                           ),
                         ),
                     ],
@@ -677,49 +680,41 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
     final completedCount = all.where((r) => r.status == 'completed').length;
     final cancelledCount = all.where((r) => r.status == 'cancelled').length;
 
-    final List<Map<String, dynamic>> tabs = widget.isHistoryMode
+    final List<Map<String, String>> tabs = widget.isHistoryMode
         ? [
             {
               'labelEn': completedCount > 0 ? 'Completed ($completedCount)' : 'Completed',
               'labelAr': completedCount > 0 ? 'مكتمل ($completedCount)' : 'مكتمل',
-              'flex': 88,
             },
             {
               'labelEn': newCount > 0 ? 'Pending ($newCount)' : 'Pending',
               'labelAr': newCount > 0 ? 'معلق ($newCount)' : 'معلق',
-              'flex': 80,
             },
             {
               'labelEn': activeCount > 0 ? 'In Progress ($activeCount)' : 'In Progress',
               'labelAr': activeCount > 0 ? 'جاري التنفيذ ($activeCount)' : 'جاري التنفيذ',
-              'flex': 96,
             },
             {
               'labelEn': cancelledCount > 0 ? 'Cancelled ($cancelledCount)' : 'Cancelled',
               'labelAr': cancelledCount > 0 ? 'ملغي ($cancelledCount)' : 'ملغي',
-              'flex': 80,
             },
           ]
         : [
             {
               'labelEn': newCount > 0 ? 'New ($newCount)' : 'New',
               'labelAr': newCount > 0 ? 'جديد ($newCount)' : 'جديد',
-              'flex': 96,
             },
             {
               'labelEn': activeCount > 0 ? 'Active ($activeCount)' : 'Active',
               'labelAr': activeCount > 0 ? 'نشط ($activeCount)' : 'نشط',
-              'flex': 82,
             },
             {
               'labelEn': completedCount > 0 ? 'Completed ($completedCount)' : 'Completed',
               'labelAr': completedCount > 0 ? 'مكتمل ($completedCount)' : 'مكتمل',
-              'flex': 82,
             },
             {
               'labelEn': cancelledCount > 0 ? 'Cancelled ($cancelledCount)' : 'Cancelled',
               'labelAr': cancelledCount > 0 ? 'ملغي ($cancelledCount)' : 'ملغي',
-              'flex': 82,
             },
           ];
 
@@ -731,61 +726,70 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
         color: const Color(0xFF2D2A3D),
         borderRadius: BorderRadius.circular(12.0),
       ),
-      child: Row(
-        children: List.generate(tabs.length, (index) {
-          final isSelected = _selectedFilterIndex == index;
-          final item = tabs[index];
-          final label = isArabic ? item['labelAr'] as String : item['labelEn'] as String;
-          final flex = item['flex'] as int;
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final pills = List.generate(tabs.length, (index) {
+            final isSelected = _selectedFilterIndex == index;
+            final item = tabs[index];
+            final label = isArabic ? item['labelAr']! : item['labelEn']!;
 
-          return Expanded(
-            flex: flex,
-            child: GestureDetector(
+            final textStyle = isArabic
+                ? GoogleFonts.cairo(
+                    fontSize: 12.0,
+                    fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+                    color: const Color(0xFFFFFFFF),
+                    height: 1.0,
+                  )
+                : GoogleFonts.inter(
+                    fontSize: 12.0,
+                    fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+                    color: const Color(0xFFFFFFFF),
+                    height: 1.0,
+                    letterSpacing: 0.0,
+                  );
+
+            return GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
                 HapticFeedback.selectionClick();
                 setState(() {
                   _selectedFilterIndex = index;
-                  _selectedCardIndex = 0; // Reset selected card to 0 on tab change
+                  _selectedCardIndex = 0;
                 });
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeInOut,
                 height: 37.0,
+                padding: const EdgeInsets.symmetric(horizontal: 6.0),
                 decoration: BoxDecoration(
                   color: isSelected ? const Color(0xFF8B53FE) : Colors.transparent,
                   borderRadius: BorderRadius.circular(10.0),
                 ),
-                child: Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                      child: Text(
-                        label,
-                        style: isArabic
-                            ? GoogleFonts.cairo(
-                                fontSize: 12.0,
-                                fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                                color: const Color(0xFFFFFFFF),
-                                height: 1.0,
-                              )
-                            : GoogleFonts.inter(
-                                fontSize: 12.0,
-                                fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                                color: const Color(0xFFFFFFFF),
-                                height: 1.0,
-                                letterSpacing: 0.0,
-                              ),
-                      ),
-                    ),
-                  ),
+                alignment: Alignment.center,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  style: textStyle,
                 ),
+              ),
+            );
+          });
+
+          return FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: constraints.maxWidth,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: pills,
               ),
             ),
           );
-        }),
+        },
       ),
     );
   }

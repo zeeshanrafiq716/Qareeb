@@ -730,8 +730,19 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
     );
   }
 
-  /// Row of 3 share options: WhatsApp, Copy Link, Instagram
-  /// width: 350; height: 97.5999984741211; gap: 12px;
+  /// Brand purple — same gradient as location pin / onboarding (139°).
+  static const LinearGradient _brandPurpleGradient = LinearGradient(
+    begin: Alignment(-0.85, -1.0),
+    end: Alignment(0.95, 1.0),
+    colors: [
+      Color(0xFF8B53FE),
+      Color(0xFFA67AFE),
+      Color(0xFFBA98FE),
+    ],
+    stops: [0.0, 0.52, 1.0],
+  );
+
+  /// Row of share options: WhatsApp, Copy Link
   Widget _buildShareCardsRow(double containerWidth) {
     return IntrinsicHeight(
       child: Row(
@@ -809,29 +820,29 @@ class _SendLocationScreenState extends ConsumerState<SendLocationScreen> {
             duration: const Duration(milliseconds: 180),
             constraints: const BoxConstraints(minHeight: 106.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF8B53FE),
+              gradient: _brandPurpleGradient,
               borderRadius: BorderRadius.circular(12.0),
               border: Border.all(
-                color: isSelected ? Colors.black : Colors.transparent,
-                width: 2.2,
+                color: isSelected ? const Color(0xFF1C2926) : Colors.transparent,
+                width: 2.0,
               ),
               boxShadow: isSelected
                   ? const [
                       BoxShadow(
-                        color: Color(0x33000000),
-                        blurRadius: 8.0,
-                        offset: Offset(0, 2),
+                        color: Color(0x338B53FE),
+                        blurRadius: 10.0,
+                        offset: Offset(0, 3),
                       ),
                     ]
                   : const [
                       BoxShadow(
-                        color: Color(0x228B53FE),
-                        blurRadius: 6.0,
+                        color: Color(0x288B53FE),
+                        blurRadius: 8.0,
                         offset: Offset(0, 2),
                       ),
                     ],
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,

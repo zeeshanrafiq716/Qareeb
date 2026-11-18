@@ -75,8 +75,63 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
   String? _cleanPhotoUrl(String? raw) {
     final v = raw?.trim() ?? '';
     if (v.isEmpty) return null;
-    if (v.contains('unsplash.com') || v.contains('placeholder')) return null;
+    final lower = v.toLowerCase();
+    if (lower.contains('unsplash.com') ||
+        lower.contains('placeholder') ||
+        lower.contains('driver_avatar') ||
+        lower.contains('ahmed_khan') ||
+        lower.contains('img.png') ||
+        lower.contains('seed')) {
+      return null;
+    }
     return v;
+  }
+
+  Widget _historyProviderAvatar(String providerName, String? photoUrl) {
+    const size = 48.0;
+    final initials = _providerInitials(providerName);
+    final decoration = const BoxDecoration(
+      shape: BoxShape.circle,
+      color: Color(0xFF8B53FE),
+    );
+    if (photoUrl == null) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: decoration,
+        alignment: Alignment.center,
+        child: Text(
+          initials,
+          style: tr.font(
+            fontSize: 16.0,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: decoration,
+      clipBehavior: Clip.antiAlias,
+      child: Image.network(
+        photoUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Center(
+          child: Text(
+            initials,
+            style: tr.font(
+              fontSize: 16.0,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   String _providerInitials(String name) {
@@ -124,6 +179,14 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
 
     final data = await ref.read(backendServiceProvider).getCustomerRequestStatus(reqId);
     if (!mounted || data == null) return;
+
+    ref.read(notificationsProvider.notifier).notifyCustomerProviderContactIfNeeded(
+          requestId: reqId,
+          statusPayload: data,
+          providerName: data['providerName']?.toString() ?? task.providerName,
+          serviceCategory: data['serviceCategory']?.toString() ?? task.serviceCategory,
+          photoUrl: _cleanPhotoUrl(data['providerPhotoUrl']?.toString()) ?? task.providerAvatar,
+        );
 
     final pLat = (data['providerLatitude'] as num?)?.toDouble();
     final pLng = (data['providerLongitude'] as num?)?.toDouble();
@@ -1136,8 +1199,10 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                         ),
                                       ),
 
-                                      // 6. Action Button: Cancel Request (before arrival/completion)
-                                      if (activeTask.step < 3) ...[
+                                      // 6. Cancel only before provider arrives (step 2+)
+                                      if (activeTask.step < 2 &&
+                                          activeTask.status != 'arrived' &&
+                                          activeTask.status != 'in_progress') ...[
                                         const SizedBox(height: 14.0),
                                         SizedBox(
                                           height: 48.0,
@@ -1768,7 +1833,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
 
   List<_HistoryRequestItem> get _filteredHistoryItems {
     final query = _searchController.text.trim().toLowerCase();
-    final rawTasks = TaskService.instance.historyTasks;
+    final rawTasks = TaskService.instance.customerHistoryTasks;
     final mapped = rawTasks.map((t) {
       final isCancelled = t.status == 'cancelled';
       return _HistoryRequestItem(
@@ -1788,8 +1853,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
         vehicleIcon: Icons.local_shipping_outlined,
         plateNumber: t.plateNumber,
         dateTime: t.dateTime,
-        avatarPath: t.providerAvatar ?? 'assets/images/driver_avatar.png',
-        avatarFallbackColor: const Color(0xFFE2E8F0),
+        avatarUrl: _cleanPhotoUrl(t.providerAvatar),
       );
     }).toList();
 
@@ -1897,68 +1961,21 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // left side img: width: 48; height: 48;
-                ClipOval(
-                  child: SizedBox(
-                    width: 48.0,
-                    height: 48.0,
-                    child: Image.asset(
-                      item.avatarPath,
-                      width: 48.0,
-                      height: 48.0,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        // Fallback to driver_avatar or initials
-                        return Image.asset(
-                          'assets/images/driver_avatar.png',
-                          width: 48.0,
-                          height: 48.0,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error2, stackTrace2) {
-                            return Container(
-                              width: 48.0,
-                              height: 48.0,
-                              decoration: BoxDecoration(
-                                color: item.avatarFallbackColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  item.providerName.isNotEmpty
-                                      ? item.providerName[0]
-                                      : '?',
-                                  style: tr.font(
-                                    fontSize: 18.0,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF1C2926),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ),
+                _historyProviderAvatar(item.providerName, item.avatarUrl),
                 const SizedBox(width: 16.0), // gap: 16px;
 
                 // content layout: width: 254; min-height: 78; justify-content: space-between;
                 Expanded(
-                  child: Container(
-                    constraints: const BoxConstraints(minHeight: 78.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // left content layout: width: 238; height: 78; gap: 12px;
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // 1st row branding: width: 238; height: 19; justify-content: space-between;
-                              Row(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -2006,8 +2023,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                   ),
                                 ],
                               ),
-
-                              // 2nd row layout: width: 171; height: 10; gap: 8px;
+                              const SizedBox(height: 6.0),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
@@ -2063,8 +2079,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                   ),
                                 ],
                               ),
-
-                              // 3rd row layout: width: 160.5; height: 10; gap: 10px;
+                              const SizedBox(height: 6.0),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
@@ -2136,8 +2151,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                   ),
                                 ],
                               ),
-
-                              // 4th row branding: content: 10 Sep 2026, 2:15 PM (Inter Regular 10px, #566663)
+                              const SizedBox(height: 6.0),
                               Text(
                                 tr.formatDateTimeString(item.dateTime),
                                 style: tr.font(
@@ -2149,23 +2163,20 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                            ],
-                          ),
+                          ],
                         ),
-
-                        // card right side > branding: width: 6; height: 12; angle: -180 deg; border: 0.8px solid #566663
-                        Padding(
-                          padding: const EdgeInsets.only(left: 4.0),
-                          child: Icon(
-                            (tr.isArabic || Directionality.of(context) == TextDirection.rtl)
-                                ? Icons.chevron_left_rounded
-                                : Icons.chevron_right_rounded,
-                            size: 18.0,
-                            color: const Color(0xFF566663),
-                          ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4.0),
+                        child: Icon(
+                          (tr.isArabic || Directionality.of(context) == TextDirection.rtl)
+                              ? Icons.chevron_left_rounded
+                              : Icons.chevron_right_rounded,
+                          size: 18.0,
+                          color: const Color(0xFF566663),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -2193,8 +2204,7 @@ class _HistoryRequestItem {
   final IconData vehicleIcon;
   final String plateNumber;
   final String dateTime;
-  final String avatarPath;
-  final Color avatarFallbackColor;
+  final String? avatarUrl;
 
   const _HistoryRequestItem({
     this.task,
@@ -2209,8 +2219,7 @@ class _HistoryRequestItem {
     required this.vehicleIcon,
     required this.plateNumber,
     required this.dateTime,
-    required this.avatarPath,
-    required this.avatarFallbackColor,
+    this.avatarUrl,
   });
 }
 

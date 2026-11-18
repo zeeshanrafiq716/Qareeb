@@ -3,7 +3,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/localization/app_locale.dart';
+import '../../../models/category_model.dart';
+import '../../../providers/backend_provider.dart';
 import '../../../services/profile_stats_service.dart';
 import '../../../services/task_service.dart';
 import 'completed_service_details_screen.dart';
@@ -15,12 +18,14 @@ class ServiceInProgressScreen extends ConsumerStatefulWidget {
   final String serviceCategory;
   final String providerName;
   final String headerHeading;
+  final ServiceTask? task;
 
   const ServiceInProgressScreen({
     super.key,
     this.serviceCategory = 'Pickup & Delivery',
     this.providerName = 'Ahmad Transport',
     this.headerHeading = 'Service Complete',
+    this.task,
   });
 
   @override
@@ -58,20 +63,141 @@ class _ServiceInProgressScreenState
     super.dispose();
   }
 
-  ServiceTask? get _task => TaskService.instance.activeTask;
+  ServiceTask? get _task => widget.task ?? TaskService.instance.activeTask;
 
-  String get _displayProviderName =>
-      _task?.providerName ?? widget.providerName;
+  String get _displayProviderName {
+    final name = _task?.providerName.trim() ?? '';
+    if (name.isNotEmpty && name.toLowerCase() != 'provider') return name;
+    final fromWidget = widget.providerName.trim();
+    return fromWidget.isNotEmpty ? fromWidget : (tr.isArabic ? 'مزود الخدمة' : 'Provider');
+  }
 
-  String get _displayCategory =>
-      _task?.serviceCategory ?? widget.serviceCategory;
+  String get _displayCategory {
+    final cat = _task?.serviceCategory.trim() ?? '';
+    if (cat.isNotEmpty) return cat;
+    return widget.serviceCategory.trim().isNotEmpty
+        ? widget.serviceCategory.trim()
+        : (tr.isArabic ? 'خدمة' : 'Service');
+  }
 
-  String get _completedDateTime =>
-      _task?.dateTime ?? tr.sampleCompletedDateTime;
+  String get _completedDateTime {
+    final fromTask = _task?.dateTime.trim() ?? '';
+    if (fromTask.isNotEmpty && !fromTask.toLowerCase().contains('sample')) {
+      return tr.formatDateTimeString(fromTask);
+    }
+    final ts = _task?.createdAt ?? DateTime.now();
+    return tr.formatDateTimeString(
+      '${ts.day.toString().padLeft(2, '0')} ${_month(ts.month)} ${ts.year}, '
+      '${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}',
+    );
+  }
+
+  String _month(int m) {
+    const en = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (m >= 1 && m <= 12) return en[m - 1];
+    return '';
+  }
+
+  String? _cleanPhotoUrl(String? raw) {
+    final v = raw?.trim() ?? '';
+    if (v.isEmpty) return null;
+    final lower = v.toLowerCase();
+    if (lower.contains('driver_avatar') ||
+        lower.contains('ahmed_khan') ||
+        lower.contains('img.png') ||
+        lower.contains('placeholder') ||
+        lower.contains('seed')) {
+      return null;
+    }
+    if (v.startsWith('http')) return v;
+    if (v.startsWith('/')) return '${AppConfig.baseUrl}$v';
+    return v;
+  }
+
+  String _providerInitials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return 'P';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return '${parts[0].substring(0, 1)}${parts[1].substring(0, 1)}'.toUpperCase();
+  }
+
+  bool _isSeedVehicle(String name) {
+    final low = name.trim().toLowerCase();
+    if (low.isEmpty) return true;
+    return low == 'toyota hilux' ||
+        low == 'toyota corolla' ||
+        low == 'service vehicle' ||
+        low == 'pickup';
+  }
+
+  bool _isSeedPlate(String plate) {
+    final p = plate.trim().toUpperCase();
+    if (p.isEmpty) return true;
+    return p == 'ABC-123' || p == '1122' || p == 'KSA 1234' || p == 'KSA1234';
+  }
+
+  String _categoryAssetFor(String category) {
+    final slug = category.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    final model = CategoryModel(
+      id: slug,
+      name: category.trim().isNotEmpty ? category.trim() : 'tow-truck',
+      slug: slug.isNotEmpty ? slug : 'tow-truck',
+    );
+    return model.displayAssetImage ?? 'assets/images/tow_truck.png';
+  }
+
+  Widget _buildProviderAvatar() {
+    const size = 52.0;
+    final photo = _cleanPhotoUrl(_task?.providerAvatar);
+    final initials = _providerInitials(_displayProviderName);
+    if (photo != null) {
+      return ClipOval(
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Image.network(
+            photo,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => _buildProviderInitialsAvatar(size, initials),
+          ),
+        ),
+      );
+    }
+    return _buildProviderInitialsAvatar(size, initials);
+  }
+
+  Widget _buildProviderInitialsAvatar(double size, String initials) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFF8B53FE),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initials,
+        style: tr.font(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
 
   Future<void> _submitRating() async {
     if (_userRating <= 0 || _ratingSubmitted || _isSubmittingRating) return;
     setState(() => _isSubmittingRating = true);
+    final reqId = TaskService.extractBackendUuid(_task?.id);
+    if (reqId != null) {
+      await ref.read(backendServiceProvider).submitCustomerRequestRating(
+            requestId: reqId,
+            rating: _userRating,
+          );
+    }
     await ProfileStatsService.instance.recordReview(
       isProvider: false,
       newRating: _userRating.toDouble(),
@@ -103,7 +229,7 @@ class _ServiceInProgressScreenState
         builder: (_) => CompletedServiceDetailsScreen(
           providerName: _displayProviderName,
           serviceCategory: _displayCategory,
-          task: _task,
+          task: widget.task ?? _task,
         ),
       ),
     );
@@ -333,41 +459,7 @@ class _ServiceInProgressScreenState
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                // left-side img layout: width: 52; height: 52;
-                                Container(
-                                  width: 52.0,
-                                  height: 52.0,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Color(0xFFFFAAA6),
-                                  ),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: Image.asset(
-                                    'assets/images/driver_avatar.png',
-                                    width: 52.0,
-                                    height: 52.0,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        Image.network(
-                                      '',
-                                      width: 52.0,
-                                      height: 52.0,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              Container(
-                                        color: const Color(0xFFFFAAA6),
-                                        child: const Center(
-                                          child: Icon(
-                                            Icons.person,
-                                            size: 28.0,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                                _buildProviderAvatar(),
                                 const SizedBox(width: 16.0), // gap: 16px;
 
                                 // right side content branding: width: 250; height: 45; gap: 10px;
@@ -405,56 +497,50 @@ class _ServiceInProgressScreenState
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
-                                      const SizedBox(height: 5.0),
-
-                                      // reviews branding: width: 96; height: 10; gap: 8px;
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: [
-                                          // star branding in brand purple (#8B53FE)
-                                          const Icon(
-                                            Icons.star_rounded,
-                                            size: 13.0,
-                                            color: Color(0xFF8B53FE),
-                                          ),
-                                          const SizedBox(width: 3.0),
-
-                                          // content: 4.9 (120 reviews)
-                                          Text.rich(
-                                            TextSpan(
-                                              children: [
-                                                TextSpan(
-                                                  text: '4.9 ',
-                                                  style: tr.font(
-                                                    fontSize: 10.0,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: const Color(0xFF1C2926),
-                                                    height: 1.1,
-                                                    letterSpacing: 0.0,
-                                                  ),
-                                                ),
-                                                TextSpan(
-                                                  text: tr.reviewsCount(120),
-                                                  style: tr.font(
-                                                    fontSize: 10.0,
-                                                    fontWeight: FontWeight.w400,
-                                                    color: const Color(0xFF566663),
-                                                    height: 1.1,
-                                                    letterSpacing: 0.0,
-                                                  ),
-                                                ),
-                                              ],
+                                      if ((_task?.providerRating ?? 0) > 0 ||
+                                          (_task?.providerTripsCount ?? 0) > 0) ...[
+                                        const SizedBox(height: 5.0),
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment: CrossAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.star_rounded,
+                                              size: 13.0,
+                                              color: Color(0xFF8B53FE),
                                             ),
-                                            textHeightBehavior:
-                                                const TextHeightBehavior(
-                                              applyHeightToFirstAscent: false,
-                                              applyHeightToLastDescent: false,
+                                            const SizedBox(width: 3.0),
+                                            Text.rich(
+                                              TextSpan(
+                                                children: [
+                                                  TextSpan(
+                                                    text:
+                                                        '${(_task?.providerRating ?? 0).toStringAsFixed(1)} ',
+                                                    style: tr.font(
+                                                      fontSize: 10.0,
+                                                      fontWeight: FontWeight.w500,
+                                                      color: const Color(0xFF1C2926),
+                                                      height: 1.1,
+                                                    ),
+                                                  ),
+                                                  if ((_task?.providerTripsCount ?? 0) > 0)
+                                                    TextSpan(
+                                                      text: tr.isArabic
+                                                          ? ' (${_task!.providerTripsCount} رحلات)'
+                                                          : ' (${_task!.providerTripsCount} trips)',
+                                                      style: tr.font(
+                                                        fontSize: 10.0,
+                                                        fontWeight: FontWeight.w400,
+                                                        color: const Color(0xFF566663),
+                                                        height: 1.1,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
                                             ),
-                                          ),
-                                        ],
-                                      ),
+                                          ],
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -462,85 +548,85 @@ class _ServiceInProgressScreenState
                             ),
                           ),
 
-                          const SizedBox(height: 12.0), // gap: 12px;
-
-                          // 2nd card branding: Vehicle Details Card
-                          // width: 350; height: 72; gap: 12px; angle: 0 deg; opacity: 1;
-                          // border-radius: 12px; padding: 16px; background: #F2F5F4;
-                          Container(
-                            width: cardWidth,
-                            constraints: const BoxConstraints(minHeight: 72.0),
-                            padding: const EdgeInsets.all(16.0),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF2F5F4),
-                              borderRadius: BorderRadius.circular(12.0),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                // left side img branding: width: 60; height: 40;
-                                SizedBox(
-                                  width: 60.0,
-                                  height: 40.0,
-                                  child: Image.asset(
-                                    'assets/images/pickup.png',
-                                    width: 60.0,
-                                    height: 40.0,
-                                    fit: BoxFit.contain,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const Icon(
-                                      Icons.directions_car_filled_rounded,
-                                      size: 32.0,
-                                      color: Color(0xFF1C2926),
+                          Builder(
+                            builder: (context) {
+                              final rawVehicle = _task?.vehicleName.trim() ?? '';
+                              final rawPlate = _task?.plateNumber.trim() ?? '';
+                              final showVehicle = !_isSeedVehicle(rawVehicle);
+                              final showPlate = !_isSeedPlate(rawPlate);
+                              if (!showVehicle && !showPlate) {
+                                return const SizedBox.shrink();
+                              }
+                              return Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(height: 12.0),
+                                  Container(
+                                    width: cardWidth,
+                                    constraints: const BoxConstraints(minHeight: 72.0),
+                                    padding: const EdgeInsets.all(16.0),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF2F5F4),
+                                      borderRadius: BorderRadius.circular(12.0),
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 60.0,
+                                          height: 40.0,
+                                          child: Image.asset(
+                                            _categoryAssetFor(_displayCategory),
+                                            width: 60.0,
+                                            height: 40.0,
+                                            fit: BoxFit.contain,
+                                            errorBuilder: (_, _, _) => const Icon(
+                                              Icons.local_shipping_outlined,
+                                              size: 32.0,
+                                              color: Color(0xFF1C2926),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16.0),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (showVehicle)
+                                                Text(
+                                                  tr.formatVehicleName(rawVehicle),
+                                                  style: tr.font(
+                                                    fontSize: 14.0,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: const Color(0xFF1C2926),
+                                                    height: 22.0 / 14.0,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              if (showVehicle && showPlate) const SizedBox(height: 3.0),
+                                              if (showPlate)
+                                                Text(
+                                                  rawPlate,
+                                                  style: tr.font(
+                                                    fontSize: 10.0,
+                                                    fontWeight: FontWeight.w400,
+                                                    color: const Color(0xFF566663),
+                                                    height: 1.2,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 16.0), // gap: 16px padding between image and text
-
-                                // content layout
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      // content: Toyota Hilux
-                                      Text(
-                                        tr.formatVehicleName(
-                                            _task?.vehicleName ?? 'Toyota Hilux'),
-                                        style: tr.font(
-                                          fontSize: 14.0,
-                                          fontWeight: FontWeight.w500,
-                                          color: const Color(0xFF1C2926),
-                                          height: 22.0 / 14.0,
-                                          letterSpacing: 0.0,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 3.0), // padding between title and subtitle
-
-                                      // content: ABC-123
-                                      Text(
-                                        _task?.plateNumber ?? 'ABC-123',
-                                        style: tr.font(
-                                          fontSize: 10.0,
-                                          fontWeight: FontWeight.w400,
-                                          color: const Color(0xFF566663),
-                                          height: 1.2,
-                                          letterSpacing: 0.0,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                                ],
+                              );
+                            },
                           ),
 
                           const SizedBox(height: 12.0), // gap: 12px;
@@ -753,7 +839,7 @@ class _ServiceInProgressScreenState
                                       color: Colors.transparent,
                                       child: InkWell(
                                         key: Key('rating_star_$starNum'),
-                                        onTap: _ratingSubmitted
+                                        onTap: _ratingSubmitted || _isSubmittingRating
                                             ? null
                                             : () {
                                                 HapticFeedback.lightImpact();

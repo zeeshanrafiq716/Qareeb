@@ -3,6 +3,8 @@ import { ENTITY } from "../config/constants.js";
 import { getStatus } from "../db/status.js";
 import { NotFoundError } from "../utils/AppError.js";
 import { notifyProviderForCustomerEvent } from "./notifications.service.js";
+import { distanceMeters } from "../utils/geo.js";
+import { presenceStore } from "../redis/presenceStore.js";
 
 export const FUNNEL_EVENT = {
   LIST_IMPRESSION: "list_impression",
@@ -146,10 +148,62 @@ export async function resolveApprovedProviderByPublicId(publicId) {
   return row;
 }
 
+async function enrichSendRequestMetadata(providerId, customerLat, customerLng, metadata) {
+  const base = { ...(metadata ?? {}) };
+  if (customerLat == null || customerLng == null) return base;
+
+  let provLat = null;
+  let provLng = null;
+  const live = await presenceStore.getLocation(providerId);
+  if (
+    live &&
+    Number.isFinite(Number(live.latitude)) &&
+    Number.isFinite(Number(live.longitude)) &&
+    (Math.abs(Number(live.latitude)) > 0.001 || Math.abs(Number(live.longitude)) > 0.001)
+  ) {
+    provLat = Number(live.latitude);
+    provLng = Number(live.longitude);
+  } else {
+    const { rows } = await query(
+      `SELECT ST_Y(l.geom::geometry) AS lat, ST_X(l.geom::geometry) AS lng
+       FROM locations l
+       WHERE l.provider_id = $1
+       LIMIT 1`,
+      [providerId],
+    );
+    if (rows[0]?.lat != null && rows[0]?.lng != null) {
+      provLat = Number(rows[0].lat);
+      provLng = Number(rows[0].lng);
+    }
+  }
+
+  if (provLat == null || provLng == null) return base;
+
+  const meters = distanceMeters(Number(customerLat), Number(customerLng), provLat, provLng);
+  const rounded = Math.round(meters);
+  const distance = rounded < 1000 ? `${rounded} m` : `${(rounded / 1000).toFixed(1)} km`;
+  const eta =
+    rounded < 100
+      ? "< 1 min"
+      : `${Math.max(1, Math.ceil((rounded / 1000 / 30) * 60))} min`;
+
+  return {
+    ...base,
+    distanceMeters: rounded,
+    distance,
+    eta,
+  };
+}
+
 export async function trackCustomerDiscoveryEvent(input) {
   const provider = await resolveApprovedProviderByPublicId(input.providerPublicId);
   const lat = input.latitude ?? null;
   const lng = input.longitude ?? null;
+
+  let metadata = input.metadata ?? {};
+  if (input.event === FUNNEL_EVENT.SEND_REQUEST_CLICK && lat != null && lng != null) {
+    metadata = await enrichSendRequestMetadata(provider.id, lat, lng, metadata);
+  }
 
   // Always insert provider_notifications first so provider receives task & notification reliably
   // even if customer_funnel_events has a legacy check constraint.
@@ -159,7 +213,7 @@ export async function trackCustomerDiscoveryEvent(input) {
     sessionId: input.sessionId ?? null,
     latitude: lat,
     longitude: lng,
-    metadata: input.metadata ?? {},
+    metadata,
   }).catch(() => null);
 
   let row = null;
@@ -170,7 +224,7 @@ export async function trackCustomerDiscoveryEvent(input) {
       sessionId: input.sessionId ?? null,
       latitude: lat,
       longitude: lng,
-      metadata: input.metadata ?? {},
+      metadata,
     });
   } catch (_) {
     // Non-fatal analytics error — notification & request lifecycle already persisted above

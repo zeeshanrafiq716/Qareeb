@@ -225,61 +225,60 @@ class ProviderHomeHeader extends ConsumerWidget {
                     // gap: 12px;
                     const SizedBox(width: leftContentGap),
 
-                    // Greeting + Name Column
+                    // Greeting + Name (Arabic Cairo glyphs need scale-to-fit in 36px header)
                     Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Opacity(
-                            opacity: 1.0,
-                            child: Transform.rotate(
-                              angle: 0.0,
-                              child: Text(
-                                effectiveGreeting,
-                                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                  fontSize: isArabic ? 11.0 : 12.0,
-                                  fontWeight: FontWeight.w400,
-                                  color: const Color(0xFF616166),
-                                  letterSpacing: 0.0,
-                                  height: isArabic ? 0.95 : 1.1,
-                                ),
-                                textHeightBehavior: const TextHeightBehavior(
-                                  applyHeightToFirstAscent: false,
-                                  applyHeightToLastDescent: false,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                      child: SizedBox(
+                        height: leftContentHeight,
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: textWidth * 2.2,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    effectiveGreeting,
+                                    style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                                      fontSize: isArabic ? 11.0 : 12.0,
+                                      fontWeight: FontWeight.w400,
+                                      color: const Color(0xFF616166),
+                                      letterSpacing: 0.0,
+                                      height: isArabic ? 1.0 : 1.1,
+                                    ),
+                                    textHeightBehavior: const TextHeightBehavior(
+                                      applyHeightToFirstAscent: false,
+                                      applyHeightToLastDescent: false,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    effectiveName,
+                                    style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
+                                      fontSize: isArabic ? 13.0 : 14.0,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF252527),
+                                      letterSpacing: 0.0,
+                                      height: isArabic ? 1.0 : 1.15,
+                                    ),
+                                    textHeightBehavior: const TextHeightBehavior(
+                                      applyHeightToFirstAscent: false,
+                                      applyHeightToLastDescent: false,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-
-                          SizedBox(height: isArabic ? 0.0 : 1.0),
-
-                          Opacity(
-                            opacity: 1.0,
-                            child: Transform.rotate(
-                              angle: 0.0,
-                              child: Text(
-                                effectiveName,
-                                style: (isArabic ? GoogleFonts.cairo : GoogleFonts.inter)(
-                                  fontSize: isArabic ? 13.0 : 14.0,
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF252527),
-                                  letterSpacing: 0.0,
-                                  height: isArabic ? 1.05 : 1.15,
-                                ),
-                                textHeightBehavior: const TextHeightBehavior(
-                                  applyHeightToFirstAscent: false,
-                                  applyHeightToLastDescent: false,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ],

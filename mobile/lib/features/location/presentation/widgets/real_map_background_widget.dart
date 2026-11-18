@@ -49,6 +49,12 @@ class RealMapBackgroundWidget extends ConsumerStatefulWidget {
   final double? longitude;
   final double? providerLatitude;
   final double? providerLongitude;
+  /// Customer pickup pin (used on provider maps).
+  final double? customerLatitude;
+  final double? customerLongitude;
+  /// When true, device GPS is the provider vehicle heading to [customerLatitude/Longitude].
+  final bool isProviderPerspective;
+  final String? destinationName;
   final double? visibleTopHeightFraction;
   final double zoom;
   final bool enableDrag;
@@ -72,6 +78,10 @@ class RealMapBackgroundWidget extends ConsumerStatefulWidget {
     this.longitude,
     this.providerLatitude,
     this.providerLongitude,
+    this.customerLatitude,
+    this.customerLongitude,
+    this.isProviderPerspective = false,
+    this.destinationName,
     this.visibleTopHeightFraction,
     this.zoom = 15.0,
     this.enableDrag = true,
@@ -97,6 +107,61 @@ class RealMapBackgroundWidget extends ConsumerStatefulWidget {
 
 class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget>
     with TickerProviderStateMixin {
+  static bool _validGpsCoord(double? lat, double? lng) {
+    if (lat == null || lng == null) return false;
+    if (!lat.isFinite || !lng.isFinite) return false;
+    return lat.abs() > 0.001 || lng.abs() > 0.001;
+  }
+
+  double _screenBearing(Offset from, Offset to) {
+    return (math.atan2(to.dy - from.dy, to.dx - from.dx) * 180.0 / math.pi) + 90.0;
+  }
+
+  double _angleToward({
+    required double fromLat,
+    required double fromLng,
+    required double toLat,
+    required double toLng,
+    required Offset Function(double lat, double lng) toScreen,
+  }) {
+    final from = toScreen(fromLat, fromLng);
+    final to = toScreen(toLat, toLng);
+    return _screenBearing(from, to);
+  }
+
+  Widget _buildDestinationMarker(String label) {
+    final text = label.trim().isNotEmpty ? label.trim() : 'Customer';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C2926),
+            borderRadius: BorderRadius.circular(4.0),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x1F000000),
+                blurRadius: 4.0,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 8.0,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(height: 2.0),
+        const Icon(Icons.location_on_rounded, size: 28.0, color: Color(0xFF8B53FE)),
+      ],
+    );
+  }
+
   double _panOffsetX = 0.0;
   double _panOffsetY = 0.0;
   double? _internalZoom;
@@ -147,6 +212,7 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
 
   /// Handles tap on car in map to open Provider Details Card
   void _handleCarTap() {
+    if (widget.isProviderPerspective) return;
     HapticFeedback.lightImpact();
     if (widget.onCarTap != null) {
       widget.onCarTap!();
@@ -341,14 +407,30 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
 
         final double providerLat = hasRealProviderCoords
             ? widget.providerLatitude!
-            : (userLat + 0.0025);
+            : (widget.isProviderPerspective && userLoc.hasValidDeviceGps
+                ? userLat
+                : (userLat + 0.0025));
         final double providerLng = hasRealProviderCoords
             ? widget.providerLongitude!
-            : (userLng - 0.0025);
+            : (widget.isProviderPerspective && userLoc.hasValidDeviceGps
+                ? userLng
+                : (userLng - 0.0025));
 
-        final double? realDistanceKm = (userLoc.hasValidDeviceGps && hasRealProviderCoords)
-            ? (Geolocator.distanceBetween(userLat, userLng, providerLat, providerLng) / 1000.0)
-            : null;
+        final double? realDistanceKm = widget.isProviderPerspective
+            ? (_validGpsCoord(widget.customerLatitude, widget.customerLongitude) &&
+                    userLoc.hasValidDeviceGps
+                ? Geolocator.distanceBetween(
+                      userLat,
+                      userLng,
+                      widget.customerLatitude!,
+                      widget.customerLongitude!,
+                    ) /
+                    1000.0
+                : null)
+            : (userLoc.hasValidDeviceGps && hasRealProviderCoords
+                ? (Geolocator.distanceBetween(userLat, userLng, providerLat, providerLng) /
+                    1000.0)
+                : null);
 
         final List<Offset> gpsWaypoints = [
           Offset(providerLat, providerLng),
@@ -411,71 +493,163 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
             // Step-based Functional Map Tracking Layers
             if (widget.trackingStep == MapTrackingStep.onTheWay ||
                 widget.trackingStep == MapTrackingStep.arrived) ...[
-              // 1. Live Road Route Polyline
-              CustomPaint(
-                size: Size(width, height),
-                painter: _LiveRoutePolylinePainter(
-                  waypoints: screenWaypoints,
-                  color: const Color(0xFF8B53FE),
-                  strokeWidth: 4.5,
-                ),
-              ),
+              Positioned.fill(
+                child: Builder(
+                  builder: (context) {
+                  final bool providerView = widget.isProviderPerspective;
+                  final bool arrived =
+                      widget.trackingStep == MapTrackingStep.arrived;
+                  final double? pinLat = _validGpsCoord(
+                    widget.customerLatitude,
+                    widget.customerLongitude,
+                  )
+                      ? widget.customerLatitude
+                      : (providerView && widgetHasValidCoords
+                          ? widget.latitude
+                          : null);
+                  final double? pinLng = _validGpsCoord(
+                    widget.customerLatitude,
+                    widget.customerLongitude,
+                  )
+                      ? widget.customerLongitude
+                      : (providerView && widgetHasValidCoords
+                          ? widget.longitude
+                          : null);
+                  final bool hasCustomerPin =
+                      _validGpsCoord(pinLat, pinLng);
+                  final bool hasDest = providerView
+                      ? (hasCustomerPin ||
+                          (arrived && userLoc.hasValidDeviceGps))
+                      : userLoc.hasValidDeviceGps;
+                  final bool hasVehicle = providerView
+                      ? (userLoc.hasValidDeviceGps || hasCustomerPin)
+                      : hasRealProviderCoords;
 
-              // 2. Animated Driving Car / Arrived Car
-              AnimatedBuilder(
-                animation: _carAnimationController,
-                builder: (context, _) {
-                  Offset carPos;
-                  double carAngle;
+                  final bool providerCanRender =
+                      providerView && (hasCustomerPin || userLoc.hasValidDeviceGps);
 
-                  if (widget.trackingStep == MapTrackingStep.arrived) {
-                    // Car is parked right beside user's pin
-                    final Offset arrivedOffset = toScreen(userLat + 0.0004, userLng + 0.0004);
-                    carPos = arrivedOffset;
-                    carAngle = -45.0;
-                  } else {
-                    // Car animates along the road path towards user
-                    final double progress = _carAnimationController.value.clamp(0.0, 0.95);
-                    final computed = _interpolateAlongPath(screenWaypoints, progress);
-                    carPos = computed.position;
-                    carAngle = computed.angle;
+                  if (providerView) {
+                    if (!providerCanRender) {
+                      return const SizedBox.shrink();
+                    }
+                  } else if (!hasDest || !hasVehicle) {
+                    if (userLoc.hasValidDeviceGps) {
+                      return Positioned(
+                        left: userScreenPos.dx - 24.0,
+                        top: userScreenPos.dy - 24.0,
+                        child: _buildUserLocationMarker(tr),
+                      );
+                    }
+                    return const SizedBox.shrink();
                   }
+
+                  final double destLat = providerView
+                      ? (hasCustomerPin ? pinLat! : userLat)
+                      : userLat;
+                  final double destLng = providerView
+                      ? (hasCustomerPin ? pinLng! : userLng)
+                      : userLng;
+                  final double vehicleLat = providerView
+                      ? (userLoc.hasValidDeviceGps ? userLat : destLat)
+                      : providerLat;
+                  final double vehicleLng = providerView
+                      ? (userLoc.hasValidDeviceGps ? userLng : destLng)
+                      : providerLng;
+                  // Customer view: provider car snaps to customer pin when arrived.
+                  // Provider view: keep "You" at real GPS + separate customer destination pin.
+                  final double carLat = (arrived && !providerView) ? destLat : vehicleLat;
+                  final double carLng = (arrived && !providerView) ? destLng : vehicleLng;
+
+                  final List<Offset> liveGpsRoute = [
+                    Offset(vehicleLat, vehicleLng),
+                    Offset(
+                      (vehicleLat * 0.65) + (destLat * 0.35),
+                      (vehicleLng * 0.55) + (destLng * 0.45),
+                    ),
+                    Offset(
+                      (vehicleLat * 0.35) + (destLat * 0.65),
+                      (vehicleLng * 0.35) + (destLng * 0.65),
+                    ),
+                    Offset(destLat, destLng),
+                  ];
+                  final liveScreenRoute =
+                      liveGpsRoute.map((pt) => toScreen(pt.dx, pt.dy)).toList();
+                  Offset carScreen = toScreen(carLat, carLng);
+                  final Offset destScreen = toScreen(destLat, destLng);
+                  if (providerView && hasCustomerPin) {
+                    final double screenGap = (carScreen - destScreen).distance;
+                    if (screenGap < 36.0) {
+                      carScreen = Offset(
+                        carScreen.dx - 20.0,
+                        carScreen.dy + 24.0,
+                      );
+                    }
+                  }
+                  final double carAngle = _angleToward(
+                    fromLat: vehicleLat,
+                    fromLng: vehicleLng,
+                    toLat: destLat,
+                    toLng: destLng,
+                    toScreen: toScreen,
+                  );
+
+                  final String carBadge = providerView
+                      ? tr.youBadge
+                      : ((widget.driverName != null &&
+                              widget.driverName!.trim().isNotEmpty)
+                          ? widget.driverName!.trim().split(' ').first
+                          : 'Provider');
+
+                  final String destLabel = (widget.destinationName?.trim().isNotEmpty ==
+                          true)
+                      ? widget.destinationName!.trim().split(' ').first
+                      : (providerView ? 'Customer' : tr.youBadge);
 
                   return Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      // Interactive Car with live real distance badge
+                      CustomPaint(
+                        size: Size(width, height),
+                        painter: _LiveRoutePolylinePainter(
+                          waypoints: liveScreenRoute,
+                          color: const Color(0xFF8B53FE),
+                          strokeWidth: 4.5,
+                        ),
+                      ),
                       Positioned(
-                        left: carPos.dx - 45.0,
-                        top: carPos.dy - 50.0,
+                        left: carScreen.dx - 45.0,
+                        top: carScreen.dy - 50.0,
                         width: 90.0,
                         height: 74.0,
                         child: TopDownCarWidget(
-                          carId: widget.driverName ?? 'provider',
+                          carId: widget.driverName ?? 'vehicle',
                           width: 17.0,
                           height: 29.0,
                           angle: carAngle,
-                          driverName: (widget.driverName != null && widget.driverName!.trim().isNotEmpty)
-                              ? widget.driverName!.trim().split(' ').first
-                              : 'Provider',
-                          distanceKm: widget.trackingStep == MapTrackingStep.arrived ? null : realDistanceKm,
+                          driverName: carBadge,
+                          distanceKm: arrived ? null : realDistanceKm,
                           showBadge: true,
                           bodyColor: const Color(0xFFA67AFE),
-                          onTap: _handleCarTap,
+                          onTap: widget.isProviderPerspective ? null : _handleCarTap,
                         ),
                       ),
+                      if (!providerView && userLoc.hasValidDeviceGps)
+                        Positioned(
+                          left: userScreenPos.dx - 24.0,
+                          top: userScreenPos.dy - 24.0,
+                          child: _buildUserLocationMarker(tr),
+                        ),
+                      if (providerView)
+                        Positioned(
+                          left: destScreen.dx - 24.0,
+                          top: destScreen.dy - 40.0,
+                          child: _buildDestinationMarker(destLabel),
+                        ),
                     ],
                   );
-                },
-              ),
-
-              // 3. User Marker Pin with Glowing Concentric Halos & "You" Bubble
-              if (userLoc.hasValidDeviceGps)
-                Positioned(
-                  left: userScreenPos.dx - 24.0,
-                  top: userScreenPos.dy - 24.0,
-                  child: _buildUserLocationMarker(tr),
+                  },
                 ),
+              ),
             ] else if (widget.trackingStep == MapTrackingStep.none) ...[
               // Always show real live customer GPS marker on background maps when GPS is active
               if (userLoc.hasValidDeviceGps)
@@ -502,7 +676,7 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
                     distanceKm: realDistanceKm,
                     showBadge: true,
                     bodyColor: const Color(0xFFA67AFE),
-                    onTap: _handleCarTap,
+                    onTap: widget.isProviderPerspective ? null : _handleCarTap,
                   ),
                 ),
             ] else if (widget.trackingStep == MapTrackingStep.requestSent) ...[
@@ -550,7 +724,7 @@ class RealMapBackgroundWidgetState extends ConsumerState<RealMapBackgroundWidget
                     distanceKm: realDistanceKm,
                     showBadge: true,
                     bodyColor: const Color(0xFFA67AFE),
-                    onTap: _handleCarTap,
+                    onTap: widget.isProviderPerspective ? null : _handleCarTap,
                   ),
                 ),
             ],

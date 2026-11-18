@@ -23,6 +23,7 @@ import {
   registerProviderDeviceToken,
   removeProviderDeviceToken,
   updateProviderRequestStatus,
+  recordProviderContactAttempt,
 } from "../notifications.service.js";
 import {
   checkDocumentExpiry,
@@ -183,6 +184,18 @@ const handleUpdateRequestStatus = asyncHandler(async (req, res) => {
 
 providerRoutes.patch("/me/requests/:requestId/status", requireProvider, handleUpdateRequestStatus);
 providerRoutes.put("/me/requests/:requestId/status", requireProvider, handleUpdateRequestStatus);
+
+providerRoutes.post(
+  "/me/requests/:requestId/contact",
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    const channel = req.body?.channel;
+    ok(
+      res,
+      await recordProviderContactAttempt(req.provider.id, req.params.requestId, { channel }),
+    );
+  }),
+);
 
 providerRoutes.put(
   "/me/profile",

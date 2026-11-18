@@ -65,16 +65,16 @@ class _VehicleServiceDetailsFormLayoutState
         setState(() {
           if (cats.isNotEmpty) {
             _liveServiceCategories = cats.map((c) => c.name.toString()).toList();
-            if (_serviceCategoryCtrl.text.isEmpty ||
+            if (_serviceCategoryCtrl.text.isNotEmpty &&
                 !_liveServiceCategories.contains(_serviceCategoryCtrl.text)) {
-              _serviceCategoryCtrl.text = _liveServiceCategories.first;
+              _serviceCategoryCtrl.clear();
             }
           }
           if (types.isNotEmpty) {
             _liveVehicleTypes = types;
-            if (_vehicleTypeCtrl.text.isEmpty ||
+            if (_vehicleTypeCtrl.text.isNotEmpty &&
                 !_liveVehicleTypes.contains(_vehicleTypeCtrl.text)) {
-              _vehicleTypeCtrl.text = types.first;
+              _vehicleTypeCtrl.clear();
             }
           }
         });

@@ -278,6 +278,57 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
 
   /// Unified deduplicated customer notification dispatcher for EVERY request step:
   /// Accept ('active'), Reach/Arrive ('arrived'), Start ('in_progress'), Complete ('completed'), Decline/Cancel ('cancelled').
+  /// When provider taps Call / WhatsApp, customer poll picks up [providerContactSeq] from backend.
+  void notifyCustomerProviderContactIfNeeded({
+    required String requestId,
+    required Map<String, dynamic> statusPayload,
+    required String providerName,
+    required String serviceCategory,
+    String? photoUrl,
+  }) {
+    final seq = (statusPayload['providerContactSeq'] as num?)?.toInt() ?? 0;
+    if (seq <= 0) return;
+
+    final dedupKey = '${requestId.trim()}_provider_contact_$seq';
+    if (_notifiedCustomerKeys.contains(dedupKey)) return;
+    _notifiedCustomerKeys.add(dedupKey);
+
+    var channel = 'call';
+    final contact = statusPayload['lastProviderContact'];
+    if (contact is Map) {
+      channel = contact['channel']?.toString().toLowerCase() ?? 'call';
+    }
+    final isWhatsApp = channel == 'whatsapp';
+
+    final safeProvider = providerName.trim().isNotEmpty ? providerName.trim() : 'Provider';
+    final safeCategory = serviceCategory.trim().isNotEmpty ? serviceCategory.trim() : 'Service';
+
+    HapticFeedback.mediumImpact();
+    setCustomerNotification(
+      AppNotificationItem(
+        id: dedupKey,
+        badgeTextEn: isWhatsApp ? 'WhatsApp' : 'Phone Call',
+        badgeTextAr: isWhatsApp ? 'واتساب' : 'اتصال',
+        titleEn: isWhatsApp
+            ? '$safeProvider opened WhatsApp to reach you'
+            : '$safeProvider is trying to call you',
+        titleAr: isWhatsApp
+            ? 'فتح $safeProvider واتساب للتواصل معك'
+            : 'يحاول $safeProvider الاتصال بك',
+        locationEn: safeCategory,
+        locationAr: safeCategory,
+        distanceEn: '',
+        distanceAr: '',
+        timeEn: 'Just now',
+        timeAr: 'الآن',
+        createdAt: DateTime.now().toUtc(),
+        imageAsset: photoUrl,
+      ),
+      showCard: true,
+      autoHideDuration: const Duration(seconds: 5),
+    );
+  }
+
   void notifyCustomerRequestStatusChange({
     required String requestId,
     required String status,
