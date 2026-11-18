@@ -106,14 +106,7 @@ export async function seed(pool = getPool(), { forceClean = false } = {}) {
     await pool.query(
       `INSERT INTO categories (name, slug, subtitle, subtitle_ar, name_ar, sort_order, icon_url, is_enabled)
        VALUES ($1, $2, $3, $4, $5, $6, $7, true)
-       ON CONFLICT (slug) DO UPDATE SET 
-         is_enabled = true, 
-         name = EXCLUDED.name, 
-         name_ar = EXCLUDED.name_ar, 
-         subtitle = EXCLUDED.subtitle, 
-         subtitle_ar = EXCLUDED.subtitle_ar, 
-         sort_order = EXCLUDED.sort_order,
-         icon_url = EXCLUDED.icon_url`,
+       ON CONFLICT (slug) DO NOTHING`,
       [name, slug, subtitle, subtitleAr, nameAr, sortOrder, iconUrl],
     );
   }

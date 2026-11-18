@@ -3,12 +3,14 @@ import 'package:flutter/foundation.dart';
 import '../services/google_maps_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/api/api_client.dart';
+import '../core/config/app_config.dart';
 import '../models/category_model.dart';
 import '../models/health_status_model.dart';
 import '../services/backend_service.dart';
 import '../models/provider_model.dart';
 import '../models/provider_dashboard_model.dart';
 import '../services/location_service.dart';
+import '../features/home/presentation/widgets/category_image_loader.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient();
@@ -59,7 +61,29 @@ class CategoriesNotifier extends AsyncNotifier<List<CategoryModel>> {
     // Background sync every 15s to keep state fresh without overwhelming network
     _syncTimer = Timer.periodic(const Duration(seconds: 15), (_) => _syncCategories());
 
-    return await service.getCategories();
+    // Instant zero-delay startup: retrieve cached admin categories immediately
+    final cached = await service.getCachedCategories();
+    if (cached != null && cached.isNotEmpty) {
+      _preloadImages(cached);
+      Future.microtask(() => _syncCategories());
+      return cached;
+    }
+
+    final fresh = await service.getCategories();
+    _preloadImages(fresh);
+    return fresh;
+  }
+
+  void _preloadImages(List<CategoryModel> items) {
+    for (final c in items) {
+      final url = c.iconUrl;
+      if (url != null && (url.startsWith('http') || url.startsWith('/uploads/') || url.startsWith('uploads/'))) {
+        final resolvedUrl = url.startsWith('uploads/')
+            ? '${AppConfig.baseUrl}/$url'
+            : (url.startsWith('/') ? '${AppConfig.baseUrl}$url' : url);
+        CategoryImageCache.preload(resolvedUrl);
+      }
+    }
   }
 
   Future<void> _syncCategories() async {
@@ -69,6 +93,7 @@ class CategoriesNotifier extends AsyncNotifier<List<CategoryModel>> {
 
       final current = state.value;
       if (current == null || !listEquals(current, fresh)) {
+        _preloadImages(fresh);
         state = AsyncData(fresh);
       }
     } catch (_) {

@@ -1,6 +1,8 @@
 // ignore_for_file: use_null_aware_elements
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
 import '../models/auth_model.dart';
@@ -1110,6 +1112,33 @@ class BackendService {
     }
   }
 
+  static const String _categoriesCacheKey = 'qareeb_cached_backend_categories_v2';
+
+  /// Save real categories configured in Admin Panel to persistent disk cache
+  Future<void> _saveCachedCategories(List<CategoryModel> categories) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList = categories.map((c) => c.toJson()).toList();
+      await prefs.setString(_categoriesCacheKey, jsonEncode(jsonList));
+    } catch (_) {}
+  }
+
+  /// Retrieve cached real categories immediately (0ms delay)
+  Future<List<CategoryModel>?> getCachedCategories() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final str = prefs.getString(_categoriesCacheKey);
+      if (str != null && str.isNotEmpty) {
+        final decoded = jsonDecode(str) as List<dynamic>;
+        final list = decoded
+            .map((item) => CategoryModel.fromJson(item as Map<String, dynamic>))
+            .toList();
+        if (list.isNotEmpty) return list;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Fetch active service categories
   Future<List<CategoryModel>> getCategories() async {
     try {
@@ -1129,10 +1158,19 @@ class BackendService {
         final list = items
             .map((item) => CategoryModel.fromJson(item as Map<String, dynamic>))
             .toList();
-        if (list.isNotEmpty) return list;
+        if (list.isNotEmpty) {
+          await _saveCachedCategories(list);
+          return list;
+        }
       }
     } catch (_) {
       // Server error or offline
+    }
+
+    // Never show seed data if real categories were previously synced from Admin Panel
+    final cached = await getCachedCategories();
+    if (cached != null && cached.isNotEmpty) {
+      return cached;
     }
 
     return CategoryModel.defaultCategories;

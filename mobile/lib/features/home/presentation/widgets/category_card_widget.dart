@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/localization/app_locale.dart';
 import '../../../../models/category_model.dart';
+import 'category_image_loader.dart';
 
 /// Category card widget strictly matching Figma specifications:
 /// Outer Card:
@@ -148,10 +149,10 @@ class CategoryCardWidget extends StatelessWidget {
     if (lower.contains('mechanic') || lower.contains('ميكانيك')) {
       return 'assets/images/car_mechanic.png';
     }
-    if (lower.contains('large_pickup') || lower.contains('large pickup') || lower.contains('كبيرة')) {
+    if (lower.contains('large_pickup') || lower.contains('large pickup') || lower.contains('large dyna') || lower.contains('large dayna') || (lower.contains('large') && (lower.contains('dyna') || lower.contains('dayna'))) || lower.contains('كبيرة')) {
       return 'assets/images/large_pickup_dyna.png';
     }
-    if (lower.contains('small_pickup') || lower.contains('small pickup') || lower.contains('صغيرة') || lower.contains('dyna')) {
+    if (lower.contains('small_pickup') || lower.contains('small pickup') || lower.contains('small dyna') || lower.contains('small dayna') || (lower.contains('small') && (lower.contains('dyna') || lower.contains('dayna'))) || lower.contains('صغيرة') || lower.contains('dyna') || lower.contains('dayna')) {
       return 'assets/images/small_pickup_dyna.png';
     }
     if (lower.contains('large_water') || lower.contains('large water') || lower.contains('وايت')) {
@@ -280,18 +281,19 @@ class CategoryCardWidget extends StatelessWidget {
     }
     // 4. Remote HTTP/HTTPS URL or Server Uploaded URL (/uploads/categories/...)
     else if (networkImageUrl != null &&
-        (networkImageUrl!.startsWith('http') || networkImageUrl!.startsWith('/uploads/'))) {
-      final resolvedUrl = networkImageUrl!.startsWith('/')
-          ? '${AppConfig.baseUrl}$networkImageUrl'
-          : networkImageUrl!;
-      content = Image.network(
-        resolvedUrl,
+        (networkImageUrl!.startsWith('http') ||
+            networkImageUrl!.startsWith('/uploads/') ||
+            networkImageUrl!.startsWith('uploads/'))) {
+      final resolvedUrl = networkImageUrl!.startsWith('uploads/')
+          ? '${AppConfig.baseUrl}/$networkImageUrl'
+          : (networkImageUrl!.startsWith('/')
+              ? '${AppConfig.baseUrl}$networkImageUrl'
+              : networkImageUrl!);
+      content = CategoryImageWidget(
+        url: resolvedUrl,
+        fallback: _buildFallbackImage(),
         width: 98.0,
         height: 60.0,
-        fit: BoxFit.contain,
-        alignment: AlignmentDirectional.centerStart,
-        filterQuality: FilterQuality.high,
-        errorBuilder: (_, _, _) => _buildFallbackImage(),
       );
     }
     // 5. Explicit local asset path

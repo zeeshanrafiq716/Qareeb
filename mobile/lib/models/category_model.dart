@@ -71,15 +71,15 @@ class CategoryModel {
     // 1. Direct slug / key mapping to 26 official category assets
     if (s == 'tow-truck' || s == 'tow_truck' || s.contains('tow') || n.contains('tow') || n.contains('سطحة')) {
       return 'assets/images/tow_truck.png';
-    } else if (s == 'tyre-puncture-repair' || s == 'tyre_repair' || s.contains('tyre') || s.contains('tire') || s.contains('puncture') || n.contains('بنشر') || n.contains('كاوتش')) {
+    } else if (s == 'tyre-puncture-repair' || s == 'tyre_repair' || s == 'tyre-puncture' || s.contains('tyre') || s.contains('tire') || s.contains('puncture') || n.contains('بنشر') || n.contains('كاوتش')) {
       return 'assets/images/tyre_repair.png';
     } else if (s == 'fuel-delivery' || s == 'fuel_delivery' || s.contains('fuel') || n.contains('وقود')) {
       return 'assets/images/fuel_delivery.png';
     } else if (s == 'car-mechanic' || s == 'car_mechanic' || s.contains('mechanic') || n.contains('ميكانيك')) {
       return 'assets/images/car_mechanic.png';
-    } else if (s == 'small-pickup-dyna' || s == 'small_pickup_dyna' || s.contains('small_pickup') || n.contains('صغيرة')) {
+    } else if (s == 'small-pickup-dyna' || s == 'small_pickup_dyna' || s == 'small-dayna' || s.contains('small_pickup') || (s.contains('small') && (s.contains('dyna') || s.contains('dayna'))) || n.contains('صغيرة')) {
       return 'assets/images/small_pickup_dyna.png';
-    } else if (s == 'large-pickup-dyna' || s == 'large_pickup_dyna' || s.contains('large_pickup') || n.contains('كبيرة')) {
+    } else if (s == 'large-pickup-dyna' || s == 'large_pickup_dyna' || s == 'large-dyna' || s.contains('large_pickup') || (s.contains('large') && (s.contains('dyna') || s.contains('dayna'))) || n.contains('كبيرة')) {
       return 'assets/images/large_pickup_dyna.png';
     } else if (s == 'small-water-tanker' || s == 'small_water_tanker' || (s.contains('water') && s.contains('small'))) {
       return 'assets/images/small_water_tanker.png';
@@ -95,9 +95,9 @@ class CategoryModel {
       return 'assets/images/plumber.png';
     } else if (s == 'house-cleaning' || s == 'house_cleaning' || s.contains('clean') || n.contains('تنظيف')) {
       return 'assets/images/house_cleaning.png';
-    } else if (s == 'washing-machine-tech' || s == 'washing_machine_tech' || s.contains('washing') || s.contains('washer') || n.contains('غسال')) {
+    } else if (s == 'washing-machine-tech' || s == 'washing_machine_tech' || s == 'machine-tech' || s.contains('washing') || s.contains('washer') || n.contains('غسال')) {
       return 'assets/images/washing_machine_tech.png';
-    } else if (s == 'refrigerator-tech' || s == 'refrigerator_tech' || s.contains('refrig') || s.contains('fridge') || n.contains('ثلاج')) {
+    } else if (s == 'refrigerator-tech' || s == 'refrigerator_tech' || s == 'fridge-tech' || s.contains('refrig') || s.contains('fridge') || n.contains('ثلاج')) {
       return 'assets/images/refrigerator_tech.png';
     } else if (s == 'appliance-technician' || s == 'appliance_technician' || s.contains('appliance') || n.contains('أجهزة')) {
       return 'assets/images/appliance_technician.png';
@@ -415,11 +415,16 @@ class CategoryModel {
         json['icon'] as String?;
 
     // Prepend API base URL only if relative server upload path (e.g. /uploads/...)
-    if (rawIcon != null &&
-        rawIcon.startsWith('/') &&
-        !rawIcon.startsWith('//') &&
-        !rawIcon.startsWith('/assets/')) {
-      rawIcon = '${AppConfig.baseUrl}$rawIcon';
+    if (rawIcon != null && rawIcon.isNotEmpty) {
+      if (rawIcon.startsWith('/uploads/')) {
+        rawIcon = '${AppConfig.baseUrl}$rawIcon';
+      } else if (rawIcon.startsWith('uploads/')) {
+        rawIcon = '${AppConfig.baseUrl}/$rawIcon';
+      } else if (rawIcon.startsWith('/') &&
+          !rawIcon.startsWith('//') &&
+          !rawIcon.startsWith('/assets/')) {
+        rawIcon = '${AppConfig.baseUrl}$rawIcon';
+      }
     }
 
     final rawName = json['name'] as String? ?? 'General Service';

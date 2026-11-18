@@ -37,9 +37,65 @@ function compressAssetImage(file, maxWidth = 392, maxHeight = 240) {
   return new Promise((resolve) => {
     if (!file) return resolve('')
     if (file.type === 'image/svg+xml') {
-      const reader = new FileReader()
-      reader.onload = (e) => resolve(e.target.result)
-      reader.readAsDataURL(file)
+      const textReader = new FileReader()
+      textReader.onload = (e) => {
+        const svgText = e.target.result || ''
+        // If the SVG has an embedded raster PNG/JPEG (e.g. from Figma export), extract it directly
+        const embeddedMatch = svgText.match(/data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=\s]+)/)
+        if (embeddedMatch && embeddedMatch[2]) {
+          const mime = embeddedMatch[1] === 'jpg' ? 'jpeg' : embeddedMatch[1]
+          const cleanB64 = embeddedMatch[2].replace(/\s+/g, '')
+          const directDataUrl = `data:image/${mime};base64,${cleanB64}`
+
+          const img = new Image()
+          img.onload = () => {
+            let width = img.width
+            let height = img.height
+            if (width > maxWidth || height > maxHeight) {
+              const ratio = Math.min(maxWidth / width, maxHeight / height)
+              width = Math.round(width * ratio)
+              height = Math.round(height * ratio)
+            }
+            const canvas = document.createElement('canvas')
+            canvas.width = width
+            canvas.height = height
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(img, 0, 0, width, height)
+            resolve(canvas.toDataURL('image/png', 0.92))
+          }
+          img.onerror = () => resolve(directDataUrl)
+          img.src = directDataUrl
+          return
+        }
+
+        // Vector SVG: rasterize to crisp 4x retina canvas PNG
+        const blob = new Blob([svgText], { type: 'image/svg+xml' })
+        const blobUrl = URL.createObjectURL(blob)
+        const img = new Image()
+        img.onload = () => {
+          let width = img.width || maxWidth
+          let height = img.height || maxHeight
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height)
+            width = Math.round(width * ratio)
+            height = Math.round(height * ratio)
+          }
+          const canvas = document.createElement('canvas')
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+          URL.revokeObjectURL(blobUrl)
+          resolve(canvas.toDataURL('image/png', 0.92))
+        }
+        img.onerror = () => {
+          URL.revokeObjectURL(blobUrl)
+          resolve(`data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgText)))}`)
+        }
+        img.src = blobUrl
+      }
+      textReader.onerror = () => resolve('')
+      textReader.readAsText(file)
       return
     }
 

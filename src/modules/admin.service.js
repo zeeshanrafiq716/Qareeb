@@ -1054,11 +1054,34 @@ export async function addCategoryAsset({ label, dataUrl, filename }) {
     }
 
     const buffer = Buffer.from(cleanBase64, 'base64');
-    const fileName = `cat_asset_${stamp}.${ext}`;
-    const filePath = path.resolve(process.cwd(), env.UPLOAD_DIR, 'categories', fileName);
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, buffer);
-    finalPath = `/uploads/categories/${fileName}`;
+
+    // If an SVG with embedded raster PNG/JPEG was uploaded, extract direct raster image for ultra-fast mobile loading
+    if (ext === 'svg') {
+      try {
+        const svgText = buffer.toString('utf-8');
+        const embeddedMatch = svgText.match(/data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=\s]+)/);
+        if (embeddedMatch && embeddedMatch[2]) {
+          const rasterExt = embeddedMatch[1] === 'jpeg' ? 'jpg' : embeddedMatch[1];
+          const rasterClean = embeddedMatch[2].replace(/\s+/g, '');
+          const rasterBuf = Buffer.from(rasterClean, 'base64');
+          const rasterFileName = `cat_asset_${stamp}.${rasterExt}`;
+          const rasterPath = path.resolve(process.cwd(), env.UPLOAD_DIR, 'categories', rasterFileName);
+          fs.mkdirSync(path.dirname(rasterPath), { recursive: true });
+          fs.writeFileSync(rasterPath, rasterBuf);
+          finalPath = `/uploads/categories/${rasterFileName}`;
+        }
+      } catch (err) {
+        // Fall back to writing raw SVG below
+      }
+    }
+
+    if (!finalPath) {
+      const fileName = `cat_asset_${stamp}.${ext}`;
+      const filePath = path.resolve(process.cwd(), env.UPLOAD_DIR, 'categories', fileName);
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      fs.writeFileSync(filePath, buffer);
+      finalPath = `/uploads/categories/${fileName}`;
+    }
   } else if (filename) {
     finalPath = filename;
   } else {
