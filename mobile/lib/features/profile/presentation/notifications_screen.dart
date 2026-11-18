@@ -116,6 +116,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             fallbackBodyEn = 'A customer sent you a service request on Zesho.';
             fallbackBodyAr = 'أرسل لك عميل طلب خدمة عبر زيشو.';
             break;
+          case 'request_cancelled':
+            icon = Icons.cancel_rounded;
+            fallbackTitleEn = 'Request cancelled';
+            fallbackTitleAr = 'تم إلغاء الطلب';
+            fallbackBodyEn = 'A customer cancelled their service request on Zesho.';
+            fallbackBodyAr = 'ألغى عميل طلب الخدمة عبر زيشو.';
+            break;
         }
 
         final title = raw['title']?.toString().trim() ?? '';
@@ -130,6 +137,37 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           'timeEn': _formatNotifTime(createdAt, isArabic: false),
           'timeAr': _formatNotifTime(createdAt, isArabic: true),
           'isRead': _forceAllRead ? true : (raw['isRead'] == true),
+          'icon': icon,
+        });
+      }
+      if (items.isNotEmpty) return items;
+    }
+
+    if (!widget.isProvider) {
+      final notifState = ref.watch(notificationsProvider);
+      for (final n in notifState.customerHistory) {
+        if (n.isExpired) continue;
+        final lowerBadge = n.badgeTextEn.toLowerCase();
+        IconData icon = Icons.notifications_active_rounded;
+        if (lowerBadge.contains('accept')) {
+          icon = Icons.check_circle_rounded;
+        } else if (lowerBadge.contains('arriv') || lowerBadge.contains('reach')) {
+          icon = Icons.location_on_rounded;
+        } else if (lowerBadge.contains('progress')) {
+          icon = Icons.build_circle_rounded;
+        } else if (lowerBadge.contains('complet')) {
+          icon = Icons.task_alt_rounded;
+        } else if (lowerBadge.contains('declin') || lowerBadge.contains('cancel')) {
+          icon = Icons.cancel_rounded;
+        }
+        items.add({
+          'titleEn': n.titleEn,
+          'titleAr': n.titleAr,
+          'messageEn': n.locationEn,
+          'messageAr': n.locationAr,
+          'timeEn': _formatNotifTime(n.createdAt?.toIso8601String(), isArabic: false),
+          'timeAr': _formatNotifTime(n.createdAt?.toIso8601String(), isArabic: true),
+          'isRead': _forceAllRead ? true : n.isRead,
           'icon': icon,
         });
       }

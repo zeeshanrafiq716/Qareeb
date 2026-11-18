@@ -74,6 +74,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
     if (!mounted || data == null) return;
 
     final status = (data['status']?.toString() ?? _liveStatus).toLowerCase();
+    final cancelledBy = data['cancelledBy']?.toString();
     final step = (data['step'] is num)
         ? (data['step'] as num).toInt()
         : int.tryParse(data['step']?.toString() ?? '') ?? 1;
@@ -92,50 +93,14 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
     }
 
     if (status != prevStatus) {
-      String badgeEn = 'Request Update';
-      String badgeAr = 'تحديث الطلب';
-      String titleEn = '${widget.providerName} updated your request';
-      String titleAr = 'قام ${widget.providerName} بتحديث طلبك';
-      if (status == 'arrived') {
-        badgeEn = 'Provider Arrived';
-        badgeAr = 'وصل المزود';
-        titleEn = '${widget.providerName} has arrived';
-        titleAr = 'وصل ${widget.providerName} إلى موقعك';
-      } else if (status == 'in_progress') {
-        badgeEn = 'In Progress';
-        badgeAr = 'جاري التنفيذ';
-        titleEn = '${widget.serviceCategory} is now in progress';
-        titleAr = 'بدأ تنفيذ ${widget.serviceCategory}';
-      } else if (status == 'completed') {
-        badgeEn = 'Completed';
-        badgeAr = 'مكتمل';
-        titleEn = '${widget.serviceCategory} completed';
-        titleAr = 'تمت الخدمة بنجاح';
-      } else if (status == 'cancelled') {
-        badgeEn = 'Request Cancelled';
-        badgeAr = 'تم إلغاء الطلب';
-        titleEn = '${widget.providerName} cancelled the request';
-        titleAr = 'ألغى ${widget.providerName} الطلب';
-      }
-      HapticFeedback.heavyImpact();
-      ref.read(notificationsProvider.notifier).setCustomerNotification(
-            AppNotificationItem(
-              id: '${reqId}_$status',
-              badgeTextEn: badgeEn,
-              badgeTextAr: badgeAr,
-              titleEn: titleEn,
-              titleAr: titleAr,
-              locationEn: widget.serviceCategory,
-              locationAr: widget.serviceCategory,
-              distanceEn: '',
-              distanceAr: '',
-              timeEn: 'Just now',
-              timeAr: 'الآن',
-              createdAt: DateTime.now().toUtc(),
-              imageAsset: widget.photoUrl,
-            ),
-            showCard: true,
-            autoHideDuration: const Duration(seconds: 4),
+      ref.read(notificationsProvider.notifier).notifyCustomerRequestStatusChange(
+            requestId: reqId,
+            status: status,
+            providerName: widget.providerName,
+            serviceCategory: widget.serviceCategory,
+            distance: widget.distance,
+            photoUrl: widget.photoUrl,
+            cancelledBy: cancelledBy,
           );
     }
 

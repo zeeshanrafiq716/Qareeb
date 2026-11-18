@@ -15,7 +15,7 @@ import {
   searchDiscovery,
 } from "../discovery.service.js";
 import { trackCustomerDiscoveryEvent } from "../funnel.service.js";
-import { getCustomerRequestStatus } from "../notifications.service.js";
+import { cancelCustomerRequest, getCustomerRequestStatus } from "../notifications.service.js";
 
 function customerSessionId(req, querySessionId) {
   const header = req.get("X-Customer-Session")?.trim();
@@ -93,5 +93,17 @@ discoveryRoutes.get(
   "/requests/:requestId",
   asyncHandler(async (req, res) => {
     ok(res, await getCustomerRequestStatus(req.params.requestId));
+  }),
+);
+
+discoveryRoutes.post(
+  "/requests/:requestId/cancel",
+  asyncHandler(async (req, res) => {
+    ok(
+      res,
+      await cancelCustomerRequest(req.params.requestId, {
+        customerName: req.body?.customerName,
+      }),
+    );
   }),
 );

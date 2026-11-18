@@ -20,6 +20,7 @@ const PROVIDER_NOTIFY_EVENTS = new Set([
   "whatsapp_click",
   "share_location_click",
   "send_request_click",
+  "request_cancelled",
 ]);
 
 function notificationCopy(eventType) {
@@ -43,6 +44,11 @@ function notificationCopy(eventType) {
       return {
         title: "New service request",
         body: "A customer sent you a service request on Zesho.",
+      };
+    case "request_cancelled":
+      return {
+        title: "Request cancelled",
+        body: "A customer cancelled their service request on Zesho.",
       };
     default:
       return { title: "Customer activity", body: "New customer activity on your profile." };
@@ -177,6 +183,8 @@ export async function updateProviderRequestStatus(providerId, rawRequestId, { st
     requestStatus: normalizedStatus,
     step: resolvedStep,
     statusUpdatedAt: updatedAt,
+    updatedBy: "provider",
+    ...(normalizedStatus === "cancelled" ? { cancelledBy: "provider" } : {}),
   };
 
   const { rows } = await query(
@@ -238,6 +246,8 @@ export async function getCustomerRequestStatus(rawRequestId) {
     requestId: row.id,
     status: String(meta.requestStatus || "new").toLowerCase(),
     step: Number(meta.step ?? 0),
+    cancelledBy: meta.cancelledBy || null,
+    updatedBy: meta.updatedBy || null,
     providerPublicId: row.public_id,
     providerName: row.provider_name,
     providerPhone: row.provider_phone,
@@ -249,6 +259,82 @@ export async function getCustomerRequestStatus(rawRequestId) {
     customerAddress: meta.customerAddress || "",
     distance: meta.distance || "",
     updatedAt: meta.statusUpdatedAt || row.created_at,
+  };
+}
+
+export async function cancelCustomerRequest(rawRequestId, { customerName } = {}) {
+  const cleanId = String(rawRequestId || "").replace(/^REQ-/i, "").trim();
+  if (!UUID_REGEX.test(cleanId)) {
+    throw new AppError(400, "Invalid request ID", "INVALID_REQUEST_ID");
+  }
+
+  const updatedAt = new Date().toISOString();
+  const patch = {
+    requestStatus: "cancelled",
+    step: 0,
+    cancelledBy: "customer",
+    updatedBy: "customer",
+    statusUpdatedAt: updatedAt,
+  };
+
+  const { rows } = await query(
+    `UPDATE provider_notifications
+     SET metadata = COALESCE(metadata, '{}'::jsonb) || $2::jsonb
+     WHERE id = $1::uuid AND event_type = 'send_request_click'
+     RETURNING id, provider_id, customer_session_id, customer_latitude, customer_longitude, metadata`,
+    [cleanId, JSON.stringify(patch)],
+  );
+
+  const original = rows[0];
+  if (!original) {
+    throw new NotFoundError("Service request not found");
+  }
+
+  const meta = original.metadata && typeof original.metadata === "object" ? original.metadata : {};
+  const resolvedCustomerName =
+    (customerName && String(customerName).trim()) ||
+    (meta.customerName && String(meta.customerName).trim()) ||
+    "Customer";
+  const serviceCategory = (meta.serviceCategory && String(meta.serviceCategory).trim()) || "Service request";
+  const cancelBody = `${resolvedCustomerName} cancelled the ${serviceCategory} request on Zesho.`;
+
+  const inserted = await query(
+    `INSERT INTO provider_notifications
+       (provider_id, event_type, title, body, customer_session_id, customer_latitude, customer_longitude, metadata)
+     VALUES ($1, 'request_cancelled', $2, $3, $4, $5, $6, $7::jsonb)
+     RETURNING id, event_type, title, body, customer_session_id, customer_latitude, customer_longitude, metadata, is_read, created_at`,
+    [
+      original.provider_id,
+      "Request cancelled",
+      cancelBody,
+      original.customer_session_id,
+      original.customer_latitude,
+      original.customer_longitude,
+      JSON.stringify({
+        requestId: original.id,
+        serviceCategory,
+        customerName: resolvedCustomerName,
+        cancelledBy: "customer",
+      }),
+    ],
+  );
+
+  await sendPushToProvider(original.provider_id, {
+    title: "Request cancelled",
+    body: cancelBody,
+    data: {
+      eventType: "request_cancelled",
+      requestId: original.id,
+      notificationId: inserted.rows[0]?.id,
+    },
+  }).catch(() => {});
+
+  return {
+    requestId: original.id,
+    status: "cancelled",
+    cancelledBy: "customer",
+    updatedAt,
+    notification: inserted.rows[0] ? serializeProviderNotification(inserted.rows[0]) : null,
   };
 }
 

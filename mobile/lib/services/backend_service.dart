@@ -897,6 +897,27 @@ class BackendService {
     return null;
   }
 
+  /// Customer cancels a sent request -> updates backend status to 'cancelled' AND notifies the provider!
+  Future<bool> cancelCustomerRequest(
+    String requestId, {
+    String? customerName,
+  }) async {
+    final cleanId = requestId.replaceFirst(RegExp(r'^REQ-', caseSensitive: false), '').trim();
+    if (cleanId.isEmpty) return false;
+    try {
+      final response = await _client.post(
+        '/api/v1/discovery/requests/$cleanId/cancel',
+        data: {
+          if (customerName != null && customerName.trim().isNotEmpty)
+            'customerName': customerName.trim(),
+        },
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Update provider online/offline presence status
   Future<bool> updateProviderPresence(bool isOnline) async {
     try {

@@ -209,6 +209,10 @@ class LocationService {
           position.accuracy,
         );
       }
+      // If rejected only because phone is stationary inside deadband, return the locked stable location!
+      if (lastKnownValidLocation != null && lastKnownValidLocation!.hasValidDeviceGps) {
+        return lastKnownValidLocation!;
+      }
     } on LocationServiceDisabledException {
       rethrow;
     } on PermissionDeniedException {
@@ -278,25 +282,48 @@ class LocationService {
     if (position.accuracy.isNaN || position.accuracy <= 0 || position.accuracy > maxAccuracyMeters) {
       return false;
     }
-    // Anti-drift / anti-teleport guard:
-    // Once we have a sharp GPS lock (<= 25m), reject degraded accuracy fixes (> 25m)
-    // unless the user genuinely moved significantly with good accuracy (<= 35m).
+
+    // Stationary GPS deadband & anti-drift filter:
+    // Prevents indoor/stationary GPS jitter from making distance jump automatically without moving!
     final prev = lastKnownValidLocation;
     if (prev != null && prev.hasValidDeviceGps) {
-      final prevAcc = prev.accuracy ?? 999.0;
-      final jumpMeters = Geolocator.distanceBetween(
+      final double prevAcc = prev.accuracy ?? 999.0;
+      final double jumpMeters = Geolocator.distanceBetween(
         prev.latitude,
         prev.longitude,
         position.latitude,
         position.longitude,
       );
-      if (prevAcc <= 25.0 && position.accuracy > 25.0) {
-        if (position.accuracy > 35.0 || jumpMeters < position.accuracy) {
+      final double speedMps =
+          (position.speed.isFinite && position.speed > 0) ? position.speed : 0.0;
+
+      // Combined uncertainty deadband while stationary (minimum 18m, scales with GPS accuracy)
+      final double stationaryDeadband =
+          math.max(18.0, math.max(prevAcc, position.accuracy) * 1.25).clamp(18.0, 55.0);
+
+      // 1. Genuine accuracy upgrade (e.g. rough 40m indoor fix upgrading to sharp <= 12m satellite lock):
+      final bool isSharpAccuracyUpgrade =
+          position.accuracy <= 12.0 && (position.accuracy + 5.0) < prevAcc;
+      if (isSharpAccuracyUpgrade) {
+        return true;
+      }
+
+      // 2. Stationary phone (Doppler speed < 1.0 m/s): ignore random GPS wander within deadband
+      if (speedMps < 1.0 && jumpMeters < stationaryDeadband) {
+        return false;
+      }
+
+      // 3. Real movement check: require sharp GPS so a single noisy cell spike can't break stationary lock
+      if (speedMps >= 1.0) {
+        // Walking / driving: allow updates once displaced >= 6m with sharp GPS
+        if (jumpMeters < 6.0 || position.accuracy > 30.0) {
           return false;
         }
-      }
-      if (prevAcc <= 35.0 && position.accuracy > prevAcc * 1.8 && position.accuracy > 20.0 && jumpMeters < 60.0) {
-        return false;
+      } else {
+        // Large displacement without speed reading: only accept if GPS accuracy is sharp (<= 25m)
+        if (position.accuracy > 25.0) {
+          return false;
+        }
       }
     }
     return true;
@@ -394,8 +421,8 @@ class LocationService {
     await for (final position in Geolocator.getPositionStream(
       locationSettings: AndroidSettings(
         accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 0,
-        intervalDuration: const Duration(seconds: 2),
+        distanceFilter: 5,
+        intervalDuration: const Duration(seconds: 3),
       ),
     )) {
       if (!_isValidDevicePosition(position)) continue;
@@ -412,7 +439,7 @@ class LocationService {
       locationSettings: AppleSettings(
         accuracy: LocationAccuracy.high,
         activityType: ActivityType.otherNavigation,
-        distanceFilter: 5,
+        distanceFilter: 8,
         pauseLocationUpdatesAutomatically: false,
         allowBackgroundLocationUpdates: false,
       ),

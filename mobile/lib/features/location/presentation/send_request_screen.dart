@@ -11,6 +11,7 @@ import '../../../providers/backend_provider.dart';
 import '../../../providers/notifications_provider.dart';
 import '../../../services/location_service.dart';
 import '../../customer/auth/data/customer_auth_store.dart';
+import '../../home/presentation/widgets/notification_popup_card.dart';
 import 'live_tracking_screen.dart';
 import 'widgets/real_map_background_widget.dart';
 import '../../../services/profile_stats_service.dart';
@@ -284,6 +285,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
     if (!mounted || data == null || _navigatedToLive) return;
 
     final status = (data['status']?.toString() ?? 'new').toLowerCase();
+    final cancelledBy = data['cancelledBy']?.toString();
     final step = (data['step'] is num)
         ? (data['step'] as num).toInt()
         : int.tryParse(data['step']?.toString() ?? '') ?? 0;
@@ -299,30 +301,19 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
 
     if (status == 'active' || status == 'arrived' || status == 'in_progress' || step >= 1) {
       _statusPollTimer?.cancel();
+      final effectiveStatus = status == 'new' ? 'active' : status;
       await TaskService.instance.updateTaskStatus(
-        status: status == 'new' ? 'active' : status,
+        status: effectiveStatus,
         step: step >= 1 ? step : 1,
       );
       if (!mounted) return;
-      HapticFeedback.heavyImpact();
-      ref.read(notificationsProvider.notifier).setCustomerNotification(
-            AppNotificationItem(
-              id: 'accepted_$reqId',
-              badgeTextEn: 'Request Accepted',
-              badgeTextAr: 'تم قبول الطلب',
-              titleEn: '${widget.providerName} accepted your request',
-              titleAr: 'قبل ${widget.providerName} طلبك',
-              locationEn: '${widget.serviceCategory} • On the way',
-              locationAr: '${widget.serviceCategory} • في الطريق إليك',
-              distanceEn: widget.distance != '--' ? widget.distance : '',
-              distanceAr: widget.distance != '--' ? widget.distance : '',
-              timeEn: 'Just now',
-              timeAr: 'الآن',
-              createdAt: DateTime.now().toUtc(),
-              imageAsset: _photoUrl,
-            ),
-            showCard: true,
-            autoHideDuration: const Duration(seconds: 4),
+      ref.read(notificationsProvider.notifier).notifyCustomerRequestStatusChange(
+            requestId: reqId,
+            status: effectiveStatus,
+            providerName: widget.providerName,
+            serviceCategory: widget.serviceCategory,
+            distance: widget.distance,
+            photoUrl: _photoUrl,
           );
       _toast(
         tr.isArabic
@@ -334,25 +325,13 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
       _statusPollTimer?.cancel();
       await TaskService.instance.cancelTask();
       if (!mounted) return;
-      HapticFeedback.mediumImpact();
-      ref.read(notificationsProvider.notifier).setCustomerNotification(
-            AppNotificationItem(
-              id: 'declined_$reqId',
-              badgeTextEn: 'Request Declined',
-              badgeTextAr: 'تم رفض الطلب',
-              titleEn: '${widget.providerName} declined the request',
-              titleAr: 'اعتذر ${widget.providerName} عن الطلب',
-              locationEn: widget.serviceCategory,
-              locationAr: widget.serviceCategory,
-              distanceEn: '',
-              distanceAr: '',
-              timeEn: 'Just now',
-              timeAr: 'الآن',
-              createdAt: DateTime.now().toUtc(),
-              imageAsset: _photoUrl,
-            ),
-            showCard: true,
-            autoHideDuration: const Duration(seconds: 4),
+      ref.read(notificationsProvider.notifier).notifyCustomerRequestStatusChange(
+            requestId: reqId,
+            status: 'cancelled',
+            providerName: widget.providerName,
+            serviceCategory: widget.serviceCategory,
+            photoUrl: _photoUrl,
+            cancelledBy: cancelledBy,
           );
       _toast(
         tr.isArabic
@@ -366,6 +345,14 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
     } else if (status == 'completed') {
       _statusPollTimer?.cancel();
       await TaskService.instance.completeTask();
+      if (!mounted) return;
+      ref.read(notificationsProvider.notifier).notifyCustomerRequestStatusChange(
+            requestId: reqId,
+            status: 'completed',
+            providerName: widget.providerName,
+            serviceCategory: widget.serviceCategory,
+            photoUrl: _photoUrl,
+          );
     }
   }
 
@@ -737,6 +724,33 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
                         );
                       },
                     ),
+                  ),
+
+                  // Customer Live Notification Banner Overlay (shows immediately on accept/decline)
+                  Builder(
+                    builder: (context) {
+                      final notifState = ref.watch(notificationsProvider);
+                      final n = notifState.customerNotification;
+                      if (!notifState.isCustomerCardVisible || n == null) {
+                        return const SizedBox.shrink();
+                      }
+                      return Positioned(
+                        top: math.max(92.0, mediaQuery.padding.top + 52.0),
+                        left: 16.0,
+                        right: 16.0,
+                        child: NotificationPopupCard(
+                          badgeText: tr.isArabic ? n.badgeTextAr : n.badgeTextEn,
+                          title: tr.isArabic ? n.titleAr : n.titleEn,
+                          location: tr.isArabic ? n.locationAr : n.locationEn,
+                          distance: tr.isArabic ? n.distanceAr : n.distanceEn,
+                          time: tr.isArabic ? n.timeAr : n.timeEn,
+                          createdAt: n.createdAt,
+                          imageAsset: n.imageAsset,
+                          onTap: () => ref.read(notificationsProvider.notifier).hideCustomerCard(),
+                          onDismiss: () => ref.read(notificationsProvider.notifier).hideCustomerCard(),
+                        ),
+                      );
+                    },
                   ),
 
                           ],
@@ -2019,6 +2033,19 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
       },
     ).then((confirmed) async {
       if (confirmed == true && context.mounted) {
+        _statusPollTimer?.cancel();
+        final reqId = _backendRequestId ??
+            TaskService.extractBackendUuid(TaskService.instance.activeTask?.id);
+        if (reqId != null && reqId.isNotEmpty) {
+          final customerName = CustomerAuthStore.instance.fullName.trim();
+          await ref
+              .read(backendServiceProvider)
+              .cancelCustomerRequest(
+                reqId,
+                customerName: customerName.isNotEmpty ? customerName : null,
+              )
+              .catchError((_) => false);
+        }
         await TaskService.instance.cancelTask();
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

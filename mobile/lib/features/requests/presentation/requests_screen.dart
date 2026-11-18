@@ -83,16 +83,29 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
     if (!mounted || data == null) return;
 
     final status = (data['status']?.toString() ?? task.status).toLowerCase();
+    final cancelledBy = data['cancelledBy']?.toString();
     final step = (data['step'] is num)
         ? (data['step'] as num).toInt()
         : int.tryParse(data['step']?.toString() ?? '') ?? task.step;
 
-    if (status == 'completed') {
-      await TaskService.instance.completeTask();
-    } else if (status == 'cancelled') {
-      await TaskService.instance.cancelTask();
-    } else if (status != task.status || step != task.step) {
-      await TaskService.instance.updateTaskStatus(status: status, step: step);
+    if (status != task.status || step != task.step) {
+      if (status == 'completed') {
+        await TaskService.instance.completeTask();
+      } else if (status == 'cancelled') {
+        await TaskService.instance.cancelTask();
+      } else {
+        await TaskService.instance.updateTaskStatus(status: status, step: step);
+      }
+      if (!mounted) return;
+      ref.read(notificationsProvider.notifier).notifyCustomerRequestStatusChange(
+            requestId: reqId,
+            status: status,
+            providerName: task.providerName,
+            serviceCategory: task.serviceCategory,
+            distance: task.distance,
+            photoUrl: task.providerAvatar,
+            cancelledBy: cancelledBy,
+          );
     }
   }
 
@@ -1169,6 +1182,15 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                         ),
                                       );
                                       if (confirm == true) {
+                                        final reqId = TaskService.extractBackendUuid(
+                                          TaskService.instance.activeTask?.id,
+                                        );
+                                        if (reqId != null && reqId.isNotEmpty) {
+                                          await ref
+                                              .read(backendServiceProvider)
+                                              .cancelCustomerRequest(reqId)
+                                              .catchError((_) => false);
+                                        }
                                         await TaskService.instance.cancelTask();
                                         if (context.mounted) {
                                           ScaffoldMessenger.of(context).showSnackBar(

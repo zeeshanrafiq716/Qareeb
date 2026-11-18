@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/task_service.dart';
 
@@ -87,6 +88,7 @@ class NotificationsState {
   final bool isProviderCardVisible;
   final AppNotificationItem? customerNotification;
   final AppNotificationItem? providerNotification;
+  final List<AppNotificationItem> customerHistory;
 
   const NotificationsState({
     this.hasCustomerUnread = false,
@@ -95,6 +97,7 @@ class NotificationsState {
     this.isProviderCardVisible = false,
     this.customerNotification,
     this.providerNotification,
+    this.customerHistory = const [],
   });
 
   NotificationsState copyWith({
@@ -106,6 +109,7 @@ class NotificationsState {
     bool clearCustomerNotification = false,
     AppNotificationItem? providerNotification,
     bool clearProviderNotification = false,
+    List<AppNotificationItem>? customerHistory,
   }) {
     return NotificationsState(
       hasCustomerUnread: hasCustomerUnread ?? this.hasCustomerUnread,
@@ -118,6 +122,7 @@ class NotificationsState {
       providerNotification: clearProviderNotification
           ? null
           : (providerNotification ?? this.providerNotification),
+      customerHistory: customerHistory ?? this.customerHistory,
     );
   }
 }
@@ -128,6 +133,7 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
   Timer? _providerAutoHideTimer;
   Timer? _customerAutoHideTimer;
   bool _isInitialized = false;
+  final Set<String> _notifiedCustomerKeys = <String>{};
 
   @override
   NotificationsState build() {
@@ -174,12 +180,15 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
       final keepProviderNotif = previousState.providerNotification != null &&
           !previousState.providerNotification!.isExpired;
       return NotificationsState(
-        hasCustomerUnread: false,
+        hasCustomerUnread: previousState.hasCustomerUnread,
         hasProviderUnread: keepProviderNotif ? previousState.hasProviderUnread : false,
-        isCustomerCardVisible: false,
+        isCustomerCardVisible: previousState.isCustomerCardVisible,
         isProviderCardVisible: keepProviderNotif ? previousState.isProviderCardVisible : false,
-        customerNotification: null,
+        customerNotification: previousState.customerNotification?.isExpired == true
+            ? null
+            : previousState.customerNotification,
         providerNotification: keepProviderNotif ? previousState.providerNotification : null,
+        customerHistory: previousState.customerHistory.where((n) => !n.isExpired).toList(),
       );
     }
 
@@ -263,6 +272,104 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
       isProviderCardVisible: previousState.isProviderCardVisible,
       customerNotification: custNotif,
       providerNotification: provNotif,
+      customerHistory: previousState.customerHistory.where((n) => !n.isExpired).toList(),
+    );
+  }
+
+  /// Unified deduplicated customer notification dispatcher for EVERY request step:
+  /// Accept ('active'), Reach/Arrive ('arrived'), Start ('in_progress'), Complete ('completed'), Decline/Cancel ('cancelled').
+  void notifyCustomerRequestStatusChange({
+    required String requestId,
+    required String status,
+    required String providerName,
+    required String serviceCategory,
+    String distance = '',
+    String? photoUrl,
+    String? cancelledBy,
+  }) {
+    final normalized = status.trim().toLowerCase();
+    if (normalized.isEmpty || normalized == 'new') return;
+    if (normalized == 'cancelled' && cancelledBy?.toLowerCase() == 'customer') return;
+
+    final dedupKey = '${requestId.trim()}_$normalized';
+    if (_notifiedCustomerKeys.contains(dedupKey)) return;
+    _notifiedCustomerKeys.add(dedupKey);
+
+    final safeProvider = providerName.trim().isNotEmpty ? providerName.trim() : 'Provider';
+    final safeCategory = serviceCategory.trim().isNotEmpty ? serviceCategory.trim() : 'Service';
+    final safeDist = (distance.trim().isNotEmpty && distance.trim() != '--' && distance.trim() != '—')
+        ? distance.trim()
+        : '';
+
+    String badgeEn = 'Request Update';
+    String badgeAr = 'تحديث الطلب';
+    String titleEn = '$safeProvider updated your request';
+    String titleAr = 'قام $safeProvider بتحديث طلبك';
+    String bodyEn = safeCategory;
+    String bodyAr = safeCategory;
+
+    switch (normalized) {
+      case 'active':
+        badgeEn = 'Request Accepted';
+        badgeAr = 'تم قبول الطلب';
+        titleEn = '$safeProvider accepted your request';
+        titleAr = 'قبل $safeProvider طلبك';
+        bodyEn = '$safeCategory • Provider is on the way';
+        bodyAr = '$safeCategory • مزود الخدمة في الطريق إليك';
+        break;
+      case 'arrived':
+        badgeEn = 'Provider Arrived';
+        badgeAr = 'وصل المزود';
+        titleEn = '$safeProvider reached your location';
+        titleAr = 'وصل $safeProvider إلى موقعك';
+        bodyEn = '$safeCategory • Ready to assist';
+        bodyAr = '$safeCategory • جاهز لخدمتك';
+        break;
+      case 'in_progress':
+        badgeEn = 'In Progress';
+        badgeAr = 'جاري التنفيذ';
+        titleEn = '$safeCategory started';
+        titleAr = 'بدأ تنفيذ $safeCategory';
+        bodyEn = '$safeProvider is working on your service';
+        bodyAr = 'يقوم $safeProvider بتنفيذ خدمتك الآن';
+        break;
+      case 'completed':
+        badgeEn = 'Service Completed';
+        badgeAr = 'تمت الخدمة';
+        titleEn = '$safeCategory completed';
+        titleAr = 'تمت خدمة $safeCategory بنجاح';
+        bodyEn = 'Completed by $safeProvider';
+        bodyAr = 'أتمها $safeProvider بنجاح';
+        break;
+      case 'cancelled':
+        badgeEn = 'Request Declined';
+        badgeAr = 'تم رفض الطلب';
+        titleEn = '$safeProvider declined your request';
+        titleAr = 'اعتذر $safeProvider عن طلبك';
+        bodyEn = safeCategory;
+        bodyAr = safeCategory;
+        break;
+    }
+
+    HapticFeedback.heavyImpact();
+    setCustomerNotification(
+      AppNotificationItem(
+        id: dedupKey,
+        badgeTextEn: badgeEn,
+        badgeTextAr: badgeAr,
+        titleEn: titleEn,
+        titleAr: titleAr,
+        locationEn: bodyEn,
+        locationAr: bodyAr,
+        distanceEn: safeDist,
+        distanceAr: safeDist,
+        timeEn: 'Just now',
+        timeAr: 'الآن',
+        createdAt: DateTime.now().toUtc(),
+        imageAsset: photoUrl,
+      ),
+      showCard: true,
+      autoHideDuration: const Duration(seconds: 4),
     );
   }
 
@@ -280,8 +387,14 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
       );
       return;
     }
+    final nextHistory = <AppNotificationItem>[
+      notif,
+      ...state.customerHistory.where((n) => !n.isExpired && n.id != notif.id),
+    ].take(30).toList();
+
     state = state.copyWith(
       customerNotification: notif,
+      customerHistory: nextHistory,
       hasCustomerUnread: true,
       isCustomerCardVisible: showCard ? true : state.isCustomerCardVisible,
     );

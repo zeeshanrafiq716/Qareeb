@@ -394,26 +394,34 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
           ? p.publicId
           : (p.id != 0 ? '${p.id}' : (p.name.isNotEmpty ? 'driver_${p.name}' : 'driver_$index'));
 
-      final newPos = MapLatLng(p.latitude, p.longitude);
-
+      final rawNewPos = MapLatLng(p.latitude, p.longitude);
       final oldPos = _lastKnownPositions[provId];
       double heading = _driverHeadings[provId] ?? p.carAngle;
 
-      if (oldPos != null &&
-          (oldPos.latitude != newPos.latitude || oldPos.longitude != newPos.longitude)) {
-        final dM = RoadPath.haversineDistance(oldPos, newPos);
-        if (dM > 1.0) {
-          heading = RoadPath.calculateBearing(oldPos, newPos);
+      // Ignore tiny stationary GPS jitter (< 10 m) so the car & distance badge stay rock-steady when provider is not moving
+      MapLatLng effectivePos = rawNewPos;
+      if (oldPos != null) {
+        final dM = RoadPath.haversineDistance(oldPos, rawNewPos);
+        if (dM < 10.0) {
+          effectivePos = oldPos;
+        } else {
+          heading = RoadPath.calculateBearing(oldPos, rawNewPos);
           _driverHeadings[provId] = heading;
+          _lastKnownPositions[provId] = rawNewPos;
         }
+      } else {
+        _lastKnownPositions[provId] = rawNewPos;
       }
-      _lastKnownPositions[provId] = newPos;
 
       // Real distance calculated directly between provider GPS and customer GPS (exact, unclamped)
-      final double realDistMeters = RoadPath.haversineDistance(newPos, userPos);
+      final double realDistMeters = RoadPath.haversineDistance(effectivePos, userPos);
       final double distKm = realDistMeters >= 0
           ? (realDistMeters / 1000.0)
           : (p.distanceKm > 0 ? p.distanceKm : 0.0);
+
+      final String realVehicle = p.vehicleType.trim().isNotEmpty
+          ? p.vehicleType.trim()
+          : (p.categoryName.isNotEmpty ? p.categoryName : '');
 
       return NearbyDriverRoute(
         id: provId,
@@ -422,17 +430,17 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
         publicId: p.publicId,
         photoUrl: p.photoUrl,
         verified: p.verificationStatus == 'approved' || p.verificationStatus == 'verified',
-        vehicle: '${p.categoryName.isNotEmpty ? p.categoryName : 'Vehicle'} • AC',
+        vehicle: realVehicle,
         rating: p.ratingAvg,
         reviews: p.ratingCount,
         initialDistanceKm: distKm,
         roofColor: roofCol,
         speedFactor: 1.0,
         startPhase: 0.0,
-        currentPos: newPos,
-        previousPos: oldPos ?? newPos,
+        currentPos: effectivePos,
+        previousPos: oldPos ?? effectivePos,
         heading: heading,
-        waypoints: [newPos, userPos],
+        waypoints: [effectivePos, userPos],
       );
     }).toList();
   }

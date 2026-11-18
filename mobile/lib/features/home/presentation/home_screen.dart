@@ -37,7 +37,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentTabIndex = 0;
   Timer? _customerRequestPollTimer;
-  String? _lastNotifiedCustomerStatusKey;
   ScrollController? _scrollControllerInstance;
   ScrollController get _scrollController =>
       _scrollControllerInstance ??= ScrollController();
@@ -69,10 +68,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (!mounted || data == null) return;
 
     final status = (data['status']?.toString() ?? task.status).toLowerCase();
+    final cancelledBy = data['cancelledBy']?.toString();
     final step = (data['step'] is num)
         ? (data['step'] as num).toInt()
         : int.tryParse(data['step']?.toString() ?? '') ?? task.step;
-    final statusKey = '${reqId}_$status';
 
     if (status != task.status || step != task.step) {
       if (status == 'completed') {
@@ -83,70 +82,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         await TaskService.instance.updateTaskStatus(status: status, step: step);
       }
 
-      if (!mounted || _lastNotifiedCustomerStatusKey == statusKey) return;
-      _lastNotifiedCustomerStatusKey = statusKey;
-
-      String badgeEn = 'Request Update';
-      String badgeAr = 'تحديث الطلب';
-      String titleEn = '${task.providerName} updated your request';
-      String titleAr = 'قام ${task.providerName} بتحديث طلبك';
-      String bodyEn = task.serviceCategory;
-      String bodyAr = task.serviceCategory;
-
-      switch (status) {
-        case 'active':
-          badgeEn = 'Request Accepted';
-          badgeAr = 'تم قبول الطلب';
-          titleEn = '${task.providerName} accepted your request';
-          titleAr = 'قبل ${task.providerName} طلبك';
-          bodyEn = '${task.serviceCategory} • Provider is on the way';
-          bodyAr = '${task.serviceCategory} • مزود الخدمة في الطريق إليك';
-          break;
-        case 'arrived':
-          badgeEn = 'Provider Arrived';
-          badgeAr = 'وصل المزود';
-          titleEn = '${task.providerName} has arrived';
-          titleAr = 'وصل ${task.providerName} إلى موقعك';
-          break;
-        case 'in_progress':
-          badgeEn = 'In Progress';
-          badgeAr = 'جاري التنفيذ';
-          titleEn = '${task.serviceCategory} is now in progress';
-          titleAr = 'بدأ تنفيذ ${task.serviceCategory}';
-          break;
-        case 'completed':
-          badgeEn = 'Completed';
-          badgeAr = 'مكتمل';
-          titleEn = '${task.serviceCategory} completed';
-          titleAr = 'تمت الخدمة بنجاح';
-          break;
-        case 'cancelled':
-          badgeEn = 'Request Declined';
-          badgeAr = 'تم رفض الطلب';
-          titleEn = '${task.providerName} declined your request';
-          titleAr = 'اعتذر ${task.providerName} عن الطلب';
-          break;
-      }
-
-      HapticFeedback.heavyImpact();
-      ref.read(notificationsProvider.notifier).setCustomerNotification(
-            AppNotificationItem(
-              id: statusKey,
-              badgeTextEn: badgeEn,
-              badgeTextAr: badgeAr,
-              titleEn: titleEn,
-              titleAr: titleAr,
-              locationEn: bodyEn,
-              locationAr: bodyAr,
-              distanceEn: task.distance != '--' ? task.distance : '',
-              distanceAr: task.distance != '--' ? task.distance : '',
-              timeEn: 'Just now',
-              timeAr: 'الآن',
-              createdAt: DateTime.now().toUtc(),
-              imageAsset: task.providerAvatar,
-            ),
-            showCard: true,
-            autoHideDuration: const Duration(seconds: 4),
+      if (!mounted) return;
+      ref.read(notificationsProvider.notifier).notifyCustomerRequestStatusChange(
+            requestId: reqId,
+            status: status,
+            providerName: task.providerName,
+            serviceCategory: task.serviceCategory,
+            distance: task.distance,
+            photoUrl: task.providerAvatar,
+            cancelledBy: cancelledBy,
           );
     }
   }
@@ -176,17 +120,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return IndexedStack(
-      index: _currentTabIndex,
+    final tr = ref.watch(translationsProvider);
+    final notifState = ref.watch(notificationsProvider);
+    final n = notifState.customerNotification;
+    final topPad = MediaQuery.of(context).padding.top;
+
+    return Stack(
       children: [
-        _buildHomeTab(context),
-        RequestsScreen(
-          onTabSelected: _onTabSelected,
+        IndexedStack(
+          index: _currentTabIndex,
+          children: [
+            _buildHomeTab(context),
+            RequestsScreen(
+              onTabSelected: _onTabSelected,
+            ),
+            ProfileScreen(
+              onBackTap: () => _onTabSelected(0),
+              onTabSelected: _onTabSelected,
+            ),
+          ],
         ),
-        ProfileScreen(
-          onBackTap: () => _onTabSelected(0),
-          onTabSelected: _onTabSelected,
-        ),
+        if (_currentTabIndex != 0 && notifState.isCustomerCardVisible && n != null)
+          Positioned(
+            top: (topPad > 0 ? topPad + 12.0 : 54.0),
+            left: 16.0,
+            right: 16.0,
+            child: NotificationPopupCard(
+              badgeText: tr.isArabic ? n.badgeTextAr : n.badgeTextEn,
+              title: tr.isArabic ? n.titleAr : n.titleEn,
+              location: tr.isArabic ? n.locationAr : n.locationEn,
+              distance: tr.isArabic ? n.distanceAr : n.distanceEn,
+              time: tr.isArabic ? n.timeAr : n.timeEn,
+              createdAt: n.createdAt,
+              imageAsset: n.imageAsset,
+              onTap: () {
+                ref.read(notificationsProvider.notifier).hideCustomerCard();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationsScreen(),
+                  ),
+                );
+              },
+              onDismiss: () {
+                ref.read(notificationsProvider.notifier).hideCustomerCard();
+              },
+            ),
+          ),
       ],
     );
   }

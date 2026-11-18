@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/providers/backend_provider.dart';
+import 'package:mobile/providers/notifications_provider.dart';
 import 'package:mobile/services/task_service.dart';
+import 'package:mobile/features/home/presentation/widgets/notification_popup_card.dart';
 import 'package:mobile/features/provider/requests/presentation/provider_active_request_screen.dart';
 import 'package:mobile/features/location/presentation/widgets/top_down_car_widget.dart';
 import 'package:mobile/features/location/presentation/widgets/real_map_background_widget.dart';
@@ -1185,6 +1187,33 @@ class _ProviderRequestDetailsScreenState
                         ],
                       ),
                     ),
+                  ),
+
+                  // 4. Live Provider Notification Banner Overlay
+                  Builder(
+                    builder: (context) {
+                      final notifState = ref.watch(notificationsProvider);
+                      final n = notifState.providerNotification;
+                      if (!notifState.isProviderCardVisible || n == null) {
+                        return const SizedBox.shrink();
+                      }
+                      return Positioned(
+                        top: headerTop + 50.0,
+                        left: 16.0,
+                        right: 16.0,
+                        child: NotificationPopupCard(
+                          badgeText: isArabic ? n.badgeTextAr : n.badgeTextEn,
+                          title: isArabic ? n.titleAr : n.titleEn,
+                          location: isArabic ? n.locationAr : n.locationEn,
+                          distance: isArabic ? n.distanceAr : n.distanceEn,
+                          time: isArabic ? n.timeAr : n.timeEn,
+                          createdAt: n.createdAt,
+                          imageAsset: n.imageAsset,
+                          onTap: () => ref.read(notificationsProvider.notifier).hideProviderCard(),
+                          onDismiss: () => ref.read(notificationsProvider.notifier).hideProviderCard(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

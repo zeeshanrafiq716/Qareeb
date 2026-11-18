@@ -152,9 +152,18 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
 
       final tr = ref.read(translationsProvider);
 
-      // Sync ALL incoming send_request_click notifications (not just latest) into the Provider Requests tab
+      // Sync ALL incoming send_request_click and request_cancelled notifications into Provider Requests tab
       for (final item in recentItems.reversed) {
-        if (item['eventType']?.toString() != 'send_request_click') continue;
+        final ev = item['eventType']?.toString() ?? '';
+        if (ev == 'request_cancelled') {
+          final meta = item['metadata'] is Map ? item['metadata'] as Map : const {};
+          final cancelledReqId = meta['requestId']?.toString().trim() ?? '';
+          if (cancelledReqId.isNotEmpty) {
+            await TaskService.instance.cancelRequestById('REQ-$cancelledReqId');
+          }
+          continue;
+        }
+        if (ev != 'send_request_click') continue;
         final itemId = item['id']?.toString() ?? '';
         if (itemId.isEmpty) continue;
         final meta = item['metadata'] is Map ? item['metadata'] as Map : const {};
@@ -262,6 +271,20 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
           fallbackBodyAr = reqCust.isNotEmpty
               ? 'أرسل $reqCust طلب خدمة لك'
               : 'أرسل لك عميل طلب خدمة';
+          break;
+        case 'request_cancelled':
+          badgeEn = 'Request Cancelled';
+          badgeAr = 'تم إلغاء الطلب';
+          final cancelCat = metadata['serviceCategory']?.toString().trim() ?? '';
+          final cancelCust = metadata['customerName']?.toString().trim() ?? '';
+          fallbackTitleEn = cancelCat.isNotEmpty ? 'Request Cancelled • $cancelCat' : 'Request cancelled';
+          fallbackTitleAr = cancelCat.isNotEmpty ? 'تم إلغاء الطلب • $cancelCat' : 'تم إلغاء الطلب';
+          fallbackBodyEn = cancelCust.isNotEmpty
+              ? '$cancelCust cancelled the service request'
+              : 'A customer cancelled their service request';
+          fallbackBodyAr = cancelCust.isNotEmpty
+              ? 'ألغى $cancelCust طلب الخدمة'
+              : 'ألغى العميل طلب الخدمة';
           break;
       }
 
@@ -435,13 +458,16 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
     // 2. Immediately acquire and send exact GPS location
     _acquireAndSendGpsLocation();
 
-    // 3. Setup periodic GPS refresh timer (every 6s for exact real-time provider tracking)
+    // 3. Keep online presence alive every 25s WITHOUT overwriting exact GPS with noisy indoor jitter
     _gpsTrackingTimer?.cancel();
-    _gpsTrackingTimer = Timer.periodic(const Duration(seconds: 6), (_) {
-      _acquireAndSendGpsLocation();
+    _gpsTrackingTimer = Timer.periodic(const Duration(seconds: 25), (_) {
+      ref.read(backendServiceProvider).updateProviderPresence(true).catchError((_) => false);
+      if (_lastSentLocation == null) {
+        _acquireAndSendGpsLocation();
+      }
     });
 
-    // 4. Also listen to location stream for instantaneous movements & accuracy refinements
+    // 4. Listen to stabilized location stream: only push to backend when provider genuinely moves
     _locationSubscription?.cancel();
     _locationSubscription = ref.read(locationServiceProvider).watchLocation().listen((loc) {
       if (loc.hasValidDeviceGps) {
@@ -469,7 +495,7 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
     _isUpdatingLocation = true;
     try {
       final loc = await ref.read(locationServiceProvider).getCurrentLocation();
-      await _sendLocationToBackend(loc, force: true);
+      await _sendLocationToBackend(loc, force: _lastSentLocation == null);
     } catch (_) {
     } finally {
       _isUpdatingLocation = false;
@@ -481,7 +507,6 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
     final now = DateTime.now();
     final prev = _lastSentLocation;
     if (!force && prev != null && _lastSentLocationAt != null) {
-      final elapsedMs = now.difference(_lastSentLocationAt!).inMilliseconds;
       final movedMeters = ref.read(locationServiceProvider).calculateDistanceKm(
             prev.latitude,
             prev.longitude,
@@ -490,8 +515,9 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
           ) * 1000.0;
       final prevAcc = prev.accuracy ?? 999.0;
       final curAcc = loc.accuracy ?? 999.0;
-      final accuracySharpened = curAcc + 4.0 < prevAcc;
-      if (elapsedMs < 2500 && movedMeters < 2.0 && !accuracySharpened) {
+      final accuracySharpened = curAcc <= 12.0 && (curAcc + 6.0) < prevAcc;
+      // Do not overwrite backend coordinates with stationary GPS jitter (< 12 m)
+      if (movedMeters < 12.0 && !accuracySharpened) {
         return;
       }
     }
@@ -522,19 +548,53 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return IndexedStack(
-      index: _currentTabIndex,
+    final notifState = ref.watch(notificationsProvider);
+    final n = notifState.providerNotification;
+    final topPad = MediaQuery.of(context).padding.top;
+
+    return Stack(
       children: [
-        _buildHomeTab(context),
-        ProviderRequestsScreen(
-          onBackTap: () => _onTabSelected(0),
-          onTabSelected: _onTabSelected,
+        IndexedStack(
+          index: _currentTabIndex,
+          children: [
+            _buildHomeTab(context),
+            ProviderRequestsScreen(
+              onBackTap: () => _onTabSelected(0),
+              onTabSelected: _onTabSelected,
+            ),
+            ProfileScreen(
+              isProvider: true,
+              onBackTap: () => _onTabSelected(0),
+              onTabSelected: _onTabSelected,
+            ),
+          ],
         ),
-        ProfileScreen(
-          isProvider: true,
-          onBackTap: () => _onTabSelected(0),
-          onTabSelected: _onTabSelected,
-        ),
+        if (_currentTabIndex != 0 && notifState.isProviderCardVisible && n != null)
+          Positioned(
+            top: (topPad > 0 ? topPad + 12.0 : 54.0),
+            left: 16.0,
+            right: 16.0,
+            child: NotificationPopupCard(
+              badgeText: context.isArabic ? n.badgeTextAr : n.badgeTextEn,
+              title: context.isArabic ? n.titleAr : n.titleEn,
+              location: context.isArabic ? n.locationAr : n.locationEn,
+              distance: context.isArabic ? n.distanceAr : n.distanceEn,
+              time: context.isArabic ? n.timeAr : n.timeEn,
+              createdAt: n.createdAt,
+              imageAsset: n.imageAsset,
+              onTap: () {
+                ref.read(notificationsProvider.notifier).hideProviderCard();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationsScreen(isProvider: true),
+                  ),
+                );
+              },
+              onDismiss: () {
+                ref.read(notificationsProvider.notifier).hideProviderCard();
+              },
+            ),
+          ),
       ],
     );
   }
