@@ -122,11 +122,20 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
 
   Future<void> _syncRequestsFromBackend() async {
     try {
-      final items = await ref.read(backendServiceProvider).fetchProviderNotifications(limit: 20);
+      final items = await ref.read(backendServiceProvider).fetchProviderNotifications(limit: 50);
       if (!mounted) return;
       final nowUtc = DateTime.now().toUtc();
       for (final item in items.reversed) {
-        if (item['eventType']?.toString() != 'send_request_click') continue;
+        final ev = item['eventType']?.toString() ?? '';
+        if (ev == 'request_cancelled') {
+          final meta = item['metadata'] is Map ? item['metadata'] as Map : const {};
+          final cancelledReqId = meta['requestId']?.toString().trim() ?? '';
+          if (cancelledReqId.isNotEmpty) {
+            await TaskService.instance.cancelRequestById('REQ-$cancelledReqId');
+          }
+          continue;
+        }
+        if (ev != 'send_request_click') continue;
         final rawTs = item['createdAt']?.toString();
         final ts = rawTs != null ? DateTime.tryParse(rawTs) : null;
         if (ts != null && nowUtc.difference(ts.toUtc()).abs() > const Duration(hours: 24)) {

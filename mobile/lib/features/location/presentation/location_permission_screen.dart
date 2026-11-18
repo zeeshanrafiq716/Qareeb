@@ -20,6 +20,7 @@ import '../../../services/location_service.dart';
 /// - Header: Circular shadow back button + Service Title
 class LocationPermissionScreen extends ConsumerStatefulWidget {
   final String serviceName;
+  final String? categorySlug;
 
   static const String hasAllowedLocationKey = 'customer_has_allowed_location';
 
@@ -59,6 +60,7 @@ class LocationPermissionScreen extends ConsumerStatefulWidget {
   static Future<void> navigateToService(
     BuildContext context, {
     required String serviceName,
+    String? categorySlug,
   }) async {
     final alreadyAllowed = await hasAllowedLocation();
     if (!context.mounted) return;
@@ -67,6 +69,7 @@ class LocationPermissionScreen extends ConsumerStatefulWidget {
         MaterialPageRoute(
           builder: (_) => PickupDeliveryScreen(
             serviceName: serviceName,
+            categorySlug: categorySlug,
           ),
         ),
       );
@@ -75,6 +78,7 @@ class LocationPermissionScreen extends ConsumerStatefulWidget {
         MaterialPageRoute(
           builder: (_) => LocationPermissionScreen(
             serviceName: serviceName,
+            categorySlug: categorySlug,
           ),
         ),
       );
@@ -84,6 +88,7 @@ class LocationPermissionScreen extends ConsumerStatefulWidget {
   const LocationPermissionScreen({
     super.key,
     this.serviceName = 'Pickup & Delivery',
+    this.categorySlug,
   });
 
   @override
@@ -115,6 +120,7 @@ class _LocationPermissionScreenState
             MaterialPageRoute(
               builder: (_) => PickupDeliveryScreen(
                 serviceName: widget.serviceName,
+                categorySlug: widget.categorySlug,
               ),
             ),
           );
@@ -225,6 +231,7 @@ class _LocationPermissionScreenState
           MaterialPageRoute(
             builder: (_) => PickupDeliveryScreen(
               serviceName: widget.serviceName,
+              categorySlug: widget.categorySlug,
             ),
           ),
         );

@@ -103,6 +103,9 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_isOnline) {
         _startGpsTrackingAndPresence();
+      } else {
+        // Ensure backend DB & Redis strictly match the Offline UI state on startup
+        ref.read(backendServiceProvider).updateProviderPresence(false).catchError((_) => false);
       }
       _syncProviderAccountStatus();
       ProviderPhoneChangeWatcher.start(context);
@@ -137,7 +140,7 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
   Future<void> _pollProviderNotifications() async {
     if (!mounted || _isNavigatingAway) return;
     try {
-      final items = await ref.read(backendServiceProvider).fetchProviderNotifications(limit: 20);
+      final items = await ref.read(backendServiceProvider).fetchProviderNotifications(limit: 50);
       if (!mounted) return;
       final isFirstPoll = !_hasCompletedInitialNotifPoll;
       _hasCompletedInitialNotifPoll = true;
@@ -484,17 +487,26 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
     _lastSentLocationAt = null;
     _lastSentLocation = null;
     if (callBackend) {
-      try {
-        ref.read(backendServiceProvider).updateProviderPresence(false);
-      } catch (_) {}
+      Future<void>(() async {
+        try {
+          final ok = await ref.read(backendServiceProvider).updateProviderPresence(false);
+          if (!ok && mounted && !_isOnline) {
+            await Future<void>.delayed(const Duration(milliseconds: 1200));
+            if (mounted && !_isOnline) {
+              await ref.read(backendServiceProvider).updateProviderPresence(false);
+            }
+          }
+        } catch (_) {}
+      });
     }
   }
 
   Future<void> _acquireAndSendGpsLocation() async {
-    if (_isUpdatingLocation) return;
+    if (_isUpdatingLocation || !_isOnline) return;
     _isUpdatingLocation = true;
     try {
       final loc = await ref.read(locationServiceProvider).getCurrentLocation();
+      if (!_isOnline) return;
       await _sendLocationToBackend(loc, force: _lastSentLocation == null);
     } catch (_) {
     } finally {
@@ -503,7 +515,7 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
   }
 
   Future<void> _sendLocationToBackend(UserLocation loc, {bool force = false}) async {
-    if (!loc.hasValidDeviceGps) return;
+    if (!_isOnline || !loc.hasValidDeviceGps) return;
     final now = DateTime.now();
     final prev = _lastSentLocation;
     if (!force && prev != null && _lastSentLocationAt != null) {

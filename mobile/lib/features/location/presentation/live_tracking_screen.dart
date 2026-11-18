@@ -47,21 +47,101 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
   Timer? _statusPollTimer;
   double? _liveProviderLat;
   double? _liveProviderLng;
-  String _liveStatus = 'active';
+  String _liveStatus = 'new';
+  int _liveStep = 0;
 
   @override
   void initState() {
     super.initState();
     _liveProviderLat = widget.providerLatitude;
     _liveProviderLng = widget.providerLongitude;
-    _liveStatus = TaskService.instance.activeTask?.status ?? 'active';
-    _pulseController = AnimationController(
+    final task = TaskService.instance.activeTask;
+    _liveStatus = (task?.status ?? 'new').toLowerCase();
+    _liveStep = task?.step ?? 0;
+  _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
 
+    TaskService.instance.activeTaskNotifier.addListener(_onActiveTaskChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _pollStatus());
     _statusPollTimer = Timer.periodic(const Duration(seconds: 3), (_) => _pollStatus());
+  }
+
+  void _onActiveTaskChanged() {
+    final task = TaskService.instance.activeTask;
+    if (!mounted || task == null) return;
+    setState(() {
+      _liveStatus = task.status.toLowerCase();
+      _liveStep = task.step;
+    });
+  }
+
+  bool get _isWaitingForAcceptance {
+    final s = _liveStatus.toLowerCase();
+    return _liveStep == 0 && (s == 'new' || s == 'pending');
+  }
+
+  MapTrackingStep _trackingStepFor(String status, int step) {
+    final s = status.toLowerCase();
+    if (s == 'completed' || step >= 4) return MapTrackingStep.completed;
+    if (step == 1) return MapTrackingStep.onTheWay;
+    if (step >= 2) return MapTrackingStep.arrived;
+    return MapTrackingStep.requestSent;
+  }
+
+  String _statusBadgeLabel(AppTranslations tr) {
+    if (_isWaitingForAcceptance) {
+      return tr.isArabic ? 'بانتظار القبول' : 'Waiting for acceptance';
+    }
+    switch (_liveStep) {
+      case 0:
+        return tr.accepted;
+      case 1:
+        return tr.onTheWay;
+      case 2:
+        return tr.arrivedBadge;
+      case 3:
+        return tr.isArabic ? 'قيد التنفيذ' : 'In progress';
+      default:
+        return tr.completed;
+    }
+  }
+
+  String _statusBannerTitle(AppTranslations tr) {
+    if (_isWaitingForAcceptance) return tr.requestSent;
+    switch (_liveStep) {
+      case 0:
+        return tr.requestAccepted;
+      case 1:
+        return tr.driverLocationUpdating;
+      case 2:
+        return tr.providerHasArrived;
+      case 3:
+        return tr.isArabic ? 'جاري تنفيذ الخدمة' : 'Service in progress';
+      default:
+        return tr.isArabic ? 'اكتملت الخدمة' : 'Service completed';
+    }
+  }
+
+  String _statusBannerSubtitle(AppTranslations tr) {
+    if (_isWaitingForAcceptance) return tr.waitingForProviderAccept;
+    switch (_liveStep) {
+      case 0:
+        return tr.isArabic
+            ? 'المزود يستعد للتحرك'
+            : 'Provider is preparing to depart.';
+      case 1:
+        return tr.liveMovementOnMap;
+      case 2:
+        return tr.providerArrivedStartService;
+      case 3:
+        return tr.isArabic
+            ? 'الفني يباشر العمل على طلبك'
+            : 'Technician is actively working on your request.';
+      default:
+        return tr.isArabic ? 'تمت الخدمة بنجاح' : 'Service completed successfully.';
+    }
   }
 
   Future<void> _pollStatus() async {
@@ -77,7 +157,9 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
     final cancelledBy = data['cancelledBy']?.toString();
     final step = (data['step'] is num)
         ? (data['step'] as num).toInt()
-        : int.tryParse(data['step']?.toString() ?? '') ?? 1;
+        : int.tryParse(data['step']?.toString() ?? '') ??
+            TaskService.instance.activeTask?.step ??
+            0;
     final pLat = (data['providerLatitude'] as num?)?.toDouble();
     final pLng = (data['providerLongitude'] as num?)?.toDouble();
 
@@ -85,6 +167,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
     if (mounted) {
       setState(() {
         _liveStatus = status;
+        _liveStep = step;
         if (pLat != null && pLng != null && (pLat.abs() > 0.001 || pLng.abs() > 0.001)) {
           _liveProviderLat = pLat;
           _liveProviderLng = pLng;
@@ -106,6 +189,13 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
 
     if (status == 'completed') {
       _statusPollTimer?.cancel();
+      final ordersCount = (data['providerOrdersCount'] as num?)?.toInt();
+      if (ordersCount != null) {
+        await TaskService.instance.updateActiveTaskProviderDetails(
+          providerTripsCount: ordersCount,
+        );
+      }
+      await TaskService.instance.updateTaskStatus(status: 'completed', step: 4);
       await TaskService.instance.completeTask();
     } else if (status == 'cancelled') {
       _statusPollTimer?.cancel();
@@ -124,6 +214,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
   @override
   void dispose() {
     _statusPollTimer?.cancel();
+    TaskService.instance.activeTaskNotifier.removeListener(_onActiveTaskChanged);
     _pulseController.stop();
     _pulseController.dispose();
     super.dispose();
@@ -176,9 +267,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                         zoom: 15.0,
                         providerLatitude: _liveProviderLat ?? widget.providerLatitude,
                         providerLongitude: _liveProviderLng ?? widget.providerLongitude,
-                        trackingStep: _liveStatus == 'arrived'
-                            ? MapTrackingStep.arrived
-                            : MapTrackingStep.onTheWay,
+                        trackingStep: _trackingStepFor(_liveStatus, _liveStep),
                         driverName: widget.providerName,
                         serviceCategory: widget.serviceCategory,
                         vehicleName: widget.vehicleName ?? widget.serviceCategory,
@@ -262,18 +351,22 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                       ),
                                     ),
 
-                                    // Live pulse status badge
+                                    // Header status badge (LIVE vs waiting)
                                     Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 10.0,
                                         vertical: 5.0,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFE8F5E9),
+                                        color: _isWaitingForAcceptance
+                                            ? const Color(0xFFFFF8E1)
+                                            : const Color(0xFFE8F5E9),
                                         borderRadius:
                                             BorderRadius.circular(20.0),
                                         border: Border.all(
-                                          color: const Color(0xFF81C784),
+                                          color: _isWaitingForAcceptance
+                                              ? const Color(0xFFFFB74D)
+                                              : const Color(0xFF81C784),
                                           width: 0.8,
                                         ),
                                       ),
@@ -283,18 +376,24 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                           Container(
                                             width: 7.0,
                                             height: 7.0,
-                                            decoration: const BoxDecoration(
-                                              color: Color(0xFF2E7D32),
+                                            decoration: BoxDecoration(
+                                              color: _isWaitingForAcceptance
+                                                  ? const Color(0xFFF57C00)
+                                                  : const Color(0xFF2E7D32),
                                               shape: BoxShape.circle,
                                             ),
                                           ),
                                           const SizedBox(width: 5.0),
                                           Text(
-                                            tr.liveBadge,
+                                            _isWaitingForAcceptance
+                                                ? (tr.isArabic ? 'انتظار' : 'WAITING')
+                                                : tr.liveBadge,
                                             style: tr.font(
                                               fontSize: 10.0,
                                               fontWeight: FontWeight.w700,
-                                              color: const Color(0xFF2E7D32),
+                                              color: _isWaitingForAcceptance
+                                                  ? const Color(0xFFF57C00)
+                                                  : const Color(0xFF2E7D32),
                                               letterSpacing: 0.6,
                                             ),
                                           ),
@@ -424,27 +523,36 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                       ),
                                                       clipBehavior:
                                                           Clip.antiAlias,
-                                                      child: Image.network(
-                                                        '',
+                                                      child: (widget.photoUrl != null &&
+                                                              widget.photoUrl!.trim().isNotEmpty)
+                                                          ? Image.network(
+                                                              widget.photoUrl!,
                                                         width: 36.0,
                                                         height: 36.0,
                                                         fit: BoxFit.cover,
-                                                        errorBuilder: (context,
-                                                                error,
-                                                                stackTrace) =>
-                                                            Container(
-                                                          color: const Color(
-                                                              0xFFFFAAA6),
-                                                          child: const Center(
-                                                            child: Icon(
-                                                              Icons.person,
-                                                              size: 22.0,
-                                                              color:
-                                                                  Colors.white,
+                                                              errorBuilder: (context,
+                                                                      error,
+                                                                      stackTrace) =>
+                                                                  Container(
+                                                                color: const Color(
+                                                                    0xFFFFAAA6),
+                                                                child: const Center(
+                                                                  child: Icon(
+                                                                    Icons.person,
+                                                                    size: 22.0,
+                                                                    color:
+                                                                        Colors.white,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            )
+                                                          : const Center(
+                                                              child: Icon(
+                                                                Icons.person,
+                                                                size: 22.0,
+                                                                color: Colors.white,
+                                                              ),
                                                             ),
-                                                          ),
-                                                        ),
-                                                      ),
                                                     ),
                                                     const SizedBox(width: 16.0), // gap: 16px;
 
@@ -512,7 +620,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                                     Alignment
                                                                         .center,
                                                                 child: Text(
-                                                                  tr.onTheWay,
+                                                                  _statusBadgeLabel(tr),
                                                                   style: tr.font(
                                                                     fontSize:
                                                                         10.0,
@@ -1074,7 +1182,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                   children: [
                                                     // content: Driver location updating...
                                                     Text(
-                                                      tr.driverLocationUpdating,
+                                                      _statusBannerTitle(tr),
                                                       style: tr.font(
                                                         fontSize: 14.0,
                                                         fontWeight:
@@ -1084,15 +1192,14 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen>
                                                         height: 22.0 / 14.0,
                                                         letterSpacing: 0.0,
                                                       ),
-                                                      maxLines: 1,
+                                                      maxLines: 2,
                                                       overflow:
                                                           TextOverflow.ellipsis,
                                                     ),
                                                     const SizedBox(height: 2.0),
 
-                                                    // content: You’ll see live movement on the map
                                                     Text(
-                                                      tr.liveMovementOnMap,
+                                                      _statusBannerSubtitle(tr),
                                                       style: tr.font(
                                                         fontSize: 12.0,
                                                         fontWeight:

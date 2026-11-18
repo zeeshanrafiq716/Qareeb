@@ -36,6 +36,7 @@ discoveryRoutes.get(
   "/search",
   validate(discoverySearchSchema),
   asyncHandler(async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     const q = validatedQuery(req);
     const result = await searchDiscovery({
       ...q,
@@ -49,6 +50,7 @@ discoveryRoutes.get(
   "/nearby",
   validate(nearbyDiscoverySchema),
   asyncHandler(async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     const result = await findNearbyProvidersForCustomers(validatedQuery(req));
     ok(res, result.items, 200, result.meta);
   }),

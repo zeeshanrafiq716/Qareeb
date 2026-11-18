@@ -128,7 +128,6 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
     final pLat = (data['providerLatitude'] as num?)?.toDouble();
     final pLng = (data['providerLongitude'] as num?)?.toDouble();
     final ratingAvg = (data['providerRatingAvg'] as num?)?.toDouble();
-    final ratingCount = (data['providerRatingCount'] as num?)?.toInt() ?? 0;
     final ordersCount = (data['providerOrdersCount'] as num?)?.toInt() ?? 0;
     final vehicleType = data['providerVehicleType']?.toString().trim() ?? '';
     final vehicleModel = data['providerVehicleModel']?.toString().trim() ?? '';
@@ -142,7 +141,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
       providerPhone: data['providerPhone']?.toString(),
       providerAvatar: photoUrl,
       providerRating: ratingAvg,
-      providerTripsCount: ordersCount > 0 ? ordersCount : ratingCount,
+      providerTripsCount: ordersCount,
       providerLatitude: (pLat != null && pLat.abs() > 0.001) ? pLat : null,
       providerLongitude: (pLng != null && pLng.abs() > 0.001) ? pLng : null,
       serviceCategory: data['serviceCategory']?.toString(),
@@ -159,6 +158,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
 
     if (status != task.status || step != task.step) {
       if (status == 'completed') {
+        await TaskService.instance.updateTaskStatus(status: 'completed', step: 4);
         await TaskService.instance.completeTask();
       } else if (status == 'cancelled') {
         await TaskService.instance.cancelTask();
@@ -686,6 +686,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                 final bool showPlate = rawPlate.isNotEmpty && rawPlate != '1122';
                                                 final ratingText = activeTask.providerRating.toStringAsFixed(1);
                                                 final tripsCount = activeTask.providerTripsCount;
+                                                final showTrips = tripsCount > 0;
                                                 final tripsLabel = tr.isArabic
                                                     ? '($tripsCount ${tripsCount == 1 ? 'رحلة' : 'رحلات'})'
                                                     : '($tripsCount ${tripsCount == 1 ? 'trip' : 'trips'})';
@@ -769,7 +770,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                                   TextSpan(
                                                                     children: [
                                                                       TextSpan(
-                                                                        text: '$ratingText ',
+                                                                        text: showTrips ? '$ratingText ' : ratingText,
                                                                         style: tr.font(
                                                                           fontSize: 11.5,
                                                                           fontWeight: FontWeight.w500,
@@ -777,15 +778,16 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                                           height: 1.15,
                                                                         ),
                                                                       ),
-                                                                      TextSpan(
-                                                                        text: tripsLabel,
-                                                                        style: tr.font(
-                                                                          fontSize: 11.0,
-                                                                          fontWeight: FontWeight.w400,
-                                                                          color: const Color(0xFF566663),
-                                                                          height: 1.15,
+                                                                      if (showTrips)
+                                                                        TextSpan(
+                                                                          text: tripsLabel,
+                                                                          style: tr.font(
+                                                                            fontSize: 11.0,
+                                                                            fontWeight: FontWeight.w400,
+                                                                            color: const Color(0xFF566663),
+                                                                            height: 1.15,
+                                                                          ),
                                                                         ),
-                                                                      ),
                                                                     ],
                                                                   ),
                                                                 ),
@@ -1376,10 +1378,14 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                       ),
                     ),
 
-                  // Notification Card Overlay after clicking bell icon
+                  // Notification Card Overlay after clicking bell icon (below header — bell stays visible)
                   if (notifState.isCustomerCardVisible &&
                       notifState.customerNotification != null) ...[
-                    Positioned.fill(
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
                       child: GestureDetector(
                         behavior: HitTestBehavior.translucent,
                         onTap: () {
@@ -1387,10 +1393,11 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                               .read(notificationsProvider.notifier)
                               .hideCustomerCard();
                         },
+                        child: const ColoredBox(color: Colors.transparent),
                       ),
                     ),
                     Positioned(
-                      top: 106.0,
+                      top: MediaQuery.of(context).padding.top + 118.0,
                       left: horizontalPadding,
                       right: horizontalPadding,
                       child: NotificationPopupCard(
@@ -1771,9 +1778,11 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
         statusBgColor: isCancelled ? const Color(0xFFFFF0F0) : const Color(0xFFF0EAFE),
         statusTextColor: isCancelled ? const Color(0xFFDC2626) : const Color(0xFF8B53FE),
         rating: t.providerRating.toStringAsFixed(1),
-        trips: tr.isArabic
-            ? '(${t.providerTripsCount} ${t.providerTripsCount == 1 ? 'رحلة' : 'رحلات'})'
-            : '(${t.providerTripsCount} ${t.providerTripsCount == 1 ? 'trip' : 'trips'})',
+        trips: t.providerTripsCount > 0
+            ? (tr.isArabic
+                ? '(${t.providerTripsCount} ${t.providerTripsCount == 1 ? 'رحلة' : 'رحلات'})'
+                : '(${t.providerTripsCount} ${t.providerTripsCount == 1 ? 'trip' : 'trips'})')
+            : '',
         serviceCategory: t.serviceCategory,
         vehicleName: t.vehicleName,
         vehicleIcon: Icons.local_shipping_outlined,
@@ -2015,7 +2024,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                     TextSpan(
                                       children: [
                                         TextSpan(
-                                          text: '${item.rating} ',
+                                          text: item.trips.isNotEmpty ? '${item.rating} ' : item.rating,
                                           style: tr.font(
                                             fontSize: 10.0,
                                             fontWeight: FontWeight.w400,
@@ -2023,15 +2032,16 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                             height: 1.15,
                                           ),
                                         ),
-                                        TextSpan(
-                                          text: tr.formatTripsString(item.trips),
-                                          style: tr.font(
-                                            fontSize: 10.0,
-                                            fontWeight: FontWeight.w400,
-                                            color: const Color(0xFF566663),
-                                            height: 1.15,
+                                        if (item.trips.isNotEmpty)
+                                          TextSpan(
+                                            text: tr.formatTripsString(item.trips),
+                                            style: tr.font(
+                                              fontSize: 10.0,
+                                              fontWeight: FontWeight.w400,
+                                              color: const Color(0xFF566663),
+                                              height: 1.15,
+                                            ),
                                           ),
-                                        ),
                                       ],
                                     ),
                                   ),

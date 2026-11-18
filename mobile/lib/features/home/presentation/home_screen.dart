@@ -75,6 +75,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     if (status != task.status || step != task.step) {
       if (status == 'completed') {
+        await TaskService.instance.updateTaskStatus(status: 'completed', step: 4);
         await TaskService.instance.completeTask();
       } else if (status == 'cancelled') {
         await TaskService.instance.cancelTask();
@@ -140,7 +141,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
         ),
-        if (_currentTabIndex != 0 && notifState.isCustomerCardVisible && n != null)
+        // Requests tab renders its own notification card — avoid duplicate popups.
+        if (_currentTabIndex == 2 && notifState.isCustomerCardVisible && n != null)
           Positioned(
             top: (topPad > 0 ? topPad + 12.0 : 54.0),
             left: 16.0,
@@ -298,6 +300,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   LocationPermissionScreen.navigateToService(
                                     context,
                                     serviceName: displayName,
+                                    categorySlug: category.slug,
                                   );
                                 },
                               ),

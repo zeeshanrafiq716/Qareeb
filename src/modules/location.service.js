@@ -91,8 +91,16 @@ export async function processLocationUpdate(providerId, latitude, longitude, add
 
   await presenceStore.setLocation(providerId, { latitude: lat, longitude: lng, updatedAt: now });
   await presenceStore.setLocationGate(providerId, Date.now());
-  await presenceStore.touch(providerId);
-  await query(`UPDATE providers SET last_seen_at = now() WHERE id = $1`, [providerId]);
+  const { rows: onlineRows } = await query(
+    `UPDATE providers SET last_seen_at = now() WHERE id = $1 RETURNING is_online`,
+    [providerId],
+  );
+  // Never re-enable Redis online presence if the provider has toggled offline
+  if (onlineRows[0]?.is_online) {
+    await presenceStore.touch(providerId);
+  } else {
+    await presenceStore.setOffline(providerId);
+  }
 
   return {
     accepted: true,

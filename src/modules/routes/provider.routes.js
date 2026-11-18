@@ -156,6 +156,7 @@ providerRoutes.get(
   "/me/notifications",
   requireProvider,
   asyncHandler(async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     const limit = Number(req.query.limit) || 20;
     ok(res, await listProviderNotifications(req.provider.id, { limit }));
   }),

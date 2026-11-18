@@ -62,7 +62,8 @@ export async function resolveCategoryFilter({ categoryId, categorySlug }) {
 
 export function buildAvailability(row, redisOnline) {
   const locationFresh = isLocationFresh(row.location_updated_at);
-  const isOnline = Boolean(redisOnline || row.is_online);
+  // PostgreSQL providers.is_online is strictly controlled by provider online/offline toggle
+  const isOnline = Boolean(row.is_online);
   const isAvailable = isOnline && (locationFresh || Boolean(row.latitude && row.longitude));
 
   return {
@@ -229,9 +230,8 @@ export async function searchDiscovery(input) {
 
   const list = [];
   for (const row of rows) {
+    if (!row.is_online) continue;
     const redisOnline = await presenceStore.isOnline(row.id);
-    const isOnline = Boolean(redisOnline || row.is_online);
-    if (!isOnline) continue;
 
     // Prefer the freshest exact GPS coordinates from Redis presenceStore if available
     const liveRedisLoc = await presenceStore.getLocation(row.id);

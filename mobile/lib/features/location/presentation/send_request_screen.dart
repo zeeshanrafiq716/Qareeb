@@ -247,7 +247,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
       providerPhone: _resolvedPhone,
       providerAvatar: _photoUrl,
       providerRating: _rating,
-      providerTripsCount: _ordersCount > 0 ? _ordersCount : _reviews,
+      providerTripsCount: _ordersCount,
       providerLatitude: _providerLat,
       providerLongitude: _providerLng,
       vehicleName: resolvedVehicle,
@@ -316,7 +316,7 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
       providerPublicId: widget.providerPublicId,
       providerAvatar: _photoUrl,
       providerRating: _rating,
-      providerTripsCount: _ordersCount > 0 ? _ordersCount : _reviews,
+      providerTripsCount: _ordersCount,
       providerLatitude: _providerLat,
       providerLongitude: _providerLng,
       serviceCategory: widget.serviceCategory,
@@ -330,22 +330,34 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
 
     final id = widget.providerPublicId;
     if (id != null && id.isNotEmpty) {
-      final serverReqId = await ref.read(backendServiceProvider).sendCustomerServiceRequest(
+      final reqMeta = {
+        'serviceCategory': widget.serviceCategory,
+        'customerName': customerName,
+        'customerAddress': addressLabel,
+        if (widget.distance.trim().isNotEmpty &&
+            widget.distance.trim() != '—' &&
+            widget.distance.trim() != '--')
+          'distance': widget.distance.trim(),
+        if (widget.eta != null && widget.eta!.trim().isNotEmpty && widget.eta!.trim() != '--')
+          'eta': widget.eta!.trim(),
+      };
+      String? serverReqId = await ref.read(backendServiceProvider).sendCustomerServiceRequest(
             providerPublicId: id,
             latitude: hasGps ? loc.latitude : null,
             longitude: hasGps ? loc.longitude : null,
-            metadata: {
-              'serviceCategory': widget.serviceCategory,
-              'customerName': customerName,
-              'customerAddress': addressLabel,
-              if (widget.distance.trim().isNotEmpty &&
-                  widget.distance.trim() != '—' &&
-                  widget.distance.trim() != '--')
-                'distance': widget.distance.trim(),
-              if (widget.eta != null && widget.eta!.trim().isNotEmpty && widget.eta!.trim() != '--')
-                'eta': widget.eta!.trim(),
-            },
+            metadata: reqMeta,
           );
+      if ((serverReqId == null || serverReqId.isEmpty) && mounted) {
+        await Future<void>.delayed(const Duration(milliseconds: 1500));
+        if (mounted) {
+          serverReqId = await ref.read(backendServiceProvider).sendCustomerServiceRequest(
+                providerPublicId: id,
+                latitude: hasGps ? loc.latitude : null,
+                longitude: hasGps ? loc.longitude : null,
+                metadata: reqMeta,
+              );
+        }
+      }
       if (serverReqId != null && serverReqId.isNotEmpty) {
         _backendRequestId = serverReqId;
         await TaskService.instance.attachBackendRequestId(serverReqId);
@@ -431,6 +443,13 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
       }
     } else if (status == 'completed') {
       _statusPollTimer?.cancel();
+      final ordersCount = (data['providerOrdersCount'] as num?)?.toInt();
+      if (ordersCount != null) {
+        await TaskService.instance.updateActiveTaskProviderDetails(
+          providerTripsCount: ordersCount,
+        );
+      }
+      await TaskService.instance.updateTaskStatus(status: 'completed', step: 4);
       await TaskService.instance.completeTask();
       if (!mounted) return;
       ref.read(notificationsProvider.notifier).notifyCustomerRequestStatusChange(

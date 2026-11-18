@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -46,11 +47,24 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   int _selectedProviderCount = 10;
+  Timer? _refreshTimer;
 
   AppTranslations get tr => ref.read(translationsProvider);
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.invalidate(nearbyProvidersProvider);
+    });
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) ref.invalidate(nearbyProvidersProvider);
+    });
+  }
+
+  @override
   void dispose() {
+    _refreshTimer?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -95,7 +109,8 @@ class _FindProviderScreenState extends ConsumerState<FindProviderScreen> {
                 (streamLoc != null && streamLoc.hasValidDeviceGps)
                     ? streamLoc
                     : LocationService.lastKnownValidLocation;
-            final List<ProviderMarkerModel> liveProviders = nearbyProvidersAsync.value ?? [];
+            final List<ProviderMarkerModel> liveProviders =
+                (nearbyProvidersAsync.value ?? []).where((p) => p.isOnline).toList();
 
             final String searchQuery = _searchController.text.trim().toLowerCase();
             final List<ProviderMarkerModel> searchedProviders = searchQuery.isEmpty

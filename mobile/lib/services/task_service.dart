@@ -460,26 +460,32 @@ class TaskService {
     providerRequestsNotifier.value = providerRequests;
   }
 
-  /// Select a specific incoming request as the active task (when provider taps a request card)
-  Future<void> selectIncomingRequest(String taskId) async {
-    if (_activeTask?.id == taskId) return;
+  /// Select a specific incoming request as the active task (when provider taps a request card).
+  /// Returns `true` ONLY if [taskId] actually exists as active or incoming.
+  Future<bool> selectIncomingRequest(String taskId) async {
+    if (taskId.trim().isEmpty) return false;
+    if (_activeTask?.id == taskId) return true;
     final idx = _incomingRequests.indexWhere((t) => t.id == taskId);
-    if (idx == -1) return;
+    if (idx == -1) return false;
     _activeTask = _incomingRequests[idx];
     activeTaskNotifier.value = _activeTask;
     providerRequestsNotifier.value = providerRequests;
     await _saveActiveTask();
+    return true;
   }
 
   /// Provider accepts a specific pending request -> moves from New tab to Active tab!
   Future<void> acceptRequestById(String taskId) async {
-    await selectIncomingRequest(taskId);
+    final found = await selectIncomingRequest(taskId);
+    if (!found) return;
     await updateTaskStatus(status: 'active', step: 1);
   }
 
   /// Provider declines/cancels a specific request -> moves to Cancelled tab!
+  /// Strictly matches [taskId] so older cancellation events NEVER cancel a brand-new incoming request.
   Future<void> cancelRequestById(String taskId) async {
-    await selectIncomingRequest(taskId);
+    final found = await selectIncomingRequest(taskId);
+    if (!found) return;
     await cancelTask();
   }
 
@@ -489,13 +495,15 @@ class TaskService {
     required String status,
     required int step,
   }) async {
-    await selectIncomingRequest(taskId);
+    final found = await selectIncomingRequest(taskId);
+    if (!found) return;
     await updateTaskStatus(status: status, step: step);
   }
 
   /// Provider completes a specific request -> moves to Completed tab!
   Future<void> completeRequestById(String taskId) async {
-    await selectIncomingRequest(taskId);
+    final found = await selectIncomingRequest(taskId);
+    if (!found) return;
     await completeTask();
   }
 
@@ -535,6 +543,7 @@ class TaskService {
       step: 4,
     );
     _incomingRequests.removeWhere((t) => t.id == completed.id);
+    _historyTasks.removeWhere((t) => t.id == completed.id);
     _historyTasks.insert(0, completed);
     _activeTask = _incomingRequests.isNotEmpty ? _incomingRequests.first : null;
 
@@ -553,6 +562,7 @@ class TaskService {
       status: 'cancelled',
     );
     _incomingRequests.removeWhere((t) => t.id == cancelled.id);
+    _historyTasks.removeWhere((t) => t.id == cancelled.id);
     _historyTasks.insert(0, cancelled);
     _activeTask = _incomingRequests.isNotEmpty ? _incomingRequests.first : null;
 

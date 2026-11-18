@@ -780,11 +780,14 @@ class BackendService {
   }
 
   /// Provider in-app notifications (call, WhatsApp, location, requests from customers).
-  Future<List<Map<String, dynamic>>> fetchProviderNotifications({int limit = 20}) async {
+  Future<List<Map<String, dynamic>>> fetchProviderNotifications({int limit = 50}) async {
     try {
       final response = await _client.get(
         ApiEndpoints.providerNotifications,
-        queryParameters: {'limit': limit},
+        queryParameters: {
+          'limit': limit,
+          '_t': DateTime.now().millisecondsSinceEpoch,
+        },
       );
       if (response.statusCode == 200 && response.data is Map) {
         final data = response.data as Map<String, dynamic>;
@@ -969,6 +972,7 @@ class BackendService {
           'longitude': longitude,
           'radiusKm': radiusKm,
           if (categorySlug != null) 'categorySlug': categorySlug,
+          '_t': DateTime.now().millisecondsSinceEpoch,
         },
       );
 

@@ -249,10 +249,12 @@ class NearbyDriverRoute {
 /// - Real road path markings & smooth car turning along road curves
 class PickupDeliveryScreen extends ConsumerStatefulWidget {
   final String serviceName;
+  final String? categorySlug;
 
   const PickupDeliveryScreen({
     super.key,
     this.serviceName = 'Pickup & Delivery',
+    this.categorySlug,
   });
 
   @override
@@ -288,9 +290,25 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
 
   List<NearbyDriverRoute>? _driverRoutes;
   List<ProviderMarkerModel> _gpsProviders = const [];
+  bool _hasFetchedGpsProviders = false;
   final Map<String, MapLatLng> _lastKnownPositions = {};
   final Map<String, double> _driverHeadings = {};
   Timer? _providerLocationPollTimer;
+
+  String? get _categorySlug {
+    final slug = widget.categorySlug?.trim();
+    if (slug == null || slug.isEmpty) return null;
+    return slug;
+  }
+
+  void _invalidateNearbyProviders() {
+    final slug = _categorySlug;
+    if (slug != null) {
+      ref.invalidate(categoryNearbyProvidersProvider(slug));
+    } else {
+      ref.invalidate(nearbyProvidersProvider);
+    }
+  }
 
   @override
   void initState() {
@@ -324,11 +342,18 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
       if (loc != null && loc.hasValidDeviceGps) {
         unawaited(_refreshNearbyCars(loc));
       } else {
-        ref.invalidate(nearbyProvidersProvider);
+        _invalidateNearbyProviders();
       }
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _promptLocationIfNeededOnMapOpen());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _promptLocationIfNeededOnMapOpen();
+      _invalidateNearbyProviders();
+      final live = ref.read(userLocationProvider).value ?? LocationService.lastKnownValidLocation;
+      if (live != null && live.hasValidDeviceGps) {
+        unawaited(_refreshNearbyCars(live));
+      }
+    });
   }
 
   Future<void> _promptLocationIfNeededOnMapOpen() async {
@@ -347,7 +372,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     );
     if (!mounted) return;
     ref.invalidate(userLocationProvider);
-    ref.invalidate(nearbyProvidersProvider);
+    _invalidateNearbyProviders();
   }
 
   @override
@@ -524,9 +549,14 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
             latitude: loc.latitude,
             longitude: loc.longitude,
             radiusKm: 25,
+            categorySlug: _categorySlug,
           );
       if (!mounted) return;
-      setState(() => _gpsProviders = list);
+      final onlineOnly = list.where((p) => p.isOnline).toList();
+      setState(() {
+        _gpsProviders = onlineOnly;
+        _hasFetchedGpsProviders = true;
+      });
     } catch (_) {}
   }
 
@@ -567,7 +597,7 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
       }
     });
     ref.invalidate(userLocationProvider);
-    ref.invalidate(nearbyProvidersProvider);
+    _invalidateNearbyProviders();
     _recenterMap(resolved.latitude, resolved.longitude);
   }
 
@@ -768,10 +798,15 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
                   : const MapLatLng(UserLocation.fallbackMapLat, UserLocation.fallbackMapLng);
               final double targetCircleRadiusMeters = _calculateRadiusForCount(_selectedProviderCount, userPos);
 
-              // Build routes strictly from real live providers
-              final providersAsync = ref.watch(nearbyProvidersProvider);
-              final streamed = providersAsync.value ?? const <ProviderMarkerModel>[];
-              final liveProviders = _gpsProviders.isNotEmpty ? _gpsProviders : streamed;
+              // Build routes strictly from real live ONLINE providers (never fall back to stale cache when backend returns empty)
+              final slug = _categorySlug;
+              final providersAsync = slug != null
+                  ? ref.watch(categoryNearbyProvidersProvider(slug))
+                  : ref.watch(nearbyProvidersProvider);
+              final streamed = (providersAsync.value ?? const <ProviderMarkerModel>[])
+                  .where((p) => p.isOnline)
+                  .toList();
+              final liveProviders = _hasFetchedGpsProviders ? _gpsProviders : streamed;
               final routeUser = (rawUserLoc != null && rawUserLoc.hasValidDeviceGps)
                   ? rawUserLoc
                   : null;
