@@ -7,6 +7,8 @@ import '../../../core/localization/app_locale.dart';
 import '../../../core/utils/contact_launcher.dart';
 import '../../../providers/backend_provider.dart';
 import '../../../services/location_service.dart';
+import '../../../services/task_service.dart';
+import 'live_tracking_screen.dart';
 import 'send_location_screen.dart';
 import 'send_request_screen.dart';
 import 'widgets/real_map_background_widget.dart';
@@ -67,6 +69,29 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
   double? _providerLng;
   double? _backendDistanceMeters;
 
+  void _onActiveTaskChanged() {
+    if (mounted) setState(() {});
+  }
+
+  ServiceTask? get _matchingActiveTask {
+    final task = TaskService.instance.activeTask;
+    if (task == null) return null;
+    final status = task.status.toLowerCase();
+    if (status == 'completed' || status == 'cancelled') return null;
+    final pubId = widget.providerPublicId?.trim() ?? '';
+    if (pubId.isNotEmpty &&
+        task.providerPublicId != null &&
+        task.providerPublicId!.trim() == pubId) {
+      return task;
+    }
+    if (widget.providerName.trim().isNotEmpty &&
+        task.providerName.trim().toLowerCase() ==
+            widget.providerName.trim().toLowerCase()) {
+      return task;
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -80,6 +105,7 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
     _ordersCount = widget.ordersCount ?? 0;
     _providerLat = widget.providerLatitude;
     _providerLng = widget.providerLongitude;
+    TaskService.instance.activeTaskNotifier.addListener(_onActiveTaskChanged);
 
     if (widget.providerPublicId != null && widget.providerPublicId!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -96,6 +122,12 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
         _hydrateProfile();
       });
     }
+  }
+
+  @override
+  void dispose() {
+    TaskService.instance.activeTaskNotifier.removeListener(_onActiveTaskChanged);
+    super.dispose();
   }
 
   String? _cleanOptional(String? value) {
@@ -1247,6 +1279,55 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                           key: const Key('provider_detail_send_request_button'),
                                           onTap: () {
                                             HapticFeedback.mediumImpact();
+                                            final existing = _matchingActiveTask;
+                                            if (existing != null) {
+                                              final isAccepted = existing.step >= 1 &&
+                                                  (existing.status == 'active' ||
+                                                      existing.status == 'arrived' ||
+                                                      existing.status == 'in_progress');
+                                              if (isAccepted) {
+                                                Navigator.of(context).push(
+                                                  MaterialPageRoute(
+                                                    builder: (_) => LiveTrackingScreen(
+                                                      requestId: TaskService.extractBackendUuid(existing.id),
+                                                      serviceCategory: existing.serviceCategory,
+                                                      providerName: existing.providerName,
+                                                      vehicleName: existing.vehicleName.isNotEmpty
+                                                          ? existing.vehicleName
+                                                          : existing.serviceCategory,
+                                                      photoUrl: _photoUrl ?? existing.providerAvatar,
+                                                      providerLatitude: _providerLat ?? existing.providerLatitude,
+                                                      providerLongitude: _providerLng ?? existing.providerLongitude,
+                                                      distance: realDistanceText,
+                                                      duration: realEtaText,
+                                                    ),
+                                                  ),
+                                                );
+                                                return;
+                                              }
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) => SendRequestScreen(
+                                                    existingTask: existing,
+                                                    serviceCategory: existing.serviceCategory,
+                                                    providerName: existing.providerName,
+                                                    providerPublicId: widget.providerPublicId ?? existing.providerPublicId,
+                                                    providerPhone: _phone ?? existing.providerPhone,
+                                                    photoUrl: _photoUrl ?? existing.providerAvatar,
+                                                    vehicleName: displayVehicle.isNotEmpty ? displayVehicle : existing.vehicleName,
+                                                    distance: realDistanceText,
+                                                    eta: realEtaText,
+                                                    rating: _rating,
+                                                    reviews: _reviews,
+                                                    ordersCount: _ordersCount,
+                                                    verified: _verified,
+                                                    providerLatitude: _providerLat ?? existing.providerLatitude,
+                                                    providerLongitude: _providerLng ?? existing.providerLongitude,
+                                                  ),
+                                                ),
+                                              );
+                                              return;
+                                            }
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
                                                 builder: (_) => SendRequestScreen(
@@ -1280,10 +1361,11 @@ class _ProviderDetailScreenState extends ConsumerState<ProviderDetailScreen> {
                                               mainAxisAlignment: MainAxisAlignment.center,
                                               crossAxisAlignment: CrossAxisAlignment.center,
                                               children: [
-                                                // content: Send Request
-                                                // width: 94; height: 10; font-family: Inter; font-weight: 500; font-size: 14px; line-height: 22px; color: #FFFFFF;
+                                                // content: Send Request or View Request
                                                 Text(
-                                                  tr.sendRequest,
+                                                  _matchingActiveTask != null
+                                                      ? (tr.isArabic ? 'عرض الطلب' : 'View Request')
+                                                      : tr.sendRequest,
                                                   style: tr.font(
                                                     fontSize: 14.0,
                                                     fontWeight: FontWeight.w500,

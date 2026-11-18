@@ -20,6 +20,7 @@ import '../../../services/task_service.dart';
 /// Screen displayed when user clicks 'Send Request' in ProviderDetailScreen.
 /// Displays 100% real provider data & live GPS map (zero fallbacks).
 class SendRequestScreen extends ConsumerStatefulWidget {
+  final ServiceTask? existingTask;
   final String serviceCategory;
   final String providerName;
   final String? providerPublicId;
@@ -37,6 +38,7 @@ class SendRequestScreen extends ConsumerStatefulWidget {
 
   const SendRequestScreen({
     super.key,
+    this.existingTask,
     this.serviceCategory = 'Service',
     this.providerName = 'Provider',
     this.providerPublicId,
@@ -77,26 +79,50 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
 
   AppTranslations get tr => ref.read(translationsProvider);
 
+  ServiceTask? _findMatchingActiveTask() {
+    if (widget.existingTask != null) return widget.existingTask;
+    final active = TaskService.instance.activeTask;
+    if (active == null) return null;
+    final status = active.status.toLowerCase();
+    if (status == 'completed' || status == 'cancelled') return null;
+    final pubId = widget.providerPublicId?.trim() ?? '';
+    if (pubId.isNotEmpty &&
+        active.providerPublicId != null &&
+        active.providerPublicId!.trim() == pubId) {
+      return active;
+    }
+    if (widget.providerName.trim().isNotEmpty &&
+        active.providerName.trim().toLowerCase() ==
+            widget.providerName.trim().toLowerCase()) {
+      return active;
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
-    _requestSentAt = DateTime.now();
-    _resolvedPhone = _cleanPhone(widget.providerPhone);
-    _photoUrl = _cleanPhoto(widget.photoUrl);
-    _vehicleName = _cleanPhone(widget.vehicleName);
-    _rating = widget.rating ?? 0.0;
+    final existing = _findMatchingActiveTask();
+    // Continue timer seamlessly from original request sent timestamp when viewing an active request
+    _requestSentAt = existing?.createdAt ?? DateTime.now();
+    _resolvedPhone = _cleanPhone(widget.providerPhone) ?? _cleanPhone(existing?.providerPhone);
+    _photoUrl = _cleanPhoto(widget.photoUrl) ?? _cleanPhoto(existing?.providerAvatar);
+    _vehicleName = _cleanPhone(widget.vehicleName) ?? _cleanPhone(existing?.vehicleName);
+    _rating = widget.rating ?? existing?.providerRating ?? 0.0;
     _reviews = widget.reviews ?? 0;
-    _ordersCount = widget.ordersCount ?? 0;
+    _ordersCount = widget.ordersCount ?? existing?.providerTripsCount ?? 0;
     _verified = widget.verified ?? false;
-    _providerLat = widget.providerLatitude;
-    _providerLng = widget.providerLongitude;
+    _providerLat = widget.providerLatitude ?? existing?.providerLatitude;
+    _providerLng = widget.providerLongitude ?? existing?.providerLongitude;
 
-    ProfileStatsService.instance.recordNewRequest(isProvider: false);
+    if (existing == null) {
+      ProfileStatsService.instance.recordNewRequest(isProvider: false);
+    }
     TaskService.instance.activeTaskNotifier.addListener(_onTaskChanged);
     _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
-    _bootstrapRequest();
+    _bootstrapRequest(existing: existing);
     _hydrateProviderPhone();
   }
 
@@ -212,9 +238,24 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
         _backendDistanceMeters = distM;
       }
     });
+
+    final plateNum = _cleanPhone(profile['plateNumber']?.toString());
+    final vehicleModel = _cleanPhone(profile['vehicleModel']?.toString());
+    final resolvedVehicle = _vehicleName ?? vehicleModel;
+    TaskService.instance.updateActiveTaskProviderDetails(
+      providerPublicId: id,
+      providerPhone: _resolvedPhone,
+      providerAvatar: _photoUrl,
+      providerRating: _rating,
+      providerTripsCount: _ordersCount > 0 ? _ordersCount : _reviews,
+      providerLatitude: _providerLat,
+      providerLongitude: _providerLng,
+      vehicleName: resolvedVehicle,
+      plateNumber: plateNum,
+    );
   }
 
-  Future<void> _bootstrapRequest() async {
+  Future<void> _bootstrapRequest({ServiceTask? existing}) async {
     final rawLoc = ref.read(userLocationProvider).value;
     final loc = (rawLoc != null && rawLoc.hasValidDeviceGps)
         ? rawLoc
@@ -231,9 +272,55 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
             ? 'https://maps.google.com/?q=${loc.latitude.toStringAsFixed(6)},${loc.longitude.toStringAsFixed(6)}'
             : 'Shared via Zesho');
 
+    // If viewing an already-sent active request, DO NOT create a duplicate request or restart timer
+    if (existing != null) {
+      final existingUuid = TaskService.extractBackendUuid(existing.id);
+      if (existingUuid != null && existingUuid.isNotEmpty) {
+        _backendRequestId = existingUuid;
+        _startStatusPolling();
+        _pollBackendRequestStatus();
+        _syncAcceptedFromTask();
+        return;
+      }
+      // If previous backend call hadn't returned a UUID yet, sync once now without resetting timer
+      final id = widget.providerPublicId ?? existing.providerPublicId;
+      if (id != null && id.isNotEmpty) {
+        final serverReqId = await ref.read(backendServiceProvider).sendCustomerServiceRequest(
+              providerPublicId: id,
+              latitude: hasGps ? loc.latitude : null,
+              longitude: hasGps ? loc.longitude : null,
+              metadata: {
+                'serviceCategory': widget.serviceCategory,
+                'customerName': customerName,
+                'customerAddress': addressLabel,
+                if (widget.distance.trim().isNotEmpty &&
+                    widget.distance.trim() != '—' &&
+                    widget.distance.trim() != '--')
+                  'distance': widget.distance.trim(),
+                if (widget.eta != null && widget.eta!.trim().isNotEmpty && widget.eta!.trim() != '--')
+                  'eta': widget.eta!.trim(),
+              },
+            );
+        if (serverReqId != null && serverReqId.isNotEmpty) {
+          _backendRequestId = serverReqId;
+          await TaskService.instance.attachBackendRequestId(serverReqId);
+          _startStatusPolling();
+        }
+      }
+      _syncAcceptedFromTask();
+      return;
+    }
+
     await TaskService.instance.createCustomerRequest(
       providerName: widget.providerName,
+      providerPublicId: widget.providerPublicId,
+      providerAvatar: _photoUrl,
+      providerRating: _rating,
+      providerTripsCount: _ordersCount > 0 ? _ordersCount : _reviews,
+      providerLatitude: _providerLat,
+      providerLongitude: _providerLng,
       serviceCategory: widget.serviceCategory,
+      vehicleName: _vehicleName,
       distance: widget.distance,
       eta: widget.eta ?? '',
       providerPhone: _resolvedPhone ?? '',

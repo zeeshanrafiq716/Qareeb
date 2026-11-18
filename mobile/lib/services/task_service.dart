@@ -5,9 +5,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Represents a service request / task between a customer and a provider
 class ServiceTask {
   final String id;
+  final String? providerPublicId;
   final String providerName;
   final String providerPhone;
   final String? providerAvatar;
+  final double providerRating;
+  final int providerTripsCount;
+  final double? providerLatitude;
+  final double? providerLongitude;
   final String serviceCategory;
   final String vehicleName;
   final String plateNumber;
@@ -22,16 +27,21 @@ class ServiceTask {
 
   const ServiceTask({
     required this.id,
+    this.providerPublicId,
     required this.providerName,
-    this.providerPhone = '+966 54 545 6467',
+    this.providerPhone = '',
     this.providerAvatar,
+    this.providerRating = 0.0,
+    this.providerTripsCount = 0,
+    this.providerLatitude,
+    this.providerLongitude,
     required this.serviceCategory,
-    this.vehicleName = 'Service Vehicle',
-    this.plateNumber = '1122',
-    this.distance = '1.8 km',
-    this.eta = '8 min',
-    this.customerName = 'Ahmed',
-    this.customerLocation = 'Riyadh, Saudi Arabia',
+    this.vehicleName = '',
+    this.plateNumber = '',
+    this.distance = '--',
+    this.eta = '--',
+    this.customerName = 'Customer',
+    this.customerLocation = '',
     this.status = 'active',
     this.step = 1,
     required this.dateTime,
@@ -40,9 +50,14 @@ class ServiceTask {
 
   ServiceTask copyWith({
     String? id,
+    String? providerPublicId,
     String? providerName,
     String? providerPhone,
     String? providerAvatar,
+    double? providerRating,
+    int? providerTripsCount,
+    double? providerLatitude,
+    double? providerLongitude,
     String? serviceCategory,
     String? vehicleName,
     String? plateNumber,
@@ -57,9 +72,14 @@ class ServiceTask {
   }) {
     return ServiceTask(
       id: id ?? this.id,
+      providerPublicId: providerPublicId ?? this.providerPublicId,
       providerName: providerName ?? this.providerName,
       providerPhone: providerPhone ?? this.providerPhone,
       providerAvatar: providerAvatar ?? this.providerAvatar,
+      providerRating: providerRating ?? this.providerRating,
+      providerTripsCount: providerTripsCount ?? this.providerTripsCount,
+      providerLatitude: providerLatitude ?? this.providerLatitude,
+      providerLongitude: providerLongitude ?? this.providerLongitude,
       serviceCategory: serviceCategory ?? this.serviceCategory,
       vehicleName: vehicleName ?? this.vehicleName,
       plateNumber: plateNumber ?? this.plateNumber,
@@ -76,9 +96,14 @@ class ServiceTask {
 
   Map<String, dynamic> toJson() => {
         'id': id,
+        'providerPublicId': providerPublicId,
         'providerName': providerName,
         'providerPhone': providerPhone,
         'providerAvatar': providerAvatar,
+        'providerRating': providerRating,
+        'providerTripsCount': providerTripsCount,
+        'providerLatitude': providerLatitude,
+        'providerLongitude': providerLongitude,
         'serviceCategory': serviceCategory,
         'vehicleName': vehicleName,
         'plateNumber': plateNumber,
@@ -95,16 +120,21 @@ class ServiceTask {
   factory ServiceTask.fromJson(Map<String, dynamic> json) {
     return ServiceTask(
       id: json['id'] as String? ?? 'REQ-1001',
+      providerPublicId: json['providerPublicId'] as String?,
       providerName: json['providerName'] as String? ?? 'Provider',
-      providerPhone: json['providerPhone'] as String? ?? '+966 54 545 6467',
+      providerPhone: json['providerPhone'] as String? ?? '',
       providerAvatar: json['providerAvatar'] as String?,
-      serviceCategory: json['serviceCategory'] as String? ?? 'Roadside Assistance',
-      vehicleName: json['vehicleName'] as String? ?? 'Service Vehicle',
-      plateNumber: json['plateNumber'] as String? ?? '1122',
-      distance: json['distance'] as String? ?? '1.8 km',
-      eta: json['eta'] as String? ?? '8 min',
+      providerRating: (json['providerRating'] as num?)?.toDouble() ?? 0.0,
+      providerTripsCount: (json['providerTripsCount'] as num?)?.toInt() ?? 0,
+      providerLatitude: (json['providerLatitude'] as num?)?.toDouble(),
+      providerLongitude: (json['providerLongitude'] as num?)?.toDouble(),
+      serviceCategory: json['serviceCategory'] as String? ?? 'Service',
+      vehicleName: json['vehicleName'] as String? ?? '',
+      plateNumber: json['plateNumber'] as String? ?? '',
+      distance: json['distance'] as String? ?? '--',
+      eta: json['eta'] as String? ?? '--',
       customerName: json['customerName'] as String? ?? 'Customer',
-      customerLocation: json['customerLocation'] as String? ?? 'Riyadh',
+      customerLocation: json['customerLocation'] as String? ?? '',
       status: json['status'] as String? ?? 'active',
       step: json['step'] as int? ?? 1,
       dateTime: json['dateTime'] as String? ?? 'Today',
@@ -191,6 +221,12 @@ class TaskService {
     required String providerName,
     required String serviceCategory,
     String? requestId,
+    String? providerPublicId,
+    String? providerAvatar,
+    double? providerRating,
+    int? providerTripsCount,
+    double? providerLatitude,
+    double? providerLongitude,
     String? distance,
     String? eta,
     String? vehicleName,
@@ -209,10 +245,16 @@ class TaskService {
 
     final task = ServiceTask(
       id: taskId,
+      providerPublicId: providerPublicId,
       providerName: providerName.isNotEmpty ? providerName : 'Provider',
       providerPhone: providerPhone ?? '',
+      providerAvatar: providerAvatar,
+      providerRating: providerRating ?? 0.0,
+      providerTripsCount: providerTripsCount ?? 0,
+      providerLatitude: providerLatitude,
+      providerLongitude: providerLongitude,
       serviceCategory: serviceCategory.isNotEmpty ? serviceCategory : 'Service Request',
-      vehicleName: vehicleName ?? serviceCategory,
+      vehicleName: vehicleName ?? '',
       plateNumber: plateNumber ?? '',
       distance: distance ?? '--',
       eta: eta ?? '--',
@@ -230,6 +272,63 @@ class TaskService {
 
     await _saveActiveTask();
     return task;
+  }
+
+  /// Hydrates real provider details (photo, rating, trips, vehicle, plate, GPS) on the active task.
+  Future<void> updateActiveTaskProviderDetails({
+    String? providerPublicId,
+    String? providerName,
+    String? providerPhone,
+    String? providerAvatar,
+    double? providerRating,
+    int? providerTripsCount,
+    double? providerLatitude,
+    double? providerLongitude,
+    String? serviceCategory,
+    String? vehicleName,
+    String? plateNumber,
+    String? distance,
+    String? eta,
+  }) async {
+    if (_activeTask == null) return;
+    final current = _activeTask!;
+    final next = current.copyWith(
+      providerPublicId: (providerPublicId != null && providerPublicId.trim().isNotEmpty)
+          ? providerPublicId.trim()
+          : current.providerPublicId,
+      providerName: (providerName != null && providerName.trim().isNotEmpty)
+          ? providerName.trim()
+          : current.providerName,
+      providerPhone: (providerPhone != null && providerPhone.trim().isNotEmpty)
+          ? providerPhone.trim()
+          : current.providerPhone,
+      providerAvatar: (providerAvatar != null && providerAvatar.trim().isNotEmpty)
+          ? providerAvatar.trim()
+          : current.providerAvatar,
+      providerRating: providerRating ?? current.providerRating,
+      providerTripsCount: providerTripsCount ?? current.providerTripsCount,
+      providerLatitude: providerLatitude ?? current.providerLatitude,
+      providerLongitude: providerLongitude ?? current.providerLongitude,
+      serviceCategory: (serviceCategory != null && serviceCategory.trim().isNotEmpty)
+          ? serviceCategory.trim()
+          : current.serviceCategory,
+      vehicleName: (vehicleName != null && vehicleName.trim().isNotEmpty)
+          ? vehicleName.trim()
+          : current.vehicleName,
+      plateNumber: (plateNumber != null && plateNumber.trim().isNotEmpty)
+          ? plateNumber.trim()
+          : current.plateNumber,
+      distance: (distance != null && distance.trim().isNotEmpty)
+          ? distance.trim()
+          : current.distance,
+      eta: (eta != null && eta.trim().isNotEmpty)
+          ? eta.trim()
+          : current.eta,
+    );
+    _activeTask = next;
+    activeTaskNotifier.value = _activeTask;
+    providerRequestsNotifier.value = providerRequests;
+    await _saveActiveTask();
   }
 
   /// Attaches the real backend UUID returned from POST /api/v1/discovery/events to the active customer task.

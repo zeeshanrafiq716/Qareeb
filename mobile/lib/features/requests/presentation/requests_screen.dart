@@ -5,17 +5,16 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../providers/backend_provider.dart';
 import '../../../providers/notifications_provider.dart';
+import '../../../services/location_service.dart';
 import '../../../services/task_service.dart';
 import '../../home/presentation/widgets/bottom_nav_bar_widget.dart';
 import '../../home/presentation/widgets/notification_bell_button.dart';
 import '../../home/presentation/widgets/notification_popup_card.dart';
 import '../../location/presentation/live_tracking_screen.dart';
-import '../../location/presentation/widgets/top_down_car_widget.dart';
-import '../../location/presentation/widgets/map_tracking_step.dart';
 import '../../location/presentation/widgets/real_map_background_widget.dart';
 import '../../profile/presentation/notifications_screen.dart';
 import '../../location/presentation/completed_service_details_screen.dart';
@@ -73,6 +72,50 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
     });
   }
 
+  String? _cleanPhotoUrl(String? raw) {
+    final v = raw?.trim() ?? '';
+    if (v.isEmpty) return null;
+    if (v.contains('unsplash.com') || v.contains('placeholder')) return null;
+    return v;
+  }
+
+  String _providerInitials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return 'Z';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return parts[0].substring(0, 1).toUpperCase() + parts[1].substring(0, 1).toUpperCase();
+  }
+
+  double? _computeLiveDistanceMeters(ServiceTask task, UserLocation? userLoc) {
+    final pLat = task.providerLatitude;
+    final pLng = task.providerLongitude;
+    final hasProv = pLat != null &&
+        pLng != null &&
+        pLat.isFinite &&
+        pLng.isFinite &&
+        (pLat.abs() > 0.001 || pLng.abs() > 0.001);
+    if (userLoc != null && userLoc.hasValidDeviceGps && hasProv) {
+      final m = Geolocator.distanceBetween(userLoc.latitude, userLoc.longitude, pLat, pLng);
+      if (m.isFinite && m >= 0) return m;
+    }
+    return null;
+  }
+
+  String _formatDistance(double meters, bool isArabic) {
+    if (meters < 1000.0) {
+      return isArabic ? '${meters.round()} م' : '${meters.round()} m';
+    }
+    return isArabic
+        ? '${(meters / 1000.0).toStringAsFixed(1)} كم'
+        : '${(meters / 1000.0).toStringAsFixed(1)} km';
+  }
+
+  String _formatEta(double meters, bool isArabic) {
+    if (meters < 100.0) return isArabic ? 'أقل من دقيقة' : '< 1 min';
+    final mins = ((meters / 1000.0) / 30.0 * 60.0).ceil().clamp(1, 180);
+    return isArabic ? '$mins د' : '$mins min';
+  }
+
   Future<void> _syncCustomerRequestStatus() async {
     if (!mounted) return;
     final task = TaskService.instance.activeTask;
@@ -82,6 +125,32 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
     final data = await ref.read(backendServiceProvider).getCustomerRequestStatus(reqId);
     if (!mounted || data == null) return;
 
+    final pLat = (data['providerLatitude'] as num?)?.toDouble();
+    final pLng = (data['providerLongitude'] as num?)?.toDouble();
+    final ratingAvg = (data['providerRatingAvg'] as num?)?.toDouble();
+    final ratingCount = (data['providerRatingCount'] as num?)?.toInt() ?? 0;
+    final ordersCount = (data['providerOrdersCount'] as num?)?.toInt() ?? 0;
+    final vehicleType = data['providerVehicleType']?.toString().trim() ?? '';
+    final vehicleModel = data['providerVehicleModel']?.toString().trim() ?? '';
+    final plateNum = data['providerPlateNumber']?.toString().trim() ?? '';
+    final photoUrl = _cleanPhotoUrl(data['providerPhotoUrl']?.toString());
+    final resolvedVehicle = vehicleType.isNotEmpty ? vehicleType : vehicleModel;
+
+    await TaskService.instance.updateActiveTaskProviderDetails(
+      providerPublicId: data['providerPublicId']?.toString(),
+      providerName: data['providerName']?.toString(),
+      providerPhone: data['providerPhone']?.toString(),
+      providerAvatar: photoUrl,
+      providerRating: ratingAvg,
+      providerTripsCount: ordersCount > 0 ? ordersCount : ratingCount,
+      providerLatitude: (pLat != null && pLat.abs() > 0.001) ? pLat : null,
+      providerLongitude: (pLng != null && pLng.abs() > 0.001) ? pLng : null,
+      serviceCategory: data['serviceCategory']?.toString(),
+      vehicleName: resolvedVehicle,
+      plateNumber: plateNum,
+    );
+
+    if (!mounted) return;
     final status = (data['status']?.toString() ?? task.status).toLowerCase();
     final cancelledBy = data['cancelledBy']?.toString();
     final step = (data['step'] is num)
@@ -103,7 +172,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
             providerName: task.providerName,
             serviceCategory: task.serviceCategory,
             distance: task.distance,
-            photoUrl: task.providerAvatar,
+            photoUrl: photoUrl ?? task.providerAvatar,
             cancelledBy: cancelledBy,
           );
     }
@@ -156,6 +225,28 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                 : screenHeight;
             final double horizontalPadding = containerWidth < 360 ? 16.0 : 20.0;
 
+            final double topSafeArea = mediaQuery.padding.top;
+            final double headerTopPadding = isDesktopWeb
+                ? 44.0
+                : (topSafeArea > 0 ? topSafeArea + 12.0 : 48.0);
+            final double bottomNavClearance = isDesktopWeb
+                ? 104.0
+                : (mediaQuery.padding.bottom + 112.0);
+
+            final activeTask = TaskService.instance.activeTask;
+            final streamLoc = ref.watch(userLocationProvider).value;
+            final activeLoc = (streamLoc != null && streamLoc.hasValidDeviceGps)
+                ? streamLoc
+                : LocationService.lastKnownValidLocation;
+            final double? liveMeters =
+                activeTask != null ? _computeLiveDistanceMeters(activeTask, activeLoc) : null;
+            final String liveDistance = liveMeters != null
+                ? _formatDistance(liveMeters, tr.isArabic)
+                : (activeTask?.distance ?? '--');
+            final String liveEta = liveMeters != null
+                ? _formatEta(liveMeters, tr.isArabic)
+                : (activeTask?.eta ?? '--');
+
             final Widget screenContent = Container(
               width: containerWidth,
               height: containerHeight,
@@ -163,65 +254,36 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // Smooth scroll view for tab content with full mouse, touch & trackpad support
+                  // Fixed Header + Active/History Tabs, Scrollable Remaining Content
                   Positioned.fill(
-                    child: Listener(
-                      behavior: HitTestBehavior.translucent,
-                      onPointerSignal: (pointerSignal) {
-                        if (pointerSignal is PointerScrollEvent && _scrollController.hasClients) {
-                          final double target = (_scrollController.offset + pointerSignal.scrollDelta.dy)
-                              .clamp(0.0, _scrollController.position.maxScrollExtent);
-                          _scrollController.jumpTo(target);
-                        }
-                      },
-                      child: ScrollConfiguration(
-                        behavior: ScrollConfiguration.of(context).copyWith(
-                          scrollbars: false,
-                          dragDevices: {
-                            PointerDeviceKind.touch,
-                            PointerDeviceKind.mouse,
-                            PointerDeviceKind.trackpad,
-                            PointerDeviceKind.stylus,
-                            PointerDeviceKind.invertedStylus,
-                            PointerDeviceKind.unknown,
-                          },
-                        ),
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          physics: const ClampingScrollPhysics(),
-                          child: SizedBox(
-                            width: containerWidth,
-                            height: _activeFilterIndex == 1
-                                ? math.max(containerHeight, 260.0 + _filteredHistoryItems.length * 135.0 + 140.0)
-                                : (TaskService.instance.activeTask != null ? math.max(containerHeight, 840.0) : containerHeight),
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                              // 1. Header Layout:
-                              // width: 350; height: 36; top: 56px; left: 20px; justify-content: space-between;
-                              Positioned(
-                                top: 56.0,
-                                left: horizontalPadding,
-                                right: horizontalPadding,
-                                height: 36.0,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // FIXED TOP SECTION: Header + Active / History Tabs
+                        Container(
+                          color: Colors.white,
+                          padding: EdgeInsets.fromLTRB(
+                            horizontalPadding,
+                            headerTopPadding,
+                            horizontalPadding,
+                            12.0,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // 1. Fixed Header Layout
+                              SizedBox(
+                                height: 40.0,
                                 child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    // Content Layout:
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          // content: Requests
-                                          // width: 231; height: 12; font-family: Inter; font-weight: 500; font-size: 16px;
-                                          // line-height: 22px; color: #1C2926;
                                           Text(
                                             tr.requestsTitle,
                                             style: tr.font(
@@ -235,10 +297,6 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           const SizedBox(height: 2.0),
-
-                                          // content: Track and manage your service requests
-                                          // width: 231; height: 9; font-family: Inter; font-weight: 400; font-size: 12px;
-                                          // line-height: 22px; color: #566663;
                                           Text(
                                             tr.requestsSubtitle,
                                             style: tr.font(
@@ -254,11 +312,8 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                         ],
                                       ),
                                     ),
-
-                                    // Right Icon Branding: Notification Bell Button with live unread indicator
                                     NotificationBellButton(
-                                      key: const Key(
-                                          'requests_header_notification_button'),
+                                      key: const Key('requests_header_notification_button'),
                                       hasNotification: notifState.hasCustomerUnread,
                                       onTap: () {
                                         HapticFeedback.lightImpact();
@@ -280,41 +335,31 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                   ],
                                 ),
                               ),
+                              const SizedBox(height: 16.0),
 
-                              // 2. Tabs Branding Layout:
-                              // width: 350; height: 52; top: 116px; left: 20px; gap: 12px;
-                              Positioned(
-                                top: 116.0,
-                                left: horizontalPadding,
-                                right: horizontalPadding,
+                              // 2. Fixed Active & History Tabs Row
+                              SizedBox(
                                 height: 52.0,
                                 child: Row(
                                   children: [
-                                    // 1st Button: Active
-                                    // width: 169; height: 52; gap: 6px; border-radius: 12px;
-                                    // padding-top: 16px; padding-bottom: 16px; background: #1D8070;
                                     Expanded(
                                       child: MouseRegion(
                                         cursor: SystemMouseCursors.click,
                                         child: AnimatedContainer(
-                                          duration: const Duration(
-                                              milliseconds: 180),
+                                          duration: const Duration(milliseconds: 180),
                                           curve: Curves.easeInOut,
                                           height: 52.0,
                                           decoration: BoxDecoration(
                                             color: _activeFilterIndex == 0
                                                 ? const Color(0xFF8B53FE)
                                                 : const Color(0xFF2D2A3D),
-                                            borderRadius:
-                                                BorderRadius.circular(12.0),
+                                            borderRadius: BorderRadius.circular(12.0),
                                           ),
                                           child: Material(
                                             color: Colors.transparent,
-                                            borderRadius:
-                                                BorderRadius.circular(12.0),
+                                            borderRadius: BorderRadius.circular(12.0),
                                             child: InkWell(
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
+                                              borderRadius: BorderRadius.circular(12.0),
                                               splashColor: (_activeFilterIndex == 0
                                                       ? Colors.white
                                                       : const Color(0xFF8B53FE))
@@ -334,8 +379,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                   tr.activeFilter,
                                                   style: tr.font(
                                                     fontSize: 14.0,
-                                                    fontWeight:
-                                                        FontWeight.w500,
+                                                    fontWeight: FontWeight.w500,
                                                     color: const Color(0xFFFFFFFF),
                                                     height: 1.15,
                                                     letterSpacing: 0.0,
@@ -347,35 +391,25 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                         ),
                                       ),
                                     ),
-
-                                    // gap: 12px
                                     const SizedBox(width: 12.0),
-
-                                    // 2nd Button: History
-                                    // width: 169; height: 52; gap: 6px; border-radius: 12px;
-                                    // padding-top: 16px; padding-bottom: 16px; background: #F2F5F4;
                                     Expanded(
                                       child: MouseRegion(
                                         cursor: SystemMouseCursors.click,
                                         child: AnimatedContainer(
-                                          duration: const Duration(
-                                              milliseconds: 180),
+                                          duration: const Duration(milliseconds: 180),
                                           curve: Curves.easeInOut,
                                           height: 52.0,
                                           decoration: BoxDecoration(
                                             color: _activeFilterIndex == 1
                                                 ? const Color(0xFF8B53FE)
                                                 : const Color(0xFF2D2A3D),
-                                            borderRadius:
-                                                BorderRadius.circular(12.0),
+                                            borderRadius: BorderRadius.circular(12.0),
                                           ),
                                           child: Material(
                                             color: Colors.transparent,
-                                            borderRadius:
-                                                BorderRadius.circular(12.0),
+                                            borderRadius: BorderRadius.circular(12.0),
                                             child: InkWell(
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
+                                              borderRadius: BorderRadius.circular(12.0),
                                               splashColor: (_activeFilterIndex == 1
                                                       ? Colors.white
                                                       : const Color(0xFF8B53FE))
@@ -395,8 +429,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                   tr.historyFilter,
                                                   style: tr.font(
                                                     fontSize: 14.0,
-                                                    fontWeight:
-                                                        FontWeight.w500,
+                                                    fontWeight: FontWeight.w500,
                                                     color: const Color(0xFFFFFFFF),
                                                     height: 1.15,
                                                     letterSpacing: 0.0,
@@ -411,855 +444,788 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                   ],
                                 ),
                               ),
+                            ],
+                          ),
+                        ),
 
-                              // 3. Active Request Card or Empty State:
-                              if (_activeFilterIndex == 0 && TaskService.instance.activeTask == null)
-                                _buildEmptyActiveState(containerWidth, horizontalPadding),
+                        // SCROLLABLE REMAINING CONTENT
+                        Expanded(
+                          child: Listener(
+                            behavior: HitTestBehavior.translucent,
+                            onPointerSignal: (pointerSignal) {
+                              if (pointerSignal is PointerScrollEvent && _scrollController.hasClients) {
+                                final double target = (_scrollController.offset + pointerSignal.scrollDelta.dy)
+                                    .clamp(0.0, _scrollController.position.maxScrollExtent);
+                                _scrollController.jumpTo(target);
+                              }
+                            },
+                            child: ScrollConfiguration(
+                              behavior: ScrollConfiguration.of(context).copyWith(
+                                scrollbars: false,
+                                dragDevices: {
+                                  PointerDeviceKind.touch,
+                                  PointerDeviceKind.mouse,
+                                  PointerDeviceKind.trackpad,
+                                  PointerDeviceKind.stylus,
+                                  PointerDeviceKind.invertedStylus,
+                                  PointerDeviceKind.unknown,
+                                },
+                              ),
+                              child: SingleChildScrollView(
+                                controller: _scrollController,
+                                physics: const ClampingScrollPhysics(),
+                                padding: EdgeInsets.fromLTRB(
+                                  horizontalPadding,
+                                  4.0,
+                                  horizontalPadding,
+                                  bottomNavClearance,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    // ACTIVE TAB CONTENT
+                                    if (_activeFilterIndex == 0 && activeTask == null)
+                                      _buildEmptyActiveState(containerWidth, horizontalPadding),
 
-                              if (_activeFilterIndex == 0 && TaskService.instance.activeTask != null)
-                                Positioned(
-                                  top: 184.0,
-                                  left: horizontalPadding,
-                                  right: horizontalPadding,
-                                  height: 336.0,
-                                  child: Container(
-                                    height: 336.0,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFFFFFF),
-                                      borderRadius: BorderRadius.circular(16.0),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                          color: Color(0x1A000000), // #0000001A
-                                          blurRadius: 12.0,
-                                          offset: Offset(0, 1),
-                                          spreadRadius: 0.0,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Stack(
-                                      children: [
-                                        // Heading layout: width: 318; top: 16px; left: 16px; gap: 16px;
-                                        Positioned(
-                                          top: 16.0,
-                                          left: 16.0,
-                                          right: 16.0,
-                                          child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: [
-                                            // Left-side icon layout: width: 32; height: 32; border-radius: 60px; background: #E7F5EB;
-                                            Container(
-                                              width: 32.0,
-                                              height: 32.0,
-                                              decoration: const BoxDecoration(
-                                                color: Color(0xFFF0EAFE),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Center(
-                                                // Icon inner layout: width: 20; height: 20; top: 6px; left: 6px; border-width: 5px; background: #FFFFFF; border: 5px solid #1D8070
-                                                child: Container(
-                                                  width: 20.0,
-                                                  height: 20.0,
-                                                  decoration: BoxDecoration(
-                                                    color:
-                                                        const Color(0xFFFFFFFF),
-                                                    shape: BoxShape.circle,
-                                                    border: Border.all(
-                                                      color: const Color(
-                                                          0xFF8B53FE),
-                                                      width: 5.0,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
+                                    if (_activeFilterIndex == 0 && activeTask != null) ...[
+                                      // 3. Active Request Map + Real Provider Card
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFFFFFF),
+                                          borderRadius: BorderRadius.circular(16.0),
+                                          boxShadow: const [
+                                            BoxShadow(
+                                              color: Color(0x1A000000),
+                                              blurRadius: 12.0,
+                                              offset: Offset(0, 1),
+                                              spreadRadius: 0.0,
                                             ),
-                                            const SizedBox(width: 16.0),
-
-                                            // Right-side content layout: width: 270; height: 31; gap: 12px;
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                mainAxisSize: MainAxisSize.min,
+                                          ],
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                          children: [
+                                            // Card Status Header
+                                            Padding(
+                                              padding: const EdgeInsets.fromLTRB(16.0, 14.0, 16.0, 12.0),
+                                              child: Row(
+                                                crossAxisAlignment: CrossAxisAlignment.center,
                                                 children: [
-                                                  // content: Dynamic provider status
-                                                  Text(
-                                                    _getActiveStatusTitle(TaskService.instance.activeTask!.step, tr),
-                                                    style: tr.font(
-                                                      fontSize: 14.0,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      color: const Color(
-                                                          0xFF1C2926),
-                                                      height: 1.15,
-                                                      letterSpacing: 0.0,
+                                                  Container(
+                                                    width: 32.0,
+                                                    height: 32.0,
+                                                    decoration: const BoxDecoration(
+                                                      color: Color(0xFFF0EAFE),
+                                                      shape: BoxShape.circle,
                                                     ),
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
+                                                    child: Center(
+                                                      child: Container(
+                                                        width: 20.0,
+                                                        height: 20.0,
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(0xFFFFFFFF),
+                                                          shape: BoxShape.circle,
+                                                          border: Border.all(
+                                                            color: const Color(0xFF8B53FE),
+                                                            width: 5.0,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
                                                   ),
-                                                  const SizedBox(height: 2.0),
-
-                                                  // content: Dynamic subtitle
-                                                  Text(
-                                                    _getActiveStatusSubtitle(TaskService.instance.activeTask!.step, tr),
-                                                    style: tr.font(
-                                                      fontSize: 12.0,
-                                                      fontWeight:
-                                                          FontWeight.w400,
-                                                      color: const Color(
-                                                          0xFF566663),
-                                                      height: 1.15,
-                                                      letterSpacing: 0.0,
+                                                  const SizedBox(width: 14.0),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Text(
+                                                          _getActiveStatusTitle(activeTask.step, tr, status: activeTask.status),
+                                                          style: tr.font(
+                                                            fontSize: 14.0,
+                                                            fontWeight: FontWeight.w600,
+                                                            color: const Color(0xFF1C2926),
+                                                            height: 1.15,
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                        const SizedBox(height: 2.0),
+                                                        Text(
+                                                          _getActiveStatusSubtitle(activeTask.step, tr, status: activeTask.status),
+                                                          style: tr.font(
+                                                            fontSize: 12.0,
+                                                            fontWeight: FontWeight.w400,
+                                                            color: const Color(0xFF566663),
+                                                            height: 1.15,
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ],
                                                     ),
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
                                                   ),
                                                 ],
                                               ),
                                             ),
-                                          ],
-                                        ),
-                                      ),
 
-                                      // Map Integration: width: 350; height: 160; border-radius: 12px; top: 64px;
-                                      Positioned(
-                                        top: 64.0,
-                                        left: 0.0,
-                                        right: 0.0,
-                                        height: 160.0,
-                                        child: ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(12.0),
-                                          child: RealMapBackgroundWidget(
-                                            enableDrag: true,
-                                            zoom: 15.0,
-                                            borderRadius:
-                                                BorderRadius.circular(12.0),
-                                            trackingStep: TaskService.instance.activeTask!.step == 1
-                                                ? MapTrackingStep.onTheWay
-                                                : (TaskService.instance.activeTask!.step >= 2
-                                                    ? MapTrackingStep.arrived
-                                                    : MapTrackingStep.requestSent),
-                                            driverName: TaskService.instance.activeTask!.providerName,
-                                            serviceCategory: TaskService.instance.activeTask!.serviceCategory,
-                                            vehicleName: TaskService.instance.activeTask!.vehicleName,
-                                            etaText: TaskService.instance.activeTask!.eta,
-                                            distanceText: TaskService.instance.activeTask!.distance,
-                                            showControls: true,
-                                          ),
-                                        ),
-                                      ),
-
-                                      // Driver summary layout:
-                                      // width: 350; top: 232px; bottom: 8px; padding-left: 16px; padding-right: 16px;
-                                      Positioned(
-                                        top: 232.0,
-                                        bottom: 8.0,
-                                        left: 0.0,
-                                        right: 0.0,
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 16.0),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.center,
-                                            children: [
-                                              // card inner branding with flexible width to prevent Arabic overflow
-                                              Expanded(
-                                                child: Row(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.center,
+                                            // Cleanly Aligned Embedded Live Map (padded & bordered inside card)
+                                            Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                                              child: Container(
+                                                height: 184.0,
+                                                decoration: BoxDecoration(
+                                                  borderRadius: BorderRadius.circular(14.0),
+                                                  border: Border.all(
+                                                    color: const Color(0xFFE6EAE8),
+                                                    width: 1.0,
+                                                  ),
+                                                ),
+                                                clipBehavior: Clip.antiAlias,
+                                                child: Stack(
                                                   children: [
-                                                    // img layout: width: 48; height: 48;
-                                                    ClipOval(
-                                                      child: Image.asset(
-                                                        'assets/images/driver_avatar.png',
-                                                        width: 48.0,
-                                                        height: 48.0,
-                                                        fit: BoxFit.cover,
-                                                        errorBuilder: (context,
-                                                                error,
-                                                                stackTrace) =>
-                                                            Container(
-                                                          width: 48.0,
-                                                          height: 48.0,
-                                                          decoration:
-                                                              const BoxDecoration(
-                                                            color: Color(
-                                                                0xFFFFB6C1),
-                                                            shape:
-                                                                BoxShape.circle,
-                                                          ),
-                                                          child: const Icon(
-                                                            Icons.person_rounded,
-                                                            size: 28.0,
-                                                            color: Colors.white,
-                                                          ),
-                                                        ),
+                                                    Positioned.fill(
+                                                      child: RealMapBackgroundWidget(
+                                                        enableDrag: true,
+                                                        zoom: 15.0,
+                                                        borderRadius: BorderRadius.circular(14.0),
+                                                        providerLatitude: activeTask.providerLatitude,
+                                                        providerLongitude: activeTask.providerLongitude,
+                                                        trackingStep: activeTask.step == 1
+                                                            ? MapTrackingStep.onTheWay
+                                                            : (activeTask.step >= 2
+                                                                ? MapTrackingStep.arrived
+                                                                : MapTrackingStep.requestSent),
+                                                        driverName: activeTask.providerName,
+                                                        serviceCategory: activeTask.serviceCategory,
+                                                        vehicleName: activeTask.vehicleName.isNotEmpty
+                                                            ? activeTask.vehicleName
+                                                            : activeTask.serviceCategory,
+                                                        etaText: liveEta,
+                                                        distanceText: liveDistance,
+                                                        showControls: false,
                                                       ),
                                                     ),
-                                                    const SizedBox(width: 14.0), // gap: 14px;
-
-                                                    // content layout: flexible column
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment.start,
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment.center,
-                                                        mainAxisSize:
-                                                            MainAxisSize.min,
-                                                        children: [
-                                                          // 1st row: content: Real Provider Name
-                                                          Text(
-                                                            tr.formatProviderName(TaskService.instance.activeTask!.providerName),
-                                                            style: tr.font(
-                                                              fontSize: 12.0,
-                                                              fontWeight:
-                                                                  FontWeight.w500,
-                                                              color: const Color(
-                                                                  0xFF1C2926),
-                                                              height: 1.15,
-                                                              letterSpacing: 0.0,
-                                                            ),
-                                                            maxLines: 1,
-                                                            overflow: TextOverflow
-                                                                .ellipsis,
-                                                          ),
-                                                          const SizedBox(
-                                                              height: 2.0),
-
-                                                          // 2nd row: star branding + 4.9 (120 trips)
-                                                          Row(
-                                                            mainAxisSize:
-                                                                MainAxisSize.min,
-                                                            crossAxisAlignment:
-                                                                CrossAxisAlignment
-                                                                    .center,
-                                                            children: [
-                                                              // star branding: width: 10; height: 10; background: #1D8070;
-                                                              const Icon(
-                                                                Icons.star_rounded,
-                                                                size: 11.0,
-                                                                color: Color(
-                                                                    0xFF8B53FE),
+                                                    // Clean aligned Full View pill at top-right
+                                                    Positioned(
+                                                      top: 10.0,
+                                                      right: 10.0,
+                                                      child: GestureDetector(
+                                                        onTap: () {
+                                                          HapticFeedback.lightImpact();
+                                                          Navigator.of(context).push(
+                                                            MaterialPageRoute(
+                                                              builder: (_) => LiveTrackingScreen(
+                                                                requestId: TaskService.extractBackendUuid(activeTask.id),
+                                                                serviceCategory: activeTask.serviceCategory,
+                                                                providerName: activeTask.providerName,
+                                                                vehicleName: activeTask.vehicleName.isNotEmpty
+                                                                    ? activeTask.vehicleName
+                                                                    : activeTask.serviceCategory,
+                                                                photoUrl: _cleanPhotoUrl(activeTask.providerAvatar),
+                                                                providerLatitude: activeTask.providerLatitude,
+                                                                providerLongitude: activeTask.providerLongitude,
+                                                                distance: liveDistance,
+                                                                duration: liveEta,
                                                               ),
-                                                              const SizedBox(
-                                                                  width: 4.0), // gap: 4px;
-                                                              Text.rich(
-                                                                TextSpan(
-                                                                  children: [
-                                                                    TextSpan(
-                                                                      text: '4.9 ',
-                                                                      style: tr.font(
-                                                                        fontSize:
-                                                                            10.0,
-                                                                        fontWeight:
-                                                                            FontWeight
-                                                                                .w400,
-                                                                        color: const Color(
-                                                                            0xFF1C2926),
-                                                                        height:
-                                                                            1.15,
-                                                                        letterSpacing:
-                                                                            0.0,
-                                                                      ),
-                                                                    ),
-                                                                    TextSpan(
-                                                                      text:
-                                                                          tr.isArabic ? '(120 رحلة)' : '(120 trips)',
-                                                                      style: tr.font(
-                                                                        fontSize:
-                                                                            10.0,
-                                                                        fontWeight:
-                                                                            FontWeight
-                                                                                .w400,
-                                                                        color: const Color(
-                                                                            0xFF566663),
-                                                                        height:
-                                                                            1.15,
-                                                                        letterSpacing:
-                                                                            0.0,
-                                                                      ),
-                                                                    ),
-                                                                  ],
+                                                            ),
+                                                          );
+                                                        },
+                                                        child: Container(
+                                                          padding: const EdgeInsets.symmetric(
+                                                            horizontal: 10.0,
+                                                            vertical: 6.0,
+                                                          ),
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.white.withValues(alpha: 0.96),
+                                                            borderRadius: BorderRadius.circular(20.0),
+                                                            boxShadow: const [
+                                                              BoxShadow(
+                                                                color: Color(0x1F000000),
+                                                                blurRadius: 8.0,
+                                                                offset: Offset(0, 1),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisSize: MainAxisSize.min,
+                                                            children: [
+                                                              const Icon(
+                                                                Icons.open_in_full_rounded,
+                                                                size: 13.0,
+                                                                color: Color(0xFF8B53FE),
+                                                              ),
+                                                              const SizedBox(width: 5.0),
+                                                              Text(
+                                                                tr.isArabic ? 'شاشة كاملة' : 'Full View',
+                                                                style: tr.font(
+                                                                  fontSize: 10.5,
+                                                                  fontWeight: FontWeight.w600,
+                                                                  color: const Color(0xFF1C2926),
                                                                 ),
                                                               ),
                                                             ],
                                                           ),
-                                                      const SizedBox(
-                                                          height: 2.0),
-
-                                                      // Pickup & Delivery (matches screenshot)
-                                                      Text(
-                                                        tr.pickupDelivery,
-                                                        style: tr.font(
-                                                          fontSize: 10.0,
-                                                          fontWeight:
-                                                              FontWeight.w400,
-                                                          color: const Color(
-                                                              0xFF566663),
-                                                          height: 1.15,
-                                                          letterSpacing: 0.0,
                                                         ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
                                                       ),
-                                                      const SizedBox(
-                                                          height: 2.0),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
 
-                                                      // 3rd row: width: 158.5; height: 10; gap: 10px;
-                                                      // Left side: Toyota Hilux | Right side: ABC-123
-                                                      Row(
-                                                        mainAxisSize:
-                                                            MainAxisSize.min,
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .center,
-                                                        children: [
-                                                          // left side: vector styling (width: 10, height: 9) + Toyota Hilux
-                                                          const Icon(
-                                                            Icons
-                                                                .directions_car_filled_rounded,
-                                                            size: 11.0,
-                                                            color: Color(
-                                                                0xFF1C2926),
-                                                          ),
-                                                          const SizedBox(
-                                                              width: 4.0),
-                                                          Text(
-                                                            tr.formatVehicleName(TaskService.instance.activeTask!.vehicleName),
-                                                            style: tr.font(
-                                                              fontSize: 10.0,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
-                                                              color: const Color(
-                                                                  0xFF1C2926),
-                                                              height: 1.15,
-                                                              letterSpacing:
-                                                                  0.0,
-                                                            ),
-                                                          ),
+                                            // Real Service Provider Summary Row (NO '>' icon, 100% real data)
+                                            Builder(
+                                              builder: (context) {
+                                                final realPhoto = _cleanPhotoUrl(activeTask.providerAvatar);
+                                                final realCategory = tr.categoryName(activeTask.serviceCategory);
+                                                final rawVehicle = activeTask.vehicleName.trim();
+                                                final bool showVehicle = rawVehicle.isNotEmpty &&
+                                                    rawVehicle.toLowerCase() != 'service vehicle';
+                                                final rawPlate = activeTask.plateNumber.trim();
+                                                final bool showPlate = rawPlate.isNotEmpty && rawPlate != '1122';
+                                                final ratingText = activeTask.providerRating.toStringAsFixed(1);
+                                                final tripsCount = activeTask.providerTripsCount;
+                                                final tripsLabel = tr.isArabic
+                                                    ? '($tripsCount ${tripsCount == 1 ? 'رحلة' : 'رحلات'})'
+                                                    : '($tripsCount ${tripsCount == 1 ? 'trip' : 'trips'})';
 
-                                                          // divider between Toyota Hilux and ABC-123
-                                                          Container(
-                                                            margin:
-                                                                const EdgeInsets
-                                                                    .symmetric(
-                                                                    horizontal:
-                                                                        6.0),
-                                                            width: 1.0,
-                                                            height: 9.0,
-                                                            color: const Color(
-                                                                0xFFE5E7EB),
-                                                          ),
-
-                                                          // right side content: vector (width: 10, height: 10) + plate
-                                                          Container(
-                                                            width: 10.0,
-                                                            height: 10.0,
-                                                            decoration:
-                                                                BoxDecoration(
-                                                              color: Colors
-                                                                  .transparent,
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          2.0),
-                                                              border:
-                                                                  Border.all(
-                                                                color: const Color(
-                                                                    0xFF566663),
-                                                                width: 0.8,
+                                                return Padding(
+                                                  padding: const EdgeInsets.fromLTRB(16.0, 14.0, 16.0, 16.0),
+                                                  child: Row(
+                                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                                    children: [
+                                                      // Real provider photo or purple initials circle
+                                                      Container(
+                                                        width: 48.0,
+                                                        height: 48.0,
+                                                        decoration: const BoxDecoration(
+                                                          shape: BoxShape.circle,
+                                                          color: Color(0xFF8B53FE),
+                                                        ),
+                                                        clipBehavior: Clip.antiAlias,
+                                                        child: realPhoto != null
+                                                            ? Image.network(
+                                                                realPhoto,
+                                                                width: 48.0,
+                                                                height: 48.0,
+                                                                fit: BoxFit.cover,
+                                                                errorBuilder: (_, _, _) => Center(
+                                                                  child: Text(
+                                                                    _providerInitials(activeTask.providerName),
+                                                                    style: tr.font(
+                                                                      fontSize: 16.0,
+                                                                      fontWeight: FontWeight.w700,
+                                                                      color: Colors.white,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              )
+                                                            : Center(
+                                                                child: Text(
+                                                                  _providerInitials(activeTask.providerName),
+                                                                  style: tr.font(
+                                                                    fontSize: 16.0,
+                                                                    fontWeight: FontWeight.w700,
+                                                                    color: Colors.white,
+                                                                  ),
+                                                                ),
                                                               ),
-                                                            ),
-                                                            alignment:
-                                                                Alignment.center,
-                                                            child: Text(
-                                                              '#',
-                                                              style:
-                                                                  tr.font(
-                                                                fontSize: 7.0,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color: const Color(
-                                                                    0xFF566663),
-                                                                height: 1.0,
+                                                      ),
+                                                      const SizedBox(width: 14.0),
+
+                                                      // Real Provider Details Column
+                                                      Expanded(
+                                                        child: Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            // 1. Real Provider Name (full, no ellipsis cut)
+                                                            Text(
+                                                              tr.formatProviderName(activeTask.providerName),
+                                                              style: tr.font(
+                                                                fontSize: 14.0,
+                                                                fontWeight: FontWeight.w600,
+                                                                color: const Color(0xFF1C2926),
+                                                                height: 1.2,
                                                               ),
+                                                              maxLines: 2,
+                                                              overflow: TextOverflow.ellipsis,
                                                             ),
-                                                          ),
-                                                          const SizedBox(
-                                                              width: 4.0),
-                                                          Text(
-                                                            TaskService.instance.activeTask!.plateNumber,
-                                                            style: tr.font(
-                                                              fontSize: 10.0,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
-                                                              color: const Color(
-                                                                  0xFF566663),
-                                                              height: 1.15,
-                                                              letterSpacing:
-                                                                  0.0,
+                                                            const SizedBox(height: 4.0),
+
+                                                            // 2. Real Rating & Trips Counter
+                                                            Row(
+                                                              mainAxisSize: MainAxisSize.min,
+                                                              crossAxisAlignment: CrossAxisAlignment.center,
+                                                              children: [
+                                                                const Icon(
+                                                                  Icons.star_rounded,
+                                                                  size: 13.0,
+                                                                  color: Color(0xFF8B53FE),
+                                                                ),
+                                                                const SizedBox(width: 4.0),
+                                                                Text.rich(
+                                                                  TextSpan(
+                                                                    children: [
+                                                                      TextSpan(
+                                                                        text: '$ratingText ',
+                                                                        style: tr.font(
+                                                                          fontSize: 11.5,
+                                                                          fontWeight: FontWeight.w500,
+                                                                          color: const Color(0xFF1C2926),
+                                                                          height: 1.15,
+                                                                        ),
+                                                                      ),
+                                                                      TextSpan(
+                                                                        text: tripsLabel,
+                                                                        style: tr.font(
+                                                                          fontSize: 11.0,
+                                                                          fontWeight: FontWeight.w400,
+                                                                          color: const Color(0xFF566663),
+                                                                          height: 1.15,
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                              ],
                                                             ),
-                                                          ),
-                                                        ],
+                                                            const SizedBox(height: 4.0),
+
+                                                            // 3. Real Service Category
+                                                            Text(
+                                                              realCategory,
+                                                              style: tr.font(
+                                                                fontSize: 11.5,
+                                                                fontWeight: FontWeight.w500,
+                                                                color: const Color(0xFF566663),
+                                                                height: 1.2,
+                                                              ),
+                                                              maxLines: 1,
+                                                              overflow: TextOverflow.ellipsis,
+                                                            ),
+
+                                                            // 4. Real Vehicle Type & Plate (only when real data exists)
+                                                            if (showVehicle || showPlate) ...[
+                                                              const SizedBox(height: 4.0),
+                                                              Wrap(
+                                                                crossAxisAlignment: WrapCrossAlignment.center,
+                                                                spacing: 6.0,
+                                                                runSpacing: 4.0,
+                                                                children: [
+                                                                  if (showVehicle)
+                                                                    Row(
+                                                                      mainAxisSize: MainAxisSize.min,
+                                                                      children: [
+                                                                        const Icon(
+                                                                          Icons.directions_car_filled_rounded,
+                                                                          size: 12.0,
+                                                                          color: Color(0xFF1C2926),
+                                                                        ),
+                                                                        const SizedBox(width: 4.0),
+                                                                        Text(
+                                                                          tr.formatVehicleName(rawVehicle),
+                                                                          style: tr.font(
+                                                                            fontSize: 11.0,
+                                                                            fontWeight: FontWeight.w500,
+                                                                            color: const Color(0xFF1C2926),
+                                                                            height: 1.15,
+                                                                          ),
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                  if (showVehicle && showPlate)
+                                                                    Container(
+                                                                      width: 1.0,
+                                                                      height: 10.0,
+                                                                      color: const Color(0xFFE5E7EB),
+                                                                    ),
+                                                                  if (showPlate)
+                                                                    Row(
+                                                                      mainAxisSize: MainAxisSize.min,
+                                                                      children: [
+                                                                        Container(
+                                                                          width: 12.0,
+                                                                          height: 12.0,
+                                                                          decoration: BoxDecoration(
+                                                                            borderRadius: BorderRadius.circular(2.5),
+                                                                            border: Border.all(
+                                                                              color: const Color(0xFF566663),
+                                                                              width: 0.9,
+                                                                            ),
+                                                                          ),
+                                                                          alignment: Alignment.center,
+                                                                          child: Text(
+                                                                            '#',
+                                                                            style: tr.font(
+                                                                              fontSize: 7.5,
+                                                                              fontWeight: FontWeight.w600,
+                                                                              color: const Color(0xFF566663),
+                                                                              height: 1.0,
+                                                                            ),
+                                                                          ),
+                                                                        ),
+                                                                        const SizedBox(width: 4.0),
+                                                                        Text(
+                                                                          rawPlate,
+                                                                          style: tr.font(
+                                                                            fontSize: 11.0,
+                                                                            fontWeight: FontWeight.w500,
+                                                                            color: const Color(0xFF566663),
+                                                                            height: 1.15,
+                                                                          ),
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                ],
+                                                              ),
+                                                            ],
+                                                          ],
+                                                        ),
                                                       ),
                                                     ],
                                                   ),
-                                                ),
-                                              ],
+                                                );
+                                              },
                                             ),
-                                          ),
-
-                                              // right side of card icon >: width: 7; height: ~15; border: 1px solid #566663
-                                              Icon(
-                                                (tr.isArabic || Directionality.of(context) == TextDirection.rtl)
-                                                    ? Icons.chevron_left_rounded
-                                                    : Icons.chevron_right_rounded,
-                                                size: 20.0,
-                                                color: const Color(0xFF566663),
-                                              ),
-                                            ],
-                                          ),
+                                          ],
                                         ),
                                       ),
-                                    ],
-                                    ),
-                                  ),
-                                ),
 
-                              // 4. Status Progress Stepper Card:
-                              // width: 350; height: 88; border-radius: 12px; background: #F2F5F4;
-                              if (_activeFilterIndex == 0 && TaskService.instance.activeTask != null)
-                                Positioned(
-                                  top: 532.0,
-                                  left: horizontalPadding,
-                                  right: horizontalPadding,
-                                  height: 88.0,
-                                  child: Container(
-                                    height: 88.0,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF2F5F4),
-                                      borderRadius:
-                                          BorderRadius.circular(12.0),
-                                    ),
-                                    child: Stack(
-                                      clipBehavior: Clip.none,
-                                      children: [
-                                        // Connecting line passing behind the 5 icons at Y = 26px
-                                        Positioned(
-                                          top: 25.5,
-                                          left: 48.0,
-                                          right: 48.0,
-                                          height: 1.0,
-                                          child: Container(
-                                            color: const Color(0xFFEAEBE8),
-                                          ),
+                                      const SizedBox(height: 12.0),
+
+                                      // 4. Status Progress Stepper Card
+                                      Container(
+                                        height: 88.0,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF2F5F4),
+                                          borderRadius: BorderRadius.circular(12.0),
                                         ),
-
-                                        // 5 Step items row: padding-left: 17, padding-right: 17
-                                        Positioned.fill(
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 17.0),
-                                            child: Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Expanded(
-                                                  child: _buildStepperItem(
-                                                    title: tr.requestSent,
-                                                    time: TaskService.instance.activeTask!.dateTime.contains(',')
-                                                        ? TaskService.instance.activeTask!.dateTime.split(',').last.trim()
-                                                        : TaskService.instance.activeTask!.dateTime,
-                                                    state: _RequestStepState
-                                                        .completed,
-                                                  ),
-                                                ),
-                                                Expanded(
-                                                  child: _buildStepperItem(
-                                                    title: tr.accepted,
-                                                    time: null,
-                                                    state: TaskService.instance.activeTask!.step >= 1
-                                                        ? _RequestStepState.completed
-                                                        : (TaskService.instance.activeTask!.step == 0
-                                                            ? _RequestStepState.active
-                                                            : _RequestStepState.pending),
-                                                  ),
-                                                ),
-                                                Expanded(
-                                                  child: _buildStepperItem(
-                                                    title: tr.onTheWay,
-                                                    time: null,
-                                                    state: TaskService.instance.activeTask!.step > 1
-                                                        ? _RequestStepState.completed
-                                                        : (TaskService.instance.activeTask!.step == 1
-                                                            ? _RequestStepState.active
-                                                            : _RequestStepState.pending),
-                                                  ),
-                                                ),
-                                                Expanded(
-                                                  child: _buildStepperItem(
-                                                    title: tr.arrived,
-                                                    time: null,
-                                                    state: TaskService.instance.activeTask!.step > 2
-                                                        ? _RequestStepState.completed
-                                                        : (TaskService.instance.activeTask!.step == 2
-                                                            ? _RequestStepState.active
-                                                            : _RequestStepState.pending),
-                                                  ),
-                                                ),
-                                                Expanded(
-                                                  child: _buildStepperItem(
-                                                    title: tr.completed,
-                                                    time: null,
-                                                    state: TaskService.instance.activeTask!.step >= 4
-                                                        ? _RequestStepState.completed
-                                                        : (TaskService.instance.activeTask!.step == 3
-                                                            ? _RequestStepState.active
-                                                            : _RequestStepState.pending),
-                                                  ),
-                                                ),
-                                              ],
+                                        child: Stack(
+                                          clipBehavior: Clip.none,
+                                          children: [
+                                            Positioned(
+                                              top: 25.5,
+                                              left: 48.0,
+                                              right: 48.0,
+                                              height: 1.0,
+                                              child: Container(
+                                                color: const Color(0xFFEAEBE8),
+                                              ),
                                             ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-
-                              // 5. Metric cards row: Distance Away & Estimated time
-                              // width: 350; height: 64; gap: 12px;
-                              if (_activeFilterIndex == 0 && TaskService.instance.activeTask != null)
-                                Positioned(
-                                  top: 632.0,
-                                  left: horizontalPadding,
-                                  right: horizontalPadding,
-                                  height: 64.0,
-                                  child: Row(
-                                    children: [
-                                      // 1st card branding: 1.8 km Distance Away
-                                        Expanded(
-                                          child: Container(
-                                            height: 64.0,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12.0,
-                                              vertical: 12.0,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF2F5F4),
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
-                                            ),
-                                            child: Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.center,
-                                              children: [
-                                                // left side icon branding: width: 32; height: 32; border-radius: 60px; background: #E2F0E6;
-                                                Container(
-                                                  width: 32.0,
-                                                  height: 32.0,
-                                                  decoration:
-                                                      const BoxDecoration(
-                                                    color: Color(0xFFF0EAFE),
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: const Center(
-                                                    child: CustomPaint(
-                                                      size: Size(16.0, 18.0),
-                                                      painter:
-                                                          _LocationPinPainter(
-                                                        color:
-                                                            Color(0xFF8B53FE),
+                                            Positioned.fill(
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 17.0),
+                                                child: Row(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Expanded(
+                                                      child: _buildStepperItem(
+                                                        title: tr.requestSent,
+                                                        time: activeTask.dateTime.contains(',')
+                                                            ? activeTask.dateTime.split(',').last.trim()
+                                                            : activeTask.dateTime,
+                                                        state: _RequestStepState.completed,
                                                       ),
                                                     ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 12.0), // gap: 12px;
-
-                                                // inner card content right side:
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment.start,
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment.center,
-                                                    children: [
-                                                      // content: real distance
-                                                      FittedBox(
-                                                        fit: BoxFit.scaleDown,
-                                                        alignment: AlignmentDirectional
-                                                            .centerStart,
-                                                        child: Text(
-                                                          TaskService.instance.activeTask!.distance,
-                                                          style:
-                                                              tr.font(
-                                                            fontSize: 14.0,
-                                                            fontWeight:
-                                                                FontWeight.w500,
-                                                            color: const Color(
-                                                                0xFF1C2926),
-                                                            height: 1.1,
-                                                            letterSpacing: 0.0,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      const SizedBox(
-                                                          height: 2.0),
-
-                                                      // content: Distance Away
-                                                      FittedBox(
-                                                        fit: BoxFit.scaleDown,
-                                                        alignment: AlignmentDirectional
-                                                            .centerStart,
-                                                        child: Text(
-                                                          tr.distanceAway,
-                                                          style:
-                                                              tr.font(
-                                                            fontSize: 10.0,
-                                                            fontWeight:
-                                                                FontWeight.w400,
-                                                            color: const Color(
-                                                                0xFF566663),
-                                                            height: 1.1,
-                                                            letterSpacing: 0.0,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12.0), // gap: 12px;
-
-                                        // 2nd card branding: 8 min Estimated time
-                                        Expanded(
-                                          child: Container(
-                                            height: 64.0,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12.0,
-                                              vertical: 12.0,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF2F5F4),
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
-                                            ),
-                                            child: Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.center,
-                                              children: [
-                                                // left side icon branding: width: 32; height: 32; border-radius: 60px; background: #E2F0E6;
-                                                Container(
-                                                  width: 32.0,
-                                                  height: 32.0,
-                                                  decoration:
-                                                      const BoxDecoration(
-                                                    color: Color(0xFFF0EAFE),
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: const Center(
-                                                    child: CustomPaint(
-                                                      size: Size(20.0, 20.0),
-                                                      painter:
-                                                          _ClockIconPainter(
-                                                        backgroundColor:
-                                                            Color(0xFF8B53FE),
-                                                        handColor:
-                                                            Colors.white,
+                                                    Expanded(
+                                                      child: _buildStepperItem(
+                                                        title: tr.accepted,
+                                                        time: null,
+                                                        state: activeTask.step >= 1
+                                                            ? _RequestStepState.completed
+                                                            : (activeTask.step == 0
+                                                                ? _RequestStepState.active
+                                                                : _RequestStepState.pending),
                                                       ),
                                                     ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 12.0), // gap: 12px;
-
-                                                // inner card content right side:
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment.start,
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment.center,
-                                                    children: [
-                                                      // content: ETA
-                                                      FittedBox(
-                                                        fit: BoxFit.scaleDown,
-                                                        alignment: AlignmentDirectional
-                                                            .centerStart,
-                                                        child: Text(
-                                                          TaskService.instance.activeTask!.eta,
-                                                          style:
-                                                              tr.font(
-                                                            fontSize: 14.0,
-                                                            fontWeight:
-                                                                FontWeight.w500,
-                                                            color: const Color(
-                                                                0xFF1C2926),
-                                                            height: 1.1,
-                                                            letterSpacing: 0.0,
-                                                          ),
-                                                        ),
+                                                    Expanded(
+                                                      child: _buildStepperItem(
+                                                        title: tr.onTheWay,
+                                                        time: null,
+                                                        state: activeTask.step > 1
+                                                            ? _RequestStepState.completed
+                                                            : (activeTask.step == 1
+                                                                ? _RequestStepState.active
+                                                                : _RequestStepState.pending),
                                                       ),
-                                                      const SizedBox(
-                                                          height: 2.0),
-
-                                                      // content: Estimated time
-                                                      FittedBox(
-                                                        fit: BoxFit.scaleDown,
-                                                        alignment: AlignmentDirectional
-                                                            .centerStart,
-                                                        child: Text(
-                                                          tr.estimatedTime,
-                                                          style:
-                                                              tr.font(
-                                                            fontSize: 10.0,
-                                                            fontWeight:
-                                                                FontWeight.w400,
-                                                            color: const Color(
-                                                                0xFF566663),
-                                                            height: 1.1,
-                                                            letterSpacing: 0.0,
-                                                          ),
-                                                        ),
+                                                    ),
+                                                    Expanded(
+                                                      child: _buildStepperItem(
+                                                        title: tr.arrived,
+                                                        time: null,
+                                                        state: activeTask.step > 2
+                                                            ? _RequestStepState.completed
+                                                            : (activeTask.step == 2
+                                                                ? _RequestStepState.active
+                                                                : _RequestStepState.pending),
                                                       ),
-                                                    ],
-                                                  ),
+                                                    ),
+                                                    Expanded(
+                                                      child: _buildStepperItem(
+                                                        title: tr.completed,
+                                                        time: null,
+                                                        state: activeTask.step >= 4
+                                                            ? _RequestStepState.completed
+                                                            : (activeTask.step == 3
+                                                                ? _RequestStepState.active
+                                                                : _RequestStepState.pending),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                              // 6. Action Button: Cancel Request (before arrival/completion)
-                              if (_activeFilterIndex == 0 &&
-                                  TaskService.instance.activeTask != null &&
-                                  TaskService.instance.activeTask!.step < 3)
-                                Positioned(
-                                  top: 710.0,
-                                  left: horizontalPadding,
-                                  right: horizontalPadding,
-                                  height: 48.0,
-                                  child: OutlinedButton.icon(
-                                    onPressed: () async {
-                                      final confirm = await showDialog<bool>(
-                                        context: context,
-                                        builder: (ctx) => AlertDialog(
-                                          title: Text(tr.isArabic ? 'إلغاء الطلب' : 'Cancel Request'),
-                                          content: Text(
-                                            tr.isArabic
-                                                ? 'هل أنت متأكد من رغبتك في إلغاء هذا الطلب؟'
-                                                : 'Are you sure you want to cancel this request?',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.of(ctx).pop(false),
-                                              child: Text(tr.isArabic ? 'تراجع' : 'No, Keep'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () => Navigator.of(ctx).pop(true),
-                                              child: Text(
-                                                tr.isArabic ? 'نعم، إلغاء' : 'Yes, Cancel',
-                                                style: const TextStyle(color: Color(0xFFDC2626)),
                                               ),
                                             ),
                                           ],
                                         ),
-                                      );
-                                      if (confirm == true) {
-                                        final reqId = TaskService.extractBackendUuid(
-                                          TaskService.instance.activeTask?.id,
-                                        );
-                                        if (reqId != null && reqId.isNotEmpty) {
-                                          await ref
-                                              .read(backendServiceProvider)
-                                              .cancelCustomerRequest(reqId)
-                                              .catchError((_) => false);
-                                        }
-                                        await TaskService.instance.cancelTask();
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              backgroundColor: const Color(0xFF1C2926),
-                                              content: Text(
-                                                tr.isArabic ? 'تم إلغاء الطلب' : 'Request cancelled successfully',
+                                      ),
+
+                                      const SizedBox(height: 12.0),
+
+                                      // 5. Metric cards row: Real Distance Away & Estimated Time
+                                      SizedBox(
+                                        height: 64.0,
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Container(
+                                                height: 64.0,
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 12.0,
+                                                  vertical: 12.0,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFF2F5F4),
+                                                  borderRadius: BorderRadius.circular(12.0),
+                                                ),
+                                                child: Row(
+                                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                                  children: [
+                                                    Container(
+                                                      width: 32.0,
+                                                      height: 32.0,
+                                                      decoration: const BoxDecoration(
+                                                        color: Color(0xFFF0EAFE),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: const Center(
+                                                        child: CustomPaint(
+                                                          size: Size(16.0, 18.0),
+                                                          painter: _LocationPinPainter(
+                                                            color: Color(0xFF8B53FE),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 12.0),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        children: [
+                                                          FittedBox(
+                                                            fit: BoxFit.scaleDown,
+                                                            alignment: AlignmentDirectional.centerStart,
+                                                            child: Text(
+                                                              liveDistance,
+                                                              style: tr.font(
+                                                                fontSize: 14.0,
+                                                                fontWeight: FontWeight.w500,
+                                                                color: const Color(0xFF1C2926),
+                                                                height: 1.1,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(height: 2.0),
+                                                          FittedBox(
+                                                            fit: BoxFit.scaleDown,
+                                                            alignment: AlignmentDirectional.centerStart,
+                                                            child: Text(
+                                                              tr.distanceAway,
+                                                              style: tr.font(
+                                                                fontSize: 10.0,
+                                                                fontWeight: FontWeight.w400,
+                                                                color: const Color(0xFF566663),
+                                                                height: 1.1,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
                                             ),
-                                          );
-                                        }
-                                      }
-                                    },
-                                    icon: const Icon(Icons.close_rounded, size: 18.0, color: Color(0xFFDC2626)),
-                                    label: Text(
-                                      tr.isArabic ? 'إلغاء الطلب' : 'Cancel Request',
-                                      style: tr.font(
-                                        fontSize: 13.0,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFFDC2626),
+                                            const SizedBox(width: 12.0),
+                                            Expanded(
+                                              child: Container(
+                                                height: 64.0,
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 12.0,
+                                                  vertical: 12.0,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFF2F5F4),
+                                                  borderRadius: BorderRadius.circular(12.0),
+                                                ),
+                                                child: Row(
+                                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                                  children: [
+                                                    Container(
+                                                      width: 32.0,
+                                                      height: 32.0,
+                                                      decoration: const BoxDecoration(
+                                                        color: Color(0xFFF0EAFE),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: const Center(
+                                                        child: CustomPaint(
+                                                          size: Size(20.0, 20.0),
+                                                          painter: _ClockIconPainter(
+                                                            backgroundColor: Color(0xFF8B53FE),
+                                                            handColor: Colors.white,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 12.0),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        children: [
+                                                          FittedBox(
+                                                            fit: BoxFit.scaleDown,
+                                                            alignment: AlignmentDirectional.centerStart,
+                                                            child: Text(
+                                                              liveEta,
+                                                              style: tr.font(
+                                                                fontSize: 14.0,
+                                                                fontWeight: FontWeight.w500,
+                                                                color: const Color(0xFF1C2926),
+                                                                height: 1.1,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(height: 2.0),
+                                                          FittedBox(
+                                                            fit: BoxFit.scaleDown,
+                                                            alignment: AlignmentDirectional.centerStart,
+                                                            child: Text(
+                                                              tr.estimatedTime,
+                                                              style: tr.font(
+                                                                fontSize: 10.0,
+                                                                fontWeight: FontWeight.w400,
+                                                                color: const Color(0xFF566663),
+                                                                height: 1.1,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      side: const BorderSide(color: Color(0xFFFFD1D1)),
-                                      backgroundColor: const Color(0xFFFFF5F5),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12.0),
-                                      ),
-                                    ),
-                                  ),
-                                ),
 
-                              // -------------------------------------------------------------
-                              // HISTORY TAB LAYOUT (_activeFilterIndex == 1)
-                              // width: 350; height: 545.88; top: 192px; left: 20px; gap: 20px;
-                              // -------------------------------------------------------------
-                              if (_activeFilterIndex == 1)
-                                Positioned(
-                                  top: 192.0,
-                                  left: horizontalPadding,
-                                  right: horizontalPadding,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      // 1st widget branding: Searchbar & Filter icon row
-                                      // width: 350; height: 49.88; gap: 16px;
+                                      // 6. Action Button: Cancel Request (before arrival/completion)
+                                      if (activeTask.step < 3) ...[
+                                        const SizedBox(height: 14.0),
+                                        SizedBox(
+                                          height: 48.0,
+                                          child: OutlinedButton.icon(
+                                            onPressed: () async {
+                                              final confirm = await showDialog<bool>(
+                                                context: context,
+                                                builder: (ctx) => AlertDialog(
+                                                  title: Text(tr.isArabic ? 'إلغاء الطلب' : 'Cancel Request'),
+                                                  content: Text(
+                                                    tr.isArabic
+                                                        ? 'هل أنت متأكد من رغبتك في إلغاء هذا الطلب؟'
+                                                        : 'Are you sure you want to cancel this request?',
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.of(ctx).pop(false),
+                                                      child: Text(tr.isArabic ? 'تراجع' : 'No, Keep'),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () => Navigator.of(ctx).pop(true),
+                                                      child: Text(
+                                                        tr.isArabic ? 'نعم، إلغاء' : 'Yes, Cancel',
+                                                        style: const TextStyle(color: Color(0xFFDC2626)),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                              if (confirm == true) {
+                                                final reqId = TaskService.extractBackendUuid(
+                                                  TaskService.instance.activeTask?.id,
+                                                );
+                                                if (reqId != null && reqId.isNotEmpty) {
+                                                  await ref
+                                                      .read(backendServiceProvider)
+                                                      .cancelCustomerRequest(reqId)
+                                                      .catchError((_) => false);
+                                                }
+                                                await TaskService.instance.cancelTask();
+                                                if (context.mounted) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(
+                                                      backgroundColor: const Color(0xFF1C2926),
+                                                      content: Text(
+                                                        tr.isArabic ? 'تم إلغاء الطلب' : 'Request cancelled successfully',
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                            },
+                                            icon: const Icon(Icons.close_rounded, size: 18.0, color: Color(0xFFDC2626)),
+                                            label: Text(
+                                              tr.isArabic ? 'إلغاء الطلب' : 'Cancel Request',
+                                              style: tr.font(
+                                                fontSize: 13.0,
+                                                fontWeight: FontWeight.w600,
+                                                color: const Color(0xFFDC2626),
+                                              ),
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              side: const BorderSide(color: Color(0xFFFFD1D1)),
+                                              backgroundColor: const Color(0xFFFFF5F5),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12.0),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+
+                                    // HISTORY TAB LAYOUT (_activeFilterIndex == 1)
+                                    if (_activeFilterIndex == 1) ...[
                                       SizedBox(
                                         height: 49.88,
                                         child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
+                                          crossAxisAlignment: CrossAxisAlignment.center,
                                           children: [
-                                            // searchbar layout: width: 284.12; height: 49.88; gap: 10px; border-radius: 40px; padding: 16px; background: #FFFFFF; box-shadow: 0px 1px 12px 0px #0000001A;
                                             Expanded(
                                               child: Container(
                                                 height: 49.88,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 16.0),
+                                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
                                                 decoration: BoxDecoration(
                                                   color: const Color(0xFFFFFFFF),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          40.0),
+                                                  borderRadius: BorderRadius.circular(40.0),
                                                   boxShadow: const [
                                                     BoxShadow(
-                                                      color: Color(0x1A000000), // #0000001A
+                                                      color: Color(0x1A000000),
                                                       blurRadius: 12.0,
                                                       offset: Offset(0, 1),
                                                       spreadRadius: 0.0,
@@ -1267,83 +1233,54 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                   ],
                                                 ),
                                                 child: Row(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.center,
+                                                  crossAxisAlignment: CrossAxisAlignment.center,
                                                   children: [
-                                                    // search icon: width: 17.78; height: 17.88; background: #1C2926;
                                                     const Icon(
                                                       Icons.search_rounded,
                                                       size: 20.0,
                                                       color: Color(0xFF1C2926),
                                                     ),
-                                                    const SizedBox(width: 10.0), // gap: 10px;
-
-                                                    // content: Search requests (Inter Regular 12px, #566663)
+                                                    const SizedBox(width: 10.0),
                                                     Expanded(
                                                       child: TextField(
-                                                        controller:
-                                                            _searchController,
+                                                        controller: _searchController,
                                                         onChanged: (val) {
                                                           setState(() {});
                                                         },
-                                                        cursorColor:
-                                                            const Color(
-                                                                0xFF8B53FE),
-                                                        style:
-                                                            tr.font(
+                                                        cursorColor: const Color(0xFF8B53FE),
+                                                        style: tr.font(
                                                           fontSize: 12.0,
-                                                          fontWeight:
-                                                              FontWeight.w400,
-                                                          color: const Color(
-                                                              0xFF1C2926),
+                                                          fontWeight: FontWeight.w400,
+                                                          color: const Color(0xFF1C2926),
                                                           height: 1.2,
-                                                          letterSpacing: 0.0,
                                                         ),
-                                                        decoration:
-                                                            InputDecoration(
-                                                          hintText:
-                                                              tr.searchRequests,
-                                                          hintStyle:
-                                                              tr.font(
+                                                        decoration: InputDecoration(
+                                                          hintText: tr.searchRequests,
+                                                          hintStyle: tr.font(
                                                             fontSize: 12.0,
-                                                            fontWeight:
-                                                                FontWeight.w400,
-                                                            color: const Color(
-                                                                0xFF566663),
+                                                            fontWeight: FontWeight.w400,
+                                                            color: const Color(0xFF566663),
                                                             height: 1.2,
-                                                            letterSpacing: 0.0,
                                                           ),
-                                                          suffixIcon: _searchController
-                                                                  .text
-                                                                  .isNotEmpty
+                                                          suffixIcon: _searchController.text.isNotEmpty
                                                               ? MouseRegion(
-                                                                  cursor:
-                                                                      SystemMouseCursors
-                                                                          .click,
-                                                                  child:
-                                                                      GestureDetector(
+                                                                  cursor: SystemMouseCursors.click,
+                                                                  child: GestureDetector(
                                                                     onTap: () {
-                                                                      _searchController
-                                                                          .clear();
-                                                                      setState(
-                                                                          () {});
+                                                                      _searchController.clear();
+                                                                      setState(() {});
                                                                     },
-                                                                    child:
-                                                                        const Icon(
-                                                                      Icons
-                                                                          .close_rounded,
+                                                                    child: const Icon(
+                                                                      Icons.close_rounded,
                                                                       size: 16.0,
-                                                                      color: Color(
-                                                                          0xFF566663),
+                                                                      color: Color(0xFF566663),
                                                                     ),
                                                                   ),
                                                                 )
                                                               : null,
-                                                          border:
-                                                              InputBorder.none,
+                                                          border: InputBorder.none,
                                                           isDense: true,
-                                                          contentPadding:
-                                                              EdgeInsets.zero,
+                                                          contentPadding: EdgeInsets.zero,
                                                         ),
                                                       ),
                                                     ),
@@ -1351,9 +1288,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                 ),
                                               ),
                                             ),
-                                            const SizedBox(width: 16.0), // gap: 16px;
-
-                                            // right side icon layout: width: 49.88; height: 49.88; box-shadow: 0px 1px 8px 0px #0000000F;
+                                            const SizedBox(width: 16.0),
                                             Material(
                                               color: Colors.transparent,
                                               shape: const CircleBorder(),
@@ -1361,18 +1296,16 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                 onTap: () {
                                                   HapticFeedback.lightImpact();
                                                 },
-                                                customBorder:
-                                                    const CircleBorder(),
+                                                customBorder: const CircleBorder(),
                                                 child: Container(
                                                   width: 49.88,
                                                   height: 49.88,
-                                                  decoration: BoxDecoration(
-                                                    color:
-                                                        const Color(0xFFFFFFFF),
+                                                  decoration: const BoxDecoration(
+                                                    color: Color(0xFFFFFFFF),
                                                     shape: BoxShape.circle,
-                                                    boxShadow: const [
+                                                    boxShadow: [
                                                       BoxShadow(
-                                                        color: Color(0x0F000000), // #0000000F
+                                                        color: Color(0x0F000000),
                                                         blurRadius: 8.0,
                                                         offset: Offset(0, 1),
                                                         spreadRadius: 0.0,
@@ -1382,10 +1315,8 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                                   child: const Center(
                                                     child: CustomPaint(
                                                       size: Size(23.82, 14.29),
-                                                      painter:
-                                                          _FilterLinesPainter(
-                                                        color:
-                                                            Color(0xFF1C2926),
+                                                      painter: _FilterLinesPainter(
+                                                        color: Color(0xFF1C2926),
                                                       ),
                                                     ),
                                                   ),
@@ -1395,41 +1326,30 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                           ],
                                         ),
                                       ),
-
-                                      const SizedBox(height: 20.0), // gap: 20px;
-
-                                      // -----------------------------------------------------------
-                                      // Card widget layout:
-                                      // width: 350; height: 476; gap: 12px; angle: 0 deg; opacity: 1;
-                                      // -----------------------------------------------------------
+                                      const SizedBox(height: 16.0),
                                       Column(
                                         children: [
-                                          for (int i = 0;
-                                              i < _filteredHistoryItems.length;
-                                              i++) ...[
-                                            if (i > 0)
-                                              const SizedBox(height: 12.0), // gap: 12px;
+                                          for (int i = 0; i < _filteredHistoryItems.length; i++) ...[
+                                            if (i > 0) const SizedBox(height: 12.0),
                                             _buildHistoryCard(
                                               _filteredHistoryItems[i],
                                               containerWidth,
                                             ),
                                           ],
                                           if (_filteredHistoryItems.isEmpty)
-                                            _buildEmptyHistoryState(
-                                              containerWidth,
-                                            ),
+                                            _buildEmptyHistoryState(containerWidth),
                                         ],
                                       ),
                                     ],
-                                  ),
+                                  ],
                                 ),
-                            ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                ),
 
                   // Floating Bottom Navigation Bar (Request tab active: index 1)
                   if (widget.showBottomNav)
@@ -1711,100 +1631,99 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
   // ACTIVE & HISTORY TAB STATE & CARDS BUILDER
   // -------------------------------------------------------------
   Widget _buildEmptyActiveState(double containerWidth, double horizontalPadding) {
-    return Positioned(
-      top: 184.0,
-      left: horizontalPadding,
-      right: horizontalPadding,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 20.0),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(16.0),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x1A000000), // #0000001A
-              blurRadius: 12.0,
-              offset: Offset(0, 1),
-              spreadRadius: 0.0,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 20.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(16.0),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 12.0,
+            offset: Offset(0, 1),
+            spreadRadius: 0.0,
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 72.0,
+            height: 72.0,
+            decoration: const BoxDecoration(
+              color: Color(0xFFF0EAFE),
+              shape: BoxShape.circle,
             ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: 72.0,
-              height: 72.0,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF0EAFE),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.assignment_outlined,
-                size: 36.0,
-                color: Color(0xFF8B53FE),
-              ),
+            child: const Icon(
+              Icons.assignment_outlined,
+              size: 36.0,
+              color: Color(0xFF8B53FE),
             ),
-            const SizedBox(height: 16.0),
-            Text(
-              tr.isArabic ? 'لا توجد طلبات نشطة' : 'No Active Requests',
-              textAlign: TextAlign.center,
-              style: tr.font(
-                fontSize: 16.0,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF1C2926),
-              ),
+          ),
+          const SizedBox(height: 16.0),
+          Text(
+            tr.isArabic ? 'لا توجد طلبات نشطة' : 'No Active Requests',
+            textAlign: TextAlign.center,
+            style: tr.font(
+              fontSize: 16.0,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF1C2926),
             ),
-            const SizedBox(height: 8.0),
-            Text(
-              tr.isArabic
-                  ? 'ليس لديك أي طلب خدمة نشط حالياً. اطلب خدمة من الخريطة أو الشاشة الرئيسية لمتابعة حالتها هنا مباشرة.'
-                  : 'You have no active service requests right now. Book a service to track real-time provider arrival and progress here.',
-              textAlign: TextAlign.center,
-              style: tr.font(
-                fontSize: 12.0,
-                fontWeight: FontWeight.w400,
-                color: const Color(0xFF566663),
-                height: 1.4,
-              ),
+          ),
+          const SizedBox(height: 8.0),
+          Text(
+            tr.isArabic
+                ? 'ليس لديك أي طلب خدمة نشط حالياً. اطلب خدمة من الخريطة أو الشاشة الرئيسية لمتابعة حالتها هنا مباشرة.'
+                : 'You have no active service requests right now. Book a service to track real-time provider arrival and progress here.',
+            textAlign: TextAlign.center,
+            style: tr.font(
+              fontSize: 12.0,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF566663),
+              height: 1.4,
             ),
-            const SizedBox(height: 20.0),
-            SizedBox(
-              height: 44.0,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  if (widget.onTabSelected != null) {
-                    widget.onTabSelected!(0);
-                  }
-                },
-                icon: const Icon(Icons.explore_outlined, size: 18.0, color: Colors.white),
-                label: Text(
-                  tr.isArabic ? 'استكشف الخدمات' : 'Explore Services',
-                  style: tr.font(
-                    fontSize: 13.0,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+          ),
+          const SizedBox(height: 20.0),
+          SizedBox(
+            height: 44.0,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                if (widget.onTabSelected != null) {
+                  widget.onTabSelected!(0);
+                }
+              },
+              icon: const Icon(Icons.explore_outlined, size: 18.0, color: Colors.white),
+              label: Text(
+                tr.isArabic ? 'استكشف الخدمات' : 'Explore Services',
+                style: tr.font(
+                  fontSize: 13.0,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B53FE),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8B53FE),
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.0),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  String _getActiveStatusTitle(int step, AppTranslations tr) {
+  String _getActiveStatusTitle(int step, AppTranslations tr, {String? status}) {
+    final normalized = (status ?? '').toLowerCase();
+    if (step == 0 && (normalized == 'new' || normalized == 'pending')) {
+      return tr.isArabic ? 'تم إرسال الطلب' : 'Request Sent';
+    }
     switch (step) {
       case 0:
         return tr.isArabic ? 'تم قبول طلبك' : 'Request Accepted';
@@ -1820,7 +1739,11 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
     }
   }
 
-  String _getActiveStatusSubtitle(int step, AppTranslations tr) {
+  String _getActiveStatusSubtitle(int step, AppTranslations tr, {String? status}) {
+    final normalized = (status ?? '').toLowerCase();
+    if (step == 0 && (normalized == 'new' || normalized == 'pending')) {
+      return tr.isArabic ? 'بانتظار قبول مزود الخدمة للطلب' : 'Waiting for provider to accept your request.';
+    }
     switch (step) {
       case 0:
         return tr.isArabic ? 'المزود يستعد للتحرك' : 'Provider is preparing to depart.';
@@ -1847,8 +1770,10 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
         statusText: isCancelled ? (tr.isArabic ? 'ملغي' : 'Cancelled') : (tr.isArabic ? 'مكتمل' : 'Completed'),
         statusBgColor: isCancelled ? const Color(0xFFFFF0F0) : const Color(0xFFF0EAFE),
         statusTextColor: isCancelled ? const Color(0xFFDC2626) : const Color(0xFF8B53FE),
-        rating: '5.0',
-        trips: tr.isArabic ? '(مزود معتمد)' : '(Verified)',
+        rating: t.providerRating.toStringAsFixed(1),
+        trips: tr.isArabic
+            ? '(${t.providerTripsCount} ${t.providerTripsCount == 1 ? 'رحلة' : 'رحلات'})'
+            : '(${t.providerTripsCount} ${t.providerTripsCount == 1 ? 'trip' : 'trips'})',
         serviceCategory: t.serviceCategory,
         vehicleName: t.vehicleName,
         vehicleIcon: Icons.local_shipping_outlined,

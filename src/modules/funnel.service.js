@@ -12,9 +12,37 @@ export const FUNNEL_EVENT = {
   WHATSAPP_CLICK: "whatsapp_click",
   SHARE_LOCATION_CLICK: "share_location_click",
   SEND_REQUEST_CLICK: "send_request_click",
+  REQUEST_CANCELLED: "request_cancelled",
 };
 
 const CALL_LOG_EVENTS = new Set([FUNNEL_EVENT.CALL_CLICK]);
+
+let funnelConstraintUpdated = false;
+async function ensureFunnelEventConstraint() {
+  if (funnelConstraintUpdated) return;
+  funnelConstraintUpdated = true;
+  try {
+    await query(
+      `ALTER TABLE customer_funnel_events DROP CONSTRAINT IF EXISTS customer_funnel_event_type_check`,
+    );
+    await query(
+      `ALTER TABLE customer_funnel_events ADD CONSTRAINT customer_funnel_event_type_check CHECK (
+         event_type IN (
+           'list_impression',
+           'profile_click',
+           'profile_view',
+           'call_click',
+           'whatsapp_click',
+           'share_location_click',
+           'send_request_click',
+           'request_cancelled'
+         )
+       )`,
+    );
+  } catch (_) {
+    // Non-fatal if DB role lacks ALTER privileges; notifyProviderForCustomerEvent still runs independently
+  }
+}
 
 export async function recordFunnelEvent({
   providerId,
@@ -24,6 +52,12 @@ export async function recordFunnelEvent({
   longitude = null,
   metadata = {},
 }) {
+  if (
+    eventType === FUNNEL_EVENT.SEND_REQUEST_CLICK ||
+    eventType === FUNNEL_EVENT.REQUEST_CANCELLED
+  ) {
+    await ensureFunnelEventConstraint();
+  }
   const { rows } = await query(
     `INSERT INTO customer_funnel_events
        (provider_id, event_type, customer_session_id, customer_latitude, customer_longitude, metadata)
@@ -116,15 +150,9 @@ export async function trackCustomerDiscoveryEvent(input) {
   const provider = await resolveApprovedProviderByPublicId(input.providerPublicId);
   const lat = input.latitude ?? null;
   const lng = input.longitude ?? null;
-  const row = await recordFunnelEvent({
-    providerId: provider.id,
-    eventType: input.event,
-    sessionId: input.sessionId ?? null,
-    latitude: lat,
-    longitude: lng,
-    metadata: input.metadata ?? {},
-  });
 
+  // Always insert provider_notifications first so provider receives task & notification reliably
+  // even if customer_funnel_events has a legacy check constraint.
   const notifRes = await notifyProviderForCustomerEvent({
     providerId: provider.id,
     eventType: input.event,
@@ -134,11 +162,25 @@ export async function trackCustomerDiscoveryEvent(input) {
     metadata: input.metadata ?? {},
   }).catch(() => null);
 
+  let row = null;
+  try {
+    row = await recordFunnelEvent({
+      providerId: provider.id,
+      eventType: input.event,
+      sessionId: input.sessionId ?? null,
+      latitude: lat,
+      longitude: lng,
+      metadata: input.metadata ?? {},
+    });
+  } catch (_) {
+    // Non-fatal analytics error — notification & request lifecycle already persisted above
+  }
+
   return {
     recorded: true,
-    eventId: row.id,
+    eventId: row?.id ?? notifRes?.notification?.id ?? null,
     requestId: notifRes?.notification?.id ?? null,
-    eventType: row.event_type,
+    eventType: row?.event_type ?? input.event,
     providerPublicId: provider.public_id,
   };
 }

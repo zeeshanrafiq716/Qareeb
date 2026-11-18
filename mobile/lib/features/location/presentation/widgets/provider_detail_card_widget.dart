@@ -7,6 +7,8 @@ import '../../../../core/localization/app_locale.dart';
 import '../../../../core/utils/contact_launcher.dart';
 import '../../../../providers/backend_provider.dart';
 import '../../../../services/location_service.dart';
+import '../../../../services/task_service.dart';
+import '../live_tracking_screen.dart';
 import '../send_location_screen.dart';
 import '../send_request_screen.dart';
 
@@ -149,6 +151,29 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
   double? _providerLng;
   Timer? _liveMetricsTimer;
 
+  void _onActiveTaskChanged() {
+    if (mounted) setState(() {});
+  }
+
+  ServiceTask? get _matchingActiveTask {
+    final task = TaskService.instance.activeTask;
+    if (task == null) return null;
+    final status = task.status.toLowerCase();
+    if (status == 'completed' || status == 'cancelled') return null;
+    final pubId = widget.providerPublicId?.trim() ?? '';
+    if (pubId.isNotEmpty &&
+        task.providerPublicId != null &&
+        task.providerPublicId!.trim() == pubId) {
+      return task;
+    }
+    if (widget.providerName.trim().isNotEmpty &&
+        task.providerName.trim().toLowerCase() ==
+            widget.providerName.trim().toLowerCase()) {
+      return task;
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -160,6 +185,7 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
     _liveEta = '';
     _providerLat = widget.providerLatitude;
     _providerLng = widget.providerLongitude;
+    TaskService.instance.activeTaskNotifier.addListener(_onActiveTaskChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _hydrateFromProfile();
       _refreshLiveMetrics();
@@ -171,6 +197,7 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
 
   @override
   void dispose() {
+    TaskService.instance.activeTaskNotifier.removeListener(_onActiveTaskChanged);
     _liveMetricsTimer?.cancel();
     super.dispose();
   }
@@ -474,6 +501,55 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
 
   Future<void> _onSendRequest() async {
     HapticFeedback.mediumImpact();
+    final existing = _matchingActiveTask;
+    if (existing != null) {
+      final isAccepted = existing.step >= 1 &&
+          (existing.status == 'active' ||
+              existing.status == 'arrived' ||
+              existing.status == 'in_progress');
+      if (isAccepted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => LiveTrackingScreen(
+              requestId: TaskService.extractBackendUuid(existing.id),
+              serviceCategory: existing.serviceCategory,
+              providerName: existing.providerName,
+              vehicleName: existing.vehicleName.isNotEmpty
+                  ? existing.vehicleName
+                  : existing.serviceCategory,
+              photoUrl: _photoUrl ?? existing.providerAvatar,
+              providerLatitude: _providerLat ?? existing.providerLatitude,
+              providerLongitude: _providerLng ?? existing.providerLongitude,
+              distance: _liveDistance.isNotEmpty ? _liveDistance : existing.distance,
+              duration: _liveEta.isNotEmpty ? _liveEta : existing.eta,
+            ),
+          ),
+        );
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SendRequestScreen(
+            existingTask: existing,
+            serviceCategory: existing.serviceCategory,
+            providerName: existing.providerName,
+            providerPublicId: widget.providerPublicId ?? existing.providerPublicId,
+            providerPhone: _phone ?? widget.phoneNumber ?? existing.providerPhone,
+            photoUrl: _photoUrl ?? existing.providerAvatar,
+            vehicleName: widget.vehicleName.isNotEmpty
+                ? widget.vehicleName
+                : existing.vehicleName,
+            distance: _liveDistance.isNotEmpty ? _liveDistance : existing.distance,
+            eta: _liveEta.isNotEmpty ? _liveEta : existing.eta,
+            verified: _verified,
+            providerLatitude: _providerLat ?? existing.providerLatitude,
+            providerLongitude: _providerLng ?? existing.providerLongitude,
+          ),
+        ),
+      );
+      return;
+    }
+
     if (widget.onSendRequest != null) {
       widget.onSendRequest!();
       return;
@@ -931,7 +1007,9 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
                               )
                             else ...[
                               Text(
-                                tr.isArabic ? 'إرسال الطلب' : 'Send Request',
+                                _matchingActiveTask != null
+                                    ? (tr.isArabic ? 'عرض الطلب' : 'View Request')
+                                    : (tr.isArabic ? 'إرسال الطلب' : 'Send Request'),
                                 style: tr.font(
                                   fontSize: 15.0,
                                   fontWeight: FontWeight.w700,

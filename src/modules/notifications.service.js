@@ -218,10 +218,21 @@ export async function getCustomerRequestStatus(rawRequestId) {
   const { rows } = await query(
     `SELECT pn.id, pn.provider_id, pn.metadata, pn.created_at,
             p.public_id, p.name AS provider_name, p.phone AS provider_phone, p.photo_url AS provider_photo_url,
+            p.rating_avg, p.rating_count,
+            p.vehicle_type_name, p.vehicle_model, p.plate_number, p.vehicle_color,
+            c.name AS category_name,
+            COALESCE(ord.orders_count, 0) AS orders_count,
             l.latitude AS provider_lat, l.longitude AS provider_lng
      FROM provider_notifications pn
      JOIN providers p ON p.id = pn.provider_id
+     LEFT JOIN categories c ON c.id = p.category_id
      LEFT JOIN locations l ON l.provider_id = p.id
+     LEFT JOIN LATERAL (
+       SELECT COUNT(*)::int AS orders_count
+       FROM provider_notifications pn2
+       WHERE pn2.provider_id = p.id
+         AND pn2.event_type = 'send_request_click'
+     ) ord ON true
      WHERE pn.id = $1::uuid AND pn.event_type = 'send_request_click'`,
     [cleanId],
   );
@@ -252,9 +263,16 @@ export async function getCustomerRequestStatus(rawRequestId) {
     providerName: row.provider_name,
     providerPhone: row.provider_phone,
     providerPhotoUrl: row.provider_photo_url,
+    providerRatingAvg: Number(row.rating_avg ?? 0),
+    providerRatingCount: Number(row.rating_count ?? 0),
+    providerOrdersCount: Number(row.orders_count ?? 0),
+    providerVehicleType: row.vehicle_type_name || null,
+    providerVehicleModel: row.vehicle_model || null,
+    providerPlateNumber: row.plate_number || null,
+    providerVehicleColor: row.vehicle_color || null,
     providerLatitude: liveLat,
     providerLongitude: liveLng,
-    serviceCategory: meta.serviceCategory || "",
+    serviceCategory: meta.serviceCategory || row.category_name || "",
     customerName: meta.customerName || "",
     customerAddress: meta.customerAddress || "",
     distance: meta.distance || "",
