@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import '../core/config/app_config.dart';
 
@@ -160,8 +160,8 @@ class GoogleMapsService {
   // 1. REVERSE GEOCODING (Coordinates -> Address & City)
   // ---------------------------------------------------------------------------
   /// Resolves exact human address from coordinates.
-  /// Tries Google Places (New) searchNearby & Geocoding first, then falls back seamlessly.
-  Future<GoogleAddress> reverseGeocode(double latitude, double longitude, {String lang = 'ar'}) async {
+  /// Tries Google Places (New) -> Google Geocoding -> OpenStreetMap Nominatim -> BigDataCloud.
+  Future<GoogleAddress> reverseGeocode(double latitude, double longitude, {String lang = 'en'}) async {
     // 1st Priority: Google Places API (New) searchNearby
     try {
       final response = await _dio.post(
@@ -264,7 +264,72 @@ class GoogleMapsService {
       // Continue to fast fallback
     }
 
-    // 3rd Priority: Fast Open Fallback (BigDataCloud reverse geocode)
+    // 3rd Priority: OpenStreetMap Nominatim (exact street / town / neighbourhood globally)
+    try {
+      final response = await _dio.get(
+        'https://nominatim.openstreetmap.org/reverse',
+        queryParameters: {
+          'format': 'jsonv2',
+          'lat': latitude.toStringAsFixed(6),
+          'lon': longitude.toStringAsFixed(6),
+          'zoom': 18,
+          'addressdetails': 1,
+          'accept-language': lang,
+        },
+        options: Options(
+          headers: const {
+            'User-Agent': 'ZeshoApp/1.0',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data is Map) {
+        final data = response.data as Map;
+        final addr = data['address'] is Map ? data['address'] as Map : const {};
+        final road = (addr['road'] ?? addr['pedestrian'] ?? '').toString().trim();
+        final area = (addr['neighbourhood'] ??
+                addr['suburb'] ??
+                addr['residential'] ??
+                addr['hamlet'] ??
+                '')
+            .toString()
+            .trim();
+        final town = (addr['town'] ??
+                addr['village'] ??
+                addr['city'] ??
+                addr['municipality'] ??
+                addr['county'] ??
+                '')
+            .toString()
+            .trim();
+        final country = (addr['country'] ?? '').toString().trim();
+
+        final parts = <String>[
+          if (road.isNotEmpty) road,
+          if (area.isNotEmpty && area != road) area,
+          if (town.isNotEmpty && town != area && town != road) town,
+        ];
+        final cityLabel = town.isNotEmpty
+            ? (area.isNotEmpty && area != town ? '$area, $town' : town)
+            : (area.isNotEmpty ? area : (road.isNotEmpty ? road : ''));
+        final formatted = parts.isNotEmpty
+            ? parts.join(', ')
+            : (data['display_name']?.toString().trim() ?? '');
+
+        if (cityLabel.isNotEmpty || formatted.isNotEmpty) {
+          return GoogleAddress(
+            formattedAddress: formatted.isNotEmpty ? formatted : cityLabel,
+            cityName: cityLabel.isNotEmpty ? cityLabel : formatted.split(',').first.trim(),
+            locality: area.isNotEmpty ? area : town,
+            country: country,
+            latitude: latitude,
+            longitude: longitude,
+          );
+        }
+      }
+    } catch (_) {}
+
+    // 4th Priority: Fast Open Fallback (BigDataCloud reverse geocode — prefer exact locality over tehsil/city)
     try {
       final response = await _dio.get(
         'https://api.bigdatacloud.net/data/reverse-geocode-client',
@@ -277,13 +342,19 @@ class GoogleMapsService {
 
       if (response.statusCode == 200 && response.data is Map) {
         final data = response.data as Map;
-        final city = (data['city'] ?? data['locality'] ?? data['principalSubdivision'] ?? '').toString().trim();
         final locality = (data['locality'] ?? '').toString().trim();
+        final city = (data['city'] ?? data['principalSubdivision'] ?? '').toString().trim();
         final country = (data['countryName'] ?? '').toString().trim();
 
-        final displayCity = city.isNotEmpty
-            ? (country.isNotEmpty ? '$city, $country' : city)
-            : (country.isNotEmpty ? country : 'Current Location');
+        final primaryPlace = locality.isNotEmpty
+            ? locality
+            : (city.isNotEmpty ? city : (country.isNotEmpty ? country : 'Current Location'));
+
+        final displayCity = (locality.isNotEmpty && city.isNotEmpty && locality != city)
+            ? '$locality, $city'
+            : (country.isNotEmpty && primaryPlace != country
+                ? '$primaryPlace, $country'
+                : primaryPlace);
 
         final displayAddress = locality.isNotEmpty
             ? (city.isNotEmpty && locality != city ? '$locality, $city' : locality)

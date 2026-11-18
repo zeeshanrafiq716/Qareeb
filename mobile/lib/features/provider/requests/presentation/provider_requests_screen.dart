@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/localization/app_locale.dart';
+import 'package:mobile/providers/backend_provider.dart';
 import 'package:mobile/services/task_service.dart';
 import 'package:mobile/features/home/presentation/widgets/bottom_nav_bar_widget.dart';
 import 'package:mobile/features/provider/requests/presentation/provider_active_request_screen.dart';
@@ -109,12 +110,53 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
     super.initState();
     _selectedFilterIndex = widget.initialFilterIndex;
     TaskService.instance.activeTaskNotifier.addListener(_onTasksChanged);
+    TaskService.instance.providerRequestsNotifier.addListener(_onTasksChanged);
     TaskService.instance.historyNotifier.addListener(_onTasksChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncRequestsFromBackend());
+  }
+
+  Future<void> _syncRequestsFromBackend() async {
+    try {
+      final items = await ref.read(backendServiceProvider).fetchProviderNotifications(limit: 20);
+      if (!mounted) return;
+      final nowUtc = DateTime.now().toUtc();
+      for (final item in items.reversed) {
+        if (item['eventType']?.toString() != 'send_request_click') continue;
+        final rawTs = item['createdAt']?.toString();
+        final ts = rawTs != null ? DateTime.tryParse(rawTs) : null;
+        if (ts != null && nowUtc.difference(ts.toUtc()).abs() > const Duration(hours: 24)) {
+          continue;
+        }
+        final itemId = item['id']?.toString() ?? '';
+        if (itemId.isEmpty) continue;
+        final meta = item['metadata'] is Map ? item['metadata'] as Map : const {};
+        final cat = meta['serviceCategory']?.toString().trim() ?? '';
+        final custName = meta['customerName']?.toString().trim() ?? '';
+        final custAddr = meta['customerAddress']?.toString().trim() ?? '';
+        final dist = meta['distance']?.toString().trim() ?? '';
+        final lat = item['customerLatitude'];
+        final lng = item['customerLongitude'];
+        final fallbackLoc = (lat != null && lng != null)
+            ? 'https://maps.google.com/?q=$lat,$lng'
+            : 'Shared via Zesho';
+
+        await TaskService.instance.upsertIncomingRequestFromProviderNotification(
+          notificationId: itemId,
+          serviceCategory: cat.isNotEmpty ? cat : 'Service request',
+          customerLocation: custAddr.isNotEmpty ? custAddr : fallbackLoc,
+          distance: dist,
+          customerName: custName.isNotEmpty ? custName : 'Customer',
+          createdAt: ts,
+        );
+      }
+      if (mounted) setState(() {});
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     TaskService.instance.activeTaskNotifier.removeListener(_onTasksChanged);
+    TaskService.instance.providerRequestsNotifier.removeListener(_onTasksChanged);
     TaskService.instance.historyNotifier.removeListener(_onTasksChanged);
     _scrollControllerInstance?.dispose();
     super.dispose();
@@ -135,26 +177,26 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
 
   List<_ProviderRequestItem> get _allRequests {
     final List<_ProviderRequestItem> list = [];
-    final active = TaskService.instance.activeTask;
-    if (active != null) {
-      final bool isNew = active.status == 'new' || active.status == 'pending';
+    for (final req in TaskService.instance.providerRequests) {
+      final bool isNew = req.status == 'new' || req.status == 'pending';
+      final hasDist = req.distance.trim().isNotEmpty && req.distance.trim() != '—';
       list.add(
         _ProviderRequestItem(
-          id: active.id,
-          serviceTypeEn: active.serviceCategory,
-          serviceTypeAr: active.serviceCategory,
-          locationEn: active.customerLocation,
-          locationAr: active.customerLocation,
-          distanceEn: '${active.distance} away',
-          distanceAr: 'على بعد ${active.distance}',
-          timeEn: active.dateTime,
-          timeAr: active.dateTime,
-          badgeEn: isNew ? 'New Request' : (active.status == 'arrived' ? 'Arrived' : 'Active'),
-          badgeAr: isNew ? 'طلب جديد' : (active.status == 'arrived' ? 'تم الوصول' : 'نشط'),
+          id: req.id,
+          serviceTypeEn: req.serviceCategory,
+          serviceTypeAr: req.serviceCategory,
+          locationEn: req.customerLocation,
+          locationAr: req.customerLocation,
+          distanceEn: hasDist ? '${req.distance} away' : '',
+          distanceAr: hasDist ? 'على بعد ${req.distance}' : '',
+          timeEn: req.dateTime,
+          timeAr: req.dateTime,
+          badgeEn: isNew ? 'New Request' : (req.status == 'arrived' ? 'Arrived' : 'Active'),
+          badgeAr: isNew ? 'طلب جديد' : (req.status == 'arrived' ? 'تم الوصول' : 'نشط'),
           imageAsset: 'assets/images/img.png',
-          status: active.status,
-          customerNameEn: active.customerName,
-          customerNameAr: active.customerName,
+          status: req.status,
+          customerNameEn: req.customerName,
+          customerNameAr: req.customerName,
           customerAvatarAsset: 'assets/images/ahmed_khan.jpg',
         ),
       );
@@ -394,6 +436,7 @@ class _ProviderRequestsScreenState extends ConsumerState<ProviderRequestsScreen>
                                           setState(() {
                                             _selectedCardIndex = index;
                                           });
+                                          TaskService.instance.selectIncomingRequest(item.id);
                                           if (item.status == 'active') {
                                             Navigator.of(context).push(
                                               MaterialPageRoute(

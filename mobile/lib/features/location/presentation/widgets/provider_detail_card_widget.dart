@@ -203,9 +203,15 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
     }
 
     String? nextDistance;
+    String? nextEta;
     final distanceM = (profile['distanceMeters'] as num?)?.toDouble();
     if (distanceM != null && distanceM >= 0) {
       nextDistance = _formatDistanceMeters(distanceM, isArabic);
+      nextEta = _formatEtaMinutes(
+        _estimateMinutesFromMeters(distanceM),
+        isArabic,
+        distanceM: distanceM,
+      );
     }
 
     final availability = profile['availability'];
@@ -222,6 +228,7 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
           _verified;
       _isOnline = online;
       if (nextDistance != null) _liveDistance = nextDistance;
+      if (nextEta != null) _liveEta = nextEta;
     });
   }
 
@@ -282,10 +289,10 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
         tr.isArabic,
         distanceM: distanceM,
       );
-      if (mounted && (_liveDistance != formattedDist || _liveEta.isEmpty)) {
+      if (mounted && (_liveDistance != formattedDist || _liveEta != estEta)) {
         setState(() {
           _liveDistance = formattedDist;
-          if (_liveEta.isEmpty) _liveEta = estEta;
+          _liveEta = estEta;
         });
       }
     }
@@ -301,7 +308,7 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
 
     _applyProfileMap(profile, isArabic: tr.isArabic);
 
-    // Re-sync immediate ETA from fresh provider coordinates if ETA not yet set
+    // Re-sync live distance & ETA from fresh provider coordinates
     if (loc != null &&
         loc.hasValidDeviceGps &&
         _providerLat != null &&
@@ -320,10 +327,10 @@ class _ProviderDetailCardWidgetState extends ConsumerState<ProviderDetailCardWid
         tr.isArabic,
         distanceM: distanceM,
       );
-      if (mounted) {
+      if (mounted && (_liveDistance != formattedDist || _liveEta != estEta)) {
         setState(() {
           _liveDistance = formattedDist;
-          if (_liveEta.isEmpty) _liveEta = estEta;
+          _liveEta = estEta;
         });
       }
     }

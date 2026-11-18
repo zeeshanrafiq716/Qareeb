@@ -166,7 +166,7 @@ class LocationService {
     }
   }
 
-  /// Instant non-blocking lookup of last known non-mocked device position (takes <50ms).
+  /// Instant non-blocking lookup of recent (< 5 min) non-mocked device position.
   Future<UserLocation?> getFastLastKnownLocation() async {
     if (lastKnownValidLocation != null && lastKnownValidLocation!.hasValidDeviceGps) {
       return lastKnownValidLocation;
@@ -174,7 +174,7 @@ class LocationService {
     if (!_isAndroidNative && !_isIosNative) return null;
     try {
       final pos = await Geolocator.getLastKnownPosition();
-      if (pos != null && _isValidDevicePosition(pos)) {
+      if (pos != null && _isValidDevicePosition(pos, maxAge: const Duration(minutes: 5))) {
         return await _userLocationFromCoords(
           pos.latitude,
           pos.longitude,
@@ -189,11 +189,11 @@ class LocationService {
     try {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: AndroidSettings(
-          accuracy: LocationAccuracy.high,
+          accuracy: LocationAccuracy.bestForNavigation,
           timeLimit: timeout,
         ),
       );
-      if (_isValidDevicePosition(position)) {
+      if (_isValidDevicePosition(position, maxAge: const Duration(seconds: 30))) {
         return await _userLocationFromCoords(
           position.latitude,
           position.longitude,
@@ -206,7 +206,7 @@ class LocationService {
       rethrow;
     } catch (_) {}
 
-    // Indoor fallback: use OS last known position if valid & non-mocked
+    // Indoor fallback: use recent OS last known position if valid & non-mocked
     final fallback = await getFastLastKnownLocation();
     if (fallback != null && fallback.hasValidDeviceGps) {
       return fallback;
@@ -218,14 +218,14 @@ class LocationService {
     try {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: AppleSettings(
-          accuracy: LocationAccuracy.high,
+          accuracy: LocationAccuracy.bestForNavigation,
           activityType: ActivityType.otherNavigation,
           pauseLocationUpdatesAutomatically: false,
           allowBackgroundLocationUpdates: false,
           timeLimit: timeout,
         ),
       );
-      if (_isValidDevicePosition(position)) {
+      if (_isValidDevicePosition(position, maxAge: const Duration(seconds: 30))) {
         return await _userLocationFromCoords(
           position.latitude,
           position.longitude,
@@ -254,27 +254,33 @@ class LocationService {
     return loc;
   }
 
-  bool _isValidDevicePosition(Position position) {
+  bool _isValidDevicePosition(
+    Position position, {
+    Duration maxAge = const Duration(seconds: 30),
+  }) {
     if (position.isMocked) return false;
     if (position.latitude.isNaN || position.longitude.isNaN) return false;
     if (position.latitude == 0 && position.longitude == 0) return false;
-    // Reject coarse cell-tower / network jumps (> 150m accuracy) that produce fake locations & distances
-    if (position.accuracy.isNaN || position.accuracy <= 0 || position.accuracy > 150.0) {
+    // Reject stale OS-cached locations so old coordinates never masquerade as live GPS
+    final age = DateTime.now().toUtc().difference(position.timestamp.toUtc()).abs();
+    if (age > maxAge) return false;
+    // Reject coarse cell-tower / network jumps (> 100m accuracy) that produce fake locations & distances
+    if (position.accuracy.isNaN || position.accuracy <= 0 || position.accuracy > 100.0) {
       return false;
     }
-    // Anti-teleport guard: if we already have a sharp GPS lock (<= 40m), ignore sudden coarse jumps
+    // Anti-teleport guard: if we already have a sharp GPS lock (<= 35m), ignore sudden coarse jumps
     final prev = lastKnownValidLocation;
     if (prev != null &&
         prev.hasValidDeviceGps &&
-        (prev.accuracy ?? 999.0) <= 40.0 &&
-        position.accuracy > 75.0) {
+        (prev.accuracy ?? 999.0) <= 35.0 &&
+        position.accuracy > 60.0) {
       final jumpKm = calculateDistanceKm(
         prev.latitude,
         prev.longitude,
         position.latitude,
         position.longitude,
       );
-      if (jumpKm > 0.3) return false;
+      if (jumpKm > 0.25) return false;
     }
     return true;
   }
@@ -370,9 +376,9 @@ class LocationService {
   Stream<UserLocation> _androidGpsFixes() async* {
     await for (final position in Geolocator.getPositionStream(
       locationSettings: AndroidSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
-        intervalDuration: const Duration(seconds: 3),
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 2,
+        intervalDuration: const Duration(seconds: 2),
       ),
     )) {
       if (!_isValidDevicePosition(position)) continue;

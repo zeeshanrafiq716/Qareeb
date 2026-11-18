@@ -530,7 +530,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 onTap: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (_) => const NotificationsScreen(),
+                                      builder: (_) => NotificationsScreen(isProvider: widget.isProvider),
                                     ),
                                   );
                                 },

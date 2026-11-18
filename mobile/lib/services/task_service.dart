@@ -124,6 +124,7 @@ class TaskService {
   static const String _keyHistoryTasks = 'qareeb_real_history_tasks';
 
   ServiceTask? _activeTask;
+  final List<ServiceTask> _incomingRequests = [];
   List<ServiceTask> _historyTasks = [];
   bool _isInitialized = false;
 
@@ -133,8 +134,20 @@ class TaskService {
 
   ServiceTask? get activeTask => _activeTask;
   List<ServiceTask> get historyTasks => List.unmodifiable(_historyTasks);
-  List<ServiceTask> get providerRequests =>
-      _activeTask != null ? [_activeTask!] : [];
+  List<ServiceTask> get providerRequests {
+    final List<ServiceTask> combined = [];
+    final Set<String> seenIds = {};
+    if (_activeTask != null) {
+      combined.add(_activeTask!);
+      seenIds.add(_activeTask!.id);
+    }
+    for (final req in _incomingRequests) {
+      if (seenIds.add(req.id)) {
+        combined.add(req);
+      }
+    }
+    return List.unmodifiable(combined);
+  }
 
   /// Initialize and load persisted real tasks (zero seed data)
   Future<void> init() async {
@@ -215,40 +228,58 @@ class TaskService {
   }
 
   /// When provider app receives [send_request_click] from the API, materialize a pending task locally.
+  /// Supports multiple incoming customer requests without dropping new requests.
   Future<void> upsertIncomingRequestFromProviderNotification({
     required String notificationId,
     String serviceCategory = 'Roadside Assistance',
     String? customerLocation,
     String? distance,
     String? customerName,
+    DateTime? createdAt,
   }) async {
     if (notificationId.isEmpty) return;
-    final existing = _activeTask;
-    if (existing != null &&
-        existing.status != 'cancelled' &&
-        existing.status != 'completed') {
-      return;
-    }
+    final taskId = 'REQ-$notificationId';
 
-    final now = DateTime.now();
+    // Skip if already completed/cancelled in history or already tracked
+    if (_historyTasks.any((t) => t.id == taskId)) return;
+    if (_activeTask?.id == taskId) return;
+    if (_incomingRequests.any((t) => t.id == taskId)) return;
+
+    final ts = (createdAt ?? DateTime.now()).toLocal();
     final formattedTime =
-        '${now.day.toString().padLeft(2, '0')} ${_monthName(now.month)} ${now.year}, ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+        '${ts.day.toString().padLeft(2, '0')} ${_monthName(ts.month)} ${ts.year}, ${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}';
 
     final task = ServiceTask(
-      id: 'REQ-$notificationId',
+      id: taskId,
       providerName: 'Zesho',
-      serviceCategory: serviceCategory,
-      distance: distance?.isNotEmpty == true ? distance! : '—',
+      serviceCategory: serviceCategory.trim().isNotEmpty ? serviceCategory.trim() : 'Roadside Assistance',
+      distance: distance?.trim().isNotEmpty == true ? distance!.trim() : '—',
       eta: '—',
-      customerName: customerName ?? 'Customer',
-      customerLocation: customerLocation ?? 'Shared via Zesho',
+      customerName: customerName?.trim().isNotEmpty == true ? customerName!.trim() : 'Customer',
+      customerLocation: customerLocation?.trim().isNotEmpty == true ? customerLocation!.trim() : 'Shared via Zesho',
       status: 'new',
       step: 0,
       dateTime: formattedTime,
-      createdAt: now,
+      createdAt: ts,
     );
 
-    _activeTask = task;
+    _incomingRequests.insert(0, task);
+    if (_activeTask == null ||
+        _activeTask!.status == 'cancelled' ||
+        _activeTask!.status == 'completed') {
+      _activeTask = task;
+      activeTaskNotifier.value = _activeTask;
+      await _saveActiveTask();
+    }
+    providerRequestsNotifier.value = providerRequests;
+  }
+
+  /// Select a specific incoming request as the active task (when provider taps a request card)
+  Future<void> selectIncomingRequest(String taskId) async {
+    if (_activeTask?.id == taskId) return;
+    final idx = _incomingRequests.indexWhere((t) => t.id == taskId);
+    if (idx == -1) return;
+    _activeTask = _incomingRequests[idx];
     activeTaskNotifier.value = _activeTask;
     providerRequestsNotifier.value = providerRequests;
     await _saveActiveTask();
@@ -273,6 +304,10 @@ class TaskService {
       distance: distance ?? _activeTask!.distance,
       eta: eta ?? _activeTask!.eta,
     );
+    final idx = _incomingRequests.indexWhere((t) => t.id == _activeTask!.id);
+    if (idx != -1) {
+      _incomingRequests[idx] = _activeTask!;
+    }
     activeTaskNotifier.value = _activeTask;
     providerRequestsNotifier.value = providerRequests;
     await _saveActiveTask();
@@ -285,15 +320,15 @@ class TaskService {
       status: 'completed',
       step: 4,
     );
+    _incomingRequests.removeWhere((t) => t.id == completed.id);
     _historyTasks.insert(0, completed);
-    _activeTask = null;
+    _activeTask = _incomingRequests.isNotEmpty ? _incomingRequests.first : null;
 
-    activeTaskNotifier.value = null;
+    activeTaskNotifier.value = _activeTask;
     historyNotifier.value = List.unmodifiable(_historyTasks);
     providerRequestsNotifier.value = providerRequests;
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyActiveTask);
+    await _saveActiveTask();
     await _saveHistory();
   }
 
@@ -303,21 +338,22 @@ class TaskService {
     final cancelled = _activeTask!.copyWith(
       status: 'cancelled',
     );
+    _incomingRequests.removeWhere((t) => t.id == cancelled.id);
     _historyTasks.insert(0, cancelled);
-    _activeTask = null;
+    _activeTask = _incomingRequests.isNotEmpty ? _incomingRequests.first : null;
 
-    activeTaskNotifier.value = null;
+    activeTaskNotifier.value = _activeTask;
     historyNotifier.value = List.unmodifiable(_historyTasks);
     providerRequestsNotifier.value = providerRequests;
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyActiveTask);
+    await _saveActiveTask();
     await _saveHistory();
   }
 
   /// Clear all tasks
   Future<void> clearAll() async {
     _activeTask = null;
+    _incomingRequests.clear();
     _historyTasks = [];
     activeTaskNotifier.value = null;
     historyNotifier.value = [];

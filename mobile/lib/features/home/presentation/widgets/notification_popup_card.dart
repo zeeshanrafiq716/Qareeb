@@ -88,234 +88,180 @@ class NotificationPopupCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isRtl = Directionality.of(context) == TextDirection.rtl ||
         Localizations.maybeLocaleOf(context)?.languageCode == 'ar';
+    final String trimmedImage = imageAsset?.trim() ?? '';
+    final bool hasImage = trimmedImage.isNotEmpty;
+    final bool isNetworkImage = trimmedImage.startsWith('http://') ||
+        trimmedImage.startsWith('https://');
+    final String trimmedLocation = location.trim();
+    final String trimmedDistance = distance.trim();
 
-    return Opacity(
-      opacity: 1.0, // opacity: 1
-      child: Transform.rotate(
-        angle: 0.0, // angle: 0 deg
-        child: Container(
-          width: width,
-          height: designHeight,
-          padding: const EdgeInsets.all(designPadding),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFFFFF),
-            borderRadius: BorderRadius.circular(12.0), // border-radius: 12px
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x1F000000), // #0000001F
-                blurRadius: 16.0,
-                offset: Offset(0, 1),
-                spreadRadius: 0.0,
-              ),
-            ],
+    return Container(
+      width: width,
+      constraints: const BoxConstraints(minHeight: 82.0),
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 13.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(14.0),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1F000000),
+            blurRadius: 16.0,
+            offset: Offset(0, 2),
+            spreadRadius: 0.0,
           ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onTap ?? onDismiss,
-              borderRadius: BorderRadius.circular(12.0),
-              splashColor: const Color(0xFF8B53FE).withValues(alpha: 0.08),
-              highlightColor: const Color(0xFF8B53FE).withValues(alpha: 0.04),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // 1. Card Inner Layout Image Branding
-                  //    width: 63.999996185302734; height: 64; angle: 0 deg; opacity: 1; border-radius: 12px;
-                  Opacity(
-                    opacity: 1.0, // opacity: 1
-                    child: Transform.rotate(
-                      angle: 0.0, // angle: 0 deg
-                      child: Container(
-                        width: imgWidth,
-                        height: imgHeight,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: imageAsset != null && imageAsset!.isNotEmpty
-                            ? Image.asset(
-                                imageAsset!,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const SizedBox.shrink(),
-                              )
-                            : const SizedBox.shrink(),
-                      ),
-                    ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap ?? onDismiss,
+          borderRadius: BorderRadius.circular(14.0),
+          splashColor: const Color(0xFF8B53FE).withValues(alpha: 0.08),
+          highlightColor: const Color(0xFF8B53FE).withValues(alpha: 0.04),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Only render profile image + gap if a real profile image is available (no blank gap!)
+              if (hasImage) ...[
+                Container(
+                  width: 52.0,
+                  height: 52.0,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F2F5),
+                    borderRadius: BorderRadius.circular(12.0),
                   ),
+                  clipBehavior: Clip.antiAlias,
+                  child: isNetworkImage
+                      ? Image.network(
+                          trimmedImage,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.person_rounded, color: Color(0xFF8B53FE), size: 26.0),
+                        )
+                      : Image.asset(
+                          trimmedImage,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.person_rounded, color: Color(0xFF8B53FE), size: 26.0),
+                        ),
+                ),
+                const SizedBox(width: 12.0),
+              ],
 
-                  // gap: 16px;
-                  const SizedBox(width: designGap),
+              // Content Layout — uses full available width cleanly without truncated dots
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Row 1: Badge + Time
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10.0,
+                            vertical: 4.0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F2F5),
+                            borderRadius: BorderRadius.circular(20.0),
+                          ),
+                          child: Text(
+                            badgeText,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w500,
+                              fontSize: 10.5,
+                              color: Color(0xFF8B53FE),
+                              height: 1.1,
+                            ),
+                            maxLines: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 8.0),
+                        Text(
+                          time,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w400,
+                            fontSize: 10.5,
+                            color: Color(0xFF616166),
+                            height: 1.1,
+                          ),
+                          maxLines: 1,
+                        ),
+                      ],
+                    ),
 
-                  // 2. Content Layout - Expanded to flexibly adapt to equal left & right card margins
-                  Expanded(
-                    child: SizedBox(
-                      height: contentHeight,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // 2.1 Content Layout Row 1: justify-content: space-between;
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                    const SizedBox(height: 8.0),
+
+                    // Row 2 & 3: Title + Full Message / Distance + Chevron
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Badge Branding: width: ~80; height: 23; border-radius: 20px; padding: 8px; bg: #F3F2F5;
-                              Container(
-                                height: 23.0,
-                                constraints: const BoxConstraints(
-                                  minWidth: 80.0,
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14.0,
+                                  color: Color(0xFF1C2926),
+                                  height: 1.2,
                                 ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8.0,
-                                  vertical: 2.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF3F2F5),
-                                  borderRadius: BorderRadius.circular(20.0),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  badgeText,
+                                maxLines: 2,
+                                softWrap: true,
+                              ),
+                              if (trimmedLocation.isNotEmpty || trimmedDistance.isNotEmpty) ...[
+                                const SizedBox(height: 4.0),
+                                Text(
+                                  trimmedLocation.isNotEmpty && trimmedDistance.isNotEmpty
+                                      ? '$trimmedLocation • $trimmedDistance'
+                                      : (trimmedLocation.isNotEmpty
+                                          ? trimmedLocation
+                                          : trimmedDistance),
                                   style: const TextStyle(
                                     fontFamily: 'Inter',
                                     fontWeight: FontWeight.w400,
-                                    fontSize: 10.0,
-                                    color: Color(0xFF8B53FE),
-                                    height: 1.0,
-                                    letterSpacing: 0.0,
+                                    fontSize: 11.5,
+                                    color: Color(0xFF616166),
+                                    height: 1.3,
                                   ),
-                                  maxLines: 1,
+                                  maxLines: 2,
+                                  softWrap: true,
                                 ),
-                              ),
-
-                              // Just now: font-size: 10px; color: #616166;
-                              Text(
-                                time,
-                                style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w400,
-                                  fontSize: 10.0,
-                                  color: Color(0xFF616166),
-                                  height: 1.0,
-                                  letterSpacing: 0.0,
-                                ),
-                                maxLines: 1,
-                              ),
+                              ],
                             ],
                           ),
+                        ),
 
-                          // 2.2 Row 2,3 Layout: justify-content: space-between;
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // Row 2,3 Content Branding: title + location/distance
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    // Row 2 Content: Battery Jump Start (14px, 500, #1C2926)
-                                    Text(
-                                      title,
-                                      style: const TextStyle(
-                                        fontFamily: 'Inter',
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 14.0,
-                                        color: Color(0xFF1C2926),
-                                        height: 1.1,
-                                        letterSpacing: 0.0,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                        const SizedBox(width: 10.0),
 
-                                    const SizedBox(height: 3.0),
-
-                                    // Row 3 Content Layout: location + ellipse + distance
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: [
-                                        // King Abdullah Rd, Riyadh (10px, 400, #616166)
-                                        Flexible(
-                                          child: Text(
-                                            location,
-                                            style: const TextStyle(
-                                              fontFamily: 'Inter',
-                                              fontWeight: FontWeight.w400,
-                                              fontSize: 10.0,
-                                              color: Color(0xFF616166),
-                                              height: 1.0,
-                                              letterSpacing: 0.0,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-
-                                        const SizedBox(width: 8.0), // gap: 8px
-
-                                        // Ellipse Branding: width: 4; height: 4; bg: #616166;
-                                        Container(
-                                          width: 4.0,
-                                          height: 4.0,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFF616166),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-
-                                        const SizedBox(width: 8.0), // gap: 8px
-
-                                        // 4.1 km away (10px, 400, #616166)
-                                        Text(
-                                          distance,
-                                          style: const TextStyle(
-                                            fontFamily: 'Inter',
-                                            fontWeight: FontWeight.w400,
-                                            fontSize: 10.0,
-                                            color: Color(0xFF616166),
-                                            height: 1.0,
-                                            letterSpacing: 0.0,
-                                          ),
-                                          maxLines: 1,
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                        Transform.scale(
+                          scaleX: isRtl ? -1.0 : 1.0,
+                          child: SizedBox(
+                            width: 6.06,
+                            height: 12.87,
+                            child: CustomPaint(
+                              painter: const _ChevronPainter(
+                                color: Color(0xFF616166),
                               ),
-
-                              const SizedBox(width: 8.0),
-
-                              // > branding: width: 6.06; height: 12.87; border: 1px solid #616166;
-                              Opacity(
-                                opacity: 1.0, // opacity: 1
-                                child: Transform.scale(
-                                  scaleX: isRtl ? -1.0 : 1.0,
-                                  child: SizedBox(
-                                    width: 6.059617519378662,
-                                    height: 12.873345375061035,
-                                    child: CustomPaint(
-                                      painter: const _ChevronPainter(
-                                        color: Color(0xFF616166),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),

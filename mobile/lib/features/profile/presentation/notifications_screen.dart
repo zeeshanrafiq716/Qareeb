@@ -4,16 +4,22 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/localization/app_locale.dart';
+import '../../../providers/backend_provider.dart';
 import '../../../providers/notifications_provider.dart';
 import '../../../services/task_service.dart';
 
-/// Notifications Screen navigated from the Profile Tab.
+/// Notifications Screen navigated from the Profile Tab or notification popup cards.
 /// Features the standard app header layout:
 /// - Circular white back button on the left with shadow
 /// - Centered "Notifications" title
 /// - Symmetrical right optical balance spacer / clear button
 class NotificationsScreen extends ConsumerStatefulWidget {
-  const NotificationsScreen({super.key});
+  final bool isProvider;
+
+  const NotificationsScreen({
+    super.key,
+    this.isProvider = false,
+  });
 
   @override
   ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -21,6 +27,44 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   bool _forceAllRead = false;
+  List<Map<String, dynamic>> _providerBackendItems = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isProvider) {
+      _loadProviderNotifications();
+    }
+  }
+
+  Future<void> _loadProviderNotifications() async {
+    try {
+      final rawItems = await ref
+          .read(backendServiceProvider)
+          .fetchProviderNotifications(limit: 50);
+      if (!mounted) return;
+      final nowUtc = DateTime.now().toUtc();
+      // Keep notifications from the last 24 hours
+      final filtered = rawItems.where((item) {
+        final rawTs = item['createdAt']?.toString();
+        final ts = rawTs != null ? DateTime.tryParse(rawTs) : null;
+        if (ts == null) return true;
+        return nowUtc.difference(ts.toUtc()).abs() <= const Duration(hours: 24);
+      }).toList();
+      setState(() => _providerBackendItems = filtered);
+    } catch (_) {}
+  }
+
+  String _formatNotifTime(String? rawTs, {required bool isArabic}) {
+    final ts = rawTs != null ? DateTime.tryParse(rawTs) : null;
+    if (ts == null) return isArabic ? 'الآن' : 'Just now';
+    final diff = DateTime.now().toUtc().difference(ts.toUtc());
+    if (diff.inSeconds < 60) return isArabic ? 'الآن' : 'Just now';
+    if (diff.inMinutes < 60) {
+      return isArabic ? 'منذ ${diff.inMinutes} د' : '${diff.inMinutes}m ago';
+    }
+    return isArabic ? 'منذ ${diff.inHours} س' : '${diff.inHours}h ago';
+  }
 
   void _markAllAsRead() {
     HapticFeedback.lightImpact();
@@ -33,6 +77,65 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   List<Map<String, dynamic>> _getNotifications() {
     final List<Map<String, dynamic>> items = [];
+
+    if (widget.isProvider) {
+      for (final raw in _providerBackendItems) {
+        final eventType = raw['eventType']?.toString() ?? '';
+        IconData icon = Icons.notifications_active_rounded;
+        String fallbackTitleEn = 'Customer activity';
+        String fallbackTitleAr = 'نشاط عميل';
+        String fallbackBodyEn = 'A customer contacted you via Zesho';
+        String fallbackBodyAr = 'تواصل معك عميل عبر زيشو';
+
+        switch (eventType) {
+          case 'call_click':
+            icon = Icons.call_rounded;
+            fallbackTitleEn = 'Incoming call';
+            fallbackTitleAr = 'مكالمة واردة';
+            fallbackBodyEn = 'A customer tapped Call on your Zesho profile.';
+            fallbackBodyAr = 'ضغط عميل على اتصال في ملفك على زيشو.';
+            break;
+          case 'whatsapp_click':
+            icon = Icons.chat_rounded;
+            fallbackTitleEn = 'WhatsApp contact';
+            fallbackTitleAr = 'تواصل عبر واتساب';
+            fallbackBodyEn = 'A customer opened WhatsApp to reach you on Zesho.';
+            fallbackBodyAr = 'فتح عميل واتساب للتواصل معك عبر زيشو.';
+            break;
+          case 'share_location_click':
+            icon = Icons.my_location_rounded;
+            fallbackTitleEn = 'Location shared';
+            fallbackTitleAr = 'موقع مشترك';
+            fallbackBodyEn = 'A customer is sharing their location with you on Zesho.';
+            fallbackBodyAr = 'شارك عميل موقعه المباشر معك عبر زيشو.';
+            break;
+          case 'send_request_click':
+            icon = Icons.local_shipping_rounded;
+            fallbackTitleEn = 'New service request';
+            fallbackTitleAr = 'طلب خدمة جديد';
+            fallbackBodyEn = 'A customer sent you a service request on Zesho.';
+            fallbackBodyAr = 'أرسل لك عميل طلب خدمة عبر زيشو.';
+            break;
+        }
+
+        final title = raw['title']?.toString().trim() ?? '';
+        final body = raw['body']?.toString().trim() ?? '';
+        final createdAt = raw['createdAt']?.toString();
+
+        items.add({
+          'titleEn': title.isNotEmpty ? title : fallbackTitleEn,
+          'titleAr': fallbackTitleAr,
+          'messageEn': body.isNotEmpty ? body : fallbackBodyEn,
+          'messageAr': fallbackBodyAr,
+          'timeEn': _formatNotifTime(createdAt, isArabic: false),
+          'timeAr': _formatNotifTime(createdAt, isArabic: true),
+          'isRead': _forceAllRead ? true : (raw['isRead'] == true),
+          'icon': icon,
+        });
+      }
+      if (items.isNotEmpty) return items;
+    }
+
     final active = TaskService.instance.activeTask;
     if (active != null) {
       final notifState = ref.watch(notificationsProvider);

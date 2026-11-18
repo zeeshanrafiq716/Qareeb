@@ -798,13 +798,14 @@ class BackendService {
     return const [];
   }
 
-  /// Record customer discovery & engagement funnel event (profile_view, call_click, whatsapp_click, share_location_click)
+  /// Record customer discovery & engagement funnel event (profile_view, call_click, whatsapp_click, share_location_click, send_request_click)
   Future<bool> trackCustomerEvent({
     required String event,
     required String providerPublicId,
     String? sessionId,
     double? latitude,
     double? longitude,
+    Map<String, dynamic>? metadata,
   }) async {
     final effectiveSessionId = sessionId ?? ApiClient.globalCustomerSessionId;
     try {
@@ -816,6 +817,7 @@ class BackendService {
           'sessionId': effectiveSessionId,
           if (latitude != null) 'latitude': latitude,
           if (longitude != null) 'longitude': longitude,
+          if (metadata != null && metadata.isNotEmpty) 'metadata': metadata,
         },
       );
       return response.statusCode == 200 || response.statusCode == 201;

@@ -210,6 +210,12 @@ class _ProviderOnlineToggleState extends State<ProviderOnlineToggle>
         _stopTimer();
         setState(() => _onlineSeconds = 0);
       }
+    } else if (_isOnline) {
+      // Sync immediately if persisted session timestamp loaded after first frame
+      _refreshElapsed();
+      if (_timer == null || !_timer!.isActive) {
+        _startTimer();
+      }
     }
   }
 
@@ -258,7 +264,6 @@ class _ProviderOnlineToggleState extends State<ProviderOnlineToggle>
       builder: (context, constraints) {
         final double totalW = constraints.maxWidth;
         final double toggleLeft = (totalW - ProviderOnlineToggle.toggleWidth) / 2.0;
-        final double timerLeft = (totalW - ProviderOnlineToggle.timerWidth) / 2.0;
 
         // Compute coordinate positions adapted symmetrically for RTL when Arabic
         final double carLeftPos = isArabic
@@ -459,36 +464,31 @@ class _ProviderOnlineToggleState extends State<ProviderOnlineToggle>
                 ),
               ),
 
-              // 5. Content: 02:14:26 (live timer)
-              // font-family: Inter; font-weight: 500; font-size: 12px; leading-trim: CAP_HEIGHT;
-              // line-height: 100%; text-align: center; width: 51; height: 9;
-              // top: 182px; background: #8B53FE;
+              // 5. Content: HH:MM:SS (live timer, centered with full width so digits never clip)
               Positioned(
                 top: ProviderOnlineToggle.timerTop,
-                left: timerLeft,
+                left: 0.0,
+                right: 0.0,
                 child: Opacity(
                   opacity: _isOnline ? 1.0 : 0.0, // Fade out timer when offline
-                  child: Transform.rotate(
-                    angle: 0.0, // angle: 0 deg
-                    child: SizedBox(
-                      width: ProviderOnlineToggle.timerWidth,
-                      child: Text(
-                        timerText,
-                        style: GoogleFonts.inter(
-                          fontSize: 12.0,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF8B53FE), // background: #8B53FE
-                          height: 1.0, // line-height: 100%
-                          letterSpacing: 0.2,
-                        ),
-                        textHeightBehavior: const TextHeightBehavior(
-                          applyHeightToFirstAscent: false,
-                          applyHeightToLastDescent: false,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.visible,
+                  child: Center(
+                    child: Text(
+                      timerText,
+                      style: GoogleFonts.inter(
+                        fontSize: 13.0,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF8B53FE),
+                        height: 1.1,
+                        letterSpacing: 0.4,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
+                      textHeightBehavior: const TextHeightBehavior(
+                        applyHeightToFirstAscent: false,
+                        applyHeightToLastDescent: false,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      softWrap: false,
                     ),
                   ),
                 ),

@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_locale.dart';
 import '../../../core/utils/contact_launcher.dart';
 import '../../../providers/backend_provider.dart';
+import '../../../services/location_service.dart';
+import '../../customer/auth/data/customer_auth_store.dart';
 import 'live_tracking_screen.dart';
 import 'widgets/real_map_background_widget.dart';
 import '../../../services/profile_stats_service.dart';
@@ -83,26 +85,46 @@ class _SendRequestScreenState extends ConsumerState<SendRequestScreen> {
   }
 
   Future<void> _bootstrapRequest() async {
-    final loc = ref.read(userLocationProvider).value;
-    final locationLabel = loc != null
-        ? 'https://maps.google.com/?q=${loc.latitude},${loc.longitude}'
-        : 'Shared via Zesho';
+    final rawLoc = ref.read(userLocationProvider).value;
+    final loc = (rawLoc != null && rawLoc.hasValidDeviceGps)
+        ? rawLoc
+        : LocationService.lastKnownValidLocation;
+    final hasGps = loc != null && loc.hasValidDeviceGps;
+    final customerName = CustomerAuthStore.instance.fullName.trim().isNotEmpty
+        ? CustomerAuthStore.instance.fullName.trim()
+        : 'Customer';
+    final addressLabel = hasGps &&
+            loc.address.trim().isNotEmpty &&
+            loc.address != 'Device Location is OFF'
+        ? loc.address.trim()
+        : (hasGps
+            ? 'https://maps.google.com/?q=${loc.latitude.toStringAsFixed(6)},${loc.longitude.toStringAsFixed(6)}'
+            : 'Shared via Zesho');
+
     await TaskService.instance.createCustomerRequest(
       providerName: widget.providerName,
       serviceCategory: widget.serviceCategory,
       distance: widget.distance,
       eta: widget.eta ?? '',
       providerPhone: _resolvedPhone ?? '',
-      customerLocation: locationLabel,
+      customerName: customerName,
+      customerLocation: addressLabel,
     );
 
     final id = widget.providerPublicId;
     if (id != null && id.isNotEmpty) {
-      ref.read(backendServiceProvider).trackCustomerEvent(
+      await ref.read(backendServiceProvider).trackCustomerEvent(
             event: 'send_request_click',
             providerPublicId: id,
-            latitude: loc?.latitude,
-            longitude: loc?.longitude,
+            latitude: hasGps ? loc.latitude : null,
+            longitude: hasGps ? loc.longitude : null,
+            metadata: {
+              'serviceCategory': widget.serviceCategory,
+              'customerName': customerName,
+              'customerAddress': addressLabel,
+              if (widget.distance.trim().isNotEmpty && widget.distance.trim() != '—')
+                'distance': widget.distance.trim(),
+            },
           ).catchError((_) => false);
     }
     _syncAcceptedFromTask();

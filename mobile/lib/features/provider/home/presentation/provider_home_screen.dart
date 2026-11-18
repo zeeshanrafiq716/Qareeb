@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/core/localization/app_locale.dart';
 import 'package:mobile/features/home/presentation/widgets/bottom_nav_bar_widget.dart';
 import 'package:mobile/features/home/presentation/widgets/notification_popup_card.dart';
+import 'package:mobile/features/profile/presentation/notifications_screen.dart';
 import 'package:mobile/features/profile/presentation/profile_screen.dart';
 import 'package:mobile/features/provider/auth/data/provider_registration_state.dart';
 import 'package:mobile/features/provider/auth/presentation/provider_onboarding_guard.dart';
@@ -65,6 +66,7 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
   Timer? _gpsTrackingTimer;
   Timer? _statsRefreshTimer;
   Timer? _notificationsPollTimer;
+  Timer? _notificationBannerTimer;
   String? _lastProviderNotificationId;
   bool _hasCompletedInitialNotifPoll = false;
   StreamSubscription<UserLocation>? _locationSubscription;
@@ -134,13 +136,56 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
   Future<void> _pollProviderNotifications() async {
     if (!mounted || _isNavigatingAway) return;
     try {
-      final items = await ref.read(backendServiceProvider).fetchProviderNotifications(limit: 5);
+      final items = await ref.read(backendServiceProvider).fetchProviderNotifications(limit: 20);
       if (!mounted) return;
       final isFirstPoll = !_hasCompletedInitialNotifPoll;
       _hasCompletedInitialNotifPoll = true;
-      if (items.isEmpty) return;
+      final nowUtc = DateTime.now().toUtc();
+      // Keep notifications available in the popup for 24 hours; ignore older ones
+      final recentItems = items.where((item) {
+        final rawTs = item['createdAt']?.toString();
+        final ts = rawTs != null ? DateTime.tryParse(rawTs) : null;
+        if (ts == null) return true;
+        return nowUtc.difference(ts.toUtc()).abs() <= const Duration(hours: 24);
+      }).toList();
 
-      final latest = items.first;
+      final tr = ref.read(translationsProvider);
+
+      // Sync ALL incoming send_request_click notifications (not just latest) into the Provider Requests tab
+      for (final item in recentItems.reversed) {
+        if (item['eventType']?.toString() != 'send_request_click') continue;
+        final itemId = item['id']?.toString() ?? '';
+        if (itemId.isEmpty) continue;
+        final meta = item['metadata'] is Map ? item['metadata'] as Map : const {};
+        final cat = meta['serviceCategory']?.toString().trim() ?? '';
+        final custName = meta['customerName']?.toString().trim() ?? '';
+        final custAddr = meta['customerAddress']?.toString().trim() ?? '';
+        final dist = meta['distance']?.toString().trim() ?? '';
+        final tsRaw = item['createdAt']?.toString();
+        await TaskService.instance.upsertIncomingRequestFromProviderNotification(
+          notificationId: itemId,
+          serviceCategory: cat.isNotEmpty
+              ? cat
+              : (tr.isArabic ? 'طلب خدمة' : 'Service request'),
+          customerLocation: custAddr.isNotEmpty
+              ? custAddr
+              : _formatCustomerLocationFromNotification(item),
+          distance: dist,
+          customerName: custName.isNotEmpty
+              ? custName
+              : (tr.isArabic ? 'عميل' : 'Customer'),
+          createdAt: tsRaw != null ? DateTime.tryParse(tsRaw) : null,
+        );
+      }
+
+      if (recentItems.isEmpty) {
+        if (ref.read(notificationsProvider).providerNotification != null) {
+          ref.read(notificationsProvider.notifier).setProviderNotification(null);
+        }
+        return;
+      }
+
+      final latest = recentItems.first;
       final id = latest['id']?.toString() ?? '';
       if (id.isEmpty || id == _lastProviderNotificationId) return;
       _lastProviderNotificationId = id;
@@ -148,11 +193,22 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
       final isUnread = latest['isRead'] != true;
       final createdAtRaw = latest['createdAt']?.toString();
       final createdAt = createdAtRaw != null ? DateTime.tryParse(createdAtRaw) : null;
-      final isRecent = createdAt == null ||
-          DateTime.now().toUtc().difference(createdAt.toUtc()).abs() <= const Duration(minutes: 2);
-      final shouldPopup = isUnread && (!isFirstPoll || isRecent);
+      final isJustArrived = createdAt == null ||
+          nowUtc.difference(createdAt.toUtc()).abs() <= const Duration(minutes: 2);
+      final shouldPopup = isUnread && (!isFirstPoll || isJustArrived);
 
-      final tr = ref.read(translationsProvider);
+      final String timeEn = _formatRelativeTime(createdAt, isArabic: false);
+      final String timeAr = _formatRelativeTime(createdAt, isArabic: true);
+
+      final metadata = latest['metadata'] is Map ? latest['metadata'] as Map : const {};
+      final rawPhoto = (metadata['customerPhotoUrl'] ??
+              metadata['photoUrl'] ??
+              latest['customerPhotoUrl'])
+          ?.toString()
+          .trim();
+      final String? profilePhotoUrl =
+          (rawPhoto != null && rawPhoto.isNotEmpty) ? rawPhoto : null;
+
       final eventType = latest['eventType']?.toString() ?? '';
       String badgeEn = 'New activity';
       String badgeAr = 'نشاط جديد';
@@ -189,17 +245,16 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
         case 'send_request_click':
           badgeEn = 'New Request';
           badgeAr = 'طلب جديد';
-          fallbackTitleEn = 'New service request';
-          fallbackTitleAr = 'طلب خدمة جديد';
-          fallbackBodyEn = 'A customer sent you a service request';
-          fallbackBodyAr = 'أرسل لك عميل طلب خدمة';
-          await TaskService.instance.upsertIncomingRequestFromProviderNotification(
-            notificationId: id,
-            serviceCategory: tr.isArabic ? 'طلب خدمة' : 'Service request',
-            customerLocation: _formatCustomerLocationFromNotification(latest),
-            distance: '',
-            customerName: tr.isArabic ? 'عميل' : 'Customer',
-          );
+          final reqCat = metadata['serviceCategory']?.toString().trim() ?? '';
+          final reqCust = metadata['customerName']?.toString().trim() ?? '';
+          fallbackTitleEn = reqCat.isNotEmpty ? 'New Request • $reqCat' : 'New service request';
+          fallbackTitleAr = reqCat.isNotEmpty ? 'طلب جديد • $reqCat' : 'طلب خدمة جديد';
+          fallbackBodyEn = reqCust.isNotEmpty
+              ? '$reqCust sent you a service request'
+              : 'A customer sent you a service request';
+          fallbackBodyAr = reqCust.isNotEmpty
+              ? 'أرسل $reqCust طلب خدمة لك'
+              : 'أرسل لك عميل طلب خدمة';
           break;
       }
 
@@ -225,12 +280,33 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
               locationAr: bodyAr,
               distanceEn: '',
               distanceAr: '',
-              timeEn: 'Just now',
-              timeAr: 'الآن',
+              timeEn: timeEn,
+              timeAr: timeAr,
+              imageAsset: profilePhotoUrl,
             ),
             showCard: shouldPopup,
           );
+
+      // Auto-hide incoming notification banner after 4 seconds (stays accessible via bell icon for 24h)
+      if (shouldPopup) {
+        _notificationBannerTimer?.cancel();
+        _notificationBannerTimer = Timer(const Duration(seconds: 4), () {
+          if (mounted) {
+            ref.read(notificationsProvider.notifier).hideProviderCard();
+          }
+        });
+      }
     } catch (_) {}
+  }
+
+  String _formatRelativeTime(DateTime? createdAt, {required bool isArabic}) {
+    if (createdAt == null) return isArabic ? 'الآن' : 'Just now';
+    final diff = DateTime.now().toUtc().difference(createdAt.toUtc());
+    if (diff.inSeconds < 60) return isArabic ? 'الآن' : 'Just now';
+    if (diff.inMinutes < 60) {
+      return isArabic ? 'منذ ${diff.inMinutes} د' : '${diff.inMinutes}m ago';
+    }
+    return isArabic ? 'منذ ${diff.inHours} س' : '${diff.inHours}h ago';
   }
 
   Future<void> _syncProviderAccountStatus() async {
@@ -314,6 +390,7 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
   @override
   void dispose() {
     ProviderPhoneChangeWatcher.stop();
+    _notificationBannerTimer?.cancel();
     _notificationsPollTimer?.cancel();
     _statsRefreshTimer?.cancel();
     _stopGpsTrackingAndPresence(callBackend: false);
@@ -630,10 +707,22 @@ class _ProviderHomeScreenState extends ConsumerState<ProviderHomeScreen> {
                                 ? (notifState.providerNotification?.timeAr ?? '')
                                 : (notifState.providerNotification?.timeEn ?? ''),
                             imageAsset: notifState.providerNotification?.imageAsset,
-                            onDismiss: () {
+                            onTap: () {
+                              _notificationBannerTimer?.cancel();
                               ref
                                   .read(notificationsProvider.notifier)
-                                  .dismissProviderNotification();
+                                  .hideProviderCard();
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const NotificationsScreen(isProvider: true),
+                                ),
+                              );
+                            },
+                            onDismiss: () {
+                              _notificationBannerTimer?.cancel();
+                              ref
+                                  .read(notificationsProvider.notifier)
+                                  .hideProviderCard();
                             },
                           ),
                         ),

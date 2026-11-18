@@ -317,7 +317,10 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
     // 4. Real-time background provider tracking poll: refresh providers every 4s
     _providerLocationPollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!mounted) return;
-      final loc = _exactTracedLocation ?? ref.read(userLocationProvider).value;
+      final streamLoc = ref.read(userLocationProvider).value;
+      final loc = (streamLoc != null && streamLoc.hasValidDeviceGps)
+          ? streamLoc
+          : (_exactTracedLocation ?? LocationService.lastKnownValidLocation);
       if (loc != null && loc.hasValidDeviceGps) {
         unawaited(_refreshNearbyCars(loc));
       } else {
@@ -742,11 +745,12 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen>
 
               final userLocAsync = ref.watch(userLocationProvider);
               final UserLocation? streamLoc = userLocAsync.value;
+              // Always prefer fresh live GPS stream over an older traced snapshot so distances stay live!
               final UserLocation? rawUserLoc =
-                  (_exactTracedLocation != null && _exactTracedLocation!.hasValidDeviceGps)
-                      ? _exactTracedLocation
-                      : (streamLoc != null && streamLoc.hasValidDeviceGps)
-                          ? streamLoc
+                  (streamLoc != null && streamLoc.hasValidDeviceGps)
+                      ? streamLoc
+                      : (_exactTracedLocation != null && _exactTracedLocation!.hasValidDeviceGps)
+                          ? _exactTracedLocation
                           : LocationService.lastKnownValidLocation;
               final userLoc = (rawUserLoc != null && rawUserLoc.hasValidDeviceGps)
                   ? rawUserLoc
