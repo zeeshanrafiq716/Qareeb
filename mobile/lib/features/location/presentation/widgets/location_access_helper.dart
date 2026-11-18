@@ -44,6 +44,10 @@ class LocationAccessHelper {
     final tr = ref.read(translationsProvider);
     final loc = ref.read(locationServiceProvider);
     final resolvedIssue = issue ?? await diagnose(loc);
+    // If device location is already ON and permission is granted, never show the popup
+    if (resolvedIssue == LocationAccessIssue.unavailable) {
+      return false;
+    }
 
     final service = (serviceName ?? '').trim();
     final serviceSuffix = service.isNotEmpty
@@ -59,16 +63,16 @@ class LocationAccessHelper {
       case LocationAccessIssue.serviceDisabled:
         title = tr.isArabic ? 'فعّل الموقع على هاتفك' : 'Turn on location';
         body = tr.isArabic
-            ? 'نستخدم موقعك لعرض الخريطة والمزودين القريبين منك$serviceSuffix. فعّل خدمة الموقع (GPS) ثم ارجع إلى قريب.'
-            : 'We use your location to show the map and nearby providers$serviceSuffix. Turn on Location (GPS) in your phone settings, then return to Qareeb.';
+            ? 'نستخدم موقعك لعرض الخريطة والمزودين القريبين منك$serviceSuffix. فعّل خدمة الموقع (GPS) ثم ارجع إلى زيشو.'
+            : 'We use your location to show the map and nearby providers$serviceSuffix. Turn on Location (GPS) in your phone settings, then return to Zesho.';
         primaryLabel = tr.isArabic ? 'تفعيل الموقع' : 'Turn on location';
         headerIcon = Icons.location_on_rounded;
         break;
       case LocationAccessIssue.permissionDenied:
         title = tr.isArabic ? 'السماح بالوصول للموقع' : 'Allow location access';
         body = tr.isArabic
-            ? 'لنعرض موقعك على الخريطة ونجد أقرب مزود$serviceSuffix، اسمح لقريب باستخدام موقعك أثناء استخدام التطبيق.'
-            : 'To show your position on the map and find the nearest providers$serviceSuffix, allow Qareeb to access your location while you use the app.';
+            ? 'لنعرض موقعك على الخريطة ونجد أقرب مزود$serviceSuffix، اسمح لزيشو باستخدام موقعك أثناء استخدام التطبيق.'
+            : 'To show your position on the map and find the nearest providers$serviceSuffix, allow Zesho to access your location while you use the app.';
         primaryLabel = tr.isArabic ? 'متابعة' : 'Continue';
         headerIcon = Icons.near_me_rounded;
         break;
@@ -76,18 +80,12 @@ class LocationAccessHelper {
         title = tr.isArabic ? 'تفعيل الموقع من الإعدادات' : 'Enable location in Settings';
         body = tr.isArabic
             ? 'تم رفض إذن الموقع سابقاً. افتح إعدادات التطبيق وفعّل «الموقع» لمتابعة استخدام الخريطة.'
-            : 'Location access was turned off for Qareeb. Open app Settings and turn on Location to use the map.';
+            : 'Location access was turned off for Zesho. Open app Settings and turn on Location to use the map.';
         primaryLabel = tr.isArabic ? 'فتح الإعدادات' : 'Open Settings';
         headerIcon = Icons.settings_rounded;
         break;
       case LocationAccessIssue.unavailable:
-        title = tr.isArabic ? 'لا يمكن تحديد موقعك' : 'Can’t find your location';
-        body = tr.isArabic
-            ? 'تأكد أن خدمة الموقع مفعّلة وأن التطبيق مسموح له بالوصول للموقع، ثم حاول مرة أخرى.'
-            : 'Make sure Location is on and Qareeb is allowed to access it, then try again.';
-        primaryLabel = tr.isArabic ? 'حاول مرة أخرى' : 'Try again';
-        headerIcon = Icons.location_searching_rounded;
-        break;
+        return false;
     }
 
     if (!context.mounted) return false;
@@ -236,30 +234,31 @@ class LocationAccessHelper {
 
     if (!context.mounted) return null;
 
-    if (issue != LocationAccessIssue.unavailable) {
-      final acted = await showEnableLocationDialog(
-        context,
-        ref,
-        issue: issue,
-        serviceName: serviceName,
-      );
-      if (!acted || !context.mounted) return null;
-    } else {
-      final acted = await showEnableLocationDialog(
-        context,
-        ref,
-        issue: issue,
-        serviceName: serviceName,
-      );
-      if (!acted || !context.mounted) return null;
+    // If Location is already ON & permission granted, NEVER show a popup!
+    if (issue == LocationAccessIssue.unavailable) {
+      final cached = await loc.getFastLastKnownLocation();
+      ref.invalidate(userLocationProvider);
+      if (cached != null && cached.hasValidDeviceGps) {
+        return cached;
+      }
+      return null;
     }
+
+    final acted = await showEnableLocationDialog(
+      context,
+      ref,
+      issue: issue,
+      serviceName: serviceName,
+    );
+    if (!acted || !context.mounted) return null;
 
     ref.invalidate(userLocationProvider);
     try {
       final after = await loc.traceExactGps();
-      return after.hasValidDeviceGps ? after : null;
+      if (after.hasValidDeviceGps) return after;
+      return await loc.getFastLastKnownLocation();
     } catch (_) {
-      return null;
+      return await loc.getFastLastKnownLocation();
     }
   }
 }
